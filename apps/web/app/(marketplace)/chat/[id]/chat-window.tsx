@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeTime } from "@vicino/shared";
-import { Send, Handshake, ArrowLeft } from "lucide-react";
+import { Send, Handshake, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
 import { SaleConfirmationCard } from "./sale-confirmation-card";
@@ -17,6 +17,8 @@ interface Message {
   texto: string;
   attachments: unknown;
   created_at: string;
+  leido_por_comprador: boolean;
+  leido_por_vendedor: boolean;
 }
 
 interface SaleConfirmation {
@@ -66,7 +68,7 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  // Subscribe to new messages
+  // Subscribe to new messages and read receipt updates
   useEffect(() => {
     const channel = supabase
       .channel(`chat:${chatId}`)
@@ -84,6 +86,21 @@ export function ChatWindow({
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Message;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+          );
         }
       )
       .subscribe();
@@ -185,6 +202,11 @@ export function ChatWindow({
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {messages.map((msg) => {
           const isOwn = msg.autor_id === currentUserId;
+          // Read receipt: check if the OTHER party has read the message
+          const isRead = isOwn
+            ? (isBuyer ? msg.leido_por_vendedor : msg.leido_por_comprador)
+            : false;
+
           return (
             <div
               key={msg.id}
@@ -199,14 +221,21 @@ export function ChatWindow({
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
-                <p
+                <div
                   className={cn(
-                    "text-[10px] mt-1",
+                    "flex items-center justify-end gap-1 mt-1",
                     isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                   )}
                 >
-                  {formatRelativeTime(msg.created_at)}
-                </p>
+                  <span className="text-[10px]">
+                    {formatRelativeTime(msg.created_at)}
+                  </span>
+                  {isOwn && (
+                    isRead
+                      ? <CheckCheck className="w-3 h-3 text-emerald-400" />
+                      : <Check className="w-3 h-3 opacity-60" />
+                  )}
+                </div>
               </div>
             </div>
           );

@@ -31,6 +31,27 @@ export async function createProduct(formData: FormData) {
     return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
+  // Upload image to Supabase Storage (fire before INSERT)
+  let imagen_principal: string | null = null;
+  const imageFile = formData.get("imagen_principal") as File | null;
+  if (imageFile && imageFile.size > 0) {
+    const ext = imageFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("product-media")
+      .upload(path, imageFile, {
+        contentType: imageFile.type,
+        upsert: false,
+      });
+    if (!uploadError) {
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("product-media").getPublicUrl(path);
+      imagen_principal = publicUrl;
+    }
+    // If upload fails, continue without image (non-blocking)
+  }
+
   const { data, error } = await supabase
     .from("products_services")
     .insert({
@@ -42,6 +63,7 @@ export async function createProduct(formData: FormData) {
       categoria: result.data.categoria,
       ubicacion: result.data.ubicacion ?? null,
       tipo_entrega: result.data.tipo_entrega,
+      imagen_principal,
       estatus: "disponible",
     })
     .select("slug, categoria")

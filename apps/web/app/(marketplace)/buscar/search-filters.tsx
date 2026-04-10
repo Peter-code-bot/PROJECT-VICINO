@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Navigation, Loader2 } from "lucide-react";
 import { CATEGORIES } from "@vicino/shared";
 
 interface SearchFiltersProps {
@@ -12,6 +12,7 @@ interface SearchFiltersProps {
   initialTipo?: string;
   initialPriceMin?: string;
   initialPriceMax?: string;
+  initialLat?: string;
 }
 
 export function SearchFilters({
@@ -21,11 +22,13 @@ export function SearchFilters({
   initialTipo,
   initialPriceMin,
   initialPriceMax,
+  initialLat,
 }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(initialQuery ?? "");
   const [showFilters, setShowFilters] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -47,6 +50,27 @@ export function SearchFilters({
     updateParams({ q: query || undefined });
   }
 
+  function handleGeo() {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateParams({
+          lat: pos.coords.latitude.toString(),
+          lng: pos.coords.longitude.toString(),
+          radio: "5000",
+        });
+        setGeoLoading(false);
+      },
+      () => setGeoLoading(false),
+      { timeout: 8000, maximumAge: 300_000 }
+    );
+  }
+
+  function clearGeo() {
+    updateParams({ lat: undefined, lng: undefined, radio: undefined });
+  }
+
   return (
     <div className="space-y-3">
       {/* Search bar */}
@@ -63,6 +87,20 @@ export function SearchFilters({
         </div>
         <button
           type="button"
+          onClick={handleGeo}
+          disabled={geoLoading}
+          title="Cerca de mí"
+          className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
+        >
+          {geoLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-terracotta" />
+          ) : (
+            <Navigation className="h-4 w-4 text-terracotta" />
+          )}
+          <span className="hidden sm:inline">Cerca</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm hover:bg-accent"
         >
@@ -70,6 +108,19 @@ export function SearchFilters({
           <span className="hidden sm:inline">Filtros</span>
         </button>
       </form>
+
+      {/* Badge de resultados cercanos activos */}
+      {initialLat && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-terracotta/10 border border-terracotta/20 px-3 py-1 text-xs font-medium text-terracotta">
+            <Navigation className="w-3 h-3" />
+            Resultados cercanos
+            <button onClick={clearGeo} className="ml-1 hover:text-terracotta-dark" aria-label="Quitar filtro de ubicación">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Category quick filters */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

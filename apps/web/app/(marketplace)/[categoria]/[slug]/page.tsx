@@ -7,6 +7,7 @@ import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { MessageCircle, Heart, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
+import { ImageGallery } from "@/components/product/image-gallery";
 import type { TrustLevel } from "@vicino/shared";
 
 interface Props {
@@ -113,25 +114,15 @@ export default async function ProductDetailPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:px-4">
-        {/* Left Column — Image */}
-        <div className="relative aspect-square md:aspect-[4/3] md:rounded-3xl overflow-hidden bg-cream-dark dark:bg-neutral-900 border-x-0 md:border border-border/40 w-full group">
-          {product.imagen_principal ? (
-            <Image
-              src={product.imagen_principal}
-              alt={product.titulo}
-              fill
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-              priority
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <span className="text-4xl mb-2">📷</span>
-              <span className="text-sm">Sin imagen</span>
-            </div>
-          )}
-          
+        {/* Left Column — Image Gallery */}
+        <div className="relative">
+          <ImageGallery
+            imagenPrincipal={product.imagen_principal}
+            galeriaImagenes={(product.galeria_imagenes as string[]) ?? []}
+            titulo={product.titulo}
+          />
           {/* Mobile Fav Button */}
-          <button className="md:hidden absolute top-4 right-4 w-10 h-10 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+          <button className="md:hidden absolute top-4 right-4 w-10 h-10 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
             <Heart className="h-5 w-5 text-charcoal/80 dark:text-white/80" />
           </button>
         </div>

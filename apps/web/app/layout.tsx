@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/shared/theme-provider";
 import "./globals.css";
 
 const inter = Inter({

@@ -1,15 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import { CATEGORIES } from "@vicino/shared";
 import { createProduct } from "./actions";
-import { Loader2, Store, PackageOpen, CheckCircle2 } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, Camera, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ProductForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">("producto");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImagePreview(url);
+  }
+
+  function clearImage() {
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function handleSubmit(formData: FormData) {
     setError("");
@@ -190,6 +205,56 @@ export function ProductForm() {
             <option value="ambos">Punto de encuentro o Envío</option>
           </select>
         </div>
+      </div>
+
+      {/* Imagen principal */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground/80">
+          Foto del producto{" "}
+          <span className="text-muted-foreground font-normal">(opcional)</span>
+        </label>
+
+        {imagePreview ? (
+          <div className="relative aspect-[4/3] w-full max-w-xs rounded-2xl overflow-hidden border border-border/40">
+            <Image
+              src={imagePreview}
+              alt="Vista previa"
+              fill
+              className="object-cover"
+            />
+            <button
+              type="button"
+              onClick={clearImage}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              aria-label="Quitar imagen"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label
+            htmlFor="imagen_principal"
+            className="flex flex-col items-center justify-center w-full max-w-xs aspect-[4/3] rounded-2xl border-2 border-dashed border-border/50 hover:border-terracotta/40 hover:bg-terracotta/3 cursor-pointer transition-all duration-200 group"
+          >
+            <Camera className="w-8 h-8 text-muted-foreground/50 group-hover:text-terracotta/60 mb-2 transition-colors" />
+            <span className="text-sm font-medium text-muted-foreground group-hover:text-terracotta/80 transition-colors">
+              Agregar foto
+            </span>
+            <span className="text-xs text-muted-foreground/60 mt-0.5">
+              JPG, PNG o WebP · Máx 20 MB
+            </span>
+          </label>
+        )}
+
+        <input
+          ref={fileInputRef}
+          id="imagen_principal"
+          name="imagen_principal"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleImageChange}
+          className="sr-only"
+        />
       </div>
 
       <button
