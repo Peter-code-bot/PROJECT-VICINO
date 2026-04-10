@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { LogoutButton } from "@/components/shared/logout-button";
 import { updateProfile } from "./actions";
 import { Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
 
@@ -47,6 +48,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   }
 
   return (
+    <>
     <form action={handleSubmit} className="space-y-6">
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
@@ -242,5 +244,11 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         )}
       </button>
     </form>
+
+      {/* Cerrar sesión */}
+      <div className="mt-8 pt-6 border-t border-border/40">
+        <LogoutButton />
+      </div>
+    </>
   );
 }

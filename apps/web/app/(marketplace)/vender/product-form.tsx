@@ -4,37 +4,85 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { CATEGORIES } from "@vicino/shared";
 import { createProduct } from "./actions";
-import { Loader2, Store, PackageOpen, CheckCircle2, Camera, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ProductForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">("producto");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setImagePreview(url);
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (images.length + files.length > 5) {
+      setError("Máximo 5 imágenes");
+      return;
+    }
+    const newImages = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setImages((prev) => [...prev, ...newImages]);
+    setError("");
   }
 
-  function clearImage() {
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  function removeImage(index: number) {
+    setImages((prev) => {
+      const item = prev[index];
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function uploadImages(): Promise<string[]> {
+    if (images.length === 0) return [];
+    setUploading(true);
+    const supabase = createClient();
+    const urls: string[] = [];
+    const timestamp = Date.now();
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i]!;
+      const ext = img.file.name.split(".").pop() ?? "jpg";
+      const path = `temp/${timestamp}-${i}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("product-media")
+        .upload(path, img.file);
+      if (uploadErr) {
+        setUploading(false);
+        throw new Error(`Error subiendo imagen ${i + 1}: ${uploadErr.message}`);
+      }
+      const { data: urlData } = supabase.storage
+        .from("product-media")
+        .getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+    setUploading(false);
+    return urls;
   }
 
   async function handleSubmit(formData: FormData) {
     setError("");
     setLoading(true);
-    const result = await createProduct(formData);
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const urls = await uploadImages();
+      if (urls.length > 0 && urls[0]) {
+        formData.set("imagen_principal", urls[0]);
+        formData.set("galeria_imagenes", JSON.stringify(urls));
+      }
+      const result = await createProduct(formData);
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al subir imágenes");
       setLoading(false);
     }
-    // redirect is handled in action on success
   }
 
   return (
@@ -147,10 +195,11 @@ export function ProductForm() {
             id="categoria"
             name="categoria"
             required
+            defaultValue=""
             className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 appearance-none"
             style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
           >
-            <option value="" disabled selected hidden>Selecciona una categoría</option>
+            <option value="" disabled hidden>Selecciona una categoría</option>
             {CATEGORIES.map((cat) => (
               <option key={cat.id} value={cat.slug}>
                 {cat.name}
@@ -197,6 +246,7 @@ export function ProductForm() {
           <label className="text-sm font-medium text-foreground/80">Opciones de entrega</label>
           <select
             name="tipo_entrega"
+            defaultValue="pickup"
             className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 appearance-none"
             style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
           >
@@ -207,59 +257,53 @@ export function ProductForm() {
         </div>
       </div>
 
-      {/* Imagen principal */}
-      <div className="space-y-2">
+      {/* Image Upload */}
+      <div className="space-y-3 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Foto del producto{" "}
-          <span className="text-muted-foreground font-normal">(opcional)</span>
+          Fotos <span className="text-muted-foreground font-normal">(máx. 5, primera será la portada)</span>
         </label>
-
-        {imagePreview ? (
-          <div className="relative aspect-[4/3] w-full max-w-xs rounded-2xl overflow-hidden border border-border/40">
-            <Image
-              src={imagePreview}
-              alt="Vista previa"
-              fill
-              className="object-cover"
-            />
+        <div className="flex gap-2 flex-wrap">
+          {images.map((img, i) => (
+            <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50 group">
+              <Image src={img.preview} alt={`Preview ${i + 1}`} fill className="object-cover" />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3 text-white" />
+              </button>
+              {i === 0 && (
+                <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-terracotta text-white px-1 rounded font-medium">
+                  Portada
+                </span>
+              )}
+            </div>
+          ))}
+          {images.length < 5 && (
             <button
               type="button"
-              onClick={clearImage}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-              aria-label="Quitar imagen"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-terracotta/40 hover:text-terracotta transition-colors"
             >
-              <X className="w-4 h-4" />
+              <ImagePlus className="w-5 h-5" />
+              <span className="text-[10px] mt-0.5">Agregar</span>
             </button>
-          </div>
-        ) : (
-          <label
-            htmlFor="imagen_principal"
-            className="flex flex-col items-center justify-center w-full max-w-xs aspect-[4/3] rounded-2xl border-2 border-dashed border-border/50 hover:border-terracotta/40 hover:bg-terracotta/3 cursor-pointer transition-all duration-200 group"
-          >
-            <Camera className="w-8 h-8 text-muted-foreground/50 group-hover:text-terracotta/60 mb-2 transition-colors" />
-            <span className="text-sm font-medium text-muted-foreground group-hover:text-terracotta/80 transition-colors">
-              Agregar foto
-            </span>
-            <span className="text-xs text-muted-foreground/60 mt-0.5">
-              JPG, PNG o WebP · Máx 20 MB
-            </span>
-          </label>
-        )}
-
+          )}
+        </div>
         <input
           ref={fileInputRef}
-          id="imagen_principal"
-          name="imagen_principal"
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          onChange={handleImageChange}
-          className="sr-only"
+          multiple
+          className="hidden"
+          onChange={handleImageSelect}
         />
       </div>
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || uploading}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-terracotta px-4 py-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-terracotta-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
       >
         {loading ? (

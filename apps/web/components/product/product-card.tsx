@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
+import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 
@@ -21,9 +23,11 @@ interface ProductCardProps {
   };
   rating: number;
   reviewsCount: number;
+  isFavorite?: boolean;
 }
 
 export function ProductCard({
+  id,
   titulo,
   precio,
   imagen,
@@ -32,7 +36,10 @@ export function ProductCard({
   vendedor,
   rating,
   reviewsCount,
+  isFavorite: initialFavorite = false,
 }: ProductCardProps) {
+  const [isFavorite, setIsFavorite] = useState(initialFavorite);
+  const [isPending, startTransition] = useTransition();
   return (
     <Link
       href={`/${categoria}/${slug}`}
@@ -67,15 +74,20 @@ export function ProductCard({
 
         {/* Favorite Button — top-right translucent */}
         <button
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/60 dark:bg-black/40 backdrop-blur-sm flex items-center justify-center transition-all duration-200 hover:bg-white/90 hover:scale-110 active:scale-95"
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 ${isFavorite ? "bg-red-500/80 text-white" : "bg-white/60 dark:bg-black/40 hover:bg-white/90"}`}
+          disabled={isPending}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Favorite logic handled by parent/store
+            setIsFavorite(!isFavorite);
+            startTransition(async () => {
+              const result = await toggleFavorite(id);
+              if (result.isFavorite !== undefined) setIsFavorite(result.isFavorite);
+            });
           }}
-          aria-label="Agregar a favoritos"
+          aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
         >
-          <Heart className="w-4 h-4 text-charcoal/70 dark:text-white/80" />
+          <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : "text-charcoal/70 dark:text-white/80"}`} />
         </button>
       </div>
 

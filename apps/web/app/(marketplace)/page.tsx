@@ -7,10 +7,10 @@ import type { TrustLevel } from "@vicino/shared";
 import {
   UtensilsCrossed,
   Shirt,
-  Laptop,
+  Smartphone,
   Home,
   Sparkles,
-  Heart,
+  HeartPulse,
   GraduationCap,
   Car,
   PartyPopper,
@@ -18,9 +18,20 @@ import {
   Briefcase,
   MoreHorizontal,
   ArrowRight,
-  ShieldCheck,
   MapPin,
   Search,
+  Dumbbell,
+  Baby,
+  BookOpen,
+  Gamepad2,
+  Palette,
+  Armchair,
+  Wrench,
+  Truck,
+  Code,
+  Stethoscope,
+  Camera,
+  Building,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,31 +40,28 @@ import {
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   comida: UtensilsCrossed,
   ropa: Shirt,
-  tecnologia: Laptop,
+  tecnologia: Smartphone,
   hogar: Home,
   belleza: Sparkles,
-  salud: Heart,
-  educacion: GraduationCap,
-  transporte: Car,
-  eventos: PartyPopper,
+  salud: HeartPulse,
+  deportes: Dumbbell,
   mascotas: PawPrint,
-  "servicios-profesionales": Briefcase,
+  bebes: Baby,
+  vehiculos: Car,
+  libros: BookOpen,
+  juguetes: Gamepad2,
+  arte: Palette,
+  muebles: Armchair,
+  "servicios-hogar": Wrench,
+  educacion: GraduationCap,
+  eventos: PartyPopper,
+  transporte: Truck,
+  "diseno-tech": Code,
+  "salud-terapias": Stethoscope,
+  fotografia: Camera,
+  inmuebles: Building,
+  empleos: Briefcase,
   otros: MoreHorizontal,
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  comida: "#C45B3F",
-  ropa: "#D4A853",
-  tecnologia: "#4A90D9",
-  hogar: "#2D8F6F",
-  belleza: "#E8983E",
-  salud: "#DC4545",
-  educacion: "#6366F1",
-  transporte: "#57534E",
-  eventos: "#EF4444",
-  mascotas: "#F59E0B",
-  "servicios-profesionales": "#78716C",
-  otros: "#A8A29E",
 };
 
 export default async function HomePage() {
@@ -141,7 +149,6 @@ export default async function HomePage() {
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
             {CATEGORIES.map((cat) => {
               const IconComponent = CATEGORY_ICONS[cat.slug] || MoreHorizontal;
-              const color = CATEGORY_COLORS[cat.slug] || "#A8A29E";
 
               return (
                 <Link
@@ -150,14 +157,8 @@ export default async function HomePage() {
                   className="flex flex-col items-center gap-1.5 min-w-[72px] text-center group"
                   id={`cat-${cat.slug}`}
                 >
-                  <div
-                    className="flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 group-hover:scale-110 group-hover:-translate-y-0.5 group-hover:shadow-md"
-                    style={{ backgroundColor: `${color}14` }}
-                  >
-                    <IconComponent
-                      className="w-6 h-6 transition-colors"
-                      style={{ color }}
-                    />
+                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 transition-all duration-200 group-hover:scale-110 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700">
+                    <IconComponent className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
                   </div>
                   <span className="text-[11px] text-muted-foreground font-medium group-hover:text-foreground transition-colors">
                     {cat.name}
@@ -165,23 +166,6 @@ export default async function HomePage() {
                 </Link>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── TRUST BANNER ───────────────────────────────────── */}
-      <section className="px-4 pb-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-trust/5 dark:bg-emerald-trust/10 border border-emerald-trust/10">
-            <div className="w-9 h-9 rounded-xl bg-emerald-trust/15 flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-5 h-5 text-emerald-trust" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Vendedores verificados</p>
-              <p className="text-xs text-muted-foreground">
-                Todos los vendedores confirman su identidad antes de vender
-              </p>
-            </div>
           </div>
         </div>
       </section>

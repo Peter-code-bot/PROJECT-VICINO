@@ -31,25 +31,13 @@ export async function createProduct(formData: FormData) {
     return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  // Upload image to Supabase Storage (fire before INSERT)
-  let imagen_principal: string | null = null;
-  const imageFile = formData.get("imagen_principal") as File | null;
-  if (imageFile && imageFile.size > 0) {
-    const ext = imageFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("product-media")
-      .upload(path, imageFile, {
-        contentType: imageFile.type,
-        upsert: false,
-      });
-    if (!uploadError) {
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("product-media").getPublicUrl(path);
-      imagen_principal = publicUrl;
-    }
-    // If upload fails, continue without image (non-blocking)
+  const imagenPrincipal = (formData.get("imagen_principal") as string) || null;
+  const galeriaRaw = formData.get("galeria_imagenes") as string;
+  let galeriaImagenes: string[] = [];
+  try {
+    if (galeriaRaw) galeriaImagenes = JSON.parse(galeriaRaw);
+  } catch {
+    // ignore parse errors
   }
 
   const { data, error } = await supabase
@@ -63,8 +51,9 @@ export async function createProduct(formData: FormData) {
       categoria: result.data.categoria,
       ubicacion: result.data.ubicacion ?? null,
       tipo_entrega: result.data.tipo_entrega,
-      imagen_principal,
       estatus: "disponible",
+      imagen_principal: imagenPrincipal,
+      galeria_imagenes: galeriaImagenes.length > 0 ? galeriaImagenes : [],
     })
     .select("slug, categoria")
     .single();

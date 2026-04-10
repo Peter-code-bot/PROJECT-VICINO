@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ProfileForm } from "./profile-form";
-import { Settings } from "lucide-react";
+import { ProfileHeader } from "./profile-header";
+import { ProfileTabs } from "./profile-tabs";
 
 export const metadata = { title: "Mi perfil — VICINO" };
 
@@ -15,25 +15,57 @@ export default async function PerfilPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select(
-      "nombre, email, foto, bio, ubicacion, es_vendedor, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
-    )
+    .select("*")
     .eq("id", user.id)
     .single();
 
+  // Get user's products
+  const { data: products } = await supabase
+    .from("products_services")
+    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count")
+    .eq("creador_id", user.id)
+    .neq("estatus", "eliminado")
+    .order("created_at", { ascending: false });
+
+  // Get reviews received
+  const { data: reviewsAsSeller } = await supabase
+    .from("reviews")
+    .select("id, rating, comentario, created_at, review_type, profiles!reviewer_id(nombre, foto)")
+    .eq("reviewed_id", user.id)
+    .eq("review_type", "buyer_to_seller")
+    .eq("visible", true)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const { data: reviewsAsBuyer } = await supabase
+    .from("reviews")
+    .select("id, rating, comentario, created_at, review_type, profiles!reviewer_id(nombre, foto)")
+    .eq("reviewed_id", user.id)
+    .eq("review_type", "seller_to_buyer")
+    .eq("visible", true)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  // Count purchases
+  const { count: purchaseCount } = await supabase
+    .from("sale_confirmations")
+    .select("id", { count: "exact", head: true })
+    .eq("buyer_id", user.id)
+    .eq("status", "completed");
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 md:py-12 animate-fade-in-up">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-terracotta/10 flex items-center justify-center text-terracotta shrink-0">
-          <Settings className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Configuración de Perfil</h1>
-          <p className="text-sm text-muted-foreground">Administra tu información pública y modo vendedor</p>
-        </div>
-      </div>
-      
-      <ProfileForm profile={profile} />
+    <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
+      <ProfileHeader
+        profile={profile}
+        productCount={products?.length ?? 0}
+        purchaseCount={purchaseCount ?? 0}
+      />
+      <ProfileTabs
+        products={products ?? []}
+        reviewsAsSeller={reviewsAsSeller ?? []}
+        reviewsAsBuyer={reviewsAsBuyer ?? []}
+        isVendedor={profile?.es_vendedor ?? false}
+      />
     </div>
   );
 }
