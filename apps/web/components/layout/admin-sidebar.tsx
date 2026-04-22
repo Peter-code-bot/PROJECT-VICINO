@@ -7,21 +7,28 @@ import { LayoutDashboard, Users, ShieldCheck, AlertTriangle, Flag, ChevronRight 
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/verifications", label: "Verificaciones", icon: ShieldCheck },
-  { href: "/admin/disputes", label: "Disputas", icon: AlertTriangle },
-  { href: "/admin/moderation", label: "Moderación", icon: Flag },
+  { href: "/admin", label: "Panel", icon: LayoutDashboard, exact: true, roles: ["admin", "moderator"] },
+  { href: "/admin/users", label: "Usuarios", icon: Users, roles: ["admin"] },
+  { href: "/admin/verifications", label: "Verificaciones", icon: ShieldCheck, roles: ["admin", "moderator"] },
+  { href: "/admin/disputes", label: "Disputas", icon: AlertTriangle, roles: ["admin", "moderator"] },
+  { href: "/admin/moderation", label: "Moderación", icon: Flag, roles: ["admin", "moderator"] },
 ] as const;
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  userRole?: string;
+}
+
+export function AdminSidebar({ userRole = "admin" }: AdminSidebarProps) {
   const pathname = usePathname();
+  const visibleItems = NAV_ITEMS.filter((item) =>
+    (item.roles as readonly string[]).includes(userRole)
+  );
 
   return (
     <>
       {/* Desktop sidebar */}
       <nav className="hidden md:flex flex-col gap-1.5">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const { href, label, icon: Icon } = item;
           const exact = "exact" in item ? item.exact : false;
           const isActive = exact ? pathname === href : pathname.startsWith(href);
@@ -57,7 +64,7 @@ export function AdminSidebar() {
       {/* Mobile bottom tabs */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-neutral-900 border-t border-border/40 px-2 pb-safe">
         <div className="flex justify-around">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const { href, label, icon: Icon } = item;
             const exact = "exact" in item ? item.exact : false;
             const isActive = exact ? pathname === href : pathname.startsWith(href);

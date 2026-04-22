@@ -23,6 +23,8 @@ export const CATEGORIES = [
   { id: "salud-terapias", name: "Salud y Terapias", slug: "salud-terapias", icon: "Stethoscope", type: "servicio" },
   { id: "fotografia", name: "Fotografía y Video", slug: "fotografia", icon: "Camera", type: "servicio" },
   { id: "inmuebles", name: "Inmuebles", slug: "inmuebles", icon: "Building", type: "servicio" },
+  // Mayoreo
+  { id: "proveedores-mayoreo", name: "Proveedores y Mayoreo", slug: "proveedores-mayoreo", icon: "Warehouse", type: "producto" },
   // Otros
   { id: "empleos", name: "Empleos", slug: "empleos", icon: "Briefcase", type: "otro" },
   { id: "otros", name: "Otros", slug: "otros", icon: "MoreHorizontal", type: "otro" },

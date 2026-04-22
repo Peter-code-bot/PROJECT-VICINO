@@ -22,10 +22,10 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Marketplace */}
+          {/* Explorar */}
           <div>
             <h4 className="font-semibold text-white text-xs mb-3 tracking-wide uppercase">
-              Marketplace
+              Explorar
             </h4>
             <ul className="flex flex-col gap-2">
               <li>
@@ -114,7 +114,7 @@ export function Footer() {
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-trust" />
             <span className="text-[11px] text-emerald-trust/70 font-medium">
-              Marketplace Verificado
+              VICINO Verificado
             </span>
           </div>
         </div>

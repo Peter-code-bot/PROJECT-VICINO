@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
-import { ThemeProvider } from "@/components/shared/theme-provider";
+import { ThemeProvider } from "next-themes";
+import { CapacitorInit } from "@/components/capacitor-init";
+import { OfflineDetector } from "@/components/offline-detector";
 import "./globals.css";
 
 const inter = Inter({
@@ -57,10 +59,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans antialiased bg-cream text-charcoal">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
+          <CapacitorInit />
+          <OfflineDetector />
           {children}
         </ThemeProvider>
       </body>

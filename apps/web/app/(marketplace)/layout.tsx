@@ -30,9 +30,8 @@ export default async function MarketplaceLayout({
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-    isAdmin = !!adminRole;
+      .in("role", ["admin", "moderator"]);
+    isAdmin = (adminRole?.length ?? 0) > 0;
 
     const { count } = await supabase
       .from("notifications")

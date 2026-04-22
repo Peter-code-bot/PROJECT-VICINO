@@ -17,7 +17,7 @@ export default async function EditarPerfilPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "nombre, email, foto, bio, ubicacion, es_vendedor, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
+      "nombre, email, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
     )
     .eq("id", user.id)
     .single();

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPrice, formatDate } from "@vicino/shared";
 import { ListingActions } from "./listing-actions";
 
-export const metadata = { title: "Mis listings" };
+export const metadata = { title: "Mis publicaciones" };
 
 export default async function ListingsPage() {
   const supabase = await createClient();
@@ -30,7 +30,7 @@ export default async function ListingsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Mis listings</h1>
+        <h1 className="text-xl font-bold">Mis publicaciones</h1>
         <Link
           href="/vender"
           className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -74,7 +74,7 @@ export default async function ListingsPage() {
       ) : (
         <div className="text-center py-12 space-y-2">
           <p className="text-4xl">📦</p>
-          <p className="font-medium">Sin listings</p>
+          <p className="font-medium">Sin publicaciones</p>
           <p className="text-sm text-muted-foreground">
             Publica tu primer producto o servicio
           </p>

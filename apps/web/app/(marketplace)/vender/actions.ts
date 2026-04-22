@@ -31,6 +31,10 @@ export async function createProduct(formData: FormData) {
     return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
+  const ubicLat = formData.get("ubicacion_lat") ? Number(formData.get("ubicacion_lat")) : null;
+  const ubicLng = formData.get("ubicacion_lng") ? Number(formData.get("ubicacion_lng")) : null;
+  const deliveryRadius = formData.get("delivery_radius_km") ? Number(formData.get("delivery_radius_km")) : 5;
+
   const imagenPrincipal = (formData.get("imagen_principal") as string) || null;
   const galeriaRaw = formData.get("galeria_imagenes") as string;
   let galeriaImagenes: string[] = [];
@@ -54,6 +58,10 @@ export async function createProduct(formData: FormData) {
       estatus: "disponible",
       imagen_principal: imagenPrincipal,
       galeria_imagenes: galeriaImagenes.length > 0 ? galeriaImagenes : [],
+      delivery_radius_km: deliveryRadius,
+      ...(ubicLat && ubicLng
+        ? { ubicacion_geo: `SRID=4326;POINT(${ubicLng} ${ubicLat})` }
+        : {}),
     })
     .select("slug, categoria")
     .single();

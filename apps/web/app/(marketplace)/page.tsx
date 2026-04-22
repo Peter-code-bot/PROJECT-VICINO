@@ -32,6 +32,7 @@ import {
   Stethoscope,
   Camera,
   Building,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,6 +61,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   "salud-terapias": Stethoscope,
   fotografia: Camera,
   inmuebles: Building,
+  "proveedores-mayoreo": Warehouse,
   empleos: Briefcase,
   otros: MoreHorizontal,
 };
@@ -238,7 +240,7 @@ export default async function HomePage() {
 
                 <Link
                   href="/vender"
-                  className="inline-flex items-center gap-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-6 py-3 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-bone hover:bg-bone-dark text-bone-contrast font-semibold px-6 py-3 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
                   id="cta-publish"
                 >
                   Publicar producto

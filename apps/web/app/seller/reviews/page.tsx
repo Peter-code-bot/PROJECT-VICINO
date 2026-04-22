@@ -4,7 +4,7 @@ import { RatingStars } from "@/components/shared/rating-stars";
 import { formatDate } from "@vicino/shared";
 import { ReviewTabs } from "./review-tabs";
 
-export const metadata = { title: "Reviews" };
+export const metadata = { title: "Reseñas" };
 
 export default async function ReviewsPage() {
   const supabase = await createClient();
@@ -49,7 +49,7 @@ export default async function ReviewsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Reviews</h1>
+      <h1 className="text-xl font-bold">Reseñas</h1>
       <ReviewTabs
         received={received ?? []}
         given={given ?? []}

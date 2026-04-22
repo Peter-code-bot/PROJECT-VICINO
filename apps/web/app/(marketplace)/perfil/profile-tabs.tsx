@@ -37,9 +37,10 @@ interface ProfileTabsProps {
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
   }>;
   isVendedor: boolean;
+  hideLogout?: boolean;
 }
 
-export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor }: ProfileTabsProps) {
+export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor, hideLogout }: ProfileTabsProps) {
   const [tab, setTab] = useState<"products" | "reviews">("products");
 
   const allReviews = [...reviewsAsSeller, ...reviewsAsBuyer];
@@ -70,7 +71,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           )}
         >
           <Star className="w-4 h-4" />
-          Reviews ({allReviews.length})
+          Reseñas ({allReviews.length})
         </button>
       </div>
 
@@ -78,12 +79,12 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
       {tab === "products" && (
         <div>
           {products.length > 0 ? (
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-1.5">
               {products.map((p) => (
                 <Link
                   key={p.id}
                   href={`/${p.categoria}/${p.slug}`}
-                  className="relative aspect-square bg-cream-dark dark:bg-neutral-800 overflow-hidden group"
+                  className="relative aspect-square bg-cream-dark dark:bg-neutral-800 overflow-hidden rounded-lg group"
                 >
                   {p.imagen_principal ? (
                     <Image
@@ -158,16 +159,18 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           ) : (
             <div className="text-center py-12">
               <p className="text-3xl mb-2">⭐</p>
-              <p className="text-sm text-muted-foreground">Sin reviews aún</p>
+              <p className="text-sm text-muted-foreground">Sin reseñas aún</p>
             </div>
           )}
         </div>
       )}
 
       {/* Logout at bottom */}
-      <div className="mt-8 pt-6 border-t border-border/40">
-        <LogoutButton />
-      </div>
+      {!hideLogout && (
+        <div className="mt-8 pt-6 border-t border-border/40">
+          <LogoutButton />
+        </div>
+      )}
     </div>
   );
 }

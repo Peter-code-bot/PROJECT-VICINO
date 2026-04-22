@@ -16,11 +16,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/seller", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/seller/listings", label: "Listings", icon: Package },
+  { href: "/seller", label: "Resumen", icon: LayoutDashboard, exact: true },
+  { href: "/seller/listings", label: "Publicaciones", icon: Package },
   { href: "/seller/ventas", label: "Ventas", icon: Handshake },
-  { href: "/seller/reviews", label: "Reviews", icon: Star },
-  { href: "/seller/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/seller/reviews", label: "Reseñas", icon: Star },
+  { href: "/seller/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/seller/verificacion", label: "Verificación", icon: ShieldCheck },
   { href: "/seller/cupones", label: "Cupones", icon: Tag },
 ] as const;

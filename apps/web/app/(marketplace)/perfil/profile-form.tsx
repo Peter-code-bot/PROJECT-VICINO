@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogoutButton } from "@/components/shared/logout-button";
 import { updateProfile } from "./actions";
-import { Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, User, Store } from "lucide-react";
 
 interface ProfileFormProps {
   profile: {
@@ -15,6 +15,7 @@ interface ProfileFormProps {
     bio: string | null;
     ubicacion: string | null;
     es_vendedor: boolean;
+    seller_type: string | null;
     nombre_negocio: string | null;
     descripcion_negocio: string | null;
     metodos_pago_aceptados: string | null;
@@ -28,6 +29,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [esVendedor, setEsVendedor] = useState(profile?.es_vendedor ?? false);
+  const [sellerType, setSellerType] = useState(profile?.seller_type ?? "casual");
   const router = useRouter();
 
   async function handleSubmit(formData: FormData) {
@@ -40,9 +42,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       setError(result.error);
     } else {
       setSuccess(true);
-      router.refresh();
-      // Auto hide success message
-      setTimeout(() => setSuccess(false), 3000);
+      setTimeout(() => {
+        router.push("/perfil");
+        router.refresh();
+      }, 1500);
     }
     setLoading(false);
   }
@@ -175,33 +178,58 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           esVendedor ? "grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-terracotta/10" : "grid-rows-[0fr] opacity-0"
         }`}>
           <div className="overflow-hidden space-y-4">
+            {/* Seller type */}
+            <input type="hidden" name="seller_type" value={sellerType} />
             <div className="space-y-2">
-              <label htmlFor="nombre_negocio" className="text-sm font-medium text-foreground/80">
-                Nombre de tienda o negocio
-              </label>
-              <input
-                id="nombre_negocio"
-                name="nombre_negocio"
-                type="text"
-                defaultValue={profile?.nombre_negocio ?? ""}
-                placeholder="Mi Tienda Local"
-                className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20"
-              />
+              <label className="text-sm font-medium text-foreground/80">Tipo de vendedor</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setSellerType("casual")}
+                  className={`p-3.5 rounded-xl border-2 text-left transition-all ${sellerType === "casual" ? "border-bone bg-bone/10" : "border-border/50 hover:border-bone/40"}`}>
+                  <User className="w-5 h-5 mb-1.5 text-muted-foreground" />
+                  <p className="font-medium text-sm">Casual</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Vende artículos personales</p>
+                </button>
+                <button type="button" onClick={() => setSellerType("business")}
+                  className={`p-3.5 rounded-xl border-2 text-left transition-all ${sellerType === "business" ? "border-bone bg-bone/10" : "border-border/50 hover:border-bone/40"}`}>
+                  <Store className="w-5 h-5 mb-1.5 text-muted-foreground" />
+                  <p className="font-medium text-sm">Negocio</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Registra tu tienda</p>
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="descripcion_negocio" className="text-sm font-medium text-foreground/80">
-                Descripción del negocio <span className="text-muted-foreground font-normal">(opcional)</span>
-              </label>
-              <textarea
-                id="descripcion_negocio"
-                name="descripcion_negocio"
-                rows={2}
-                defaultValue={profile?.descripcion_negocio ?? ""}
-                placeholder="¿Qué tipo de productos ofreces?"
-                className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 resize-y"
-              />
-            </div>
+            {/* Business fields — only if type is business */}
+            {sellerType === "business" && (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="nombre_negocio" className="text-sm font-medium text-foreground/80">
+                    Nombre de tienda o negocio
+                  </label>
+                  <input
+                    id="nombre_negocio"
+                    name="nombre_negocio"
+                    type="text"
+                    defaultValue={profile?.nombre_negocio ?? ""}
+                    placeholder="Mi Tienda Local"
+                    className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="descripcion_negocio" className="text-sm font-medium text-foreground/80">
+                    Descripción del negocio <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </label>
+                  <textarea
+                    id="descripcion_negocio"
+                    name="descripcion_negocio"
+                    rows={2}
+                    defaultValue={profile?.descripcion_negocio ?? ""}
+                    placeholder="¿Qué tipo de productos ofreces?"
+                    className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 resize-y"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <label htmlFor="metodos_pago_aceptados" className="text-sm font-medium text-foreground/80">

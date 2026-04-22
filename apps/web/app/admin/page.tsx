@@ -2,10 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@vicino/shared";
 import { Users, Package, Handshake, TrendingUp, AlertCircle, ShieldAlert } from "lucide-react";
 
-export const metadata = { title: "Admin Dashboard — VICINO" };
+export const metadata = { title: "Panel Admin — VICINO" };
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: roleCheck } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user?.id ?? "")
+    .eq("role", "admin")
+    .maybeSingle();
+  const isFullAdmin = !!roleCheck;
 
   const { count: totalUsers } = await supabase
     .from("profiles")
@@ -90,19 +99,21 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white dark:bg-neutral-900 p-5 shadow-sm group hover:border-terracotta/30 transition-colors">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-emerald-trust/10 text-emerald-trust">
-              <Handshake className="h-5 w-5" />
+        {isFullAdmin && (
+          <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white dark:bg-neutral-900 p-5 shadow-sm group hover:border-terracotta/30 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-emerald-trust/10 text-emerald-trust">
+                <Handshake className="h-5 w-5" />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">Transacciones</span>
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Transacciones</span>
+            <p className="text-3xl font-heading font-bold mb-1 tabular-nums">{totalSales}</p>
+            <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(totalValue)} vol. histórico</p>
+            <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4">
+              <Handshake className="w-24 h-24" />
+            </div>
           </div>
-          <p className="text-3xl font-heading font-bold mb-1 tabular-nums">{totalSales}</p>
-          <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(totalValue)} vol. histórico</p>
-          <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4">
-            <Handshake className="w-24 h-24" />
-          </div>
-        </div>
+        )}
 
         <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white dark:bg-neutral-900 p-5 shadow-sm group hover:border-terracotta/30 transition-colors">
           <div className="flex items-center gap-3 mb-3">

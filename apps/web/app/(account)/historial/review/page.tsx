@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./review-form";
+import { ChevronLeft } from "lucide-react";
 
 export const metadata = {
   title: "Dejar reseña",
@@ -56,6 +58,13 @@ export default async function ReviewPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
+      <Link
+        href="/historial"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Volver al historial
+      </Link>
       <h1 className="text-xl font-bold mb-2">Dejar reseña</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Evalúa a <strong>{reviewedProfile?.nombre ?? "Usuario"}</strong> por{" "}

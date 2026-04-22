@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES } from "@vicino/shared";
@@ -46,6 +47,7 @@ import {
   Building,
   Briefcase,
   MoreHorizontal,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +55,7 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   comida: UtensilsCrossed, ropa: Shirt, tecnologia: Smartphone, hogar: Home,
   belleza: Sparkles, salud: HeartPulse, deportes: Dumbbell, mascotas: PawPrint,
   bebes: Baby, vehiculos: Car, libros: BookOpen, juguetes: Gamepad2,
+  "proveedores-mayoreo": Warehouse,
   arte: Palette, muebles: Armchair, "servicios-hogar": Wrench,
   educacion: GraduationCap, eventos: PartyPopper, transporte: Truck,
   "diseno-tech": Code, "salud-terapias": Stethoscope, fotografia: Camera,
@@ -203,6 +206,8 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
 
             <div className="h-px bg-border/30 my-2" />
 
+            <ThemeToggle />
+
             <button
               onClick={handleLogout}
               disabled={loggingOut}
@@ -222,7 +227,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
 
             <Link
               href="/login"
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold bg-terracotta text-white hover:bg-terracotta/90 transition-colors"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold bg-bone text-bone-contrast hover:bg-bone-dark transition-colors"
             >
               <LogIn className="h-5 w-5" />
               Iniciar sesión

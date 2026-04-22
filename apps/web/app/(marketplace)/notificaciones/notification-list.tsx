@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { markAsRead, markAllAsRead } from "./actions";
 import { formatRelativeTime } from "@vicino/shared";
 import {
@@ -10,6 +11,7 @@ import {
   Award,
   AlertTriangle,
   Bell,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +24,25 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
   dispute: AlertTriangle,
 };
 
+function getNotificationHref(tipo: string, data: Record<string, unknown>): string | null {
+  switch (tipo) {
+    case "message":
+      return data.chat_id ? `/chat/${data.chat_id}` : "/chat";
+    case "sale_confirmation":
+      return data.chat_id ? `/chat/${data.chat_id}` : "/chat";
+    case "sale_completed":
+      return "/historial";
+    case "review_reminder":
+      return "/seller/reviews";
+    case "trust_upgrade":
+      return "/perfil";
+    case "dispute":
+      return "/historial";
+    default:
+      return null;
+  }
+}
+
 interface NotificationListProps {
   notifications: Array<{
     id: string;
@@ -30,15 +51,19 @@ interface NotificationListProps {
     mensaje: string;
     leida: boolean;
     created_at: string;
+    data: Record<string, unknown>;
   }>;
 }
 
 export function NotificationList({ notifications }: NotificationListProps) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  function handleMarkRead(id: string) {
+  function handleClick(n: NotificationListProps["notifications"][number]) {
+    const href = getNotificationHref(n.tipo, n.data ?? {});
     startTransition(async () => {
-      await markAsRead(id);
+      if (!n.leida) await markAsRead(n.id);
+      if (href) router.push(href);
     });
   }
 
@@ -64,15 +89,16 @@ export function NotificationList({ notifications }: NotificationListProps) {
 
       {notifications.map((n) => {
         const Icon = TYPE_ICONS[n.tipo] ?? Bell;
+        const href = getNotificationHref(n.tipo, n.data ?? {});
         return (
           <button
             key={n.id}
-            onClick={() => !n.leida && handleMarkRead(n.id)}
+            onClick={() => handleClick(n)}
             disabled={isPending}
             className={cn(
-              "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors",
+              "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors cursor-pointer",
               n.leida
-                ? "bg-transparent"
+                ? "bg-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                 : "bg-terracotta/5 dark:bg-terracotta/10 hover:bg-terracotta/10 dark:hover:bg-terracotta/15"
             )}
           >
@@ -98,6 +124,9 @@ export function NotificationList({ notifications }: NotificationListProps) {
                 {formatRelativeTime(n.created_at)}
               </p>
             </div>
+            {href && (
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1" />
+            )}
           </button>
         );
       })}

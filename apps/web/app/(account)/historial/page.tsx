@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, formatDate } from "@vicino/shared";
 import { HistorialTabs } from "./historial-tabs";
+import { ChevronLeft } from "lucide-react";
 
 export const metadata = {
   title: "Historial",
@@ -58,6 +59,13 @@ export default async function HistorialPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Inicio
+      </Link>
       <h1 className="text-xl font-bold mb-4">Historial</h1>
       <HistorialTabs
         ventas={ventas ?? []}

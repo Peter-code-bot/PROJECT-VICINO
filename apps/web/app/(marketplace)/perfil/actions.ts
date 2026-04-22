@@ -15,8 +15,9 @@ export async function updateProfile(formData: FormData) {
   const foto = (formData.get("foto") as string)?.trim() || null;
   const ubicacion = (formData.get("ubicacion") as string)?.trim() || null;
   const es_vendedor = formData.get("es_vendedor") === "on";
-  const nombre_negocio = (formData.get("nombre_negocio") as string)?.trim() || null;
-  const descripcion_negocio = (formData.get("descripcion_negocio") as string)?.trim() || null;
+  const seller_type = (formData.get("seller_type") as string) || "casual";
+  const nombre_negocio = seller_type === "business" ? ((formData.get("nombre_negocio") as string)?.trim() || null) : null;
+  const descripcion_negocio = seller_type === "business" ? ((formData.get("descripcion_negocio") as string)?.trim() || null) : null;
   const metodos_pago_aceptados = (formData.get("metodos_pago_aceptados") as string)?.trim() || null;
 
   if (!nombre || nombre.length < 1) {
@@ -31,6 +32,7 @@ export async function updateProfile(formData: FormData) {
       foto,
       ubicacion,
       es_vendedor,
+      seller_type: es_vendedor ? seller_type : "casual",
       nombre_negocio: es_vendedor ? nombre_negocio : null,
       descripcion_negocio: es_vendedor ? descripcion_negocio : null,
       metodos_pago_aceptados: es_vendedor ? metodos_pago_aceptados : null,

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AnalyticsCharts } from "./analytics-charts";
 
-export const metadata = { title: "Analytics" };
+export const metadata = { title: "Estadísticas" };
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();
@@ -51,7 +51,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">Analytics</h1>
+      <h1 className="text-xl font-bold">Estadísticas</h1>
       <AnalyticsCharts dailyData={dailyData} topProducts={topProducts} />
     </div>
   );

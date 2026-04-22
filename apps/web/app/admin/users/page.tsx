@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
@@ -12,6 +13,17 @@ interface Props {
 export default async function AdminUsersPage({ searchParams }: Props) {
   const params = await searchParams;
   const supabase = await createClient();
+
+  // Only admins can access user management (not moderators)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { data: adminCheck } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!adminCheck) redirect("/admin");
 
   let query = supabase
     .from("profiles")
@@ -48,7 +60,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         />
         <button
           type="submit"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          className="rounded-md bg-bone px-4 py-2 text-sm font-medium text-bone-contrast hover:bg-bone-dark"
         >
           Buscar
         </button>
@@ -90,6 +102,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         {(!users || users.length === 0) && (
           <p className="text-sm text-muted-foreground text-center py-8">Sin resultados</p>
         )}
+      </div>
+
+      <div className="mt-6 p-4 rounded-xl bg-muted/50 text-sm text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">Roles disponibles:</p>
+        <p>• <strong>Admin</strong> — Acceso completo: usuarios, métricas financieras, verificaciones, disputas, moderación</p>
+        <p>• <strong>Moderador</strong> — Acceso limitado: verificaciones, disputas, moderación de contenido (sin gestión de usuarios ni métricas financieras)</p>
       </div>
     </div>
   );

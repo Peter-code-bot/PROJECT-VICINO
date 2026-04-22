@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { assignRole, removeRole } from "./actions";
+import { Shield, ShieldCheck } from "lucide-react";
 
 interface RoleActionsProps {
   userId: string;
@@ -43,16 +44,18 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
       <button
         onClick={handleToggleAdmin}
         disabled={loading}
-        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
       >
-        {isAdmin ? "- Admin" : "+ Admin"}
+        <Shield className="w-3 h-3" />
+        {isAdmin ? "Quitar Admin" : "Hacer Admin"}
       </button>
       <button
         onClick={handleToggleMod}
         disabled={loading}
-        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
       >
-        {isMod ? "- Mod" : "+ Mod"}
+        <ShieldCheck className="w-3 h-3" />
+        {isMod ? "Quitar Mod" : "Hacer Mod"}
       </button>
     </div>
   );

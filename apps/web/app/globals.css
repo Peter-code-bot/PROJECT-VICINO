@@ -115,6 +115,9 @@
   --color-emerald-light: var(--trust-emerald-light);
   --color-gold: var(--trust-gold);
   --color-gold-light: var(--trust-gold-light);
+  --color-bone: #EDE0D4;
+  --color-bone-dark: #E0D0C0;
+  --color-bone-contrast: #2C2C2C;
 
   /* Semantic shadcn-compatible aliases */
   --color-card: var(--brand-cream);

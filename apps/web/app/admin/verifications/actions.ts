@@ -26,6 +26,15 @@ export async function approveVerification(verificationId: string, userId: string
     })
     .eq("id", userId);
 
+  // Notify seller
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    tipo: "trust_upgrade",
+    titulo: "¡Identidad verificada!",
+    mensaje: "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
+    data: { verification_id: verificationId },
+  });
+
   // Upsert trust_level_verification
   const { data: existing } = await supabase
     .from("trust_level_verification")
@@ -61,6 +70,13 @@ export async function approveVerification(verificationId: string, userId: string
 export async function rejectVerification(verificationId: string, note: string) {
   const supabase = await createClient();
 
+  // Get user_id from verification
+  const { data: ver } = await supabase
+    .from("seller_verification")
+    .select("user_id")
+    .eq("id", verificationId)
+    .single();
+
   const { error } = await supabase
     .from("seller_verification")
     .update({
@@ -71,5 +87,19 @@ export async function rejectVerification(verificationId: string, note: string) {
     .eq("id", verificationId);
 
   if (error) return { error: error.message };
+
+  // Notify seller
+  if (ver?.user_id) {
+    await supabase.from("notifications").insert({
+      user_id: ver.user_id,
+      tipo: "trust_upgrade",
+      titulo: "Verificación rechazada",
+      mensaje: note
+        ? `Tu verificación fue rechazada: ${note}. Puedes intentar de nuevo.`
+        : "Tu verificación fue rechazada. Puedes intentar de nuevo.",
+      data: { verification_id: verificationId },
+    });
+  }
+
   return { success: true };
 }

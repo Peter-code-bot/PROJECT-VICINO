@@ -6,10 +6,12 @@ import Link from "next/link";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { LogoutButton } from "@/components/shared/logout-button";
 import type { TrustLevel } from "@vicino/shared";
-import { Settings, Store, Star, ShoppingBag, Handshake, MapPin } from "lucide-react";
+import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
+import { TRUST_LEVELS } from "@vicino/shared";
 
 interface ProfileHeaderProps {
   profile: {
+    id: string;
     nombre: string;
     email: string;
     foto: string | null;
@@ -17,6 +19,7 @@ interface ProfileHeaderProps {
     user_id: string | null;
     ubicacion: string | null;
     es_vendedor: boolean;
+    seller_type: string | null;
     nombre_negocio: string | null;
     categoria_negocio: string | null;
     metodos_pago_aceptados: string | null;
@@ -27,12 +30,15 @@ interface ProfileHeaderProps {
     average_rating_as_buyer: number;
     reviews_count_as_seller: number;
     reviews_count_as_buyer: number;
+    is_verified: boolean;
+    created_at: string;
   } | null;
   productCount: number;
   purchaseCount: number;
+  isPublic?: boolean;
 }
 
-export function ProfileHeader({ profile, productCount, purchaseCount }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }: ProfileHeaderProps) {
   const [showActions, setShowActions] = useState(false);
 
   if (!profile) return null;
@@ -61,11 +67,22 @@ export function ProfileHeader({ profile, productCount, purchaseCount }: ProfileH
 
         {/* Stats */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
-          </div>
-          {profile.user_id && (
-            <p className="text-xs text-muted-foreground mb-3">@{profile.user_id}</p>
+          {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
+            <>
+              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                <Store className="w-3 h-3" />
+                <span>{profile.nombre}</span>
+                {profile.user_id && <span>· @{profile.user_id}</span>}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
+              {profile.user_id && (
+                <p className="text-xs text-muted-foreground mb-3">@{profile.user_id}</p>
+              )}
+            </>
           )}
 
           <div className="flex gap-5 text-center">
@@ -107,6 +124,47 @@ export function ProfileHeader({ profile, productCount, purchaseCount }: ProfileH
         </div>
       )}
 
+      {/* Member since */}
+      {profile.created_at && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="w-3 h-3" />
+          Miembro desde {new Date(profile.created_at).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
+        </div>
+      )}
+
+      {/* Trust level + Verified badge */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <SellerBadge level={(profile.trust_level as TrustLevel) ?? "nuevo"} showLabel size="md" />
+          {profile.is_verified && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
+              <BadgeCheck className="w-3.5 h-3.5" />
+              Verificado
+            </span>
+          )}
+        </div>
+        {(() => {
+          const points = profile.trust_points ?? 0;
+          const sorted = Object.entries(TRUST_LEVELS).sort((a, b) => a[1].minPoints - b[1].minPoints);
+          const next = sorted.find(([, v]) => v.minPoints > points);
+          const current = sorted.filter(([, v]) => v.minPoints <= points).pop();
+          const currentMin = current ? current[1].minPoints : 0;
+          const nextMin = next ? next[1].minPoints : points;
+          const progress = next ? Math.min(100, ((points - currentMin) / (nextMin - currentMin)) * 100) : 100;
+          return (
+            <div className="space-y-1">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-terracotta rounded-full transition-all" style={{ width: `${Math.max(5, progress)}%` }} />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{points} pts</span>
+                {next ? <span>{next[1].minPoints - points} pts para {next[1].label}</span> : <span>Nivel máximo</span>}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
       {/* Seller info */}
       {profile.es_vendedor && profile.nombre_negocio && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -126,24 +184,34 @@ export function ProfileHeader({ profile, productCount, purchaseCount }: ProfileH
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      {isPublic ? (
         <Link
-          href="/perfil/editar"
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-charcoal dark:bg-neutral-800 text-white px-4 py-2.5 text-sm font-semibold hover:bg-charcoal-light transition-colors"
+          href={`/chat?seller=${profile.id}`}
+          className="flex items-center justify-center gap-2 rounded-xl bg-bone text-bone-contrast px-4 py-2.5 text-sm font-semibold hover:bg-bone-dark transition-colors"
         >
-          <Settings className="w-4 h-4" />
-          Editar perfil
+          <MessageCircle className="w-4 h-4" />
+          Contactar
         </Link>
-        {profile.es_vendedor && (
+      ) : (
+        <div className="flex gap-2">
           <Link
-            href="/seller"
-            className="flex items-center justify-center gap-2 rounded-xl border border-border/50 px-4 py-2.5 text-sm font-semibold hover:bg-accent transition-colors"
+            href="/perfil/editar"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-charcoal dark:bg-neutral-800 text-white px-4 py-2.5 text-sm font-semibold hover:bg-charcoal-light transition-colors"
           >
-            <Handshake className="w-4 h-4" />
-            Mi tienda
+            <Settings className="w-4 h-4" />
+            Editar perfil
           </Link>
-        )}
-      </div>
+          {profile.es_vendedor && (
+            <Link
+              href="/seller"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border/50 px-4 py-2.5 text-sm font-semibold hover:bg-accent transition-colors"
+            >
+              <Handshake className="w-4 h-4" />
+              Mi tienda
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

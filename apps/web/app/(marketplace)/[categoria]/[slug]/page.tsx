@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
-import { MessageCircle, Heart, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
-import { ImageGallery } from "@/components/product/image-gallery";
+import { FavoriteButton } from "@/components/shared/favorite-button";
+import { ProductGallery } from "@/components/product/product-gallery";
+import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import type { TrustLevel } from "@vicino/shared";
 
 interface Props {
@@ -53,7 +54,7 @@ export default async function ProductDetailPage({ params }: Props) {
     `
     )
     .eq("slug", slug)
-    .eq("estatus", "disponible")
+    .neq("estatus", "eliminado")
     .single();
 
   if (!product) notFound();
@@ -86,6 +87,21 @@ export default async function ProductDetailPage({ params }: Props) {
     .or("fecha_expiracion.is.null,fecha_expiracion.gt." + new Date().toISOString())
     .limit(5);
 
+  // Check if user has favorited this product
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isFavorite = false;
+  if (user) {
+    const { data: fav } = await supabase
+      .from("favorites")
+      .select("id")
+      .eq("usuario_id", user.id)
+      .eq("producto_id", product.id)
+      .maybeSingle();
+    isFavorite = !!fav;
+  }
+
   // Increment view count (fire and forget)
   supabase
     .from("products_services")
@@ -114,17 +130,25 @@ export default async function ProductDetailPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:px-4">
-        {/* Left Column — Image Gallery */}
+        {/* Left Column — Gallery */}
         <div className="relative">
-          <ImageGallery
-            imagenPrincipal={product.imagen_principal}
-            galeriaImagenes={(product.galeria_imagenes as string[]) ?? []}
-            titulo={product.titulo}
+          <ProductGallery
+            images={
+              product.galeria_imagenes?.length
+                ? product.galeria_imagenes
+                : product.imagen_principal
+                  ? [product.imagen_principal]
+                  : []
+            }
+            title={product.titulo}
+            isOwner={user?.id === product.creador_id}
+            productId={product.id}
+            savedSizes={product.gallery_sizes ?? null}
           />
           {/* Mobile Fav Button */}
-          <button className="md:hidden absolute top-4 right-4 w-10 h-10 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
-            <Heart className="h-5 w-5 text-charcoal/80 dark:text-white/80" />
-          </button>
+          <div className="md:hidden absolute top-4 right-4 z-10">
+            <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="md" className="shadow-lg" />
+          </div>
         </div>
 
         {/* Right Column — Details & Actions */}
@@ -249,17 +273,26 @@ export default async function ProductDetailPage({ params }: Props) {
           )}
 
           {/* Action buttons (Desktop) */}
-          <div className="hidden md:flex gap-3 pt-2">
-            <Link
-              href={`/chat?seller=${seller?.id}&product=${product.id}`}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-terracotta px-6 py-4 text-base font-semibold text-white shadow-md hover:shadow-lg hover:bg-terracotta-dark hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
-            >
-              <MessageCircle className="h-5 w-5 fill-white/20" />
-              Contactar Vendedor
-            </Link>
-            <button className="flex items-center justify-center w-14 rounded-xl border border-border/60 bg-card hover:bg-neutral-50 dark:hover:bg-neutral-800 shadow-sm transition-colors active:scale-95">
-              <Heart className="h-6 w-6 text-muted-foreground" />
-            </button>
+          <div className="hidden md:flex flex-col gap-2 pt-2">
+            {user && user.id !== product.creador_id && (
+              <Link
+                href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
+                className="flex items-center justify-center gap-2 rounded-xl bg-bone px-6 py-4 text-base font-semibold text-bone-contrast shadow-md hover:shadow-lg hover:bg-bone-dark hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Quiero comprarlo
+              </Link>
+            )}
+            <div className="flex gap-3">
+              <Link
+                href={`/chat?seller=${seller?.id}&product=${product.id}`}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-bone/40 px-6 py-3 text-sm font-semibold text-bone-contrast hover:bg-bone/10 active:scale-95 transition-all duration-200"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Contactar Vendedor
+              </Link>
+              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" className="w-14 h-14 rounded-xl border border-border/60 bg-card" />
+            </div>
           </div>
         </div>
       </div>
@@ -319,11 +352,11 @@ export default async function ProductDetailPage({ params }: Props) {
       {/* Sticky Mobile Nav Button */}
       <div className="md:hidden sticky bottom-[4.5rem] left-0 right-0 p-4 pb-2 z-30 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
         <Link
-          href={`/chat?seller=${seller?.id}&product=${product.id}`}
-          className="flex items-center justify-center gap-2 w-full rounded-2xl bg-terracotta px-4 py-4 text-sm font-semibold text-white shadow-lg pointer-events-auto active:scale-95 transition-transform"
+          href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
+          className="flex items-center justify-center gap-2 w-full rounded-2xl bg-bone px-4 py-4 text-sm font-semibold text-bone-contrast shadow-lg pointer-events-auto active:scale-95 transition-transform"
         >
-          <MessageCircle className="h-5 w-5 fill-white/20" />
-          Contactar y Comprar
+          <ShoppingBag className="h-5 w-5" />
+          Quiero comprarlo
         </Link>
       </div>
     </div>

@@ -65,6 +65,7 @@ export function ChatWindow({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [showSaleForm, setShowSaleForm] = useState(false);
+  const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -185,16 +186,59 @@ export function ChatWindow({
         />
       )}
 
-      {/* Sale confirmation cards */}
+      {/* Product context banner */}
+      {product && (
+        <Link
+          href={`/buscar?q=${encodeURIComponent(product.titulo)}`}
+          className="flex items-center gap-3 mx-4 mt-2 p-3 rounded-xl bg-white/5 dark:bg-white/5 border border-border/30 hover:bg-white/10 transition-colors"
+        >
+          {product.imagen_principal ? (
+            <img
+              src={product.imagen_principal}
+              alt=""
+              className="w-12 h-12 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0 text-lg">
+              📷
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{product.titulo}</p>
+            <p className="text-xs text-muted-foreground">
+              ${product.precio.toLocaleString("es-MX")} MXN · Ver publicación →
+            </p>
+          </div>
+        </Link>
+      )}
+
+      {/* Sale confirmation cards — collapsible if multiple */}
       {saleConfirmations.length > 0 && (
         <div className="px-4 py-2 space-y-2 border-b bg-muted/30">
-          {saleConfirmations.map((sc) => (
-            <SaleConfirmationCard
-              key={sc.id}
-              confirmation={sc}
-              currentUserId={currentUserId}
-            />
-          ))}
+          <SaleConfirmationCard
+            confirmation={saleConfirmations[0]!}
+            currentUserId={currentUserId}
+          />
+          {saleConfirmations.length > 1 && (
+            <>
+              <button
+                onClick={() => setShowOlderConfirmations(!showOlderConfirmations)}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
+              >
+                {showOlderConfirmations
+                  ? "Ocultar confirmaciones anteriores"
+                  : `Ver ${saleConfirmations.length - 1} confirmación${saleConfirmations.length - 1 > 1 ? "es" : ""} anterior${saleConfirmations.length - 1 > 1 ? "es" : ""}`}
+              </button>
+              {showOlderConfirmations &&
+                saleConfirmations.slice(1).map((sc) => (
+                  <SaleConfirmationCard
+                    key={sc.id}
+                    confirmation={sc}
+                    currentUserId={currentUserId}
+                  />
+                ))}
+            </>
+          )}
         </div>
       )}
 

@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "skills": {
+    "capacitor-accessibility": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "d7e19dcf2cb89c85baf8a19b33f288d746bba98a1eb36946dde62b89c0dfbd0d"
+    },
+    "capacitor-app-store": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "441562fa503ad0e4ed793114b92af102214146ab12764c7d391145dc35c89077"
+    },
+    "capacitor-app-upgrade-v4-to-v5": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "ff4357b44a050551f3390ceb86958776fcc1943ea2efbfdf42add7d0fefff7ca"
+    },
+    "capacitor-app-upgrade-v5-to-v6": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "ed77c2810935312be9f9d9bf36ac9a9a319de6f7b123aa7cefb8714bdcf22625"
+    },
+    "capacitor-app-upgrade-v6-to-v7": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "39a38624684a4050edfc09b970a04f91e3fdeceed3f32106768907bf30854b5d"
+    },
+    "capacitor-app-upgrade-v7-to-v8": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "2c98d9efe8f606f744231926321198af67ee7f48fe6dd92f9dab1c863157c77d"
+    },
+    "capacitor-app-upgrades": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "49d49b7540cbfa22493247a253e0e515e5feeb27741c3e9edaf732ba22ed283c"
+    },
+    "capacitor-apple-review-preflight": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "835508e2036244bdde344e0f8f93f0702d2c95809465e996bc82c524f28de603"
+    },
+    "capacitor-best-practices": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "b9c04b9507aa285de5e46acbfbdf26fcc0d199001db907e49799caac67d60f21"
+    },
+    "capacitor-ci-cd": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "cf892ff783a40e385795c68432539a1d08c8c92690ab1ba7f264ad4b2ae5d272"
+    },
+    "capacitor-deep-linking": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "89b2efbb519102bd05c704a06077832b63567084b7c646454f97cc5a76947e8a"
+    },
+    "capacitor-keyboard": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "1eb8035ac0f80b72164fe5f906bbf9c87b139aa1c340da15ecb1ec4e24dccd03"
+    },
+    "capacitor-mcp": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "e80cc6fef4d6fd60064e8afcbc9ac3fb26cdd04648351573c8ec30b7cecbc14f"
+    },
+    "capacitor-offline-first": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "4f331db48007696e3c89aaed3a1a4023d25652ddffe439fb8787055da4f5eb11"
+    },
+    "capacitor-performance": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "8faa0aec05717e4306dcf20d618cbe70026789f405a0078845c8034775ea4be3"
+    },
+    "capacitor-plugin-spm-support": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "1fa33639f04d618ff726599aadfb99523b7ec069438eb20ca1b242c30d50ccbd"
+    },
+    "capacitor-plugin-upgrade-v4-to-v5": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "947ef92d607b87a5afee88aabcf1602e45bd0eec7a97bcc60c7fc9d536f35bc3"
+    },
+    "capacitor-plugin-upgrade-v5-to-v6": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "7c70f7292b4883f58c98c2418cfcacfbc475607e434184d424b9445f34112fa8"
+    },
+    "capacitor-plugin-upgrade-v6-to-v7": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "f4d4d8e6048beb2fae8e3570622b07f375a188e9e041fc4c36e3c7c4f1c3e9ec"
+    },
+    "capacitor-plugin-upgrade-v7-to-v8": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "1324308c6530a4a01f1c8cd3464dbd54921dc0915f42d148f71d68edad0e62ec"
+    },
+    "capacitor-plugin-upgrades": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "198af612d5865704d1d40735b8751c2d076e2101a6d73349f506d68bbdf34569"
+    },
+    "capacitor-plugins": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "9972c7c59937b3fc6c1c3e0264f8a1ef86d7d6e2417942cf1917bfb147921161"
+    },
+    "capacitor-push-notifications": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "a4786416391df1d98f2ba6a1fef26ba052c64ee9310bb25f80a544efe575c0f9"
+    },
+    "capacitor-security": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "cd7beabe55b3c0b6499c346bb2f852062f9756c5aa177c6bf145d865a1160719"
+    },
+    "capacitor-splash-screen": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "21e4f3900a6f663a9e2edef70e6104d458bed7caedb4792046ee698054047cbd"
+    },
+    "capacitor-testing": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "66f0a4a0fa401eedcf8d5413c02be85eb4005644d8ff2032cd265602ebd9974f"
+    },
+    "capgo-cli-usage": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "d11145d53b0ad19945b2e4ff63a6b801ba1b0f185646e53992cd043b05fb225f"
+    },
+    "capgo-cloud": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "1256382dff7b3041999175a7ae8f76d061e44ac5c0835cdc9e5ffe5b11fa8fe1"
+    },
+    "capgo-live-updates": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "d91bafb6512c3b14dc0ba9549c96078122323d7697f1293938761f82684260bb"
+    },
+    "capgo-native-builds": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "c1ced4e2c53abd8508dac93dac0dae42a293efdb3c2f6117087264b9f9452ea0"
+    },
+    "capgo-organization-management": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "e1d441aab5e02825a147b60f2bab02c19e7f318db93d5ae3316e8e91b2b529b6"
+    },
+    "capgo-release-management": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "fd34acadcc24cf00d7de0314661834e711c85e357d6f9022fea06efa7afe1cd2"
+    },
+    "capgo-release-workflows": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "50d5499accfafa6d28bb819807c7cad31d09f8322ebb8a87dd90b0337263a0b7"
+    },
+    "cocoapods-to-spm": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "f78d5c73acb726cc8bce48189ea49dabd3fcc78e96835f72ccf0ac215ed59401"
+    },
+    "cordova-to-capacitor": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "de44620d88542d7b271984134a4a5109cd773c0d1388bfcc554160b17c5e55fc"
+    },
+    "debugging-capacitor": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "5dcdef10b28309248f2819382c827dc0786699134038dc558548fe5319a16bb7"
+    },
+    "framework-to-capacitor": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "e046570c532d28a2c432e78137dbb60c6a39fce5131e9d01875dd4dfcb228653"
+    },
+    "ionic-appflow-migration": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "ec3fe866fa818ed9cff7d0aabc449a1d7191e3eeacde83653cf5a00b0c144cc2"
+    },
+    "ionic-design": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "53fee1af0a454c03fd35afd93d1127f82f417e86fc61c9ad2e49fd46af16208f"
+    },
+    "ionic-enterprise-sdk-migration": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "1fcb582f5bb025a4a27c70c2b87fc280e88797e0520e2c2b342007b40afc1098"
+    },
+    "ios-android-logs": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "4aab6aa8629cdf4b3ed8685f057046124a8de716f7d491e9a19c4ed38813de99"
+    },
+    "konsta-ui": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "209138cee02d288befed933a7b3042737a211aa0502c584390ed38f63a8a92a1"
+    },
+    "safe-area-handling": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "ad77176a6956033924de1742991b5a1d30f37f18fe915ccf5eb541063ccbe686"
+    },
+    "skill-creator": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "6dc873c16bc810719acadda7c395d763a27f75f389c2712290251ff57fc009e5"
+    },
+    "sqlite-to-fast-sql": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "d835812356152826b10e88efc0eeb174ec203d31e833cdd53b7dac9208ce85e6"
+    },
+    "tailwind-capacitor": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "computedHash": "46b315f2db865ee11743e4b4a8e13dd730394c8b7fb4c03de1a826ed70256e0b"
+    }
+  }
+}

@@ -26,7 +26,7 @@ export function RegisterForm() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -35,13 +35,23 @@ export function RegisterForm() {
     });
 
     if (error) {
-      setError(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes("already registered")) {
+        setError("Este email ya está registrado. Intenta iniciar sesión.");
+      } else {
+        setError("Error al crear la cuenta. Intenta de nuevo.");
+      }
       setLoading(false);
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    if (data.session) {
+      router.push("/");
+      router.refresh();
+    } else {
+      setError("Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.");
+      setLoading(false);
+    }
   }
 
   async function handleGoogleSignup() {
@@ -112,7 +122,7 @@ export function RegisterForm() {
       <button
         type="submit"
         disabled={loading}
-        className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-terracotta px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-terracotta-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
+        className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-bone px-4 py-3 text-sm font-semibold text-bone-contrast shadow-sm transition-all duration-200 hover:bg-bone-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />

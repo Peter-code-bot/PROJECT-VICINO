@@ -85,7 +85,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reviews recibidas</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas recibidas</p>
           )}
         </div>
       )}
@@ -107,7 +107,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reviews dejadas</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas dejadas</p>
           )}
         </div>
       )}
@@ -134,7 +134,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reviews pendientes</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas pendientes</p>
           )}
         </div>
       )}

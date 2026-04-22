@@ -1,52 +1,65 @@
 "use client";
 
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
-import { CATEGORIES } from "@vicino/shared";
+import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
+
+const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
 import { createProduct } from "./actions";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ProductForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">("producto");
-  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [locationData, setLocationData] = useState({ lat: 0, lng: 0, address: "", radius: 5 });
+  const [media, setMedia] = useState<{ file: File; preview: string; isVideo: boolean }[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (images.length + files.length > 5) {
-      setError("Máximo 5 imágenes");
+    if (media.length + files.length > 5) {
+      setError("Máximo 5 archivos");
       return;
     }
-    const newImages = files.map((file) => ({
+    for (const f of files) {
+      const isVid = f.type.startsWith("video/");
+      if (isVid && f.size > 50 * 1024 * 1024) { setError(`${f.name} excede 50MB`); return; }
+      if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
+    }
+    setError("");
+    const newMedia = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
+      isVideo: file.type.startsWith("video/"),
     }));
-    setImages((prev) => [...prev, ...newImages]);
-    setError("");
+    setMedia((prev) => [...prev, ...newMedia]);
   }
 
-  function removeImage(index: number) {
-    setImages((prev) => {
+  function removeMedia(index: number) {
+    setMedia((prev) => {
       const item = prev[index];
       if (item) URL.revokeObjectURL(item.preview);
       return prev.filter((_, i) => i !== index);
     });
   }
 
-  async function uploadImages(): Promise<string[]> {
-    if (images.length === 0) return [];
+  async function uploadMedia(): Promise<string[]> {
+    if (media.length === 0) return [];
     setUploading(true);
     const supabase = createClient();
     const urls: string[] = [];
     const timestamp = Date.now();
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i]!;
+    for (let i = 0; i < media.length; i++) {
+      const img = media[i]!;
       const ext = img.file.name.split(".").pop() ?? "jpg";
       const path = `temp/${timestamp}-${i}.${ext}`;
       const { error: uploadErr } = await supabase.storage
@@ -69,7 +82,7 @@ export function ProductForm() {
     setError("");
     setLoading(true);
     try {
-      const urls = await uploadImages();
+      const urls = await uploadMedia();
       if (urls.length > 0 && urls[0]) {
         formData.set("imagen_principal", urls[0]);
         formData.set("galeria_imagenes", JSON.stringify(urls));
@@ -186,26 +199,64 @@ export function ProductForm() {
           </div>
         </div>
 
-        {/* Categoria */}
-        <div className="space-y-2">
-          <label htmlFor="categoria" className="text-sm font-medium text-foreground/80">
-            Categoría
-          </label>
-          <select
-            id="categoria"
-            name="categoria"
-            required
-            defaultValue=""
-            className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 appearance-none"
-            style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
+        {/* Categoria — combobox con búsqueda */}
+        <div className="space-y-2 relative">
+          <label className="text-sm font-medium text-foreground/80">Categoría</label>
+          <input type="hidden" name="categoria" value={selectedCategory} required />
+          <button
+            type="button"
+            onClick={() => setCategoryOpen(!categoryOpen)}
+            className={cn(
+              "w-full flex items-center justify-between rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all hover:border-terracotta/30",
+              categoryOpen && "border-terracotta/50 ring-2 ring-terracotta/20",
+              !selectedCategory && "text-muted-foreground/50"
+            )}
           >
-            <option value="" disabled hidden>Selecciona una categoría</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat.id} value={cat.slug}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+            {selectedCategory ? CATEGORIES.find(c => c.slug === selectedCategory)?.name : "Selecciona una categoría"}
+            <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", categoryOpen && "rotate-180")} />
+          </button>
+          {categoryOpen && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-xl border border-border/50 bg-white dark:bg-neutral-900 shadow-lg max-h-64 overflow-hidden">
+              <div className="p-2 border-b border-border/30">
+                <div className="flex items-center gap-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 px-3 py-1.5">
+                  <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Buscar categoría..."
+                    className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="overflow-y-auto max-h-48 p-1">
+                {["producto", "servicio", "otro"].map((type) => {
+                  const label = type === "producto" ? "Productos" : type === "servicio" ? "Servicios" : "Otros";
+                  const cats = CATEGORIES.filter(c => c.type === type && c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+                  if (cats.length === 0) return null;
+                  return (
+                    <div key={type}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-3 py-1.5">{label}</p>
+                      {cats.map(cat => (
+                        <button
+                          key={cat.slug}
+                          type="button"
+                          onClick={() => { setSelectedCategory(cat.slug); setCategoryOpen(false); setCategorySearch(""); }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
+                            selectedCategory === cat.slug ? "bg-terracotta/10 text-terracotta font-medium" : "hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                          )}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -226,49 +277,58 @@ export function ProductForm() {
         />
       </div>
 
+      {/* Ubicación con mapa */}
+      <div className="space-y-2 pt-2">
+        <label className="text-sm font-medium text-foreground/80">
+          Zona de entrega / operación <span className="text-muted-foreground font-normal">(opcional)</span>
+        </label>
+        <input type="hidden" name="ubicacion" value={locationData.address} />
+        <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
+        <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
+        <input type="hidden" name="delivery_radius_km" value={locationData.radius} />
+        <DeliveryMap
+          onLocationChange={(lat, lng, address) => setLocationData((p) => ({ ...p, lat, lng, address }))}
+          onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-4">
-        {/* Ubicacion */}
-        <div className="space-y-2">
-          <label htmlFor="ubicacion" className="text-sm font-medium text-foreground/80">
-            Zona de entrega / operación <span className="text-muted-foreground font-normal">(opcional)</span>
-          </label>
-          <input
-            id="ubicacion"
-            name="ubicacion"
-            type="text"
-            placeholder="Ej: Col. Roma Sur y Centro"
-            className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 placeholder:text-muted-foreground/50"
-          />
-        </div>
 
         {/* Tipo de entrega */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground/80">Opciones de entrega</label>
           <select
             name="tipo_entrega"
-            defaultValue="pickup"
+            defaultValue="punto_encuentro"
             className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-terracotta/50 focus:ring-2 focus:ring-terracotta/20 appearance-none"
             style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
           >
-            <option value="pickup">Punto de encuentro seguro</option>
-            <option value="envio">Ofrezco envío local</option>
-            <option value="ambos">Punto de encuentro o Envío</option>
+            {DELIVERY_OPTIONS
+              .filter(o => (o.for as readonly string[]).includes(tipoSeleccionado))
+              .map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))
+            }
           </select>
         </div>
       </div>
 
-      {/* Image Upload */}
+      {/* Media Upload */}
       <div className="space-y-3 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Fotos <span className="text-muted-foreground font-normal">(máx. 5, primera será la portada)</span>
+          Fotos y videos <span className="text-muted-foreground font-normal">(máx. 5, primera será la portada)</span>
         </label>
         <div className="flex gap-2 flex-wrap">
-          {images.map((img, i) => (
+          {media.map((item, i) => (
             <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50 group">
-              <Image src={img.preview} alt={`Preview ${i + 1}`} fill className="object-cover" />
+              {item.isVideo ? (
+                <video src={item.preview} className="w-full h-full object-cover" />
+              ) : (
+                <Image src={item.preview} alt={`Preview ${i + 1}`} fill className="object-cover" />
+              )}
               <button
                 type="button"
-                onClick={() => removeImage(i)}
+                onClick={() => removeMedia(i)}
                 className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3 text-white" />
@@ -278,9 +338,14 @@ export function ProductForm() {
                   Portada
                 </span>
               )}
+              {item.isVideo && (
+                <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/70 text-white px-1 rounded font-medium">
+                  Video
+                </span>
+              )}
             </div>
           ))}
-          {images.length < 5 && (
+          {media.length < 5 && (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -294,7 +359,7 @@ export function ProductForm() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*,video/mp4,video/webm,video/quicktime"
           multiple
           className="hidden"
           onChange={handleImageSelect}
@@ -304,7 +369,7 @@ export function ProductForm() {
       <button
         type="submit"
         disabled={loading || uploading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-terracotta px-4 py-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-terracotta-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-bone px-4 py-4 text-base font-semibold text-bone-contrast shadow-sm transition-all duration-200 hover:bg-bone-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

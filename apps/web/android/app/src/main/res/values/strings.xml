@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VICINO</string>
+    <string name="title_activity_main">VICINO</string>
+    <string name="package_name">mx.vicino.app</string>
+    <string name="custom_url_scheme">mx.vicino.app</string>
+</resources>

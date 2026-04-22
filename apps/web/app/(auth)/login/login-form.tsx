@@ -25,7 +25,16 @@ export function LoginForm() {
     });
 
     if (error) {
-      setError(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes("invalid login credentials")) {
+        setError("Email o contraseña incorrectos");
+      } else if (msg.includes("email not confirmed")) {
+        setError("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.");
+      } else if (msg.includes("too many requests")) {
+        setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
+      } else {
+        setError("Error al iniciar sesión. Intenta de nuevo.");
+      }
       setLoading(false);
       return;
     }
@@ -42,7 +51,7 @@ export function LoginForm() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-    if (error) setError(error.message);
+    if (error) setError("Error al conectar con Google. Intenta de nuevo.");
   }
 
   return (
@@ -94,7 +103,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-terracotta px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-terracotta-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
+        className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-bone px-4 py-3 text-sm font-semibold text-bone-contrast shadow-sm transition-all duration-200 hover:bg-bone-dark hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />

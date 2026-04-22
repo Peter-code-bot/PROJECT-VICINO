@@ -67,7 +67,7 @@ export function ProductCard({
 
         {/* Price Badge — glassmorphism bottom-left */}
         <div className="absolute bottom-2 left-2">
-          <div className="px-2.5 py-1 rounded-lg bg-charcoal/70 dark:bg-charcoal-light/80 backdrop-blur-md text-white">
+          <div className="px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-sm border border-white/10 text-white">
             <PriceDisplay amount={precio} size="sm" className="font-heading font-bold text-white" />
           </div>
         </div>
