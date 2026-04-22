@@ -132,6 +132,8 @@ export function ChatWindow({
       texto: text,
       attachments: [],
       created_at: new Date().toISOString(),
+      leido_por_comprador: isBuyer,
+      leido_por_vendedor: !isBuyer,
     };
     setMessages((prev) => [...prev, optimisticMsg]);
 

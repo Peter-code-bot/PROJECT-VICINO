@@ -54,7 +54,7 @@ export function ImageGallery({
     return (
       <div className="relative aspect-square md:aspect-[4/3] md:rounded-3xl overflow-hidden bg-cream-dark dark:bg-neutral-900 border-x-0 md:border border-border/40 w-full group">
         <Image
-          src={allImages[0]}
+          src={allImages[0]!}
           alt={titulo}
           fill
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
