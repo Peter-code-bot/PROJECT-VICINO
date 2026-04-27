@@ -23,7 +23,6 @@ import {
   LogIn,
   ChevronDown,
   ChevronRight,
-  MapPin,
   UtensilsCrossed,
   Shirt,
   Smartphone,
@@ -98,9 +97,13 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
       {/* Logo */}
       <div className="px-5 py-5 border-b border-border/20">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-terracotta flex items-center justify-center shadow-sm">
-            <MapPin className="w-4.5 h-4.5 text-white" />
-          </div>
+          <Image
+            src="/vicino-logo.png"
+            alt="Vicino Logo"
+            width={36}
+            height={36}
+            className="rounded-xl shadow-sm"
+          />
           <span className="font-heading font-bold text-lg">VICINO</span>
         </Link>
       </div>
