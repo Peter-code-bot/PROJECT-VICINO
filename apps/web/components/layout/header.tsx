@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
-import { MapPin, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -31,8 +32,15 @@ export function Header() {
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
-            <MapPin className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
+            <Image
+              src="/vicino-logo.png"
+              alt="VICINO"
+              width={32}
+              height={32}
+              className="w-full h-full object-cover"
+              priority
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-heading font-bold text-base leading-none tracking-tight">
