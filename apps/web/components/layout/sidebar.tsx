@@ -93,8 +93,8 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
           <Image
             src="/vicino-logo.png"
             alt="VICINO"
-            width={40}
-            height={40}
+            width={48}
+            height={48}
             className="shrink-0"
             priority
           />

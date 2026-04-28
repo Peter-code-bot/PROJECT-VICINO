@@ -35,8 +35,8 @@ export function Header() {
           <Image
             src="/vicino-logo.png"
             alt="VICINO"
-            width={32}
-            height={32}
+            width={36}
+            height={36}
             className="shrink-0"
             priority
           />
