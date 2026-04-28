@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { VicinoLogo } from "@/components/ui/vicino-logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
@@ -90,14 +90,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
       {/* Logo */}
       <div className="px-5 py-5 border-b border-border/20">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image
-            src="/vicino-logo.png"
-            alt="VICINO"
-            width={40}
-            height={40}
-            className="shrink-0 mix-blend-multiply"
-            priority
-          />
+          <VicinoLogo size={40} className="shrink-0" />
           <span className="font-heading font-bold text-lg">VICINO</span>
         </Link>
       </div>
