@@ -25,6 +25,16 @@ export const metadata: Metadata = {
   },
   description:
     "VICINO — Compra y vende con confianza. Marketplace para PyMEs, emprendedores y profesionales en México.",
+  icons: {
+    icon: [
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "VICINO — Compra y vende con confianza",
     description:
@@ -32,6 +42,11 @@ export const metadata: Metadata = {
     siteName: "VICINO",
     locale: "es_MX",
     type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "VICINO" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"],
   },
   manifest: "/manifest.json",
 };
