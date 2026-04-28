@@ -95,7 +95,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
             alt="VICINO"
             width={40}
             height={40}
-            className="shrink-0 rounded-2xl"
+            className="shrink-0"
             priority
           />
           <span className="font-heading font-bold text-lg">VICINO</span>

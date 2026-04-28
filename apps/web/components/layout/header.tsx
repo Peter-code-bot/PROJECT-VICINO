@@ -37,7 +37,7 @@ export function Header() {
             alt="VICINO"
             width={32}
             height={32}
-            className="shrink-0 rounded-2xl"
+            className="shrink-0"
             priority
           />
           <div className="flex flex-col">
