@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 import { Bell } from "lucide-react";
-import { VicinoLogo } from "@/components/ui/vicino-logo";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -32,7 +32,14 @@ export function Header() {
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <VicinoLogo size={32} className="shrink-0" />
+          <Image
+            src="/vicino-logo.png"
+            alt="VICINO"
+            width={32}
+            height={32}
+            className="shrink-0 rounded-2xl"
+            priority
+          />
           <div className="flex flex-col">
             <span className="font-heading font-bold text-base leading-none tracking-tight">
               VICINO
