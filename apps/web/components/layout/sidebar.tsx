@@ -90,16 +90,14 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
       {/* Logo */}
       <div className="px-5 py-5 border-b border-border/20">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm shrink-0">
-            <Image
-              src="/vicino-logo.png"
-              alt="VICINO"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-              priority
-            />
-          </div>
+          <Image
+            src="/vicino-logo.png"
+            alt="VICINO"
+            width={40}
+            height={40}
+            className="shrink-0"
+            priority
+          />
           <span className="font-heading font-bold text-lg">VICINO</span>
         </Link>
       </div>

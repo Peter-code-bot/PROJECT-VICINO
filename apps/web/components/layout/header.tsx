@@ -32,16 +32,14 @@ export function Header() {
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
-            <Image
-              src="/vicino-logo.png"
-              alt="VICINO"
-              width={32}
-              height={32}
-              className="w-full h-full object-cover"
-              priority
-            />
-          </div>
+          <Image
+            src="/vicino-logo.png"
+            alt="VICINO"
+            width={32}
+            height={32}
+            className="shrink-0"
+            priority
+          />
           <div className="flex flex-col">
             <span className="font-heading font-bold text-base leading-none tracking-tight">
               VICINO
