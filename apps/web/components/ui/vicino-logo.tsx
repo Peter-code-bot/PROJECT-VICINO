@@ -14,12 +14,12 @@ export function VicinoLogo({ size = 40, className }: VicinoLogoProps) {
       className={className}
       aria-label="VICINO"
     >
-      {/* Squircle background — bone/cream */}
+      {/* Squircle background — bone/cream with margin around V */}
       <rect width="100" height="100" rx="22" fill="#F5F0E8" />
-      {/* Left arm — red, thick */}
-      <polygon points="8,12 37,12 52,85 24,85" fill="#FF3B30" />
-      {/* Right arm — black, thick */}
-      <polygon points="63,12 92,12 76,85 50,85" fill="#1A1A1A" />
+      {/* Left arm — red */}
+      <polygon points="26,14 43,14 51,78 33,78" fill="#FF3B30" />
+      {/* Right arm — black */}
+      <polygon points="54,14 73,14 67,78 47,78" fill="#1A1A1A" />
     </svg>
   );
 }
