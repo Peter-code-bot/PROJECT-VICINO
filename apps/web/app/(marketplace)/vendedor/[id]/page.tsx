@@ -27,13 +27,22 @@ export default async function VendedorPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 
+  // Public profile — explicitly exclude PII (email, telefono) and any field
+  // not consumed by ProfileHeader/ProfileTabs. RLS allows anonymous read of
+  // profiles, so the field list here is the actual privacy boundary.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id, nombre, foto, bio, user_id, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating_as_seller, average_rating_as_buyer, reviews_count_as_seller, reviews_count_as_buyer, is_verified, created_at"
+    )
     .eq("id", id)
     .single();
 
   if (!profile) notFound();
+
+  // ProfileHeader expects an `email` field; on public profiles we never
+  // surface the real email — pass empty string to satisfy the type.
+  const publicProfile = { ...profile, email: "" };
 
   const { data: products } = await supabase
     .from("products_services")
@@ -69,7 +78,7 @@ export default async function VendedorPage({ params }: Props) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <ProfileHeader
-        profile={profile}
+        profile={publicProfile}
         productCount={products?.length ?? 0}
         purchaseCount={purchaseCount ?? 0}
         isPublic
@@ -78,7 +87,7 @@ export default async function VendedorPage({ params }: Props) {
         products={products ?? []}
         reviewsAsSeller={reviewsAsSeller ?? []}
         reviewsAsBuyer={reviewsAsBuyer ?? []}
-        isVendedor={profile?.es_vendedor ?? false}
+        isVendedor={publicProfile.es_vendedor ?? false}
       />
     </div>
   );
