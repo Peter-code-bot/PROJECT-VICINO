@@ -12,10 +12,9 @@ export default function PrivacidadPage() {
         <section>
           <h2 className="text-lg font-heading font-bold">1. Identidad y domicilio del Responsable</h2>
           <p>
-            <strong>VICINO</strong> (en adelante, &quot;VICINO&quot;, &quot;la Plataforma&quot; o &quot;el Responsable&quot;), operado por su(s) titular(es) personas físicas con actividad empresarial, con domicilio convencional para efectos de este Aviso en la ciudad de <strong>Puebla de Zaragoza, Puebla, México</strong>, y correo electrónico de contacto <strong>privacidad@vicinomarket.com</strong>, es responsable del tratamiento de los datos personales que recabe de los usuarios de la Plataforma, conforme a lo dispuesto en la <strong>Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)</strong>, su <strong>Reglamento</strong>, los <strong>Lineamientos del Aviso de Privacidad</strong> publicados por el Instituto Nacional de Transparencia, Acceso a la Información y Protección de Datos Personales (<strong>INAI</strong>), y las demás disposiciones aplicables.
+            <strong>VICINO</strong> (en adelante, &quot;VICINO&quot;, &quot;la Plataforma&quot; o &quot;el Responsable&quot;), operado por su(s) titular(es) personas físicas con actividad empresarial, con domicilio convencional para efectos de este Aviso en la ciudad de <strong>Puebla de Zaragoza, Puebla, México</strong>, y correo electrónico de contacto <strong>admin@vicinomarket.com</strong>, es responsable del tratamiento de los datos personales que recabe de los usuarios de la Plataforma, conforme a lo dispuesto en la <strong>Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)</strong>, su <strong>Reglamento</strong>, los <strong>Lineamientos del Aviso de Privacidad</strong> publicados por el Instituto Nacional de Transparencia, Acceso a la Información y Protección de Datos Personales (<strong>INAI</strong>), y las demás disposiciones aplicables.
           </p>
-          <p><strong>Departamento de Datos Personales:</strong> privacidad@vicinomarket.com</p>
-          <p><strong>Atención general:</strong> admin@vicinomarket.com</p>
+          <p><strong>Correo de contacto:</strong> admin@vicinomarket.com</p>
         </section>
 
         {/* 2 */}
@@ -100,7 +99,7 @@ export default function PrivacidadPage() {
             <li>Mejora de la experiencia del Usuario y del sistema de recomendación de productos.</li>
           </ol>
           <p>
-            <strong>El Usuario podrá negarse a estas finalidades secundarias en cualquier momento</strong> enviando un correo a privacidad@vicinomarket.com indicando su nombre, correo registrado y la finalidad a la que se opone, sin que ello afecte el acceso al servicio principal.
+            <strong>El Usuario podrá negarse a estas finalidades secundarias en cualquier momento</strong> enviando un correo a admin@vicinomarket.com indicando su nombre, correo registrado y la finalidad a la que se opone, sin que ello afecte el acceso al servicio principal.
           </p>
         </section>
 
@@ -123,7 +122,7 @@ export default function PrivacidadPage() {
           <p>El Usuario tiene derecho a:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Conocer la lógica general del sistema de niveles.</li>
-            <li>Solicitar una <strong>revisión humana</strong> de su nivel asignado, cuando considere que existe un error material, escribiendo a privacidad@vicinomarket.com.</li>
+            <li>Solicitar una <strong>revisión humana</strong> de su nivel asignado, cuando considere que existe un error material, escribiendo a admin@vicinomarket.com.</li>
             <li>Manifestar su oposición al tratamiento automatizado, en cuyo caso VICINO podrá restringir el acceso a funciones que dependen de dicho sistema.</li>
           </ul>
         </section>
@@ -187,7 +186,7 @@ export default function PrivacidadPage() {
           </ul>
 
           <h3 className="text-base font-semibold mt-4">Procedimiento para ejercer derechos ARCO</h3>
-          <p>La solicitud debe enviarse a <strong>privacidad@vicinomarket.com</strong> e incluir:</p>
+          <p>La solicitud debe enviarse a <strong>admin@vicinomarket.com</strong> e incluir:</p>
           <ol className="list-decimal pl-5 space-y-1">
             <li>Nombre completo del titular y correo electrónico registrado en la cuenta.</li>
             <li>Documento que acredite la identidad del titular (copia digital de identificación oficial) o, en su caso, la representación legal.</li>
@@ -218,7 +217,7 @@ export default function PrivacidadPage() {
           <p>El Usuario puede solicitar que sus datos no sean utilizados para finalidades secundarias mediante:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Configuración de notificaciones dentro de su perfil en la Plataforma.</li>
-            <li>Solicitud al correo privacidad@vicinomarket.com.</li>
+            <li>Solicitud al correo admin@vicinomarket.com.</li>
             <li>Inscripción en el <strong>Registro Público de Consumidores (REPEP)</strong> ante la PROFECO, en lo que resulte aplicable a comunicaciones promocionales.</li>
           </ul>
         </section>
@@ -307,7 +306,7 @@ export default function PrivacidadPage() {
         {/* 16 */}
         <section>
           <h2 className="text-lg font-heading font-bold">16. Menores de edad</h2>
-          <p>La Plataforma está dirigida exclusivamente a personas mayores de <strong>18 años</strong>. VICINO no recaba ni trata, de forma consciente, datos personales de menores de edad. En caso de detectar una cuenta perteneciente a un menor, esta será suspendida y los datos eliminados conforme a lo dispuesto en la sección 15. Padres, madres o tutores que detecten que un menor ha proporcionado datos personales pueden solicitar su eliminación inmediata escribiendo a privacidad@vicinomarket.com.</p>
+          <p>La Plataforma está dirigida exclusivamente a personas mayores de <strong>18 años</strong>. VICINO no recaba ni trata, de forma consciente, datos personales de menores de edad. En caso de detectar una cuenta perteneciente a un menor, esta será suspendida y los datos eliminados conforme a lo dispuesto en la sección 15. Padres, madres o tutores que detecten que un menor ha proporcionado datos personales pueden solicitar su eliminación inmediata escribiendo a admin@vicinomarket.com.</p>
         </section>
 
         {/* 17 */}
@@ -340,12 +339,8 @@ export default function PrivacidadPage() {
                 </tr>
               </thead>
               <tbody className="text-muted-foreground">
-                <tr className="border-b border-border/50">
-                  <td className="py-2 pr-3">Solicitudes ARCO, revocación de consentimiento, dudas sobre privacidad</td>
-                  <td className="py-2">privacidad@vicinomarket.com</td>
-                </tr>
                 <tr>
-                  <td className="py-2 pr-3">Atención general y soporte</td>
+                  <td className="py-2 pr-3">Solicitudes ARCO, revocación de consentimiento, privacidad, atención general y soporte</td>
                   <td className="py-2">admin@vicinomarket.com</td>
                 </tr>
               </tbody>
