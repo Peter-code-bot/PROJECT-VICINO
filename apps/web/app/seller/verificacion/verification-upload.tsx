@@ -63,17 +63,14 @@ export function VerificationUpload({
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("verification-documents")
-      .getPublicUrl(path);
-
-    const url = urlData.publicUrl;
-
-    // Upsert seller_verification
+    // Store the storage path (not a URL) — bucket is private. Admin
+    // generates short-lived signed URLs server-side at view time.
+    // Column names retain the *_url suffix for backwards compatibility,
+    // but the values are paths like "<userId>/selfie-<ts>.png".
     const updates: Record<string, string> = {};
-    if (key === "selfie") updates.selfie_url = url;
-    if (key === "ine_front") updates.ine_front_url = url;
-    if (key === "ine_back") updates.ine_back_url = url;
+    if (key === "selfie") updates.selfie_url = path;
+    if (key === "ine_front") updates.ine_front_url = path;
+    if (key === "ine_back") updates.ine_back_url = path;
 
     if (sellerVerification) {
       await supabase
