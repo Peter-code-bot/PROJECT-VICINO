@@ -4,7 +4,8 @@ import { SellerSidebar } from "@/components/layout/seller-sidebar";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
 import Link from "next/link";
-import { MapPin, Store } from "lucide-react";
+import Image from "next/image";
+import { Store } from "lucide-react";
 
 export default async function SellerLayout({
   children,
@@ -30,9 +31,14 @@ export default async function SellerLayout({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-border/40">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:-translate-y-0.5">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
+            <Image
+              src="/vicino-logo.png"
+              alt="VICINO"
+              width={40}
+              height={40}
+              className="shrink-0 group-hover:-translate-y-0.5 transition-transform"
+              priority
+            />
             <span className="font-heading font-bold text-xl leading-none hidden sm:block">
               VICINO
             </span>

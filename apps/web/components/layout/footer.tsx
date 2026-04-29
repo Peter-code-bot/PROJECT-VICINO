@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { MapPin, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
 
 export function Footer() {
   return (
@@ -9,9 +10,13 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <MapPin className="w-3.5 h-3.5 text-white" />
-              </div>
+              <Image
+                src="/vicino-logo.png"
+                alt="VICINO"
+                width={28}
+                height={28}
+                className="shrink-0"
+              />
               <span className="font-heading font-bold text-base text-white">
                 VICINO
               </span>

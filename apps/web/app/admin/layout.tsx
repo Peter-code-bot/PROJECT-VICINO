@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import Link from "next/link";
-import { MapPin, ShieldAlert } from "lucide-react";
+import Image from "next/image";
+import { ShieldAlert } from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -35,9 +36,14 @@ export default async function AdminLayout({
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in-up">
       <div className="flex items-center gap-4 mb-10 pb-6 border-b border-border/40">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-xl bg-[#1A1A2E] dark:bg-neutral-800 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-            <MapPin className="w-5 h-5 text-white" />
-          </div>
+          <Image
+            src="/vicino-logo.png"
+            alt="VICINO"
+            width={40}
+            height={40}
+            className="shrink-0 group-hover:scale-105 transition-transform"
+            priority
+          />
           <span className="font-heading font-bold text-xl leading-none">
             VICINO
           </span>

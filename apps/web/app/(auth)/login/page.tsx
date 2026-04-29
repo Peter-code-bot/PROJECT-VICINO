@@ -1,6 +1,6 @@
 import { LoginForm } from "./login-form";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import Image from "next/image";
 
 export const metadata = {
   title: "Iniciar sesión — VICINO",
@@ -22,9 +22,7 @@ export default function LoginPage() {
           
           <div className="text-center space-y-3 mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-2">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-md">
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
+              <Image src="/vicino-logo.png" alt="VICINO" width={48} height={48} className="shrink-0" priority />
             </Link>
             <h1 className="text-2xl font-heading font-bold">¡Hola de nuevo!</h1>
             <p className="text-sm text-muted-foreground">Tu mercado de confianza</p>
