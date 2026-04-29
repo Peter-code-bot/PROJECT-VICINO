@@ -47,6 +47,8 @@ android/app/release/
 *.apk
 *.aab
 *.keystore
+*.jks
+android/keystore.properties
 
 # typescript
 *.tsbuildinfo
