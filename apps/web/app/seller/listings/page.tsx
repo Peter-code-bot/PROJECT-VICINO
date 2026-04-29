@@ -29,45 +29,46 @@ export default async function ListingsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Mis publicaciones</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold truncate">Mis publicaciones</h1>
         <Link
           href="/vender"
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 whitespace-nowrap"
         >
-          Publicar nuevo
+          <span className="hidden sm:inline">Publicar nuevo</span>
+          <span className="sm:hidden">Publicar</span>
         </Link>
       </div>
 
       {products && products.length > 0 ? (
         <div className="space-y-3">
           {products.map((p) => (
-            <div key={p.id} className="rounded-lg border p-4 flex items-center gap-4">
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
+            <div
+              key={p.id}
+              className="rounded-lg border p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
+            >
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex items-center gap-2 min-w-0">
                   <Link
                     href={`/${p.categoria}/${p.slug}`}
-                    className="font-medium text-sm hover:underline truncate"
+                    className="font-medium text-sm hover:underline truncate min-w-0"
                   >
                     {p.titulo}
                   </Link>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.estatus] ?? ""}`}
+                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.estatus] ?? ""}`}
                   >
                     {p.estatus}
                   </span>
                 </div>
-                <div className="flex gap-4 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span>{formatPrice(Number(p.precio))}</span>
                   <span>{p.ventas_count} ventas</span>
                   <span>{p.vistas_count} vistas</span>
                   <span>{formatDate(p.created_at)}</span>
                 </div>
               </div>
-              <ListingActions
-                id={p.id}
-                estatus={p.estatus}
-              />
+              <ListingActions id={p.id} estatus={p.estatus} />
             </div>
           ))}
         </div>

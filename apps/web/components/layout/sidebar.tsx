@@ -189,9 +189,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               <span className="truncate">{profile?.nombre || "Mi Perfil"}</span>
             </Link>
 
-            {profile?.es_vendedor && (
-              <NavItem href="/seller" icon={Store} label="Mi Tienda" active={isActive("/seller")} />
-            )}
+            <NavItem href="/seller" icon={Store} label="Mi Tienda" active={isActive("/seller")} />
             {isAdmin && (
               <NavItem href="/admin" icon={ShieldAlert} label="Admin" active={isActive("/admin")} />
             )}

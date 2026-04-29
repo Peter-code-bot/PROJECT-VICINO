@@ -31,11 +31,11 @@ export function ListingActions({ id, estatus }: ListingActionsProps) {
   const isPaused = estatus === "pausado";
 
   return (
-    <div className="flex gap-2 shrink-0">
+    <div className="flex gap-2 md:shrink-0 w-full md:w-auto">
       <button
         onClick={handleToggle}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 text-primary-foreground bg-transparent hover:bg-primary/20 transition-colors text-xs font-medium disabled:opacity-50"
+        className="flex flex-1 md:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 text-primary-foreground bg-transparent hover:bg-primary/20 transition-colors text-xs font-medium disabled:opacity-50"
       >
         {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
         {isPaused ? "Reanudar" : "Pausar"}
@@ -43,7 +43,7 @@ export function ListingActions({ id, estatus }: ListingActionsProps) {
       <button
         onClick={handleDelete}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-400/30 text-red-400 bg-transparent hover:bg-red-400/10 transition-colors text-xs font-medium disabled:opacity-50"
+        className="flex flex-1 md:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-400/30 text-red-400 bg-transparent hover:bg-red-400/10 transition-colors text-xs font-medium disabled:opacity-50"
       >
         <Trash2 className="h-3.5 w-3.5" />
         Eliminar
