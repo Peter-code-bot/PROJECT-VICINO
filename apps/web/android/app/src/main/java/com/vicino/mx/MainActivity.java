@@ -1,4 +1,4 @@
-package mx.vicino.app;
+package com.vicino.mx;
 
 import com.getcapacitor.BridgeActivity;
 

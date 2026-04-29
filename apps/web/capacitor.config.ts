@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'mx.vicino.app',
+  appId: 'com.vicino.mx',
   appName: 'VICINO',
   webDir: 'dist',
   server: {
