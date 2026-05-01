@@ -91,26 +91,21 @@ Próximo paso: [push / corregir / revisar con Pedro]
 
 ---
 
-## Deploy — Netlify
+## Deploy — Vercel
 
-**Preview (verificar antes de publicar):**
-```bash
-NETLIFY_AUTH_TOKEN="nfp_KkMGwMHpZ6jLDPA2i5zGbLFY313c89Rs4291" npx netlify deploy --build
-```
+El deploy es automático: Vercel observa el repo en GitHub y dispara builds en cada push.
 
-**Producción:**
-```bash
-NETLIFY_AUTH_TOKEN="nfp_KkMGwMHpZ6jLDPA2i5zGbLFY313c89Rs4291" npx netlify deploy --build --prod
-```
+- **Push a `master`** → auto-deploy a producción (`https://startup-marketplace-web.vercel.app`).
+- **Push a cualquier otra rama** → preview deployment automático. La URL del preview aparece en el PR de GitHub y en el dashboard de Vercel.
 
-**O decir "haz deploy" a Claude Code** — skill `deploy-project` activada.
+No se ejecuta ningún comando manual desde local para deployar.
 
 ### Estado del deploy
-- **Plataforma:** Netlify (cuenta Peter Bot / peter-code-bot)
-- **Sitio:** PENDIENTE — crear con Alejandro
-- **CI/CD target:** master → producción | design → preview
+- **Plataforma:** Vercel
+- **URL producción:** `https://startup-marketplace-web.vercel.app`
+- **CI/CD target:** master → producción | cualquier otra rama → preview automático
 
-### Variables de entorno (configurar en Netlify Dashboard, NO en repo)
+### Variables de entorno (configurar en Vercel Dashboard, NO en repo)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL`

@@ -34,7 +34,7 @@ export default async function AdminLayout({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in-up">
-      <div className="flex items-center gap-4 mb-10 pb-6 border-b border-border/40">
+      <div className="flex items-center gap-4 mb-10">
         <Link href="/" className="flex items-center gap-2 group">
           <Image
             src="/vicino-logo.png"

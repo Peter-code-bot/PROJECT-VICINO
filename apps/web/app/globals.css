@@ -108,15 +108,6 @@
   border-radius: 4px;
 }
 
-/* Hide scrollbars inside Capacitor native WebView */
-body.is-capacitor ::-webkit-scrollbar {
-  display: none;
-}
-body.is-capacitor * {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
@@ -150,12 +141,26 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-/* ─── SCROLLBAR ──────────────────────────────────────────── */
+/* ─── SCROLLBAR — delgado y discreto, theme-aware ─────────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--muted-foreground); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--foreground); }
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+  border-radius: 2px;
+  transition: background-color 150ms ease;
+}
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox / standards */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+}
 
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
