@@ -76,6 +76,7 @@ serve(async (req) => {
       const buckets = [
         "product-media",
         "verification-documents",
+        "avatars",
         "chat-media",
         "review-media",
       ];
