@@ -9,6 +9,7 @@ interface FavoriteButtonProps {
   productId: string;
   initialFavorite: boolean;
   size?: "sm" | "md" | "lg";
+  variant?: "overlay" | "standalone";
   className?: string;
 }
 
@@ -16,6 +17,7 @@ export function FavoriteButton({
   productId,
   initialFavorite,
   size = "md",
+  variant = "overlay",
   className,
 }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
@@ -50,9 +52,11 @@ export function FavoriteButton({
       aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
       className={cn(
         "rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-50",
-        isFavorite
-          ? "bg-red-500/80 text-white"
-          : "bg-black/40 backdrop-blur-sm hover:bg-black/60 border border-white/20",
+        variant === "standalone"
+          ? "hover:bg-primary/10"
+          : isFavorite
+            ? "bg-red-500/80 text-white"
+            : "bg-black/40 backdrop-blur-sm hover:bg-black/60 border border-white/20",
         sizeClasses[size],
         className
       )}
@@ -60,7 +64,13 @@ export function FavoriteButton({
       <Heart
         className={cn(
           iconSize[size],
-          isFavorite ? "fill-current" : "text-white"
+          variant === "standalone"
+            ? isFavorite
+              ? "fill-current text-primary"
+              : "text-foreground"
+            : isFavorite
+              ? "fill-current"
+              : "text-white"
         )}
       />
     </button>

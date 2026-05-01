@@ -299,12 +299,12 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="flex gap-3">
               <Link
                 href={`/chat?seller=${seller?.id}&product=${product.id}`}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary/40 px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/10 active:scale-95 transition-all duration-200"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary/60 px-6 py-3 text-sm font-semibold text-primary hover:bg-primary/10 active:scale-95 transition-all duration-200"
               >
                 <MessageCircle className="h-4 w-4" />
                 Contactar Vendedor
               </Link>
-              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" className="w-14 h-14 rounded-xl border border-border/60 bg-card" />
+              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" variant="standalone" className="w-14 h-14 rounded-xl border border-primary/60" />
             </div>
           </div>
         </div>
