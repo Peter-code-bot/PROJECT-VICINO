@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm } from "./product-form";
 import { PlusCircle } from "lucide-react";
@@ -41,9 +42,9 @@ export default async function VenderPage() {
           <p className="font-semibold mb-1">Tu perfil de vendedor está inactivo</p>
           <p className="opacity-90">
             Para publicar productos, necesitas activar el modo vendedor en{" "}
-            <a href="/perfil" className="underline font-semibold hover:text-amber-900 transition-colors">
+            <Link href="/perfil" className="underline font-semibold hover:text-amber-900 transition-colors">
               tu perfil
-            </a>
+            </Link>
             .
           </p>
         </div>

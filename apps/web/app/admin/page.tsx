@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@vicino/shared";
 import { Users, Package, Handshake, TrendingUp, AlertCircle, ShieldAlert } from "lucide-react";
@@ -136,7 +137,7 @@ export default async function AdminDashboardPage() {
           <h2 className="font-heading font-semibold text-lg">Acción Requerida</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(pendingVerifications ?? 0) > 0 && (
-              <a
+              <Link
                 href="/admin/verifications"
                 className="group flex items-center gap-4 rounded-2xl border border-amber-200/50 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/50 p-4 transition-all hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/40"
               >
@@ -150,11 +151,11 @@ export default async function AdminDashboardPage() {
                   </h3>
                   <p className="text-sm text-amber-700 dark:text-amber-300 group-hover:underline">Revisar solicitudes →</p>
                 </div>
-              </a>
+              </Link>
             )}
             
             {(openDisputes ?? 0) > 0 && (
-              <a
+              <Link
                 href="/admin/disputes"
                 className="group flex items-center gap-4 rounded-2xl border border-red-200/50 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 p-4 transition-all hover:shadow-md hover:bg-red-100 dark:hover:bg-red-900/40"
               >
@@ -168,7 +169,7 @@ export default async function AdminDashboardPage() {
                   </h3>
                   <p className="text-sm text-red-700 dark:text-red-300 group-hover:underline">Resolver conflictos →</p>
                 </div>
-              </a>
+              </Link>
             )}
           </div>
         </div>

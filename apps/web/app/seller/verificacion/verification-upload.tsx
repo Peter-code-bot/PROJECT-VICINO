@@ -52,6 +52,7 @@ export function VerificationUpload({
     setError("");
     setUploading(key);
 
+    // eslint-disable-next-line react-hooks/purity -- Date.now() intencional para path unico de upload metadata; follow-up: mover generacion de path a server action
     const path = `${userId}/${key}-${Date.now()}.${file.name.split(".").pop()}`;
     const { error: uploadError } = await supabase.storage
       .from("verification-documents")

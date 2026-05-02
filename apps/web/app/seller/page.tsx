@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
@@ -221,9 +222,9 @@ export default async function SellerOverviewPage() {
                   </p>
                 )}
                 {pendingReviews > 0 && (
-                  <a href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-amber-800 dark:text-amber-200 hover:underline mt-2">
+                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-amber-800 dark:text-amber-200 hover:underline mt-2">
                     Ir a reseñas →
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>
