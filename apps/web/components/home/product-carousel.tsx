@@ -25,7 +25,7 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
   const [emblaRef] = useEmblaCarousel({ align: "start", dragFree: true });
 
   return (
-    <div className="overflow-hidden -mx-4 px-4" ref={emblaRef}>
+    <div className="overflow-hidden -mx-4 px-4" ref={emblaRef} data-no-page-swipe>
       <div className="flex gap-3">
         {products.map((p) => {
           const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
