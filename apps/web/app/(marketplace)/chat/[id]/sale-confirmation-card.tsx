@@ -63,7 +63,7 @@ export function SaleConfirmationCard({
   }
 
   const statusColor = isCompleted
-    ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+    ? "border-emerald-500/30 bg-muted"
     : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30";
 
   return (

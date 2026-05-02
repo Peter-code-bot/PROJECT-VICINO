@@ -57,9 +57,9 @@ export function SaleConfirmationForm({
   }
 
   return (
-    <div className="px-4 py-3 border-b bg-green-50 dark:bg-green-950/30 space-y-3">
+    <div className="px-4 py-3 border-b bg-muted space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-green-800 dark:text-green-200">
+        <h3 className="text-sm font-semibold text-foreground">
           Confirmar Venta
         </h3>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
