@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.account_deletion_log (
   deleted_user_id UUID NOT NULL,
   deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   summary JSONB,
-  expires_at TIMESTAMPTZ GENERATED ALWAYS AS (deleted_at + INTERVAL '90 days') STORED
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 days')
 );
 
 CREATE INDEX IF NOT EXISTS idx_deletion_log_expires
