@@ -383,9 +383,11 @@ export default async function ProductDetailPage({ params }: Props) {
                       </span>
                     </div>
                   )}
-                  <div className="pt-2 border-t border-border/30">
-                    <ReviewProductLink product={reviewedProduct ?? null} />
-                  </div>
+                  {reviewedProduct?.id !== product.id && (
+                    <div className="pt-2 border-t border-border/30">
+                      <ReviewProductLink product={reviewedProduct ?? null} />
+                    </div>
+                  )}
                 </div>
               );
             })}

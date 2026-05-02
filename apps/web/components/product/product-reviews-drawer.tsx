@@ -54,6 +54,7 @@ export function ProductReviewsDrawer({
   sellerName,
   sellerAvatar,
   currentUserId,
+  currentProductId,
 }: ProductReviewsDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -186,9 +187,11 @@ export function ProductReviewsDrawer({
                       </span>
                     </div>
                   )}
-                  <div className="pt-2 border-t border-border/30">
-                    <ReviewProductLink product={reviewedProduct ?? null} />
-                  </div>
+                  {reviewedProduct?.id !== currentProductId && (
+                    <div className="pt-2 border-t border-border/30">
+                      <ReviewProductLink product={reviewedProduct ?? null} />
+                    </div>
+                  )}
                 </div>
               );
             })
