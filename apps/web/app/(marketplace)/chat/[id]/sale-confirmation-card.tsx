@@ -73,9 +73,9 @@ export function SaleConfirmationCard({
           {isCompleted ? "✅ Venta confirmada" : "🤝 Confirmación de venta"}
         </span>
         {isCompleted ? (
-          <CheckCheck className="h-4 w-4 text-green-600" />
+          <CheckCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
         ) : (
-          <Clock className="h-4 w-4 text-amber-600" />
+          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         )}
       </div>
 
@@ -90,10 +90,10 @@ export function SaleConfirmationCard({
 
       {/* Confirmation status */}
       <div className="flex gap-2 text-[10px]">
-        <span className={sc.buyer_confirmed ? "text-green-600" : "text-muted-foreground"}>
+        <span className={sc.buyer_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
           {sc.buyer_confirmed ? "✓" : "○"} Comprador
         </span>
-        <span className={sc.seller_confirmed ? "text-green-600" : "text-muted-foreground"}>
+        <span className={sc.seller_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
@@ -121,7 +121,7 @@ export function SaleConfirmationCard({
       )}
 
       {myConfirmed && !otherConfirmed && !isCompleted && (
-        <p className="text-[10px] text-amber-600">
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">
           Esperando confirmación del {isBuyer ? "vendedor" : "comprador"}...
         </p>
       )}
