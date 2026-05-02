@@ -23,6 +23,16 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
   // eslint-disable-next-line react-hooks/set-state-in-effect -- next-themes hydration pattern; refactor pendiente como follow-up tecnico
   useEffect(() => setMounted(true), []);
 
+  // Lock body scroll while drawer is open (mirrors seller-mobile-drawer pattern)
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [open]);
+
   return (
     <>
       <div onClick={() => setOpen(true)}>{trigger}</div>
@@ -60,7 +70,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
             )}
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_5rem)]">
               <Section label="Cuenta">
                 <Item href="/perfil/editar" icon={User} label="Editar perfil" onClose={() => setOpen(false)} />
                 <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
