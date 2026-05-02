@@ -13,6 +13,7 @@ import { AppointmentButton } from "@/components/product/appointment-button";
 import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import type { TrustLevel } from "@vicino/shared";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { ProductReviewsTrigger } from "@/components/product/product-reviews-trigger";
 
 interface Props {
   params: Promise<{ categoria: string; slug: string }>;
@@ -80,7 +81,7 @@ export default async function ProductDetailPage({ params }: Props) {
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(50);
 
   // Get active coupons for this seller
   const { data: coupons } = await supabase
@@ -402,6 +403,16 @@ export default async function ProductDetailPage({ params }: Props) {
           Quiero comprarlo
         </Link>
       </div>
+
+      <ProductReviewsTrigger
+        reviews={reviews ?? []}
+        averageRating={Number(seller?.average_rating ?? 0)}
+        reviewsCount={Number(seller?.reviews_count ?? 0)}
+        sellerName={seller?.nombre ?? "Vendedor"}
+        sellerAvatar={seller?.foto ?? null}
+        currentUserId={user?.id ?? null}
+        currentProductId={product.id}
+      />
     </div>
   );
 }
