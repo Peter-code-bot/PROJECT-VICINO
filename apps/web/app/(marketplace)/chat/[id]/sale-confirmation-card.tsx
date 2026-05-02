@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X, Clock, CheckCheck } from "lucide-react";
 import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
@@ -31,7 +32,8 @@ export function SaleConfirmationCard({
   confirmation: sc,
   currentUserId,
 }: SaleConfirmationCardProps) {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const productTitle = Array.isArray(sc.products_services)
     ? sc.products_services[0]?.titulo
@@ -44,16 +46,20 @@ export function SaleConfirmationCard({
   const isCompleted = sc.status === "completed";
   const canConfirm = !myConfirmed && sc.status === "pending_confirmation";
 
-  async function handleConfirm() {
-    setLoading(true);
-    await confirmSale(sc.id);
-    setLoading(false);
+  function handleConfirm() {
+    if (isPending || myConfirmed || sc.status !== "pending_confirmation") return;
+    startTransition(async () => {
+      await confirmSale(sc.id);
+      router.refresh();
+    });
   }
 
-  async function handleCancel() {
-    setLoading(true);
-    await cancelSale(sc.id);
-    setLoading(false);
+  function handleCancel() {
+    if (isPending || sc.status !== "pending_confirmation") return;
+    startTransition(async () => {
+      await cancelSale(sc.id);
+      router.refresh();
+    });
   }
 
   const statusColor = isCompleted
@@ -97,7 +103,7 @@ export function SaleConfirmationCard({
         <div className="flex gap-2 pt-1">
           <button
             onClick={handleConfirm}
-            disabled={loading}
+            disabled={isPending}
             className="flex items-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 disabled:opacity-50"
           >
             <Check className="h-3 w-3" />
@@ -105,7 +111,7 @@ export function SaleConfirmationCard({
           </button>
           <button
             onClick={handleCancel}
-            disabled={loading}
+            disabled={isPending}
             className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
           >
             <X className="h-3 w-3" />
