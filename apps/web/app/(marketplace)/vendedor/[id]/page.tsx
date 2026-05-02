@@ -33,7 +33,7 @@ export default async function VendedorPage({ params }: Props) {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, nombre, foto, bio, user_id, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating_as_seller, average_rating_as_buyer, reviews_count_as_seller, reviews_count_as_buyer, is_verified, created_at"
+      "id, nombre, foto, bio, user_id, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at"
     )
     .eq("id", id)
     .single();

@@ -26,10 +26,8 @@ interface ProfileHeaderProps {
     trust_level: string;
     trust_points: number;
     total_sales: number;
-    average_rating_as_seller: number;
-    average_rating_as_buyer: number;
-    reviews_count_as_seller: number;
-    reviews_count_as_buyer: number;
+    average_rating: number;
+    reviews_count: number;
     is_verified: boolean;
     created_at: string;
   } | null;
@@ -97,11 +95,11 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }
               <p className="font-heading font-bold text-lg">{productCount}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Productos</p>
             </div>
-            {Number(profile.average_rating_as_seller) > 0 && (
+            {Number(profile.average_rating) > 0 && (
               <div>
                 <p className="font-heading font-bold text-lg flex items-center gap-0.5">
                   <Star className="w-3.5 h-3.5 text-gold fill-gold" />
-                  {Number(profile.average_rating_as_seller).toFixed(1)}
+                  {Number(profile.average_rating).toFixed(1)}
                 </p>
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Rating</p>
               </div>

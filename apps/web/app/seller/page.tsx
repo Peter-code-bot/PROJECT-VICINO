@@ -19,7 +19,7 @@ export default async function SellerOverviewPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("trust_level, trust_points, average_rating_as_seller, reviews_count_as_seller, total_sales")
+    .select("trust_level, trust_points, average_rating, reviews_count, total_sales")
     .eq("id", user.id)
     .single();
 
@@ -117,13 +117,13 @@ export default async function SellerOverviewPage() {
               <span className="text-sm font-medium text-muted-foreground">Reputación</span>
             </div>
             <RatingStars
-              rating={Number(profile?.average_rating_as_seller ?? 0)}
-              count={Number(profile?.reviews_count_as_seller ?? 0)}
+              rating={Number(profile?.average_rating ?? 0)}
+              count={Number(profile?.reviews_count ?? 0)}
               size="sm"
             />
           </div>
           <p className="text-3xl font-heading font-bold mb-1 tabular-nums">
-            {Number(profile?.average_rating_as_seller ?? 0).toFixed(1)}
+            {Number(profile?.average_rating ?? 0).toFixed(1)}
           </p>
           <p className="text-sm font-medium text-gold/80">Aprobación de clientes</p>
         </div>

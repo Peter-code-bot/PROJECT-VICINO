@@ -51,7 +51,7 @@ export default async function ProductDetailPage({ params }: Props) {
       *,
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
-        average_rating_as_seller, reviews_count_as_seller, total_sales
+        average_rating, reviews_count, total_sales
       )
     `
     )
@@ -225,8 +225,8 @@ export default async function ProductDetailPage({ params }: Props) {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <RatingStars
-                    rating={Number(seller?.average_rating_as_seller ?? 0)}
-                    count={Number(seller?.reviews_count_as_seller ?? 0)}
+                    rating={Number(seller?.average_rating ?? 0)}
+                    count={Number(seller?.reviews_count ?? 0)}
                     size="sm"
                   />
                   <span>·</span>

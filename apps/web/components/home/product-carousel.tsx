@@ -12,8 +12,8 @@ interface CarouselProduct {
   categoria: string;
   slug: string | null;
   profiles:
-    | { nombre: string; trust_level: string; average_rating_as_seller: number; reviews_count_as_seller: number }
-    | { nombre: string; trust_level: string; average_rating_as_seller: number; reviews_count_as_seller: number }[]
+    | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }
+    | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }[]
     | null;
 }
 
@@ -42,8 +42,8 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
                   nombre: profile?.nombre ?? "Vendedor",
                   trust_level: (profile?.trust_level as TrustLevel) ?? "nuevo",
                 }}
-                rating={Number(profile?.average_rating_as_seller ?? 0)}
-                reviewsCount={Number(profile?.reviews_count_as_seller ?? 0)}
+                rating={Number(profile?.average_rating ?? 0)}
+                reviewsCount={Number(profile?.reviews_count ?? 0)}
               />
             </div>
           );
