@@ -7,6 +7,7 @@ import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { FavoriteButton } from "@/components/shared/favorite-button";
+import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { AppointmentButton } from "@/components/product/appointment-button";
 import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
@@ -70,7 +71,8 @@ export default async function ProductDetailPage({ params }: Props) {
     .select(
       `
       id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha,
-      profiles!reviewer_id(nombre, foto, trust_level)
+      profiles!reviewer_id(nombre, foto, trust_level),
+      products_services!product_id(id, titulo, categoria, slug, imagen_principal)
     `
     )
     .eq("product_id", product.id)
@@ -326,6 +328,9 @@ export default async function ProductDetailPage({ params }: Props) {
               const reviewer = Array.isArray(review.profiles)
                 ? review.profiles[0]
                 : review.profiles;
+              const reviewedProduct = Array.isArray(review.products_services)
+                ? review.products_services[0]
+                : review.products_services;
               return (
                 <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm space-y-3">
                   <div className="flex items-center gap-3">
@@ -355,6 +360,9 @@ export default async function ProductDetailPage({ params }: Props) {
                       </span>
                     </div>
                   )}
+                  <div className="pt-2 border-t border-border/30">
+                    <ReviewProductLink product={reviewedProduct ?? null} />
+                  </div>
                 </div>
               );
             })}

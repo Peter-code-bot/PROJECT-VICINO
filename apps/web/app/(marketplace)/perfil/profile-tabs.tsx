@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
+import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { formatPrice, formatDate } from "@vicino/shared";
 import { Grid3X3, Star } from "lucide-react";
 
@@ -26,6 +27,10 @@ interface ProfileTabsProps {
     created_at: string;
     review_type: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
+    products_services:
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | null;
   }>;
   reviewsAsBuyer: Array<{
     id: string;
@@ -34,6 +39,10 @@ interface ProfileTabsProps {
     created_at: string;
     review_type: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
+    products_services:
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | null;
   }>;
   isVendedor: boolean;
 }
@@ -129,6 +138,9 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           {allReviews.length > 0 ? (
             allReviews.map((r) => {
               const reviewer = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+              const reviewedProduct = Array.isArray(r.products_services)
+                ? r.products_services[0]
+                : r.products_services;
               return (
                 <div key={r.id} className="rounded-xl border border-border/40 p-4 space-y-2">
                   <div className="flex items-center gap-2">
@@ -148,9 +160,12 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                   {r.comentario && (
                     <p className="text-sm text-muted-foreground">{r.comentario}</p>
                   )}
-                  <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">
-                    {r.review_type === "buyer_to_seller" ? "Como vendedor" : "Como comprador"}
-                  </span>
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide shrink-0">
+                      {r.review_type === "buyer_to_seller" ? "Como vendedor" : "Como comprador"}
+                    </span>
+                    <ReviewProductLink product={reviewedProduct ?? null} />
+                  </div>
                 </div>
               );
             })
