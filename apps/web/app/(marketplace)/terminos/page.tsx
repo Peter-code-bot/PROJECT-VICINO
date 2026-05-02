@@ -69,7 +69,7 @@ export default function TerminosPage() {
 
         <section>
           <h2 className="text-lg font-heading font-bold">12. Contacto</h2>
-          <p>Para preguntas, quejas o sugerencias sobre estos términos o el funcionamiento de la Plataforma, puedes contactarnos a través del sistema de chat de la Plataforma o enviando un correo a soporte@vicino.mx.</p>
+          <p>Para preguntas, quejas o sugerencias sobre estos términos o el funcionamiento de la Plataforma, puedes contactarnos a través del sistema de chat de la Plataforma o enviando un correo a admin@vicinomarket.com.</p>
         </section>
       </div>
     </div>

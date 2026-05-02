@@ -57,10 +57,10 @@ export default function EliminarCuentaPage() {
         <p className="mt-2 text-gray-700">
           Envía un correo a{" "}
           <a
-            href="mailto:soporte@vicino.mx?subject=Eliminar%20cuenta"
+            href="mailto:admin@vicinomarket.com?subject=Eliminar%20cuenta"
             className="font-medium text-blue-600 underline"
           >
-            soporte@vicino.mx
+            admin@vicinomarket.com
           </a>{" "}
           desde la dirección de email asociada a tu cuenta de VICINO con el
           asunto <strong>&quot;Eliminar cuenta&quot;</strong>. Procesaremos tu
@@ -109,10 +109,10 @@ export default function EliminarCuentaPage() {
         <p className="mt-2 text-gray-700">
           Escríbenos a{" "}
           <a
-            href="mailto:soporte@vicino.mx"
+            href="mailto:admin@vicinomarket.com"
             className="font-medium text-blue-600 underline"
           >
-            soporte@vicino.mx
+            admin@vicinomarket.com
           </a>{" "}
           y te ayudamos.
         </p>
@@ -153,10 +153,10 @@ export default function EliminarCuentaPage() {
         <p className="mt-2 text-gray-700">
           Send an email to{" "}
           <a
-            href="mailto:soporte@vicino.mx?subject=Delete%20account"
+            href="mailto:admin@vicinomarket.com?subject=Delete%20account"
             className="font-medium text-blue-600 underline"
           >
-            soporte@vicino.mx
+            admin@vicinomarket.com
           </a>{" "}
           from the email address associated with your VICINO account, with
           the subject <strong>&quot;Delete account&quot;</strong>. We will
@@ -202,10 +202,10 @@ export default function EliminarCuentaPage() {
         <p className="mt-2 text-gray-700">
           Email us at{" "}
           <a
-            href="mailto:soporte@vicino.mx"
+            href="mailto:admin@vicinomarket.com"
             className="font-medium text-blue-600 underline"
           >
-            soporte@vicino.mx
+            admin@vicinomarket.com
           </a>{" "}
           and we&apos;ll help you out.
         </p>
