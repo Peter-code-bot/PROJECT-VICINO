@@ -12,6 +12,7 @@ import { ProductGallery } from "@/components/product/product-gallery";
 import { AppointmentButton } from "@/components/product/appointment-button";
 import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import type { TrustLevel } from "@vicino/shared";
+import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 
 interface Props {
   params: Promise<{ categoria: string; slug: string }>;
@@ -70,7 +71,7 @@ export default async function ProductDetailPage({ params }: Props) {
     .from("reviews")
     .select(
       `
-      id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha,
+      id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha, reviewer_id,
       profiles!reviewer_id(nombre, foto, trust_level),
       products_services!product_id(id, titulo, categoria, slug, imagen_principal)
     `
@@ -169,9 +170,20 @@ export default async function ProductDetailPage({ params }: Props) {
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-heading font-bold mb-3 leading-snug">
-              {product.titulo}
-            </h1>
+            <div className="flex items-start gap-2 mb-3">
+              <h1 className="flex-1 text-2xl sm:text-3xl font-heading font-bold leading-snug">
+                {product.titulo}
+              </h1>
+              {user && user.id !== product.creador_id && (
+                <ReportMenuButton
+                  targetType="listing"
+                  targetId={product.id}
+                  targetLabel={product.titulo}
+                  ariaLabel="Reportar este producto"
+                  className="mt-1"
+                />
+              )}
+            </div>
             
             <div className="mb-4">
               <PriceDisplay amount={Number(product.precio)} size="lg" className="text-3xl animate-slide-in-right" />
@@ -331,18 +343,28 @@ export default async function ProductDetailPage({ params }: Props) {
               const reviewedProduct = Array.isArray(review.products_services)
                 ? review.products_services[0]
                 : review.products_services;
+              const isOwnReview = user?.id === review.reviewer_id;
               return (
                 <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-primary">
                       {reviewer?.nombre?.charAt(0)?.toUpperCase()}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-semibold text-sm">
                         {reviewer?.nombre ?? "Usuario Verificado"}
                       </div>
                       <RatingStars rating={review.rating} size="sm" />
                     </div>
+                    {user && !isOwnReview && (
+                      <ReportMenuButton
+                        targetType="review"
+                        targetId={review.id}
+                        targetLabel={review.comentario ? review.comentario.slice(0, 60) : `Reseña de ${reviewer?.nombre ?? "usuario"}`}
+                        iconSize={14}
+                        ariaLabel="Reportar reseña"
+                      />
+                    )}
                   </div>
                   {review.comentario && (
                     <p className="text-sm text-muted-foreground leading-relaxed pl-13">

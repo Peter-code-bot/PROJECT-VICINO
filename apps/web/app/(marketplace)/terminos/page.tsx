@@ -1,10 +1,12 @@
+import Link from "next/link";
+
 export const metadata = { title: "Términos y Condiciones" };
 
 export default function TerminosPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1 className="text-3xl font-heading font-bold mb-2">Términos y Condiciones de Uso</h1>
-      <p className="text-sm text-muted-foreground mb-8">Última actualización: Abril 2026</p>
+      <p className="text-sm text-muted-foreground mb-8">Última actualización: 29 de abril de 2026</p>
 
       <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none space-y-6">
         <section>
@@ -70,6 +72,40 @@ export default function TerminosPage() {
         <section>
           <h2 className="text-lg font-heading font-bold">12. Contacto</h2>
           <p>Para preguntas, quejas o sugerencias sobre estos términos o el funcionamiento de la Plataforma, puedes contactarnos a través del sistema de chat de la Plataforma o enviando un correo a admin@vicinomarket.com.</p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-heading font-bold">13. Reportes, Bloqueo y Conducta del Usuario</h2>
+          <p><strong>Mayoría de edad.</strong> VICINO es una plataforma para mayores de 18 años residentes en México. Al registrarte declaras cumplir con esta condición. VICINO se reserva el derecho de suspender cuentas que violen este requisito.</p>
+          <p><strong>Contenido prohibido.</strong> Está prohibido publicar, ofrecer o intercambiar en la Plataforma, sin que esta lista sea limitativa:</p>
+          <ul className="list-disc list-inside ml-2 space-y-0.5">
+            <li>Productos o servicios ilegales bajo las leyes mexicanas aplicables.</li>
+            <li>Armas, municiones, explosivos, drogas, sustancias controladas, alcohol, tabaco o productos con regulación restringida.</li>
+            <li>Contenido sexual explícito, pornografía o material para adultos.</li>
+            <li>Animales vivos, partes o derivados de animales en categoría de protección.</li>
+            <li>Productos falsificados o que infrinjan derechos de propiedad intelectual.</li>
+            <li>Servicios que violen normas laborales, sanitarias o de protección al consumidor.</li>
+            <li>Contenido que incite al odio, violencia, discriminación o acoso por raza, género, orientación sexual, religión o nacionalidad.</li>
+            <li>Spam, esquemas piramidales, multinivel fraudulentos o publicaciones engañosas.</li>
+            <li>Información personal de terceros sin su consentimiento.</li>
+          </ul>
+          <p><strong>Conducta esperada.</strong> Al usar VICINO te comprometes a tratar a otros usuarios con respeto, no acosar ni amenazar, no suplantar la identidad de otra persona, no usar la Plataforma para actividades fraudulentas y cumplir con las leyes federales y locales aplicables a tus transacciones.</p>
+          <p><strong>Mecanismos de moderación.</strong> En cada producto, perfil de usuario, mensaje y reseña encontrarás un botón de &ldquo;Reportar&rdquo; que permite enviar el contenido a revisión. Adicionalmente, puedes <strong>bloquear a otro usuario</strong> desde su perfil; al hacerlo, ni tú ni esa persona verán mutuamente su contenido en la Plataforma.</p>
+          <p><strong>Plazo de respuesta.</strong> VICINO se compromete a revisar los reportes en un plazo de <strong>48 horas hábiles</strong>. El contenido con tres o más reportes activos se oculta automáticamente del público mientras se completa la revisión.</p>
+          <p><strong>Verificación con INE.</strong> La imagen de tu identificación oficial INE solicitada para verificación se almacena cifrada y no se comparte públicamente. Para más detalles consulta nuestro <Link href="/privacidad" className="text-primary underline">Aviso de Privacidad</Link>.</p>
+          <p><strong>Sanciones.</strong> VICINO se reserva el derecho de ocultar o eliminar contenido reportado, suspender o eliminar cuentas que violen estos términos de forma reiterada, y cooperar con autoridades competentes en casos de actividad ilegal.</p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-heading font-bold">14. Seguridad Infantil y Denuncias</h2>
+          <p>VICINO tiene <strong>tolerancia cero</strong> a cualquier contenido o conducta que ponga en riesgo a menores de edad, incluyendo material de explotación sexual infantil (CSAM), grooming o intentos de captación.</p>
+          <p>Cuando se reporte contenido bajo el motivo &ldquo;Seguridad infantil&rdquo;:</p>
+          <ul className="list-disc list-inside ml-2 space-y-0.5">
+            <li>El contenido se oculta de forma <strong>inmediata y automática</strong>, sin esperar revisión humana.</li>
+            <li>VICINO presentará <strong>denuncia ante la Policía Cibernética y/o la Fiscalía General de la República (FGR)</strong> conforme a sus obligaciones legales.</li>
+            <li>VICINO conservará evidencia del reporte y de las acciones tomadas durante al menos cinco (5) años, según las normas aplicables.</li>
+          </ul>
+          <p>Si crees que existe un riesgo inmediato para un menor, te pedimos que <strong>también denuncies directamente a las autoridades</strong> además de reportarlo en VICINO.</p>
         </section>
       </div>
     </div>

@@ -53,7 +53,7 @@ export default async function VendedorPage({ params }: Props) {
 
   const { data: reviewsAsSeller } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
     .eq("reviewed_id", id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
@@ -62,7 +62,7 @@ export default async function VendedorPage({ params }: Props) {
 
   const { data: reviewsAsBuyer } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
     .eq("reviewed_id", id)
     .eq("review_type", "seller_to_buyer")
     .eq("visible", true)
@@ -75,6 +75,12 @@ export default async function VendedorPage({ params }: Props) {
     .eq("buyer_id", id)
     .eq("status", "completed");
 
+  // Usuario autenticado actual (para esconder botón de reportar contenido propio)
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser();
+  const currentUserId = currentUser?.id ?? null;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <ProfileHeader
@@ -82,12 +88,14 @@ export default async function VendedorPage({ params }: Props) {
         productCount={products?.length ?? 0}
         purchaseCount={purchaseCount ?? 0}
         isPublic
+        currentUserId={currentUserId}
       />
       <ProfileTabs
         products={products ?? []}
         reviewsAsSeller={reviewsAsSeller ?? []}
         reviewsAsBuyer={reviewsAsBuyer ?? []}
         isVendedor={publicProfile.es_vendedor ?? false}
+        currentUserId={currentUserId}
       />
     </div>
   );

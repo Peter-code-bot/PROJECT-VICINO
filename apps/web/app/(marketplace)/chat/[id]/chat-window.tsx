@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
 import { SaleConfirmationCard } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
+import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import Link from "next/link";
 
 interface Message {
@@ -217,7 +218,10 @@ export function ChatWindow({
           return (
             <div
               key={msg.id}
-              className={cn("flex", isOwn ? "justify-end" : "justify-start")}
+              className={cn(
+                "flex items-end gap-1 group",
+                isOwn ? "justify-end" : "justify-start"
+              )}
             >
               <div
                 className={cn(
@@ -237,6 +241,21 @@ export function ChatWindow({
                   {formatRelativeTime(msg.created_at)}
                 </p>
               </div>
+              {!isOwn && (
+                // Botón de reportar mensaje. Visible siempre con baja opacidad,
+                // se intensifica al hover. Patrón cross-platform (evita
+                // colisión con long-press nativo de Capacitor en Android).
+                // TODO(capacitor): si en device real este UX no encaja, migrar
+                // a long-press con bloqueo de selección nativa.
+                <ReportMenuButton
+                  targetType="message"
+                  targetId={msg.id}
+                  targetLabel={msg.texto.slice(0, 60)}
+                  iconSize={14}
+                  ariaLabel="Reportar mensaje"
+                  className="opacity-40 group-hover:opacity-100 transition-opacity"
+                />
+              )}
             </div>
           );
         })}

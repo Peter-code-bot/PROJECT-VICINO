@@ -8,6 +8,7 @@ import type { TrustLevel } from "@vicino/shared";
 import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { TRUST_LEVELS } from "@vicino/shared";
+import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 
 interface ProfileHeaderProps {
   profile: {
@@ -34,9 +35,12 @@ interface ProfileHeaderProps {
   productCount: number;
   purchaseCount: number;
   isPublic?: boolean;
+  /** Id del usuario autenticado. Se usa para esconder el botón de reportar
+   *  cuando el perfil mostrado es el del propio usuario. */
+  currentUserId?: string | null;
 }
 
-export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, currentUserId }: ProfileHeaderProps) {
   const [showActions, setShowActions] = useState(false);
 
   if (!profile) return null;
@@ -182,13 +186,25 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }
 
       {/* Action buttons */}
       {isPublic ? (
-        <Link
-          href={`/chat?seller=${profile.id}`}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
-        >
-          <MessageCircle className="w-4 h-4" />
-          Contactar
-        </Link>
+        <div className="flex gap-2 items-center">
+          <Link
+            href={`/chat?seller=${profile.id}`}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Contactar
+          </Link>
+          {currentUserId && currentUserId !== profile.id && (
+            <ReportMenuButton
+              targetType="user"
+              targetId={profile.id}
+              targetLabel={profile.nombre_negocio ?? profile.nombre}
+              blockableUserId={profile.id}
+              ariaLabel="Reportar o bloquear usuario"
+              className="border border-border/50 rounded-xl h-[42px] w-[42px] flex items-center justify-center"
+            />
+          )}
+        </div>
       ) : (
         <div className="flex gap-2">
           <Link
