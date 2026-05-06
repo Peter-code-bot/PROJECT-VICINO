@@ -88,20 +88,20 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
 
           <div className="flex gap-5 text-center">
             <div>
-              <p className="font-heading font-bold text-lg">{profile.total_sales}</p>
+              <p className="font-heading font-bold text-sm">{profile.total_sales}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Ventas</p>
             </div>
             <div>
-              <p className="font-heading font-bold text-lg">{purchaseCount}</p>
+              <p className="font-heading font-bold text-sm">{purchaseCount}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Compras</p>
             </div>
             <div>
-              <p className="font-heading font-bold text-lg">{productCount}</p>
+              <p className="font-heading font-bold text-sm">{productCount}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Productos</p>
             </div>
             {Number(profile.average_rating) > 0 && (
               <div>
-                <p className="font-heading font-bold text-lg flex items-center gap-0.5">
+                <p className="font-heading font-bold text-sm flex items-center gap-0.5">
                   <Star className="w-3.5 h-3.5 text-gold fill-gold" />
                   {Number(profile.average_rating).toFixed(1)}
                 </p>
