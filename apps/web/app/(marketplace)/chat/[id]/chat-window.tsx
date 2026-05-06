@@ -136,17 +136,23 @@ export function ChatWindow({
         <Link href="/chat" className="md:hidden">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <UserAvatar src={otherUser?.foto} name={otherUser?.nombre ?? "?"} size="sm" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">
-            {otherUser?.nombre ?? "Usuario"}
-          </p>
-          {product && (
-            <p className="text-xs text-muted-foreground truncate">
-              {product.titulo}
+        <Link
+          href={`/vendedor/${otherUser?.id ?? ""}`}
+          className="flex items-center gap-3 flex-1 min-w-0 -mx-2 px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+          aria-label={otherUser?.nombre ? `Ver perfil de ${otherUser.nombre}` : "Perfil de usuario"}
+        >
+          <UserAvatar src={otherUser?.foto} name={otherUser?.nombre ?? "?"} size="sm" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">
+              {otherUser?.nombre ?? "Usuario"}
             </p>
-          )}
-        </div>
+            {product && (
+              <p className="text-xs text-muted-foreground truncate">
+                {product.titulo}
+              </p>
+            )}
+          </div>
+        </Link>
         {saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
           <button
             onClick={() => setShowSaleForm(!showSaleForm)}
