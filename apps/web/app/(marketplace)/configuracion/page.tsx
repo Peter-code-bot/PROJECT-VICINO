@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { User, Shield } from "lucide-react";
 import { LogoutSection } from "./logout-section";
+import { DeleteAccountSection } from "./delete-account-section";
 
 export default async function ConfiguracionPage() {
   const supabase = await createClient();
@@ -43,6 +44,13 @@ export default async function ConfiguracionPage() {
           Sesión
         </h2>
         <LogoutSection />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Zona peligrosa
+        </h2>
+        <DeleteAccountSection />
       </section>
     </div>
   );
