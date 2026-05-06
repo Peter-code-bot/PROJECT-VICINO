@@ -100,5 +100,3 @@ export function DeleteAccountSection() {
     </button>
   );
 }
-  );
-}
