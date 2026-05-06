@@ -295,7 +295,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               </>
             )}
 
-            <div className="space-y-2 relative">
+            <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
                 Métodos de pago aceptados
               </label>
@@ -307,21 +307,19 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 onClick={() => setMetodosOpen(!metodosOpen)}
                 className="w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm text-left transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               >
-                <span className={metodosSeleccionados.length > 0 ? "text-foreground" : "text-muted-foreground"}>
+                <span className={metodosSeleccionados.length > 0 ? "text-foreground truncate pr-2" : "text-muted-foreground"}>
                   {metodosSeleccionados.length > 0
                     ? metodosSeleccionados.join(", ")
                     : "Selecciona métodos de pago..."}
                 </span>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${metodosOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${metodosOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Panel desplegable */}
-              {metodosOpen && (
-                <>
-                  {/* Overlay invisible para cerrar al hacer clic fuera */}
-                  <div className="fixed inset-0 z-10" onClick={() => setMetodosOpen(false)} />
-                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-border/50 bg-card shadow-lg overflow-hidden animate-fade-in">
-                    <div className="max-h-60 overflow-y-auto p-2 space-y-0.5">
+              {/* Panel expandible INLINE (NO absolute — el padre tiene overflow-hidden) */}
+              <div className={`grid transition-all duration-300 ${metodosOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="rounded-xl border border-border/50 bg-card mt-1">
+                    <div className="p-2 space-y-0.5">
                       {METODOS_PAGO.map((metodo) => (
                         <label
                           key={metodo}
@@ -331,6 +329,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                               : "hover:bg-muted text-foreground/80"
                           }`}
                         >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={metodosSeleccionados.includes(metodo)}
+                            onChange={() => toggleMetodo(metodo)}
+                          />
                           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                             metodosSeleccionados.includes(metodo)
                               ? "bg-primary border-primary"
@@ -340,19 +344,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                               <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
                             )}
                           </div>
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={metodosSeleccionados.includes(metodo)}
-                            onChange={() => toggleMetodo(metodo)}
-                          />
                           <span className="text-sm">{metodo}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
 
             <div className="pt-2">
