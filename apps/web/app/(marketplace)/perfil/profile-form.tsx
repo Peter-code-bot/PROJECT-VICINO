@@ -4,9 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile } from "./actions";
-import { Loader2, ShieldAlert, CheckCircle2, User, Store } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown } from "lucide-react";
 
-const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Mercado Pago", "OXXO Pay", "Débito"];
+const METODOS_PAGO = [
+  "Efectivo",
+  "Tarjeta de crédito",
+  "Tarjeta de débito",
+  "Transferencia bancaria",
+  "Mercado Pago",
+  "OXXO Pay",
+  "PayPal",
+  "Depósito bancario",
+  "Crypto",
+];
 
 interface ProfileFormProps {
   profile: {
@@ -37,6 +47,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     const raw = profile?.metodos_pago_aceptados ?? "";
     return raw ? raw.split(",").map(m => m.trim()).filter(Boolean) : [];
   });
+  const [metodosOpen, setMetodosOpen] = useState(false);
   const router = useRouter();
 
   function toggleMetodo(metodo: string) {
@@ -284,31 +295,63 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               </>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-sm font-medium text-foreground/80">
                 Métodos de pago aceptados
               </label>
               <input type="hidden" name="metodos_pago_aceptados" value={metodosSeleccionados.join(", ")} />
-              <div className="flex flex-wrap gap-2">
-                {METODOS_PAGO.map((metodo) => (
-                  <button
-                    key={metodo}
-                    type="button"
-                    onClick={() => toggleMetodo(metodo)}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
-                      metodosSeleccionados.includes(metodo)
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border/50 hover:border-primary/40"
-                    }`}
-                  >
-                    {metodo}
-                  </button>
-                ))}
-              </div>
-              {metodosSeleccionados.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {metodosSeleccionados.join(", ")}
-                </p>
+
+              {/* Botón desplegable */}
+              <button
+                type="button"
+                onClick={() => setMetodosOpen(!metodosOpen)}
+                className="w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm text-left transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              >
+                <span className={metodosSeleccionados.length > 0 ? "text-foreground" : "text-muted-foreground"}>
+                  {metodosSeleccionados.length > 0
+                    ? metodosSeleccionados.join(", ")
+                    : "Selecciona métodos de pago..."}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${metodosOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Panel desplegable */}
+              {metodosOpen && (
+                <>
+                  {/* Overlay invisible para cerrar al hacer clic fuera */}
+                  <div className="fixed inset-0 z-10" onClick={() => setMetodosOpen(false)} />
+                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-border/50 bg-card shadow-lg overflow-hidden animate-fade-in">
+                    <div className="max-h-60 overflow-y-auto p-2 space-y-0.5">
+                      {METODOS_PAGO.map((metodo) => (
+                        <label
+                          key={metodo}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                            metodosSeleccionados.includes(metodo)
+                              ? "bg-primary/10 text-foreground"
+                              : "hover:bg-muted text-foreground/80"
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            metodosSeleccionados.includes(metodo)
+                              ? "bg-primary border-primary"
+                              : "border-muted-foreground/40"
+                          }`}>
+                            {metodosSeleccionados.includes(metodo) && (
+                              <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
+                            )}
+                          </div>
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={metodosSeleccionados.includes(metodo)}
+                            onChange={() => toggleMetodo(metodo)}
+                          />
+                          <span className="text-sm">{metodo}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
