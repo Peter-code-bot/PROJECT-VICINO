@@ -6,6 +6,8 @@ import Link from "next/link";
 import { updateProfile } from "./actions";
 import { Loader2, ShieldAlert, CheckCircle2, User, Store } from "lucide-react";
 
+const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Mercado Pago", "OXXO Pay", "Débito"];
+
 interface ProfileFormProps {
   profile: {
     nombre: string;
@@ -31,7 +33,17 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   const [sellerType, setSellerType] = useState(profile?.seller_type ?? "casual");
   const [avatarUrl, setAvatarUrl] = useState(profile?.foto ?? "");
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [metodosSeleccionados, setMetodosSeleccionados] = useState<string[]>(() => {
+    const raw = profile?.metodos_pago_aceptados ?? "";
+    return raw ? raw.split(",").map(m => m.trim()).filter(Boolean) : [];
+  });
   const router = useRouter();
+
+  function toggleMetodo(metodo: string) {
+    setMetodosSeleccionados(prev =>
+      prev.includes(metodo) ? prev.filter(m => m !== metodo) : [...prev, metodo]
+    );
+  }
 
   async function handleSubmit(formData: FormData) {
     setError("");
@@ -273,17 +285,31 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="metodos_pago_aceptados" className="text-sm font-medium text-foreground/80">
+              <label className="text-sm font-medium text-foreground/80">
                 Métodos de pago aceptados
               </label>
-              <input
-                id="metodos_pago_aceptados"
-                name="metodos_pago_aceptados"
-                type="text"
-                defaultValue={profile?.metodos_pago_aceptados ?? ""}
-                placeholder="Efectivo, transferencia, MercadoPago..."
-                className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-              />
+              <input type="hidden" name="metodos_pago_aceptados" value={metodosSeleccionados.join(", ")} />
+              <div className="flex flex-wrap gap-2">
+                {METODOS_PAGO.map((metodo) => (
+                  <button
+                    key={metodo}
+                    type="button"
+                    onClick={() => toggleMetodo(metodo)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                      metodosSeleccionados.includes(metodo)
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted text-muted-foreground border-border/50 hover:border-primary/40"
+                    }`}
+                  >
+                    {metodo}
+                  </button>
+                ))}
+              </div>
+              {metodosSeleccionados.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {metodosSeleccionados.join(", ")}
+                </p>
+              )}
             </div>
 
             <div className="pt-2">
