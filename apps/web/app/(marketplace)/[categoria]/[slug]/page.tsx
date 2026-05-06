@@ -7,10 +7,13 @@ import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { FavoriteButton } from "@/components/shared/favorite-button";
+import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { AppointmentButton } from "@/components/product/appointment-button";
 import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import type { TrustLevel } from "@vicino/shared";
+import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { ProductReviewsTrigger } from "@/components/product/product-reviews-trigger";
 
 interface Props {
   params: Promise<{ categoria: string; slug: string }>;
@@ -50,7 +53,7 @@ export default async function ProductDetailPage({ params }: Props) {
       *,
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
-        average_rating_as_seller, reviews_count_as_seller, total_sales
+        average_rating, reviews_count, total_sales
       )
     `
     )
@@ -69,15 +72,16 @@ export default async function ProductDetailPage({ params }: Props) {
     .from("reviews")
     .select(
       `
-      id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha,
-      profiles!reviewer_id(nombre, foto, trust_level)
+      id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha, reviewer_id,
+      profiles!reviewer_id(nombre, foto, trust_level),
+      products_services!product_id(id, titulo, categoria, slug, imagen_principal)
     `
     )
     .eq("product_id", product.id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(50);
 
   // Get active coupons for this seller
   const { data: coupons } = await supabase
@@ -167,9 +171,20 @@ export default async function ProductDetailPage({ params }: Props) {
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-heading font-bold mb-3 leading-snug">
-              {product.titulo}
-            </h1>
+            <div className="flex items-start gap-2 mb-3">
+              <h1 className="flex-1 text-2xl sm:text-3xl font-heading font-bold leading-snug">
+                {product.titulo}
+              </h1>
+              {user && user.id !== product.creador_id && (
+                <ReportMenuButton
+                  targetType="listing"
+                  targetId={product.id}
+                  targetLabel={product.titulo}
+                  ariaLabel="Reportar este producto"
+                  className="mt-1"
+                />
+              )}
+            </div>
             
             <div className="mb-4">
               <PriceDisplay amount={Number(product.precio)} size="lg" className="text-3xl animate-slide-in-right" />
@@ -223,8 +238,8 @@ export default async function ProductDetailPage({ params }: Props) {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <RatingStars
-                    rating={Number(seller?.average_rating_as_seller ?? 0)}
-                    count={Number(seller?.reviews_count_as_seller ?? 0)}
+                    rating={Number(seller?.average_rating ?? 0)}
+                    count={Number(seller?.reviews_count ?? 0)}
                     size="sm"
                   />
                   <span>·</span>
@@ -299,12 +314,12 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="flex gap-3">
               <Link
                 href={`/chat?seller=${seller?.id}&product=${product.id}`}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary/40 px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/10 active:scale-95 transition-all duration-200"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary/60 px-6 py-3 text-sm font-semibold text-primary hover:bg-primary/10 active:scale-95 transition-all duration-200"
               >
                 <MessageCircle className="h-4 w-4" />
                 Contactar Vendedor
               </Link>
-              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" className="w-14 h-14 rounded-xl border border-border/60 bg-card" />
+              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" variant="standalone" className="w-14 h-14 rounded-xl border border-primary/60" />
             </div>
           </div>
         </div>
@@ -326,18 +341,31 @@ export default async function ProductDetailPage({ params }: Props) {
               const reviewer = Array.isArray(review.profiles)
                 ? review.profiles[0]
                 : review.profiles;
+              const reviewedProduct = Array.isArray(review.products_services)
+                ? review.products_services[0]
+                : review.products_services;
+              const isOwnReview = user?.id === review.reviewer_id;
               return (
                 <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-primary">
                       {reviewer?.nombre?.charAt(0)?.toUpperCase()}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-semibold text-sm">
                         {reviewer?.nombre ?? "Usuario Verificado"}
                       </div>
                       <RatingStars rating={review.rating} size="sm" />
                     </div>
+                    {user && !isOwnReview && (
+                      <ReportMenuButton
+                        targetType="review"
+                        targetId={review.id}
+                        targetLabel={review.comentario ? review.comentario.slice(0, 60) : `Reseña de ${reviewer?.nombre ?? "usuario"}`}
+                        iconSize={14}
+                        ariaLabel="Reportar reseña"
+                      />
+                    )}
                   </div>
                   {review.comentario && (
                     <p className="text-sm text-muted-foreground leading-relaxed pl-13">
@@ -353,6 +381,11 @@ export default async function ProductDetailPage({ params }: Props) {
                       <span className="text-muted-foreground leading-relaxed pl-5 block">
                         {review.respuesta}
                       </span>
+                    </div>
+                  )}
+                  {reviewedProduct?.id !== product.id && (
+                    <div className="pt-2 border-t border-border/30">
+                      <ReviewProductLink product={reviewedProduct ?? null} />
                     </div>
                   )}
                 </div>
@@ -372,6 +405,16 @@ export default async function ProductDetailPage({ params }: Props) {
           Quiero comprarlo
         </Link>
       </div>
+
+      <ProductReviewsTrigger
+        reviews={reviews ?? []}
+        averageRating={Number(seller?.average_rating ?? 0)}
+        reviewsCount={Number(seller?.reviews_count ?? 0)}
+        sellerName={seller?.nombre ?? "Vendedor"}
+        sellerAvatar={seller?.foto ?? null}
+        currentUserId={user?.id ?? null}
+        currentProductId={product.id}
+      />
     </div>
   );
 }

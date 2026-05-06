@@ -192,7 +192,7 @@ export default async function CitaDetailPage({ params }: PageProps) {
         {cita.notes && (
           <div className="p-4">
             <p className="text-xs text-muted-foreground mb-1">Notas</p>
-            <p className="text-sm text-foreground italic">"{cita.notes}"</p>
+            <p className="text-sm text-foreground italic">&ldquo;{cita.notes}&rdquo;</p>
           </div>
         )}
       </div>

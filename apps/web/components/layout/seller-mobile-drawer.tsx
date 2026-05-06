@@ -21,6 +21,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
 
   // Close drawer when route changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional drawer-close-on-route-change; setOpen runs on navigation pathname change, not on render
     setOpen(false);
   }, [pathname]);
 

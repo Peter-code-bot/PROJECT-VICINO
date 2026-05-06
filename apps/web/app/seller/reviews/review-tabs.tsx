@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
+import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { formatDate } from "@vicino/shared";
 import { RespondForm } from "./respond-form";
 
@@ -16,6 +17,10 @@ interface ReviewTabsProps {
     respuesta_fecha: string | null;
     created_at: string;
     profiles: { nombre: string } | { nombre: string }[] | null;
+    products_services:
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | null;
   }>;
   given: Array<{
     id: string;
@@ -23,6 +28,10 @@ interface ReviewTabsProps {
     comentario: string | null;
     created_at: string;
     profiles: { nombre: string } | { nombre: string }[] | null;
+    products_services:
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | null;
   }>;
   pending: Array<{
     id: string;
@@ -65,6 +74,9 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
           {received.length > 0 ? (
             received.map((r) => {
               const reviewer = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+              const reviewedProduct = Array.isArray(r.products_services)
+                ? r.products_services[0]
+                : r.products_services;
               return (
                 <div key={r.id} className="rounded-lg border p-4 space-y-2">
                   <div className="flex items-center gap-2">
@@ -81,6 +93,9 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                   ) : (
                     <RespondForm reviewId={r.id} />
                   )}
+                  <div className="pt-2 border-t border-border/30">
+                    <ReviewProductLink product={reviewedProduct ?? null} />
+                  </div>
                 </div>
               );
             })
@@ -95,6 +110,9 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
           {given.length > 0 ? (
             given.map((r) => {
               const reviewed = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+              const reviewedProduct = Array.isArray(r.products_services)
+                ? r.products_services[0]
+                : r.products_services;
               return (
                 <div key={r.id} className="rounded-lg border p-4 space-y-2">
                   <div className="flex items-center gap-2">
@@ -103,6 +121,9 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                     <span className="text-xs text-muted-foreground ml-auto">{formatDate(r.created_at)}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-muted-foreground">{r.comentario}</p>}
+                  <div className="pt-2 border-t border-border/30">
+                    <ReviewProductLink product={reviewedProduct ?? null} />
+                  </div>
                 </div>
               );
             })

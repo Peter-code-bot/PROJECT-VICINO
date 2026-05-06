@@ -16,7 +16,7 @@ export default async function ReviewsPage() {
   // Reviews received as seller
   const { data: received } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, respuesta, respuesta_fecha, created_at, profiles!reviewer_id(nombre)")
+    .select("id, rating, comentario, respuesta, respuesta_fecha, created_at, profiles!reviewer_id(nombre), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
     .eq("reviewed_id", user.id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
@@ -25,7 +25,7 @@ export default async function ReviewsPage() {
   // Reviews given as seller
   const { data: given } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, profiles!reviewed_id(nombre)")
+    .select("id, rating, comentario, created_at, profiles!reviewed_id(nombre), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
     .eq("reviewer_id", user.id)
     .eq("review_type", "seller_to_buyer")
     .order("created_at", { ascending: false });

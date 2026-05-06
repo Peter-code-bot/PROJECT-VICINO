@@ -4,9 +4,15 @@ import { cn } from "@/lib/utils";
 interface RatingStarsProps {
   rating: number;
   count?: number;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
+
+const STAR_SIZE_MAP = {
+  sm: "h-3 w-3",
+  md: "h-4 w-4",
+  lg: "h-5 w-5",
+} as const;
 
 export function RatingStars({
   rating,
@@ -14,7 +20,7 @@ export function RatingStars({
   size = "sm",
   className,
 }: RatingStarsProps) {
-  const starSize = size === "sm" ? "h-3 w-3" : "h-4 w-4";
+  const starSize = STAR_SIZE_MAP[size];
 
   return (
     <div className={cn("flex items-center gap-1", className)}>

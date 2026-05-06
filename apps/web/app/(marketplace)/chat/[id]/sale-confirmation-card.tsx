@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X, Clock, CheckCheck } from "lucide-react";
 import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
@@ -31,7 +32,8 @@ export function SaleConfirmationCard({
   confirmation: sc,
   currentUserId,
 }: SaleConfirmationCardProps) {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const productTitle = Array.isArray(sc.products_services)
     ? sc.products_services[0]?.titulo
@@ -44,20 +46,24 @@ export function SaleConfirmationCard({
   const isCompleted = sc.status === "completed";
   const canConfirm = !myConfirmed && sc.status === "pending_confirmation";
 
-  async function handleConfirm() {
-    setLoading(true);
-    await confirmSale(sc.id);
-    setLoading(false);
+  function handleConfirm() {
+    if (isPending || myConfirmed || sc.status !== "pending_confirmation") return;
+    startTransition(async () => {
+      await confirmSale(sc.id);
+      router.refresh();
+    });
   }
 
-  async function handleCancel() {
-    setLoading(true);
-    await cancelSale(sc.id);
-    setLoading(false);
+  function handleCancel() {
+    if (isPending || sc.status !== "pending_confirmation") return;
+    startTransition(async () => {
+      await cancelSale(sc.id);
+      router.refresh();
+    });
   }
 
   const statusColor = isCompleted
-    ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+    ? "border-emerald-500/30 bg-muted"
     : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30";
 
   return (
@@ -67,9 +73,9 @@ export function SaleConfirmationCard({
           {isCompleted ? "✅ Venta confirmada" : "🤝 Confirmación de venta"}
         </span>
         {isCompleted ? (
-          <CheckCheck className="h-4 w-4 text-green-600" />
+          <CheckCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
         ) : (
-          <Clock className="h-4 w-4 text-amber-600" />
+          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         )}
       </div>
 
@@ -84,10 +90,10 @@ export function SaleConfirmationCard({
 
       {/* Confirmation status */}
       <div className="flex gap-2 text-[10px]">
-        <span className={sc.buyer_confirmed ? "text-green-600" : "text-muted-foreground"}>
+        <span className={sc.buyer_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
           {sc.buyer_confirmed ? "✓" : "○"} Comprador
         </span>
-        <span className={sc.seller_confirmed ? "text-green-600" : "text-muted-foreground"}>
+        <span className={sc.seller_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
@@ -97,7 +103,7 @@ export function SaleConfirmationCard({
         <div className="flex gap-2 pt-1">
           <button
             onClick={handleConfirm}
-            disabled={loading}
+            disabled={isPending}
             className="flex items-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 disabled:opacity-50"
           >
             <Check className="h-3 w-3" />
@@ -105,7 +111,7 @@ export function SaleConfirmationCard({
           </button>
           <button
             onClick={handleCancel}
-            disabled={loading}
+            disabled={isPending}
             className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
           >
             <X className="h-3 w-3" />
@@ -115,7 +121,7 @@ export function SaleConfirmationCard({
       )}
 
       {myConfirmed && !otherConfirmed && !isCompleted && (
-        <p className="text-[10px] text-amber-600">
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">
           Esperando confirmación del {isBuyer ? "vendedor" : "comprador"}...
         </p>
       )}

@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { WifiOff, RefreshCw, Wifi } from "lucide-react";
+import { WifiOff, RefreshCw } from "lucide-react";
 
 export function OfflineDetector() {
   const [isOffline, setIsOffline] = useState(false);
-  const [wasOffline, setWasOffline] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined") {
@@ -13,11 +12,7 @@ export function OfflineDetector() {
     }
 
     const goOffline = () => setIsOffline(true);
-    const goOnline = () => {
-      setIsOffline(false);
-      setWasOffline(true);
-      setTimeout(() => setWasOffline(false), 3000);
-    };
+    const goOnline = () => setIsOffline(false);
 
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
@@ -31,13 +26,7 @@ export function OfflineDetector() {
         const status = await Network.getStatus();
         setIsOffline(!status.connected);
         Network.addListener("networkStatusChange", (s) => {
-          if (s.connected) {
-            setIsOffline(false);
-            setWasOffline(true);
-            setTimeout(() => setWasOffline(false), 3000);
-          } else {
-            setIsOffline(true);
-          }
+          setIsOffline(!s.connected);
         });
       } catch {}
     })();
@@ -47,16 +36,6 @@ export function OfflineDetector() {
       window.removeEventListener("online", goOnline);
     };
   }, []);
-
-  // Reconnection toast
-  if (wasOffline && !isOffline) {
-    return (
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500/90 text-white text-sm font-medium shadow-lg animate-fade-in">
-        <Wifi className="w-4 h-4" />
-        Conexión restablecida
-      </div>
-    );
-  }
 
   if (!isOffline) return null;
 

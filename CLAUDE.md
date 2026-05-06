@@ -93,12 +93,17 @@ Próximo paso: [push / corregir / revisar con Pedro]
 
 ## Deploy — Vercel
 
-**O decir "haz deploy" a Claude Code** — skill `deploy-project` activada.
+El deploy es automático: Vercel observa el repo en GitHub y dispara builds en cada push.
+
+- **Push a `master`** → auto-deploy a producción (`https://startup-marketplace-web.vercel.app`).
+- **Push a cualquier otra rama** → preview deployment automático. La URL del preview aparece en el PR de GitHub y en el dashboard de Vercel.
+
+No se ejecuta ningún comando manual desde local para deployar.
 
 ### Estado del deploy
 - **Plataforma:** Vercel
-- **Sitio:** PENDIENTE — crear con Alejandro
-- **CI/CD target:** master → producción | design → preview
+- **URL producción:** `https://startup-marketplace-web.vercel.app`
+- **CI/CD target:** master → producción | cualquier otra rama → preview automático
 
 ### Variables de entorno (configurar en Vercel Dashboard, NO en repo)
 - `NEXT_PUBLIC_SUPABASE_URL`

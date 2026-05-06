@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ConditionalFooter } from "@/components/layout/conditional-footer";
 import { Sidebar } from "@/components/layout/sidebar";
+import { PageSwipeWrapper } from "@/components/layout/page-swipe-wrapper";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MarketplaceLayout({
@@ -53,7 +54,9 @@ export default async function MarketplaceLayout({
         <div className="md:hidden">
           <Header />
         </div>
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="flex-1 pb-20 md:pb-0">
+          <PageSwipeWrapper>{children}</PageSwipeWrapper>
+        </main>
         <div className="hidden md:block">
           <ConditionalFooter />
         </div>

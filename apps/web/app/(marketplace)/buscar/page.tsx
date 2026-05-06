@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: Props) {
     .select(
       `
       id, titulo, precio, imagen_principal, categoria, slug,
-      profiles!inner(nombre, trust_level, average_rating_as_seller, reviews_count_as_seller)
+      profiles!inner(nombre, trust_level, average_rating, reviews_count)
     `,
       { count: "exact" }
     )
@@ -140,8 +140,8 @@ export default async function SearchPage({ searchParams }: Props) {
                   nombre: profile?.nombre ?? "Vendedor",
                   trust_level: (profile?.trust_level as TrustLevel) ?? "nuevo",
                 }}
-                rating={Number(profile?.average_rating_as_seller ?? 0)}
-                reviewsCount={Number(profile?.reviews_count_as_seller ?? 0)}
+                rating={Number(profile?.average_rating ?? 0)}
+                reviewsCount={Number(profile?.reviews_count ?? 0)}
               />
             );
           })}

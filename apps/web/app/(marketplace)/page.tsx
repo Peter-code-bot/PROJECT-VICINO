@@ -78,7 +78,7 @@ export default async function HomePage() {
       categoria,
       slug,
       created_at,
-      profiles!inner(nombre, trust_level, average_rating_as_seller, reviews_count_as_seller)
+      profiles!inner(nombre, trust_level, average_rating, reviews_count)
     `
     )
     .eq("estatus", "disponible")

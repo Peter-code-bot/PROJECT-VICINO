@@ -135,7 +135,7 @@ export function CitasList({ appointments, currentUserId }: Props) {
                         </span>
                       </div>
                       {a.notes && tab === "proximas" && (
-                        <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1 italic">"{a.notes}"</p>
+                        <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1 italic">&ldquo;{a.notes}&rdquo;</p>
                       )}
                     </div>
                   </div>

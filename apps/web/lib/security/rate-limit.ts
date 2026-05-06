@@ -84,8 +84,12 @@ export interface RateLimitRule {
  * Auth's built-in rate limits configured in the Supabase dashboard — not here.
  */
 export const RATE_LIMITS: Record<string, RateLimitRule> = {
+  // Reportes de moderación: 10/hora/IP. Cumple Google Play Store y disuade
+  // abuso. El UNIQUE constraint en DB ya bloquea duplicados (mismo reporter
+  // → mismo target). El rate limit cubre el caso de "10 reportes a 10
+  // targets distintos en 1 segundo".
+  "/api/reports": { max: 10, windowMs: 60 * 60 * 1000 },
   // Example (uncomment when route exists):
   // "/api/verification": { max: 5, windowMs: 60 * 60 * 1000 },
-  // "/api/reports":      { max: 10, windowMs: 60 * 60 * 1000 },
   // "/api/contact":      { max: 3, windowMs: 60 * 60 * 1000 },
 };
