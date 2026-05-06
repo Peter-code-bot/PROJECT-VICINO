@@ -36,6 +36,11 @@ export default async function PerfilPage() {
     .eq("reviewed_id", user.id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
+    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
+    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
+    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
+    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -45,6 +50,11 @@ export default async function PerfilPage() {
     .eq("reviewed_id", user.id)
     .eq("review_type", "seller_to_buyer")
     .eq("visible", true)
+    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
+    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
+    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
+    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);
 
