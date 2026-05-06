@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import {
   SELLER_NAV_ITEMS,
   SELLER_SETTINGS_ITEM,
@@ -25,15 +26,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
     setOpen(false);
   }, [pathname]);
 
-  // Lock body scroll while open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [open]);
+  useBodyScrollLock(open);
 
   return (
     <>

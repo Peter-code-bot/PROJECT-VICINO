@@ -8,6 +8,7 @@ import {
   Shield, Info, Settings, ChevronRight, X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 interface AccountMenuDrawerProps {
   trigger: React.ReactNode;
@@ -23,15 +24,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
   // eslint-disable-next-line react-hooks/set-state-in-effect -- next-themes hydration pattern; refactor pendiente como follow-up tecnico
   useEffect(() => setMounted(true), []);
 
-  // Lock body scroll while drawer is open (mirrors seller-mobile-drawer pattern)
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [open]);
+  useBodyScrollLock(open);
 
   return (
     <>

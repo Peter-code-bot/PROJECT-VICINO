@@ -208,7 +208,7 @@ export function ChatWindow({
             <span className="text-[10px] text-muted-foreground">{showSaleDetails ? "Ocultar" : "Ver detalles"}</span>
           </button>
           {showSaleDetails && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-1 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
               {saleConfirmations.map((sc) => (
                 <SaleConfirmationCard key={sc.id} confirmation={sc} currentUserId={currentUserId} />
               ))}

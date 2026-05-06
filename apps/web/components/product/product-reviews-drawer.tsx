@@ -6,6 +6,7 @@ import Image from "next/image";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 interface ReviewerProfile {
   nombre: string | null;
@@ -58,16 +59,16 @@ export function ProductReviewsDrawer({
 }: ProductReviewsDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", handleEscape);
     return () => {
-      document.body.style.overflow = "";
       document.removeEventListener("keydown", handleEscape);
     };
   }, [open, onClose]);
