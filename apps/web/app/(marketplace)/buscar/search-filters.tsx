@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { CATEGORIES } from "@vicino/shared";
 import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
 import type { ListingType } from "@/components/search/listing-type-switch";
+import { SearchHistoryDropdown } from "@/components/search/search-history-dropdown";
+import { useSearchHistory } from "@/hooks/use-search-history";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   comida: UtensilsCrossed,
@@ -64,6 +66,8 @@ export function SearchFilters({
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(initialQuery ?? "");
   const [showFilters, setShowFilters] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const { history, addQuery, removeQuery, clearAll } = useSearchHistory();
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -82,14 +86,46 @@ export function SearchFilters({
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    updateParams({ q: query || undefined });
+    const trimmed = query.trim();
+    if (trimmed) addQuery(trimmed);
+    setIsInputFocused(false);
+    // Clear `page` so a fresh query lands on page 1 instead of a possibly
+    // out-of-range page from the prior search (mirrors the listing-type
+    // switch pattern below).
+    updateParams({ q: trimmed || undefined, page: undefined });
   }
+
+  function handleHistorySelect(q: string) {
+    setQuery(q);
+    setIsInputFocused(false);
+    addQuery(q);
+    updateParams({ q, page: undefined });
+  }
+
+  // Show the history dropdown only when the input is focused, the query is
+  // empty, and we actually have past searches to surface.
+  const showHistoryDropdown =
+    isInputFocused && query.trim() === "" && history.length > 0;
 
   return (
     <div className="w-full min-w-0 space-y-3">
       {/* Search bar */}
       <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="relative flex-1">
+        {/* Focus tracking lives on the wrapper (not the input) so keyboard
+            users tabbing into history-item buttons keep the dropdown open.
+            React's synthetic onFocus/onBlur bubble like focusin/focusout, so
+            this catches both the input and the dropdown buttons. */}
+        <div
+          className="relative flex-1"
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={(e) => {
+            const next = e.relatedTarget as Node | null;
+            if (next && e.currentTarget.contains(next)) return;
+            // Short delay covers the mouse path on browsers where
+            // relatedTarget is null on click (older Safari, etc.).
+            setTimeout(() => setIsInputFocused(false), 150);
+          }}
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
@@ -98,6 +134,14 @@ export function SearchFilters({
             placeholder="Busca en VICINO..."
             className="w-full rounded-full border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
           />
+          {showHistoryDropdown && (
+            <SearchHistoryDropdown
+              history={history}
+              onSelect={handleHistorySelect}
+              onRemove={removeQuery}
+              onClearAll={clearAll}
+            />
+          )}
         </div>
         <button
           type="button"
