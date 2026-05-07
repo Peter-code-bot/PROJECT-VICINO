@@ -5,9 +5,45 @@ import Image from "next/image";
 import { Play, Pencil, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { derivedThumbnailUrl } from "@/lib/video-thumbnail";
 
 function isVideo(url: string) {
   return /\.(mp4|webm|mov)$/i.test(url.split("?")[0] ?? "");
+}
+
+/**
+ * Grid-cell video preview. Tries the path-convention thumbnail (uploaded
+ * alongside new videos in Phase 8 onward) via <img>; falls back to a
+ * <video src="...#t=0.1"> first-frame render when the thumb 404s, which
+ * covers legacy videos uploaded before the thumbnail pipeline existed.
+ */
+function VideoGridThumbnail({ url }: { url: string }) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  return (
+    <>
+      {!thumbFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Storage URLs aren't whitelisted for next/image; the gallery uses raw <img> for media-grid items.
+        <img
+          src={derivedThumbnailUrl(url)}
+          alt=""
+          loading="lazy"
+          onError={() => setThumbFailed(true)}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <video
+          src={`${url}#t=0.1`}
+          preload="metadata"
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <Play className="w-8 h-8 text-white drop-shadow-lg fill-white/90" />
+      </div>
+    </>
+  );
 }
 
 interface ImageSize {
@@ -71,7 +107,18 @@ export function ProductGallery({
     return (
       <div className="relative aspect-[4/3] md:rounded-3xl overflow-hidden bg-card dark:bg-neutral-900 border-x-0 md:border border-border/40">
         {isVideo(url) ? (
-          <video src={url} controls preload="metadata" className="w-full h-full object-contain bg-black" />
+          // Single-item full player. For legacy videos without a paired
+          // `_thumb.jpg` the poster URL 404s and the browser shows blank,
+          // which matches the preload="metadata" default (no first-frame
+          // render) — so this is neutral for legacy and an improvement for
+          // new uploads that DO have the thumbnail.
+          <video
+            src={url}
+            poster={derivedThumbnailUrl(url)}
+            controls
+            preload="metadata"
+            className="w-full h-full object-contain bg-black"
+          />
         ) : (
           <Image src={url} alt={title} fill className="object-cover" priority />
         )}
@@ -104,12 +151,7 @@ export function ProductGallery({
               onClick={() => !editMode && setLightbox(i)}
             >
               {isVideo(url) ? (
-                <>
-                  <video src={url} preload="metadata" muted playsInline className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <Play className="w-6 h-6 text-white fill-white" />
-                  </div>
-                </>
+                <VideoGridThumbnail url={url} />
               ) : (
                 <Image src={url} alt={title} fill className="object-cover" sizes="(max-width:768px) 100vw, 50vw" />
               )}

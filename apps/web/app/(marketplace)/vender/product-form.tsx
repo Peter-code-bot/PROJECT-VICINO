@@ -10,6 +10,7 @@ import { createProduct } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 
 export function ProductForm() {
   const submittingRef = useRef(false);
@@ -28,6 +29,12 @@ export function ProductForm() {
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // In-flight thumbnail generations, keyed by source File. The upload path
+  // awaits the matching promise before deciding whether to upload a thumb,
+  // so a fast submit during background generation no longer silently drops
+  // the thumbnail. Resolved promises also stay cached so this is a no-op
+  // wait when the work has already finished.
+  const pendingThumbsRef = useRef<Map<File, Promise<Blob | null>>>(new Map());
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -47,12 +54,31 @@ export function ProductForm() {
       isVideo: file.type.startsWith("video/"),
     }));
     setMedia((prev) => [...prev, ...newMedia]);
+
+    // Kick off thumbnail generation in the background and stash the promise
+    // in pendingThumbsRef so uploadMedia can await it before deciding to skip
+    // the thumb. Best-effort: failure resolves to null (NOT a rejection) so a
+    // user who never submits the form doesn't leave a cached rejected promise
+    // in the Map — that would surface as an unhandledrejection warning even
+    // though the thumbnail is intentionally optional.
+    for (const item of newMedia) {
+      if (!item.isVideo) continue;
+      const promise: Promise<Blob | null> = generateVideoThumbnail(item.file).catch((err) => {
+        // Diagnostic only — user-facing display already has a fallback path.
+        console.warn("video thumbnail generation failed", item.file.name, err);
+        return null;
+      });
+      pendingThumbsRef.current.set(item.file, promise);
+    }
   }
 
   function removeMedia(index: number) {
     setMedia((prev) => {
       const item = prev[index];
-      if (item) URL.revokeObjectURL(item.preview);
+      if (item) {
+        URL.revokeObjectURL(item.preview);
+        pendingThumbsRef.current.delete(item.file);
+      }
       return prev.filter((_, i) => i !== index);
     });
   }
@@ -80,6 +106,51 @@ export function ProductForm() {
         .from("product-media")
         .getPublicUrl(path);
       urls.push(urlData.publicUrl);
+
+      // Best-effort thumbnail upload for videos. Path mirrors the
+      // derivedThumbnailUrl convention in lib/video-thumbnail.ts so the
+      // gallery can resolve thumbs without a DB lookup. We await any
+      // pending background generation here so a fast submit (before the
+      // canvas decode finishes) still ships the thumbnail when it
+      // ultimately resolves. A failure (rejection or upload error) is
+      // logged but does not abort the product upload — display falls
+      // back to <video #t=0.1> for missing thumbs.
+      if (img.isVideo) {
+        const pending = pendingThumbsRef.current.get(img.file);
+        let thumbBlob: Blob | null = null;
+        if (pending) {
+          // Race the pending generation against an 8s timeout. Canvas decode
+          // typically completes in <1s; 4K sources take ~2-3s. 8s is safe
+          // margin while bailing on hangs (e.g., WebView legacy Android,
+          // corrupted source, codecs that never fire loadeddata/seeked).
+          // Since thumbnails are best-effort, blocking submission is worse
+          // than skipping the thumb — display falls back to <video #t=0.1>.
+          const THUMB_GENERATION_TIMEOUT_MS = 8000;
+          try {
+            thumbBlob = await Promise.race([
+              pending,
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("thumbnail generation timed out")),
+                  THUMB_GENERATION_TIMEOUT_MS,
+                ),
+              ),
+            ]);
+          } catch {
+            // Either generation rejected or timed out — proceed without thumb.
+          }
+        }
+        if (thumbBlob) {
+          const thumbPath = `${userId}/${timestamp}-${i}_thumb.jpg`;
+          const { error: thumbErr } = await supabase.storage
+            .from("product-media")
+            .upload(thumbPath, thumbBlob, { contentType: "image/jpeg" });
+          if (thumbErr) {
+            // Diagnostic only — product upload already succeeded.
+            console.warn(`thumbnail upload failed for video ${i + 1}: ${thumbErr.message}`);
+          }
+        }
+      }
     }
     setUploading(false);
     return urls;
