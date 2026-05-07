@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getOrCreateChat(sellerId: string, productId?: string) {
@@ -228,5 +229,39 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     .eq("status", "pending_confirmation");
 
   if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function hideChat(chatId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "No autenticado" };
+
+  const { data: chat } = await supabase
+    .from("chats")
+    .select("comprador_id, vendedor_id")
+    .eq("id", chatId)
+    .single();
+
+  if (!chat) return { error: "Chat no encontrado" };
+  if (chat.comprador_id !== user.id && chat.vendedor_id !== user.id)
+    return { error: "Sin permiso" };
+
+  const isBuyer = chat.comprador_id === user.id;
+  const updates = isBuyer
+    ? { oculto_para_comprador: true, deleted_at_comprador: new Date().toISOString() }
+    : { oculto_para_vendedor: true, deleted_at_vendedor: new Date().toISOString() };
+
+  const { error } = await supabase
+    .from("chats")
+    .update(updates)
+    .eq("id", chatId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/chat");
   return { success: true };
 }

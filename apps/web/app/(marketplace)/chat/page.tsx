@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatRelativeTime } from "@vicino/shared";
 import { getOrCreateChat } from "./actions";
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { ChatItemCard } from "./chat-item-card";
 
 export const metadata = {
   title: "Chat — VICINO",
@@ -56,6 +55,7 @@ export default async function ChatPage({ searchParams }: Props) {
     .select(
       `
       id, updated_at, no_leidos_comprador, no_leidos_vendedor,
+      oculto_para_comprador, oculto_para_vendedor,
       comprador:profiles!comprador_id(id, nombre, foto),
       vendedor:profiles!vendedor_id(id, nombre, foto),
       ultimo_producto:products_services!ultimo_producto_id(titulo)
@@ -64,85 +64,49 @@ export default async function ChatPage({ searchParams }: Props) {
     .or(`comprador_id.eq.${user.id},vendedor_id.eq.${user.id}`)
     .order("updated_at", { ascending: false });
 
+  // Filtrar chats ocultos para este usuario (soft delete)
+  const visibleChats = chats?.filter((chat) => {
+    const compradorProfile = Array.isArray(chat.comprador) ? chat.comprador[0] : chat.comprador;
+    const isBuyer = compradorProfile?.id === user.id;
+    return isBuyer ? !chat.oculto_para_comprador : !chat.oculto_para_vendedor;
+  }) ?? [];
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in-up">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-heading font-bold">Mensajes</h1>
-        {chats && chats.length > 0 && (
+        {visibleChats.length > 0 && (
           <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-            {chats.length} conversaciones
+            {visibleChats.length} conversaciones
           </span>
         )}
       </div>
 
-      {chats && chats.length > 0 ? (
+      {visibleChats.length > 0 ? (
         <div className="space-y-3 stagger">
-          {chats.map((chat) => {
+          {visibleChats.map((chat) => {
             const compradorProfile = Array.isArray(chat.comprador) ? chat.comprador[0] : chat.comprador;
             const vendedorProfile = Array.isArray(chat.vendedor) ? chat.vendedor[0] : chat.vendedor;
             const isBuyer = compradorProfile?.id === user.id;
             const otherProfile = isBuyer ? vendedorProfile : compradorProfile;
-            const unread = isBuyer
-              ? chat.no_leidos_comprador
-              : chat.no_leidos_vendedor;
+            const unread = isBuyer ? chat.no_leidos_comprador : chat.no_leidos_vendedor;
             const producto = Array.isArray(chat.ultimo_producto)
               ? chat.ultimo_producto[0]
               : chat.ultimo_producto;
 
             return (
-              <Link
+              <ChatItemCard
                 key={chat.id}
-                href={`/chat/${chat.id}`}
-                className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
-                  unread > 0 
-                    ? "bg-card border-primary/30 shadow-md" 
-                    : "bg-card border-border/40 hover:border-primary/20 hover:shadow-sm"
-                }`}
-              >
-                {unread > 0 && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                )}
-
-                <UserAvatar
-                  src={otherProfile?.foto}
-                  name={otherProfile?.nombre ?? "?"}
-                  size="lg"
-                  className={unread > 0 ? "border-2 border-primary/20" : "border-2 border-background"}
-                />
-
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`font-semibold text-base truncate transition-colors ${
-                      unread > 0 ? "text-foreground" : "group-hover:text-primary"
-                    }`}>
-                      {otherProfile?.nombre ?? "Usuario"}
-                    </span>
-                    <span className={`text-xs whitespace-nowrap ml-2 ${
-                      unread > 0 ? "text-primary font-semibold" : "text-muted-foreground"
-                    }`}>
-                      {formatRelativeTime(chat.updated_at)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {producto?.titulo ? (
-                      <p className={`text-sm truncate ${
-                        unread > 0 ? "font-medium text-foreground/90" : "text-muted-foreground"
-                      }`}>
-                        {producto.titulo}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground/60 italic">Chat general</p>
-                    )}
-                  </div>
-                </div>
-
-                {unread > 0 && (
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-xs font-bold shrink-0 shadow-sm shadow-primary/20">
-                    {unread}
-                  </div>
-                )}
-              </Link>
+                chat={{
+                  id: chat.id,
+                  updated_at: chat.updated_at,
+                  otherUser: otherProfile
+                    ? { id: otherProfile.id, nombre: otherProfile.nombre, foto: otherProfile.foto }
+                    : null,
+                  unread: unread ?? 0,
+                  productoTitulo: producto?.titulo ?? null,
+                }}
+              />
             );
           })}
         </div>
