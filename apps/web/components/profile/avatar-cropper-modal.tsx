@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2 } from "lucide-react";
 import { getCroppedBlob, type CropArea } from "@/lib/crop-image";
@@ -23,6 +24,12 @@ export function AvatarCropperModal({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<CropArea | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Mounted gate guarantees document.body exists before createPortal runs;
+  // also avoids SSR hydration mismatch on the portaled subtree.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern; same shape as account-menu-drawer.tsx
+  useEffect(() => setMounted(true), []);
 
   const onCropComplete = useCallback((_: unknown, pixels: CropArea) => {
     setCroppedArea(pixels);
@@ -46,9 +53,12 @@ export function AvatarCropperModal({
     onCancel();
   }
 
-  if (!open || !imageSrc) return null;
+  if (!mounted || !open || !imageSrc) return null;
 
-  return (
+  // Portal to body so the modal's `position: fixed` covers the viewport
+  // instead of being constrained to PageSwipeWrapper's transform ancestor
+  // (introduced in Phase 6).
+  return createPortal(
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={handleCancel}>
       <div className="bg-card w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -123,6 +133,7 @@ export function AvatarCropperModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

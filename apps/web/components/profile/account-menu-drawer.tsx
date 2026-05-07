@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   User, Store, BadgeCheck, ShoppingBag, Calendar, Heart, Star,
@@ -30,8 +31,10 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
     <>
       <div onClick={() => setOpen(true)}>{trigger}</div>
 
-      {/* Backdrop + Drawer */}
-      {open && (
+      {/* Backdrop + Drawer — portaled to body to escape the PageSwipeWrapper's
+          transform ancestor (Phase 6), which would otherwise constrain
+          `position: fixed` to the wrapper instead of the viewport. */}
+      {mounted && open && createPortal(
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-l border-border flex flex-col animate-slide-in-right">
@@ -102,7 +105,8 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
