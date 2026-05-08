@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { href: "/perfil", label: "Perfil", icon: User },
 ] as const;
 
-export function BottomNav() {
+export function BottomNav({ unreadChatMessages = 0 }: { unreadChatMessages?: number }) {
   const pathname = usePathname();
 
   return (
@@ -63,6 +63,11 @@ export function BottomNav() {
                         isActive && "scale-110"
                       )}
                     />
+                    {href === "/chat" && unreadChatMessages > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+                        {unreadChatMessages > 99 ? "99+" : unreadChatMessages}
+                      </span>
+                    )}
                     {/* Active indicator dot */}
                     {isActive && (
                       <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />

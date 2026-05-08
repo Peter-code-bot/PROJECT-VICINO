@@ -18,6 +18,7 @@ export default async function MarketplaceLayout({
   let profile = null;
   let isAdmin = false;
   let unreadNotifications = 0;
+  let unreadChatMessages = 0;
 
   if (user) {
     const { data } = await supabase
@@ -38,8 +39,21 @@ export default async function MarketplaceLayout({
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("leida", false);
+      .eq("leida", false)
+      .not("tipo", "in", '("message","sale_confirmation")');
     unreadNotifications = count ?? 0;
+
+    const { data: buyerChats } = await supabase
+      .from("chats")
+      .select("no_leidos_comprador")
+      .eq("comprador_id", user.id);
+    const { data: sellerChats } = await supabase
+      .from("chats")
+      .select("no_leidos_vendedor")
+      .eq("vendedor_id", user.id);
+    unreadChatMessages =
+      (buyerChats?.reduce((sum, c) => sum + (c.no_leidos_comprador ?? 0), 0) ?? 0) +
+      (sellerChats?.reduce((sum, c) => sum + (c.no_leidos_vendedor ?? 0), 0) ?? 0);
   }
 
   return (
@@ -49,10 +63,11 @@ export default async function MarketplaceLayout({
         profile={profile}
         isAdmin={isAdmin}
         unreadNotifications={unreadNotifications}
+        unreadChatMessages={unreadChatMessages}
       />
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="md:hidden">
-          <Header />
+          <Header unreadNotifications={unreadNotifications} />
         </div>
         <main className="flex-1 pb-20 md:pb-0">
           <PageSwipeWrapper>{children}</PageSwipeWrapper>
@@ -60,7 +75,7 @@ export default async function MarketplaceLayout({
         <div className="hidden md:block">
           <ConditionalFooter />
         </div>
-        <BottomNav />
+        <BottomNav unreadChatMessages={unreadChatMessages} />
       </div>
     </div>
   );

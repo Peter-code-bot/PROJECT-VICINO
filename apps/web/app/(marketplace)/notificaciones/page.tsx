@@ -17,6 +17,7 @@ export default async function NotificacionesPage() {
     .from("notifications")
     .select("*")
     .eq("user_id", user.id)
+    .not("tipo", "in", '("message","sale_confirmation")')
     .order("created_at", { ascending: false })
     .limit(50);
 

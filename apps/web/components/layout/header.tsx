@@ -7,7 +7,7 @@ import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
-export function Header() {
+export function Header({ unreadNotifications = 0 }: { unreadNotifications?: number }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -57,7 +57,9 @@ export function Header() {
           aria-label="Notificaciones"
         >
           <Bell className="h-5 w-5 text-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
+          {unreadNotifications > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
+          )}
         </Link>
       </div>
     </header>
