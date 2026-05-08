@@ -15,7 +15,7 @@ import {
  *   Swipe LEFT  -> next page
  *   Swipe RIGHT -> previous page
  * Skips when:
- *   - Current path is not one of the 5 root pages (subroutes preserved)
+ *   - Current path is not one of the root pages in PAGES (subroutes preserved)
  *   - A drawer/modal is open (detected via body overflow lock)
  *   - Touch starts inside a child horizontal scroller / [data-no-page-swipe]
  *   - Touch starts within EDGE_GUARD_PX of either screen edge (preserves OS
@@ -23,10 +23,11 @@ import {
  *   - Pointer is not a touch (preserves trackMouse:false from prior impl)
  *   - At a list end (no wrap)
  *
- * Phase 6 hardcodes 5 pages including /vender. Phase 9 will add dynamic
- * exclusion of /vender when es_vendedor === false.
+ * PAGES is derived per-render from `isVendedor` prop (Phase 9): sellers see
+ * the 5-page sequence including /vender; non-sellers see 4 pages without it.
  */
-const PAGES = ["/", "/buscar", "/vender", "/chat", "/perfil"] as const;
+const ALL_PAGES = ["/", "/buscar", "/vender", "/chat", "/perfil"] as const;
+const NON_SELLER_PAGES = ALL_PAGES.filter((p) => p !== "/vender");
 const SWIPE_THRESHOLD_OFFSET = 60; // px — minimum drag distance to commit
 const SWIPE_THRESHOLD_VELOCITY = 500; // px/sec — fast flick commits at lower offset
 const EDGE_GUARD_PX = 30; // px from each screen edge reserved for OS gestures
@@ -40,14 +41,21 @@ function startedInsideHorizontalScroller(target: EventTarget | null): boolean {
   return target.closest(SWIPE_IGNORE_SELECTOR) !== null;
 }
 
-export function PageSwipeWrapper({ children }: { children: React.ReactNode }) {
+interface PageSwipeWrapperProps {
+  children: React.ReactNode;
+  /** Phase 9: when false, /vender is excluded from the swipe sequence. */
+  isVendedor: boolean;
+}
+
+export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps) {
   const router = useRouter();
   const pathname = usePathname();
   const x = useMotionValue(0);
   const dragControls = useDragControls();
   const cancelledRef = useRef(false);
 
-  const currentIndex = (PAGES as readonly string[]).indexOf(pathname);
+  const PAGES: readonly string[] = isVendedor ? ALL_PAGES : NON_SELLER_PAGES;
+  const currentIndex = PAGES.indexOf(pathname);
 
   // Prefetch adjacent root pages so router.push lands instantly post-swipe.
   useEffect(() => {
@@ -55,7 +63,7 @@ export function PageSwipeWrapper({ children }: { children: React.ReactNode }) {
     PAGES.forEach((p, i) => {
       if (i !== currentIndex) router.prefetch(p);
     });
-  }, [currentIndex, router]);
+  }, [currentIndex, router, PAGES]);
 
   // Reset x on route change in case the wrapper persists across navigations
   // (App Router preserves the layout, so this component does not unmount).

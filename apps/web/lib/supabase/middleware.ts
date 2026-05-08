@@ -98,5 +98,37 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     return NextResponse.redirect(url);
   }
 
+  // Protect /vender for unauthenticated users (matches existing pattern above).
+  if (!user && pathname.startsWith("/vender")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Phase 9: gate /vender and /seller/* on `profiles.es_vendedor` for
+  // authenticated users. Users who haven't opted in to seller mode are
+  // redirected to /perfil/editar?prompt=seller-mode where they can activate
+  // the toggle. Defense-in-depth — seller layout also redirects.
+  if (
+    user &&
+    (pathname === "/vender" ||
+      pathname.startsWith("/vender/") ||
+      pathname === "/seller" ||
+      pathname.startsWith("/seller/"))
+  ) {
+    const { data: gateProfile } = await supabase
+      .from("profiles")
+      .select("es_vendedor")
+      .eq("id", user.id)
+      .single();
+    if (!gateProfile?.es_vendedor) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/perfil/editar";
+      url.searchParams.set("prompt", "seller-mode");
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }

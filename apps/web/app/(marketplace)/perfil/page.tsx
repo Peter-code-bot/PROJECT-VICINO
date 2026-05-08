@@ -39,7 +39,7 @@ export default async function PerfilPage() {
     // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
     // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
     // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.estatus", "disponible")
     .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);
@@ -53,7 +53,7 @@ export default async function PerfilPage() {
     // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
     // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
     // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.estatus", "disponible")
     .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);
@@ -73,6 +73,7 @@ export default async function PerfilPage() {
           userName={profile?.nombre}
           userAvatar={profile?.foto}
           userId={profile?.user_id}
+          userIsVendedor={profile?.es_vendedor ?? false}
           trigger={
             <button aria-label="Menú de cuenta" className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground">
               <Menu className="w-6 h-6" />

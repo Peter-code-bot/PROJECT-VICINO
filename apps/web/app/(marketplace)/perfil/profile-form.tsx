@@ -33,13 +33,24 @@ interface ProfileFormProps {
     trust_level: string;
     user_id: string | null;
   } | null;
+  /**
+   * Phase 9: number of products with `estatus='disponible'` for this user. Used
+   * to warn before turning seller mode off — those products will be auto-paused
+   * by the server action.
+   */
+  activeProductCount: number;
 }
 
-export function ProfileForm({ profile }: ProfileFormProps) {
+export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
+  const initialEsVendedor = profile?.es_vendedor ?? false;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [esVendedor, setEsVendedor] = useState(profile?.es_vendedor ?? false);
+  const [esVendedor, setEsVendedor] = useState(initialEsVendedor);
+  // Phase 9: hold the FormData while the user confirms turning off seller mode
+  // with active products. Mirror of the cancel-appointment-button.tsx pattern
+  // (state-based inline confirmation, no modal lib).
+  const [pendingDeactivation, setPendingDeactivation] = useState<FormData | null>(null);
   const [sellerType, setSellerType] = useState(profile?.seller_type ?? "casual");
   const [avatarUrl, setAvatarUrl] = useState(profile?.foto ?? "");
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -56,11 +67,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     );
   }
 
-  async function handleSubmit(formData: FormData) {
-    setError("");
-    setSuccess(false);
+  async function runUpdate(formData: FormData) {
     setLoading(true);
-
     const result = await updateProfile(formData);
     if (result?.error) {
       setError(result.error);
@@ -72,6 +80,35 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       }, 1500);
     }
     setLoading(false);
+  }
+
+  async function handleSubmit(formData: FormData) {
+    setError("");
+    setSuccess(false);
+
+    // Phase 9: intercept ON→OFF transitions when the user has active products.
+    // The form data still goes through unchanged once the user confirms; the
+    // server action does the actual products UPDATE atomically with the
+    // profile UPDATE.
+    const submittingEsVendedor = formData.get("es_vendedor") === "on";
+    const turningSellerOff = initialEsVendedor && !submittingEsVendedor;
+    if (turningSellerOff && activeProductCount > 0) {
+      setPendingDeactivation(formData);
+      return;
+    }
+
+    await runUpdate(formData);
+  }
+
+  function cancelDeactivation() {
+    setPendingDeactivation(null);
+  }
+
+  function confirmDeactivation() {
+    if (!pendingDeactivation) return;
+    const formData = pendingDeactivation;
+    setPendingDeactivation(null);
+    void runUpdate(formData);
   }
 
   return (
@@ -221,7 +258,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               type="checkbox"
               name="es_vendedor"
               checked={esVendedor}
-              onChange={(e) => setEsVendedor(e.target.checked)}
+              onChange={(e) => {
+                setEsVendedor(e.target.checked);
+                // Discard any stale deactivation snapshot if the user
+                // reconsiders after submitting the confirmation block.
+                setPendingDeactivation(null);
+              }}
               className="peer sr-only"
             />
             <div className="w-5 h-5 rounded border-2 border-muted-foreground/40 peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
@@ -368,17 +410,50 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
-      >
-        {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          "Guardar cambios"
-        )}
-      </button>
+      {pendingDeactivation ? (
+        <div className="sticky bottom-20 md:bottom-4 z-10 space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
+          <p className="font-semibold text-amber-900 dark:text-amber-200">
+            Desactivar modo vendedor
+          </p>
+          <p className="text-amber-800/90 dark:text-amber-200/80">
+            Tienes {activeProductCount}{" "}
+            {activeProductCount === 1 ? "producto publicado" : "productos publicados"}.
+            Al desactivar, se pausarán automáticamente y dejarán de aparecer en
+            búsqueda. Podrás reactivarlos manualmente si vuelves a activar el
+            modo vendedor.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={cancelDeactivation}
+              disabled={loading}
+              className="flex-1 rounded-lg border border-amber-300 bg-white dark:bg-transparent dark:border-amber-700 px-4 py-2.5 text-sm font-medium text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeactivation}
+              disabled={loading}
+              className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Desactivar y pausar"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
+        >
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            "Guardar cambios"
+          )}
+        </button>
+      )}
     </form>
 
     </>

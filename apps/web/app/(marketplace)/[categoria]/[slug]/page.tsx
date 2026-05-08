@@ -58,6 +58,10 @@ export default async function ProductDetailPage({ params }: Props) {
     `
     )
     .eq("slug", slug)
+    // .neq() (NOT .eq("disponible")) on purpose — RLS already filters
+    // non-creators to disponible-only via block_aware_products_select; the
+    // creator-bypass path needs to keep working so a seller can preview their
+    // own pausado/borrador/agotado listing detail before relisting it.
     .neq("estatus", "eliminado")
     .single();
 

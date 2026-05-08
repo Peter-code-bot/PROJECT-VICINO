@@ -2,7 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { ShieldCheck } from "lucide-react";
 
-export function Footer() {
+interface FooterProps {
+  /** Phase 9: hides the "Vender" link when the user is not a seller. */
+  isVendedor?: boolean;
+}
+
+export function Footer({ isVendedor = false }: FooterProps) {
   return (
     <footer className="bg-[#171717] dark:bg-[#0A0A0A] text-white/60 pt-12 pb-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,14 +54,16 @@ export function Footer() {
                   Buscar
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/vender"
-                  className="text-xs hover:text-primary transition-colors"
-                >
-                  Vender
-                </Link>
-              </li>
+              {isVendedor && (
+                <li>
+                  <Link
+                    href="/vender"
+                    className="text-xs hover:text-primary transition-colors"
+                  >
+                    Vender
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 

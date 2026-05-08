@@ -22,6 +22,14 @@ export default async function EditarPerfilPage() {
     .eq("id", user.id)
     .single();
 
+  // Phase 9: count active (disponible) products so the form can warn the user
+  // before turning seller mode off — those products will be auto-paused.
+  const { count: activeProductCount } = await supabase
+    .from("products_services")
+    .select("id", { count: "exact", head: true })
+    .eq("creador_id", user.id)
+    .eq("estatus", "disponible");
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <div className="flex items-center gap-3 mb-6">
@@ -33,7 +41,7 @@ export default async function EditarPerfilPage() {
         </Link>
         <h1 className="text-xl font-heading font-bold">Editar perfil</h1>
       </div>
-      <ProfileForm profile={profile} />
+      <ProfileForm profile={profile} activeProductCount={activeProductCount ?? 0} />
     </div>
   );
 }

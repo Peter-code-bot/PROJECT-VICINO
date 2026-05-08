@@ -56,6 +56,8 @@ export default async function MarketplaceLayout({
       (sellerChats?.reduce((sum, c) => sum + (c.no_leidos_vendedor ?? 0), 0) ?? 0);
   }
 
+  const isVendedor = profile?.es_vendedor ?? false;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar
@@ -70,12 +72,12 @@ export default async function MarketplaceLayout({
           <Header unreadNotifications={unreadNotifications} />
         </div>
         <main className="flex-1 pb-20 md:pb-0">
-          <PageSwipeWrapper>{children}</PageSwipeWrapper>
+          <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
         </main>
         <div className="hidden md:block">
-          <ConditionalFooter />
+          <ConditionalFooter isVendedor={isVendedor} />
         </div>
-        <BottomNav unreadChatMessages={unreadChatMessages} />
+        <BottomNav isVendedor={isVendedor} unreadChatMessages={unreadChatMessages} />
       </div>
     </div>
   );

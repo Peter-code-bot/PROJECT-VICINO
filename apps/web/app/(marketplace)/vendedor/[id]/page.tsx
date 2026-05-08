@@ -60,7 +60,7 @@ export default async function VendedorPage({ params }: Props) {
     // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
     // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
     // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.estatus", "disponible")
     .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);
@@ -74,7 +74,7 @@ export default async function VendedorPage({ params }: Props) {
     // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
     // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
     // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .neq("products_services.estatus", "eliminado")
+    .eq("products_services.estatus", "disponible")
     .eq("products_services.is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(10);

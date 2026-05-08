@@ -3,6 +3,36 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema } from "@vicino/shared";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Phase 9 server-action guard. Middleware gates `/vender` and `/seller/*`
+ * route navigation, but server actions can be POSTed directly via the action
+ * endpoint, bypassing the UI gate. RLS on `products_services` only checks
+ * `auth.uid() = creador_id`, not `profiles.es_vendedor`, so without this
+ * helper a logged-in non-seller could create or resume listings.
+ *
+ * Apply at the top of mutating server actions whose semantics imply the
+ * caller must be in seller mode (createProduct, toggleProductStatus when
+ * resuming). Editing text and deleting are intentionally NOT gated — those
+ * stay available to ex-sellers for cleanup.
+ */
+async function requireSeller(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ error: string } | null> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("es_vendedor")
+    .eq("id", userId)
+    .single();
+  if (!profile?.es_vendedor) {
+    return {
+      error: "Modo vendedor inactivo. Activa el modo vendedor en tu perfil para publicar.",
+    };
+  }
+  return null;
+}
 
 export async function createProduct(formData: FormData) {
   const supabase = await createClient();
@@ -14,6 +44,9 @@ export async function createProduct(formData: FormData) {
   if (!user) {
     redirect("/login");
   }
+
+  const guard = await requireSeller(supabase, user.id);
+  if (guard) return guard;
 
   // Validate
   const raw = {
@@ -153,6 +186,14 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Resume requires seller mode; pause is allowed for ex-sellers (so the
+  // server action `updateProfile` can call this idempotently while users
+  // are turning seller mode off, and so any cleanup path still works).
+  if (newStatus === "disponible") {
+    const guard = await requireSeller(supabase, user.id);
+    if (guard) return guard;
   }
 
   const { error } = await supabase

@@ -16,9 +16,11 @@ interface AccountMenuDrawerProps {
   userName?: string;
   userAvatar?: string | null;
   userId?: string;
+  /** Phase 9: hide /seller links when the user has not opted in to seller mode. */
+  userIsVendedor?: boolean;
 }
 
-export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: AccountMenuDrawerProps) {
+export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userIsVendedor = false }: AccountMenuDrawerProps) {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -69,8 +71,12 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId }: Acc
             <div className="flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_5rem)]">
               <Section label="Cuenta">
                 <Item href="/perfil/editar" icon={User} label="Editar perfil" onClose={() => setOpen(false)} />
-                <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
-                <Item href="/seller/verificacion" icon={BadgeCheck} label="Verificación" onClose={() => setOpen(false)} />
+                {userIsVendedor && (
+                  <>
+                    <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
+                    <Item href="/seller/verificacion" icon={BadgeCheck} label="Verificación" onClose={() => setOpen(false)} />
+                  </>
+                )}
               </Section>
 
               <Section label="Actividad">

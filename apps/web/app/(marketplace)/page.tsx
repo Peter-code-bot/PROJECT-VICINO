@@ -67,6 +67,22 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 export default async function HomePage() {
   const supabase = await createClient();
 
+  // Phase 9: fetch the viewer's seller status so the empty-state "Publicar
+  // producto" CTA is hidden for non-sellers (clicking it would otherwise just
+  // bounce off the middleware to /perfil/editar).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let viewerIsVendedor = false;
+  if (user) {
+    const { data: viewerProfile } = await supabase
+      .from("profiles")
+      .select("es_vendedor")
+      .eq("id", user.id)
+      .single();
+    viewerIsVendedor = viewerProfile?.es_vendedor ?? false;
+  }
+
   const { data: products } = await supabase
     .from("products_services")
     .select(
@@ -228,14 +244,16 @@ export default async function HomePage() {
                 Tu mercado de confianza. Aún no hay productos publicados.
                 ¡Sé el primero en vender!
               </p>
-              <Link
-                href="/vender"
-                className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
-                id="cta-publish"
-              >
-                Publicar producto
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              {viewerIsVendedor && (
+                <Link
+                  href="/vender"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
+                  id="cta-publish"
+                >
+                  Publicar producto
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              )}
             </div>
           </div>
         </section>

@@ -168,7 +168,9 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications, unreadCha
         {/* Auth-required items */}
         {user ? (
           <>
-            <NavItem href="/vender" icon={PlusCircle} label="Vender" active={isActive("/vender")} highlight />
+            {profile?.es_vendedor && (
+              <NavItem href="/vender" icon={PlusCircle} label="Vender" active={isActive("/vender")} highlight />
+            )}
             <NavItem href="/chat" icon={MessageCircle} label="Chat" active={isActive("/chat")} badge={unreadChatMessages} />
             <NavItem href="/favoritos" icon={Heart} label="Favoritos" active={isActive("/favoritos")} />
             <NavItem href="/citas" icon={Calendar} label="Mis citas" active={isActive("/citas")} />
@@ -190,7 +192,9 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications, unreadCha
               <span className="truncate">{profile?.nombre || "Mi Perfil"}</span>
             </Link>
 
-            <NavItem href="/seller" icon={Store} label="Mi Tienda" active={isActive("/seller")} />
+            {profile?.es_vendedor && (
+              <NavItem href="/seller" icon={Store} label="Mi Tienda" active={isActive("/seller")} />
+            )}
             {isAdmin && (
               <NavItem href="/admin" icon={ShieldAlert} label="Admin" active={isActive("/admin")} />
             )}

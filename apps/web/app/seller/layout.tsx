@@ -22,9 +22,16 @@ export default async function SellerLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("nombre_negocio, nombre, trust_level")
+    .select("nombre_negocio, nombre, trust_level, es_vendedor")
     .eq("id", user.id)
     .single();
+
+  // Phase 9 defense-in-depth: middleware already gates this route on
+  // es_vendedor, but the layout-level redirect is a backstop in case
+  // middleware is bypassed (e.g., direct server-side render in dev).
+  if (!profile?.es_vendedor) {
+    redirect("/perfil/editar?prompt=seller-mode");
+  }
 
   const storeName =
     profile?.nombre_negocio ?? profile?.nombre ?? "Mi Tienda Local";

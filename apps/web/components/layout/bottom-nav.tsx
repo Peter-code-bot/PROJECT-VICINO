@@ -13,15 +13,29 @@ const NAV_ITEMS = [
   { href: "/perfil", label: "Perfil", icon: User },
 ] as const;
 
-export function BottomNav({ unreadChatMessages = 0 }: { unreadChatMessages?: number }) {
+interface BottomNavProps {
+  /**
+   * Whether the current user has opted in to seller mode. When false, the
+   * central "Vender" CTA is hidden and the nav renders 4 items instead of 5.
+   * Phase 9: gating extends to /vender route via middleware + seller layout.
+   */
+  isVendedor: boolean;
+  /** Total unread chat messages across all the user's conversations. */
+  unreadChatMessages?: number;
+}
+
+export function BottomNav({ isVendedor, unreadChatMessages = 0 }: BottomNavProps) {
   const pathname = usePathname();
+  const navItems = isVendedor
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== "/vender");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       {/* Glassmorphism background */}
       <div className="glass dark:glass-dark border-t border-border/30 shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
         <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
             const isVender = href === "/vender";
