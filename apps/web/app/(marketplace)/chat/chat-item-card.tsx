@@ -155,33 +155,32 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
           )}
 
-          <UserAvatar
-            src={chat.otherUser?.foto}
-            name={chat.otherUser?.nombre ?? "?"}
-            size="lg"
-            className={
-              chat.unread > 0
-                ? "border-2 border-primary/20"
-                : "border-2 border-background"
-            }
-          />
+          <div className="relative shrink-0">
+            <UserAvatar
+              src={chat.otherUser?.foto}
+              name={chat.otherUser?.nombre ?? "?"}
+              size="lg"
+              className="border-2 border-background"
+            />
+            {chat.unread > 0 && (
+              <span className="absolute -bottom-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+                {chat.unread > 99 ? "99+" : chat.unread}
+              </span>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <span
-                className={`font-semibold text-base truncate transition-colors ${
-                  chat.unread > 0 ? "text-foreground" : "group-hover:text-primary"
+                className={`text-base truncate transition-colors ${
+                  chat.unread > 0
+                    ? "font-semibold text-foreground"
+                    : "font-medium group-hover:text-primary"
                 }`}
               >
                 {chat.otherUser?.nombre ?? "Usuario"}
               </span>
-              <span
-                className={`text-xs whitespace-nowrap ml-2 ${
-                  chat.unread > 0
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
-                }`}
-              >
+              <span className="text-xs whitespace-nowrap ml-2 text-muted-foreground">
                 {formatRelativeTime(chat.updated_at)}
               </span>
             </div>
@@ -205,11 +204,6 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
             </div>
           </div>
 
-          {chat.unread > 0 && (
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-xs font-bold shrink-0 shadow-sm shadow-primary/20">
-              {chat.unread}
-            </div>
-          )}
         </Link>
       </motion.div>
     </div>

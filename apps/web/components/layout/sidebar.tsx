@@ -264,7 +264,7 @@ function NavItem({
       <Icon className="h-5 w-5" />
       {label}
       {badge && badge > 0 ? (
-        <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+        <span className="ml-auto bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
