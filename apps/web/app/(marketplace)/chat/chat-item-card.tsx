@@ -85,7 +85,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div className="relative overflow-hidden rounded-2xl" data-no-page-swipe>
       {/* ── Delete button (behind the card) ──────────────── */}
       <motion.div
         className="absolute right-0 inset-y-0 flex items-center justify-center"
