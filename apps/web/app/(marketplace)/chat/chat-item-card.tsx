@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
@@ -33,29 +33,29 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
+  // Ref to the draggable div for imperative touch-action management
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const x = useMotionValue(0);
-  // Fade-in the delete button as the card slides
   const deleteOpacity = useTransform(x, [-DELETE_BTN_WIDTH, -20, 0], [1, 0.5, 0]);
 
-  const onDragEnd = useCallback(
-    (_: unknown, info: PanInfo) => {
-      const shouldOpen =
-        info.offset.x < -SNAP_THRESHOLD ||
-        info.velocity.x < -VELOCITY_THRESHOLD;
+  const onDragEnd = useCallback((_: unknown, info: PanInfo) => {
+    // Restore touch-action so vertical scroll works again after the gesture
+    if (cardRef.current) cardRef.current.style.touchAction = "";
 
-      if (shouldOpen) {
-        setSwiped(true);
-        setConfirming(false);
-      } else {
-        setSwiped(false);
-        setConfirming(false);
-      }
-    },
-    [],
-  );
+    const shouldOpen =
+      info.offset.x < -SNAP_THRESHOLD ||
+      info.velocity.x < -VELOCITY_THRESHOLD;
 
-  // Close swipe when tapping the card area while swiped
+    if (shouldOpen) {
+      setSwiped(true);
+      setConfirming(false);
+    } else {
+      setSwiped(false);
+      setConfirming(false);
+    }
+  }, []);
+
   const handleCardTap = useCallback(() => {
     if (swiped) {
       setSwiped(false);
@@ -63,7 +63,6 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
     }
   }, [swiped]);
 
-  // ── Delete flow (double confirmation) ─────────────────────
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -87,11 +86,13 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
   return (
     <div className="relative overflow-hidden rounded-2xl" data-no-page-swipe>
       {/* ── Delete button (behind the card) ──────────────── */}
+      {/* Fix P2: pointerEvents:none when not swiped — invisible AND unclickable on desktop */}
       <motion.div
         className="absolute right-0 inset-y-0 flex items-center justify-center"
         style={{
           width: DELETE_BTN_WIDTH,
           opacity: deleteOpacity,
+          pointerEvents: swiped ? "auto" : "none",
         }}
       >
         <button
@@ -104,14 +105,15 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
           } ${deleting ? "opacity-50 pointer-events-none" : ""}`}
         >
           <Trash2 className="h-5 w-5" />
-          <span>
-            {deleting ? "..." : confirming ? "¿Seguro?" : "Eliminar"}
-          </span>
+          <span>{deleting ? "..." : confirming ? "¿Seguro?" : "Eliminar"}</span>
         </button>
       </motion.div>
 
       {/* ── Draggable chat card ──────────────────────────── */}
+      {/* Fix P1: removed touch-pan-y class; touch-action managed imperatively via ref
+          so the browser doesn't intercept horizontal gestures before framer-motion */}
       <motion.div
+        ref={cardRef}
         drag="x"
         dragDirectionLock
         dragConstraints={{ left: -DELETE_BTN_WIDTH, right: 0 }}
@@ -120,16 +122,27 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
         animate={{ x: swiped ? -DELETE_BTN_WIDTH : 0 }}
         transition={{ type: "spring", damping: 30, stiffness: 400 }}
         style={{ x }}
-        className="relative z-[1] touch-pan-y"
+        className="relative z-[1]"
         onTap={handleCardTap}
+        onPointerDown={(e) => {
+          // Stop event from bubbling to PageSwipeWrapper's drag handler
+          e.stopPropagation();
+          // Override browser touch-action so framer-motion owns this gesture.
+          // Restored in onPointerUp/Cancel/DragEnd so vertical scroll resumes.
+          if (cardRef.current) cardRef.current.style.touchAction = "none";
+        }}
+        onPointerUp={() => {
+          if (cardRef.current) cardRef.current.style.touchAction = "";
+        }}
+        onPointerCancel={() => {
+          if (cardRef.current) cardRef.current.style.touchAction = "";
+        }}
       >
         <Link
           href={`/chat/${chat.id}`}
           onClick={(e) => {
-            // Prevent navigation when swiped open
-            if (swiped) {
-              e.preventDefault();
-            }
+            // Prevent navigation when the card is swiped open
+            if (swiped) e.preventDefault();
           }}
           className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
             chat.unread > 0
