@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { ConditionalFooter } from "@/components/layout/conditional-footer";
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageSwipeWrapper } from "@/components/layout/page-swipe-wrapper";
+import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MarketplaceLayout({
@@ -40,7 +41,7 @@ export default async function MarketplaceLayout({
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("leida", false)
-      .not("tipo", "in", '("message","sale_confirmation")');
+      .neq("tipo", "message");
     unreadNotifications = count ?? 0;
 
     const { data: buyerChats } = await supabase
@@ -59,26 +60,27 @@ export default async function MarketplaceLayout({
   const isVendedor = profile?.es_vendedor ?? false;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar
-        user={user ? { id: user.id } : null}
-        profile={profile}
-        isAdmin={isAdmin}
-        unreadNotifications={unreadNotifications}
-        unreadChatMessages={unreadChatMessages}
-      />
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="md:hidden">
-          <Header unreadNotifications={unreadNotifications} />
+    <ChatUnreadProvider userId={user?.id ?? ""} initialCount={unreadChatMessages}>
+      <div className="flex min-h-screen">
+        <Sidebar
+          user={user ? { id: user.id } : null}
+          profile={profile}
+          isAdmin={isAdmin}
+          unreadNotifications={unreadNotifications}
+        />
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="md:hidden">
+            <Header unreadNotifications={unreadNotifications} />
+          </div>
+          <main className="flex-1 pb-20 md:pb-0">
+            <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
+          </main>
+          <div className="hidden md:block">
+            <ConditionalFooter isVendedor={isVendedor} />
+          </div>
+          <BottomNav isVendedor={isVendedor} />
         </div>
-        <main className="flex-1 pb-20 md:pb-0">
-          <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
-        </main>
-        <div className="hidden md:block">
-          <ConditionalFooter isVendedor={isVendedor} />
-        </div>
-        <BottomNav isVendedor={isVendedor} unreadChatMessages={unreadChatMessages} />
       </div>
-    </div>
+    </ChatUnreadProvider>
   );
 }

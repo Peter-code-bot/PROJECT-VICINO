@@ -232,6 +232,24 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
   return { success: true };
 }
 
+export async function getTotalUnreadChats(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const [{ data: buyerChats }, { data: sellerChats }] = await Promise.all([
+    supabase.from("chats").select("no_leidos_comprador").eq("comprador_id", user.id),
+    supabase.from("chats").select("no_leidos_vendedor").eq("vendedor_id", user.id),
+  ]);
+
+  return (
+    (buyerChats?.reduce((sum, c) => sum + (c.no_leidos_comprador ?? 0), 0) ?? 0) +
+    (sellerChats?.reduce((sum, c) => sum + (c.no_leidos_vendedor ?? 0), 0) ?? 0)
+  );
+}
+
 export async function hideChat(chatId: string) {
   const supabase = await createClient();
   const {

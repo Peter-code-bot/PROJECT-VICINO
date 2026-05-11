@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
 import { cn } from "@/lib/utils";
+import { useChatUnread } from "@/components/layout/chat-unread-provider";
 import {
   Home,
   Search,
@@ -71,10 +72,10 @@ interface SidebarProps {
   } | null;
   isAdmin: boolean;
   unreadNotifications: number;
-  unreadChatMessages: number;
 }
 
-export function Sidebar({ user, profile, isAdmin, unreadNotifications, unreadChatMessages }: SidebarProps) {
+export function Sidebar({ user, profile, isAdmin, unreadNotifications }: SidebarProps) {
+  const unreadChatMessages = useChatUnread();
   const pathname = usePathname();
   const router = useRouter();
   const [categoriesOpen, setCategoriesOpen] = useState(false);

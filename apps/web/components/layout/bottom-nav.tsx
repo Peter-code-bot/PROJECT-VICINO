@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useChatUnread } from "@/components/layout/chat-unread-provider";
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
@@ -20,12 +21,11 @@ interface BottomNavProps {
    * Phase 9: gating extends to /vender route via middleware + seller layout.
    */
   isVendedor: boolean;
-  /** Total unread chat messages across all the user's conversations. */
-  unreadChatMessages?: number;
 }
 
-export function BottomNav({ isVendedor, unreadChatMessages = 0 }: BottomNavProps) {
+export function BottomNav({ isVendedor }: BottomNavProps) {
   const pathname = usePathname();
+  const unreadChatMessages = useChatUnread();
   const navItems = isVendedor
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== "/vender");
