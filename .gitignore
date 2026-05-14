@@ -37,3 +37,7 @@ pnpm-debug.log*
 
 # Vercel
 .vercel/
+
+# Security audit artifacts (raw Codex logs, not for repo)
+codex-audit-output.md
+audit-session-export.txt
