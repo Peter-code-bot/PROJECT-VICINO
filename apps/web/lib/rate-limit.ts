@@ -1,6 +1,25 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
+/**
+ * Extract the client IP from request/headers. Prefers x-forwarded-for
+ * (first entry), falls back to x-real-ip, then "unknown".
+ * Shared across middleware and server actions so the limit identifier
+ * stays consistent — without this, an action that only checks
+ * x-forwarded-for collapses every request lacking that header into a
+ * single global quota.
+ */
+export function getClientIp(h: Headers): string {
+  const forwarded = h.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const real = h.get("x-real-ip");
+  if (real) return real;
+  return "unknown";
+}
+
 // Boot strategy: if Upstash creds are absent (local dev without the .env
 // vars, preview deploys before secrets are wired), build instances as null
 // and treat enforce()/check() as no-ops. Production with creds gets real

@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { fuzzCoordinate, fuzzDistance } from "./fuzz";
-import { enforce, readHeavyRateLimit } from "@/lib/rate-limit";
+import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 
 export interface NearbyProduct {
   id: string;
@@ -46,8 +46,7 @@ export async function getNearbyProducts(
   // Throttle by IP — this is an unauthenticated heavy read, so the rate limit
   // protects against scraping the proximity surface. 60/min is well above
   // any reasonable UI cadence.
-  const ip =
-    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(await headers());
   const rate = await enforce(readHeavyRateLimit, `read:${ip}`);
   if (!rate.ok) return { products: [], error: rate.error };
 

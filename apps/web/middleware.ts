@@ -1,17 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { authRateLimit, oauthCallbackRateLimit, check } from "@/lib/rate-limit";
-
-function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
-}
+import { oauthCallbackRateLimit, check, getClientIp } from "@/lib/rate-limit";
 
 function tooManyRequests(): NextResponse {
   return new NextResponse(
@@ -22,20 +11,19 @@ function tooManyRequests(): NextResponse {
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const ip = getClientIp(request);
 
-  // OAuth callback retries get their own, more permissive tier (20/min IP)
-  // so a legitimate Supabase OAuth retry storm doesn't trip the 5/15min login
-  // limit and lock the user out mid-auth.
+  // OAuth callback retries get their own permissive tier (20/min IP) so a
+  // legitimate Supabase OAuth retry storm doesn't lock the user out mid-auth.
+  //
+  // Password-based auth (signInWithPassword, signUp, resetPasswordForEmail)
+  // is throttled inside the server actions in app/(auth)/actions.ts — NOT
+  // here at the page level. A middleware tier on /login page loads is
+  // bypassable (the supabase-js client posts to *.supabase.co directly,
+  // never through Next) and would lock legitimate users out after 5 page
+  // navigations.
   if (path === "/auth/callback") {
+    const ip = getClientIp(request.headers);
     const { success } = await check(oauthCallbackRateLimit, ip);
-    if (!success) return tooManyRequests();
-  } else if (
-    path.startsWith("/login") ||
-    path.startsWith("/register") ||
-    path.startsWith("/forgot-password")
-  ) {
-    const { success } = await check(authRateLimit, ip);
     if (!success) return tooManyRequests();
   }
 
