@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { fuzzDistance } from "./fuzz";
+import { fuzzCoordinate, fuzzDistance } from "./fuzz";
 
 export interface NearbyProduct {
   id: string;
@@ -44,11 +44,19 @@ export async function getNearbyProducts(
   const radius = Math.min(Math.max(params.radiusMeters ?? 5000, 100), 50_000);
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
 
+  // Snap inputs to a 100m grid before the proximity filter runs.
+  // Without this, an attacker can binary-search the exact distance to a
+  // known listing by varying radiusMeters / lat / lng across calls and
+  // observing inclusion in the result set — bucketing the output alone
+  // does not stop that probe attack.
+  const snapped = fuzzCoordinate(params.lat, params.lng);
+  const snappedRadius = fuzzDistance(radius, 100);
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("nearby_products", {
-    user_lat: params.lat,
-    user_lng: params.lng,
-    radius_meters: radius,
+    user_lat: snapped.lat,
+    user_lng: snapped.lng,
+    radius_meters: snappedRadius,
     category_filter: params.categoryFilter ?? null,
     result_limit: limit,
   });
