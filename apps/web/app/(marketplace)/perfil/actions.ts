@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { updateProfileSchema } from "@vicino/shared";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -10,33 +11,37 @@ export async function updateProfile(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  const nombre = (formData.get("nombre") as string)?.trim();
-  const bio = (formData.get("bio") as string)?.trim() || null;
-  const foto = (formData.get("foto") as string)?.trim() || null;
-  const ubicacion = (formData.get("ubicacion") as string)?.trim() || null;
-  const es_vendedor = formData.get("es_vendedor") === "on";
   const seller_type = (formData.get("seller_type") as string) || "casual";
-  const nombre_negocio = seller_type === "business" ? ((formData.get("nombre_negocio") as string)?.trim() || null) : null;
-  const descripcion_negocio = seller_type === "business" ? ((formData.get("descripcion_negocio") as string)?.trim() || null) : null;
-  const metodos_pago_aceptados = (formData.get("metodos_pago_aceptados") as string)?.trim() || null;
+  const es_vendedor = formData.get("es_vendedor") === "on";
 
-  if (!nombre || nombre.length < 1) {
-    return { error: "El nombre es obligatorio" };
+  const raw = {
+    nombre: ((formData.get("nombre") as string) ?? "").trim(),
+    bio: ((formData.get("bio") as string) ?? "").trim() || null,
+    foto: ((formData.get("foto") as string) ?? "").trim() || null,
+    ubicacion: ((formData.get("ubicacion") as string) ?? "").trim() || null,
+    es_vendedor,
+    seller_type: es_vendedor && seller_type === "business" ? "business" : "casual",
+    nombre_negocio:
+      es_vendedor && seller_type === "business"
+        ? ((formData.get("nombre_negocio") as string) ?? "").trim() || null
+        : null,
+    descripcion_negocio:
+      es_vendedor && seller_type === "business"
+        ? ((formData.get("descripcion_negocio") as string) ?? "").trim() || null
+        : null,
+    metodos_pago_aceptados: es_vendedor
+      ? ((formData.get("metodos_pago_aceptados") as string) ?? "").trim() || null
+      : null,
+  };
+
+  const parsed = updateProfileSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
   const { error } = await supabase
     .from("profiles")
-    .update({
-      nombre,
-      bio,
-      foto,
-      ubicacion,
-      es_vendedor,
-      seller_type: es_vendedor ? seller_type : "casual",
-      nombre_negocio: es_vendedor ? nombre_negocio : null,
-      descripcion_negocio: es_vendedor ? descripcion_negocio : null,
-      metodos_pago_aceptados: es_vendedor ? metodos_pago_aceptados : null,
-    })
+    .update(parsed.data)
     .eq("id", user.id);
 
   if (error) return { error: error.message };

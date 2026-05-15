@@ -4,6 +4,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema } from "@vicino/shared";
 
+const PRODUCT_MEDIA_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/`
+  : null;
+
+function isValidProductMediaUrl(url: string): boolean {
+  if (!PRODUCT_MEDIA_PREFIX) return false;
+  return typeof url === "string" && url.startsWith(PRODUCT_MEDIA_PREFIX);
+}
+
 export async function createProduct(formData: FormData) {
   const supabase = await createClient();
 
@@ -39,9 +48,22 @@ export async function createProduct(formData: FormData) {
   const galeriaRaw = formData.get("galeria_imagenes") as string;
   let galeriaImagenes: string[] = [];
   try {
-    if (galeriaRaw) galeriaImagenes = JSON.parse(galeriaRaw);
+    if (galeriaRaw) {
+      const parsedGallery = JSON.parse(galeriaRaw);
+      if (Array.isArray(parsedGallery)) {
+        galeriaImagenes = parsedGallery.filter((v): v is string => typeof v === "string");
+      }
+    }
   } catch {
     // ignore parse errors
+  }
+
+  // Allowlist: only accept URLs pointing to our product-media bucket.
+  if (imagenPrincipal && !isValidProductMediaUrl(imagenPrincipal)) {
+    return { error: "URL de imagen principal inválida" };
+  }
+  if (galeriaImagenes.some((u) => !isValidProductMediaUrl(u))) {
+    return { error: "Una o más URLs de la galería son inválidas" };
   }
 
   const { data, error } = await supabase

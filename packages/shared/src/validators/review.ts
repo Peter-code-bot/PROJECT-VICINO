@@ -9,7 +9,8 @@ export const createReviewSchema = z.object({
 });
 
 export const respondReviewSchema = z.object({
-  respuesta: z.string().min(1).max(1000),
+  review_id: z.string().uuid(),
+  respuesta: z.string().min(1, "Escribe una respuesta").max(1000),
 });
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
