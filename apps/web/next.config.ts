@@ -7,8 +7,58 @@ const withPWA = withPWAInit({
   register: true,
 });
 
+// Content-Security-Policy
+//
+// Starts as Report-Only so the PWA service-worker registration, Realtime
+// websocket, and Leaflet tile loads cannot break production silently if a
+// directive is misjudged. Promote to "Content-Security-Policy" (enforce)
+// after monitoring the browser console for blocked requests for 1–2 days.
+//
+// connect-src must include both https://*.supabase.co (REST/Auth/Storage)
+// AND wss://*.supabase.co (chat Realtime) — without wss the chat breaks.
+// https://*.upstash.io is pre-listed for the rate-limit helper in Bloque 3.
+// worker-src 'self' blob: is required by @ducanh2912/next-pwa, which can
+// register the SW from a blob URL during hot-reload.
+// manifest-src 'self' keeps the PWA manifest fetchable for "Add to Home".
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://*.supabase.co https://picsum.photos https://i.pravatar.cc https://*.tile.openstreetmap.org https://unpkg.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+const securityHeaders = [
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "geolocation=(self), camera=(), microphone=()",
+  },
+  { key: "Content-Security-Policy-Report-Only", value: cspDirectives },
+];
+
 const nextConfig: NextConfig = {
   turbopack: {},
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
