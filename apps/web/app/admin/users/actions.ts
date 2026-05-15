@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function assignRole(userId: string, role: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from("user_roles").insert({
     user_id: userId,
     role,
@@ -13,7 +13,7 @@ export async function assignRole(userId: string, role: string) {
 }
 
 export async function removeRole(userId: string, role: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase
     .from("user_roles")
     .delete()

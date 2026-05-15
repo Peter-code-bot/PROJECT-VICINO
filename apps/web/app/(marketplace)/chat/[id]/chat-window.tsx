@@ -42,8 +42,6 @@ interface ChatWindowProps {
   chatId: string;
   currentUserId: string;
   isBuyer: boolean;
-  buyerId: string;
-  sellerId: string;
   otherUser: { id: string; nombre: string; foto: string | null; trust_level: string } | null;
   product: { id: string; titulo: string; precio: number; imagen_principal: string | null } | null;
   initialMessages: Message[];
@@ -54,8 +52,6 @@ export function ChatWindow({
   chatId,
   currentUserId,
   isBuyer,
-  buyerId,
-  sellerId,
   otherUser,
   product,
   initialMessages,
@@ -180,8 +176,6 @@ export function ChatWindow({
       {showSaleForm && (
         <SaleConfirmationForm
           chatId={chatId}
-          buyerId={buyerId}
-          sellerId={sellerId}
           currentUserId={currentUserId}
           product={product}
           onClose={() => setShowSaleForm(false)}

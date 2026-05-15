@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function approveVerification(verificationId: string, userId: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
 
   // Update seller_verification
   const { error: verError } = await supabase
@@ -68,7 +68,7 @@ export async function approveVerification(verificationId: string, userId: string
 }
 
 export async function rejectVerification(verificationId: string, note: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
 
   // Get user_id from verification
   const { data: ver } = await supabase

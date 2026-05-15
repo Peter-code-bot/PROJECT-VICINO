@@ -83,8 +83,6 @@ export default async function ChatDetailPage({ params }: Props) {
       chatId={chatId}
       currentUserId={user.id}
       isBuyer={isBuyer}
-      buyerId={chat.comprador_id}
-      sellerId={chat.vendedor_id}
       otherUser={otherUser ?? null}
       product={product ?? null}
       initialMessages={messages ?? []}

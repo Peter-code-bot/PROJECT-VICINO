@@ -55,8 +55,6 @@ export async function markAsRead(chatId: string) {
 
 export async function createSaleConfirmation(data: {
   productId: string;
-  buyerId: string;
-  sellerId: string;
   chatId: string;
   precioAcordado: number;
   cantidad: number;
@@ -71,12 +69,25 @@ export async function createSaleConfirmation(data: {
 
   if (!user) return { error: "No autenticado" };
 
+  // Derive buyer/seller server-side from chat record — never trust client-supplied IDs.
+  const { data: chat, error: chatErr } = await supabase
+    .from("chats")
+    .select("comprador_id, vendedor_id")
+    .eq("id", data.chatId)
+    .single();
+
+  if (chatErr || !chat) return { error: "Chat no encontrado" };
+
+  if (user.id !== chat.comprador_id && user.id !== chat.vendedor_id) {
+    return { error: "No autorizado para este chat" };
+  }
+
   const { data: confirmation, error } = await supabase
     .from("sale_confirmations")
     .insert({
       product_id: data.productId,
-      buyer_id: data.buyerId,
-      seller_id: data.sellerId,
+      buyer_id: chat.comprador_id,
+      seller_id: chat.vendedor_id,
       chat_id: data.chatId,
       precio_acordado: data.precioAcordado,
       cantidad: data.cantidad,
@@ -91,7 +102,6 @@ export async function createSaleConfirmation(data: {
   if (error) return { error: error.message };
 
   // Send auto-message in chat
-  const initiatorIsbuyer = user.id === data.buyerId;
   const { data: profile } = await supabase
     .from("profiles")
     .select("nombre")

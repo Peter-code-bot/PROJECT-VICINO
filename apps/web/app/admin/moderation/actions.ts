@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function hideReview(reviewId: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase
     .from("reviews")
     .update({ visible: false })
@@ -13,7 +13,7 @@ export async function hideReview(reviewId: string) {
 }
 
 export async function approveReview(reviewId: string) {
-  const supabase = await createClient();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase
     .from("reviews")
     .update({ reportada: false, visible: true })

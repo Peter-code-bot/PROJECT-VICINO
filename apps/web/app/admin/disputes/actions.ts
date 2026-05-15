@@ -1,19 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function resolveDispute(disputeId: string, resolution: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireAdmin();
 
   const { error } = await supabase
     .from("disputes")
     .update({
       status: resolution,
       resolucion: resolution,
-      admin_id: user?.id ?? null,
+      admin_id: user.id,
       resolved_at: new Date().toISOString(),
     })
     .eq("id", disputeId);
