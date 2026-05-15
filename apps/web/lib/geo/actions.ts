@@ -49,8 +49,13 @@ export async function getNearbyProducts(
   // known listing by varying radiusMeters / lat / lng across calls and
   // observing inclusion in the result set — bucketing the output alone
   // does not stop that probe attack.
+  //
+  // The radius is rounded UP (ceil) and inflated by one extra 100m bucket
+  // so that snapping the caller's coords (up to ~80m drift in this region)
+  // cannot exclude listings that were inside the originally requested
+  // radius. Probe granularity is still 100m, but no false negatives.
   const snapped = fuzzCoordinate(params.lat, params.lng);
-  const snappedRadius = fuzzDistance(radius, 100);
+  const snappedRadius = Math.ceil(radius / 100) * 100 + 100;
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("nearby_products", {

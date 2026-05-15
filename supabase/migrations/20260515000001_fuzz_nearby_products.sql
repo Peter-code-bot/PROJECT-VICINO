@@ -38,7 +38,10 @@ RETURNS TABLE (
     SELECT
       ROUND(user_lat::numeric, 3)::FLOAT AS s_lat,
       ROUND(user_lng::numeric, 3)::FLOAT AS s_lng,
-      (ROUND(radius_meters::FLOAT / 100) * 100)::INT AS s_radius
+      -- Round radius UP and add a 100m buffer to cover the coordinate
+      -- snap error (~80m worst case in this region), preventing false
+      -- negatives at the radius boundary.
+      (CEIL(radius_meters::FLOAT / 100) * 100 + 100)::INT AS s_radius
   )
   SELECT
     ps.id,
