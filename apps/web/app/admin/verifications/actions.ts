@@ -2,9 +2,13 @@
 
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { approveVerificationSchema, rejectVerificationSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function approveVerification(verificationId: string, userId: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = approveVerificationSchema.safeParse({
     verification_id: verificationId,
@@ -77,7 +81,10 @@ export async function approveVerification(verificationId: string, userId: string
 }
 
 export async function rejectVerification(verificationId: string, note: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = rejectVerificationSchema.safeParse({
     verification_id: verificationId,

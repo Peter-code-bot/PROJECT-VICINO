@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { respondReviewSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function respondToReview(reviewId: string, respuesta: string) {
   const supabase = await createClient();
@@ -9,6 +10,9 @@ export async function respondToReview(reviewId: string, respuesta: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = respondReviewSchema.safeParse({ review_id: reviewId, respuesta });
   if (!parsed.success) {

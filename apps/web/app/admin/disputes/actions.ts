@@ -2,9 +2,13 @@
 
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { resolveDisputeSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function resolveDispute(disputeId: string, resolution: string) {
   const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = resolveDisputeSchema.safeParse({
     dispute_id: disputeId,

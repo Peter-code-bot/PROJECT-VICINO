@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createCouponSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function createCoupon(formData: FormData) {
   const supabase = await createClient();
@@ -11,6 +12,9 @@ export async function createCoupon(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const raw = {
     codigo: formData.get("codigo") as string,
@@ -51,6 +55,9 @@ export async function toggleCoupon(id: string, activo: boolean) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const { error } = await supabase
     .from("coupons")
     .update({ activo })
@@ -68,6 +75,9 @@ export async function deleteCoupon(id: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const { error } = await supabase
     .from("coupons")

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 const PRODUCT_MEDIA_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/`
@@ -23,6 +24,9 @@ export async function createProduct(formData: FormData) {
   if (!user) {
     redirect("/login");
   }
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   // Validate
   const raw = {
@@ -106,6 +110,9 @@ export async function updateProduct(id: string, formData: FormData) {
     redirect("/login");
   }
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const updates: Record<string, unknown> = {};
   const titulo = formData.get("titulo") as string;
   if (titulo) updates.titulo = titulo;
@@ -144,6 +151,9 @@ export async function deleteProduct(id: string) {
     redirect("/login");
   }
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const { error } = await supabase
     .from("products_services")
     .update({ estatus: "eliminado" })
@@ -167,6 +177,9 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
   if (!user) {
     redirect("/login");
   }
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const { error } = await supabase
     .from("products_services")

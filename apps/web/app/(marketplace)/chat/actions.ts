@@ -10,6 +10,7 @@ import {
   confirmSaleSchema,
   cancelSaleSchema,
 } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function getOrCreateChat(sellerId: string, productId?: string) {
   const supabase = await createClient();
@@ -18,6 +19,9 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = getOrCreateChatSchema.safeParse({
     seller_id: sellerId,
@@ -45,6 +49,9 @@ export async function sendMessage(chatId: string, texto: string) {
 
   if (!user) return { error: "No autenticado" };
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const parsed = sendMessageSchema.safeParse({ chat_id: chatId, texto });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
@@ -67,6 +74,9 @@ export async function markAsRead(chatId: string) {
   } = await supabase.auth.getUser();
 
   if (!user) return;
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return;
 
   const parsed = markChatReadSchema.safeParse({ chat_id: chatId });
   if (!parsed.success) return;
@@ -92,6 +102,9 @@ export async function createSaleConfirmation(data: {
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = createSaleConfirmationSchema.safeParse({
     product_id: data.productId,
@@ -168,6 +181,9 @@ export async function confirmSale(saleConfirmationId: string) {
 
   if (!user) return { error: "No autenticado" };
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const parsed = confirmSaleSchema.safeParse({ sale_confirmation_id: saleConfirmationId });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Confirmación inválida" };
@@ -225,6 +241,9 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = cancelSaleSchema.safeParse({
     sale_confirmation_id: saleConfirmationId,

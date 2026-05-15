@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { updateProfileSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -10,6 +11,9 @@ export async function updateProfile(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const seller_type = (formData.get("seller_type") as string) || "casual";
   const es_vendedor = formData.get("es_vendedor") === "on";

@@ -2,9 +2,13 @@
 
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { moderateReviewSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function hideReview(reviewId: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
   if (!parsed.success) {
@@ -20,7 +24,10 @@ export async function hideReview(reviewId: string) {
 }
 
 export async function approveReview(reviewId: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
   if (!parsed.success) {

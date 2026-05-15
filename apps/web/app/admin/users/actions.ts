@@ -2,9 +2,13 @@
 
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { assignRoleSchema, removeRoleSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function assignRole(userId: string, role: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = assignRoleSchema.safeParse({ user_id: userId, role });
   if (!parsed.success) {
@@ -20,7 +24,10 @@ export async function assignRole(userId: string, role: string) {
 }
 
 export async function removeRole(userId: string, role: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const parsed = removeRoleSchema.safeParse({ user_id: userId, role });
   if (!parsed.success) {
