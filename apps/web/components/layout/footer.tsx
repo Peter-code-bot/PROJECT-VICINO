@@ -9,7 +9,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-terracotta flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center">
                 <MapPin className="w-3.5 h-3.5 text-white" />
               </div>
               <span className="font-heading font-bold text-base text-white">
@@ -31,7 +31,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/buscar"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Explorar
                 </Link>
@@ -39,7 +39,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/buscar"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Buscar
                 </Link>
@@ -47,7 +47,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/vender"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Vender
                 </Link>
@@ -64,7 +64,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/chat"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Centro de Ayuda
                 </Link>
@@ -72,7 +72,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/perfil"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Mi Cuenta
                 </Link>
@@ -89,7 +89,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/terminos"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Términos
                 </Link>
@@ -97,7 +97,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/privacidad"
-                  className="text-xs hover:text-terracotta-light transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Privacidad
                 </Link>

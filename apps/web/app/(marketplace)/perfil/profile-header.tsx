@@ -154,7 +154,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }
           return (
             <div className="space-y-1">
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-terracotta rounded-full transition-all" style={{ width: `${Math.max(5, progress)}%` }} />
+                <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.max(5, progress)}%` }} />
               </div>
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>{points} pts</span>
@@ -168,7 +168,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic }
       {/* Seller info */}
       {profile.es_vendedor && profile.nombre_negocio && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 bg-terracotta/10 text-terracotta px-2.5 py-1 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 bg-brand/10 text-brand px-2.5 py-1 rounded-lg text-xs font-medium">
             <Store className="w-3 h-3" />
             {profile.nombre_negocio}
           </span>

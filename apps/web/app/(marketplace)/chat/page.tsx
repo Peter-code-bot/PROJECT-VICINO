@@ -68,7 +68,7 @@ export default async function ChatPage({ searchParams }: Props) {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-heading font-bold">Mensajes</h1>
         {chats && chats.length > 0 && (
-          <span className="px-3 py-1 bg-terracotta/10 text-terracotta text-xs font-semibold rounded-full">
+          <span className="px-3 py-1 bg-brand/10 text-brand text-xs font-semibold rounded-full">
             {chats.length} conversaciones
           </span>
         )}
@@ -94,19 +94,19 @@ export default async function ChatPage({ searchParams }: Props) {
                 href={`/chat/${chat.id}`}
                 className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
                   unread > 0 
-                    ? "bg-white dark:bg-neutral-900 border-terracotta/30 shadow-md" 
-                    : "bg-card border-border/40 hover:border-terracotta/20 hover:shadow-sm"
+                    ? "bg-white dark:bg-neutral-900 border-brand/30 shadow-md" 
+                    : "bg-card border-border/40 hover:border-brand/20 hover:shadow-sm"
                 }`}
               >
                 {unread > 0 && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-terracotta" />
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand" />
                 )}
 
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 border-2 shadow-sm ${
-                  unread > 0 ? "border-terracotta/20 bg-terracotta/5" : "border-background bg-cream-dark dark:bg-neutral-800"
+                  unread > 0 ? "border-brand/20 bg-brand/5" : "border-background bg-cream-dark dark:bg-neutral-800"
                 }`}>
                   <span className={`text-lg font-heading font-bold ${
-                    unread > 0 ? "text-terracotta" : "text-muted-foreground"
+                    unread > 0 ? "text-brand" : "text-muted-foreground"
                   }`}>
                     {otherProfile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
                   </span>
@@ -115,12 +115,12 @@ export default async function ChatPage({ searchParams }: Props) {
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className={`font-semibold text-base truncate transition-colors ${
-                      unread > 0 ? "text-foreground" : "group-hover:text-terracotta"
+                      unread > 0 ? "text-foreground" : "group-hover:text-brand"
                     }`}>
                       {otherProfile?.nombre ?? "Usuario"}
                     </span>
                     <span className={`text-xs whitespace-nowrap ml-2 ${
-                      unread > 0 ? "text-terracotta font-semibold" : "text-muted-foreground"
+                      unread > 0 ? "text-brand font-semibold" : "text-muted-foreground"
                     }`}>
                       {formatRelativeTime(chat.updated_at)}
                     </span>
@@ -140,7 +140,7 @@ export default async function ChatPage({ searchParams }: Props) {
                 </div>
 
                 {unread > 0 && (
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-terracotta text-white text-xs font-bold shrink-0 shadow-sm shadow-terracotta/20">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-xs font-bold shrink-0 shadow-sm shadow-brand/20">
                     {unread}
                   </div>
                 )}
@@ -150,7 +150,7 @@ export default async function ChatPage({ searchParams }: Props) {
         </div>
       ) : (
         <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border/60 bg-card/50">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-terracotta/5 flex items-center justify-center mb-6">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-brand/5 flex items-center justify-center mb-6">
             <span className="text-4xl translate-y-1">💬</span>
           </div>
           <h2 className="text-xl font-heading font-bold mb-2">Sin conversaciones</h2>

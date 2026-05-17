@@ -12,7 +12,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Background accents */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-terracotta/5 blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-brand/5 blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-gold/5 blur-3xl" />
       </div>
 
@@ -22,7 +22,7 @@ export default function RegisterPage() {
           
           <div className="text-center space-y-3 mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-2">
-              <div className="w-12 h-12 rounded-xl bg-terracotta flex items-center justify-center shadow-md">
+              <div className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shadow-md">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
             </Link>

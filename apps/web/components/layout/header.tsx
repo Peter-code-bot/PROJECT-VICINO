@@ -32,7 +32,7 @@ export function Header() {
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <div className="w-8 h-8 rounded-xl bg-terracotta flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+          <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
             <MapPin className="w-4 h-4 text-white" />
           </div>
           <div className="flex flex-col">
@@ -52,12 +52,12 @@ export function Header() {
             className={cn(
               "flex items-center gap-2 w-full rounded-xl border px-3.5 py-2 text-sm transition-all duration-200",
               "bg-cream-dark/60 dark:bg-neutral-800/40 border-border/50",
-              "hover:border-terracotta/30 hover:shadow-sm",
-              pathname === "/buscar" && "border-terracotta/40 shadow-sm"
+              "hover:border-brand/30 hover:shadow-sm",
+              pathname === "/buscar" && "border-brand/40 shadow-sm"
             )}
             id="header-search"
           >
-            <Search className="h-4 w-4 text-terracotta/60" />
+            <Search className="h-4 w-4 text-brand/60" />
             <span className="text-muted-foreground text-sm">
               Busca en VICINO...
             </span>
@@ -73,7 +73,7 @@ export function Header() {
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
             {/* Notification dot */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-terracotta ring-2 ring-cream dark:ring-[#0D0D1A]" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand ring-2 ring-cream dark:ring-[#0D0D1A]" />
           </button>
         </div>
       </div>

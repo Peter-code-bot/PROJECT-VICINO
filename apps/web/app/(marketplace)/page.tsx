@@ -93,7 +93,7 @@ export default async function HomePage() {
       <section className="relative py-6 px-4">
         {/* Subtle background accent */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-terracotta/5 blur-3xl" />
+          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-brand/5 blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-48 h-48 rounded-full bg-emerald-trust/5 blur-3xl" />
         </div>
 
@@ -101,23 +101,23 @@ export default async function HomePage() {
           {/* Welcome + Search */}
           <div className="mb-6">
             <div className="flex items-center gap-1.5 mb-1">
-              <MapPin className="w-3.5 h-3.5 text-terracotta" />
+              <MapPin className="w-3.5 h-3.5 text-brand" />
               <span className="text-xs text-muted-foreground font-medium">
                 Tu zona
               </span>
             </div>
             <h1 className="font-heading font-bold text-2xl sm:text-3xl mb-4">
               Descubre lo mejor{" "}
-              <span className="text-terracotta">cerca de ti</span>
+              <span className="text-brand">cerca de ti</span>
             </h1>
 
             {/* Search Bar */}
             <Link
               href="/buscar"
-              className="flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-neutral-900 border border-border/40 px-4 py-3 shadow-sm hover:shadow-md hover:border-terracotta/20 transition-all duration-200"
+              className="flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-neutral-900 border border-border/40 px-4 py-3 shadow-sm hover:shadow-md hover:border-brand/20 transition-all duration-200"
               id="home-search"
             >
-              <Search className="h-5 w-5 text-terracotta/50" />
+              <Search className="h-5 w-5 text-brand/50" />
               <span className="text-sm text-muted-foreground">
                 ¿Qué estás buscando?
               </span>
@@ -140,7 +140,7 @@ export default async function HomePage() {
             <h2 className="font-heading font-semibold text-lg">Categorías</h2>
             <Link
               href="/buscar"
-              className="text-xs font-medium text-terracotta hover:text-terracotta-dark flex items-center gap-1 group transition-colors"
+              className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 group transition-colors"
               id="home-see-all-categories"
             >
               Ver todas
@@ -181,7 +181,7 @@ export default async function HomePage() {
             </h2>
             <Link
               href="/buscar"
-              className="text-xs font-medium text-terracotta hover:text-terracotta-dark flex items-center gap-1 group transition-colors"
+              className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 group transition-colors"
               id="home-see-all-products"
             >
               Ver más
@@ -223,9 +223,9 @@ export default async function HomePage() {
               <div className="max-w-sm mx-auto">
                 {/* Decorative illustration */}
                 <div className="relative w-24 h-24 mx-auto mb-6">
-                  <div className="absolute inset-0 rounded-3xl bg-terracotta/8 rotate-6" />
-                  <div className="absolute inset-0 rounded-3xl bg-terracotta/5 -rotate-3" />
-                  <div className="relative w-24 h-24 rounded-3xl bg-terracotta-50 dark:bg-terracotta/10 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-3xl bg-brand/8 rotate-6" />
+                  <div className="absolute inset-0 rounded-3xl bg-brand/5 -rotate-3" />
+                  <div className="relative w-24 h-24 rounded-3xl bg-brand-50 dark:bg-brand/10 flex items-center justify-center">
                     <span className="text-4xl">🏪</span>
                   </div>
                 </div>

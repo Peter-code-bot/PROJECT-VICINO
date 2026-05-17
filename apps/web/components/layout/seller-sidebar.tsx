@@ -45,15 +45,15 @@ export function SellerSidebar() {
               className={cn(
                 "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 overflow-hidden",
                 isActive
-                  ? "bg-terracotta-50 dark:bg-terracotta/10 text-terracotta font-semibold"
+                  ? "bg-brand-50 dark:bg-brand/10 text-brand font-semibold"
                   : "text-muted-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-foreground"
               )}
             >
               {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-terracotta rounded-r-md" />
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand rounded-r-md" />
               )}
               <div className="flex items-center gap-3">
-                <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", isActive && "fill-terracotta/10")} />
+                <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", isActive && "fill-brand/10")} />
                 {label}
               </div>
               {isActive && (
@@ -80,7 +80,7 @@ export function SellerSidebar() {
                 href={href}
                 className={cn(
                   "flex flex-col items-center gap-0.5 py-2 px-1 min-w-[56px]",
-                  isActive ? "text-terracotta" : "text-muted-foreground"
+                  isActive ? "text-brand" : "text-muted-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />

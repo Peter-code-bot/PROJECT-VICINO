@@ -4,10 +4,10 @@
 
 :root {
   /* Brand Core */
-  --brand-terracotta: #C45B3F;
-  --brand-terracotta-light: #D4826E;
-  --brand-terracotta-dark: #A04530;
-  --brand-terracotta-50: #FEF3F0;
+  --brand-base: #1F5A4E;
+  --brand-light: #2E8773;
+  --brand-dark: #133731;
+  --brand-50: #EAF1EF;
   --brand-cream: #FFF8F0;
   --brand-cream-dark: #F5EDE3;
   --brand-charcoal: #1A1A2E;
@@ -63,7 +63,7 @@
   --shadow-md: 0 4px 12px rgba(26, 26, 46, 0.08);
   --shadow-lg: 0 8px 30px rgba(26, 26, 46, 0.12);
   --shadow-xl: 0 16px 50px rgba(26, 26, 46, 0.16);
-  --shadow-glow: 0 0 30px rgba(196, 91, 63, 0.15);
+  --shadow-glow: 0 0 30px rgba(31, 90, 78, 0.15);
 
   /* Global Light */
   --background: var(--brand-cream);
@@ -94,7 +94,7 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 16px 50px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 30px rgba(196, 91, 63, 0.25);
+  --shadow-glow: 0 0 30px rgba(31, 90, 78, 0.25);
 }
 
 /* ─── TAILWIND v4 THEME ──────────────────────────────────── */
@@ -103,10 +103,10 @@
   /* Brand Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-terracotta: var(--brand-terracotta);
-  --color-terracotta-light: var(--brand-terracotta-light);
-  --color-terracotta-dark: var(--brand-terracotta-dark);
-  --color-terracotta-50: var(--brand-terracotta-50);
+  --color-brand: var(--brand-base);
+  --color-brand-light: var(--brand-light);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-50: var(--brand-50);
   --color-cream: var(--brand-cream);
   --color-cream-dark: var(--brand-cream-dark);
   --color-charcoal: var(--brand-charcoal);
@@ -122,7 +122,7 @@
   /* Semantic shadcn-compatible aliases */
   --color-card: var(--brand-cream);
   --color-card-foreground: var(--foreground);
-  --color-primary: var(--brand-terracotta);
+  --color-primary: var(--brand-base);
   --color-primary-foreground: #ffffff;
   --color-secondary: var(--neutral-100);
   --color-secondary-foreground: var(--foreground);
@@ -132,7 +132,7 @@
   --color-accent-foreground: var(--foreground);
   --color-border: var(--neutral-200);
   --color-input: var(--neutral-200);
-  --color-ring: var(--brand-terracotta);
+  --color-ring: var(--brand-base);
 
   /* Fonts */
   --font-sans: var(--font-inter);
@@ -160,7 +160,7 @@ body {
 }
 
 ::selection {
-  background: var(--brand-terracotta-light);
+  background: var(--brand-light);
   color: white;
 }
 

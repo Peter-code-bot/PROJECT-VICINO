@@ -33,7 +33,7 @@ export function BottomNav() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 w-16 h-full text-xs transition-all duration-200",
                   isActive
-                    ? "text-terracotta"
+                    ? "text-brand"
                     : "text-muted-foreground hover:text-foreground",
                   isVender && "relative"
                 )}
@@ -43,8 +43,8 @@ export function BottomNav() {
                   <div
                     className={cn(
                       "flex items-center justify-center w-11 h-11 rounded-2xl -mt-5 shadow-lg transition-all duration-200 active:scale-[0.93]",
-                      "bg-terracotta text-white",
-                      "hover:bg-terracotta-dark hover:shadow-xl",
+                      "bg-brand text-white",
+                      "hover:bg-brand-dark hover:shadow-xl",
                       "ring-4 ring-cream dark:ring-[#0D0D1A]"
                     )}
                   >
@@ -54,7 +54,7 @@ export function BottomNav() {
                   <div
                     className={cn(
                       "relative flex items-center justify-center w-10 h-8 rounded-xl transition-all duration-200",
-                      isActive && "bg-terracotta-50 dark:bg-terracotta/10"
+                      isActive && "bg-brand-50 dark:bg-brand/10"
                     )}
                   >
                     <Icon
@@ -65,7 +65,7 @@ export function BottomNav() {
                     />
                     {/* Active indicator dot */}
                     {isActive && (
-                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-terracotta" />
+                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-brand" />
                     )}
                   </div>
                 )}

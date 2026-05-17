@@ -186,7 +186,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
-                  ? "bg-terracotta/10 text-terracotta"
+                  ? "bg-brand/10 text-brand"
                   : "text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-foreground"
               )}
             >
@@ -274,9 +274,9 @@ function NavItem({
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors relative",
         active
-          ? "bg-terracotta/10 text-terracotta font-semibold"
+          ? "bg-brand/10 text-brand font-semibold"
           : highlight
-            ? "text-terracotta hover:bg-terracotta/5"
+            ? "text-brand hover:bg-brand/5"
             : "text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-foreground"
       )}
     >

@@ -81,7 +81,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
         <button
           onClick={handleMarkAllRead}
           disabled={isPending}
-          className="text-xs text-terracotta font-medium hover:underline mb-2 disabled:opacity-50"
+          className="text-xs text-brand font-medium hover:underline mb-2 disabled:opacity-50"
         >
           Marcar todo como leído
         </button>
@@ -99,7 +99,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
               "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors cursor-pointer",
               n.leida
                 ? "bg-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                : "bg-terracotta/5 dark:bg-terracotta/10 hover:bg-terracotta/10 dark:hover:bg-terracotta/15"
+                : "bg-brand/5 dark:bg-brand/10 hover:bg-brand/10 dark:hover:bg-brand/15"
             )}
           >
             <div
@@ -107,7 +107,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
                 "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
                 n.leida
                   ? "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground"
-                  : "bg-terracotta/10 text-terracotta"
+                  : "bg-brand/10 text-brand"
               )}
             >
               <Icon className="w-4 h-4" />
@@ -116,7 +116,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
               <div className="flex items-center gap-2">
                 <p className={cn("text-sm", !n.leida && "font-semibold")}>{n.titulo}</p>
                 {!n.leida && (
-                  <span className="w-2 h-2 rounded-full bg-terracotta shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{n.mensaje}</p>
