@@ -6,8 +6,6 @@ import { createSaleConfirmation } from "../actions";
 
 interface SaleConfirmationFormProps {
   chatId: string;
-  buyerId: string;
-  sellerId: string;
   currentUserId: string;
   product: { id: string; titulo: string; precio: number } | null;
   onClose: () => void;
@@ -15,8 +13,6 @@ interface SaleConfirmationFormProps {
 
 export function SaleConfirmationForm({
   chatId,
-  buyerId,
-  sellerId,
   currentUserId,
   product,
   onClose,
@@ -37,8 +33,6 @@ export function SaleConfirmationForm({
 
     const result = await createSaleConfirmation({
       productId: product.id,
-      buyerId,
-      sellerId,
       chatId,
       precioAcordado: Number(precio),
       cantidad: Number(cantidad),

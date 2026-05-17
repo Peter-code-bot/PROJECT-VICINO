@@ -3,35 +3,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema } from "@vicino/shared";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
-/**
- * Phase 9 server-action guard. Middleware gates `/vender` and `/seller/*`
- * route navigation, but server actions can be POSTed directly via the action
- * endpoint, bypassing the UI gate. RLS on `products_services` only checks
- * `auth.uid() = creador_id`, not `profiles.es_vendedor`, so without this
- * helper a logged-in non-seller could create or resume listings.
- *
- * Apply at the top of mutating server actions whose semantics imply the
- * caller must be in seller mode (createProduct, toggleProductStatus when
- * resuming). Editing text and deleting are intentionally NOT gated — those
- * stay available to ex-sellers for cleanup.
- */
-async function requireSeller(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<{ error: string } | null> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("es_vendedor")
-    .eq("id", userId)
-    .single();
-  if (!profile?.es_vendedor) {
-    return {
-      error: "Modo vendedor inactivo. Activa el modo vendedor en tu perfil para publicar.",
-    };
-  }
-  return null;
+const PRODUCT_MEDIA_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/`
+  : null;
+
+function isValidProductMediaUrl(url: string): boolean {
+  if (!PRODUCT_MEDIA_PREFIX) return false;
+  return typeof url === "string" && url.startsWith(PRODUCT_MEDIA_PREFIX);
 }
 
 export async function createProduct(formData: FormData) {
@@ -45,8 +25,8 @@ export async function createProduct(formData: FormData) {
     redirect("/login");
   }
 
-  const guard = await requireSeller(supabase, user.id);
-  if (guard) return guard;
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   // Validate
   const raw = {
@@ -77,9 +57,22 @@ export async function createProduct(formData: FormData) {
   const galeriaRaw = formData.get("galeria_imagenes") as string;
   let galeriaImagenes: string[] = [];
   try {
-    if (galeriaRaw) galeriaImagenes = JSON.parse(galeriaRaw);
+    if (galeriaRaw) {
+      const parsedGallery = JSON.parse(galeriaRaw);
+      if (Array.isArray(parsedGallery)) {
+        galeriaImagenes = parsedGallery.filter((v): v is string => typeof v === "string");
+      }
+    }
   } catch {
     // ignore parse errors
+  }
+
+  // Allowlist: only accept URLs pointing to our product-media bucket.
+  if (imagenPrincipal && !isValidProductMediaUrl(imagenPrincipal)) {
+    return { error: "URL de imagen principal inválida" };
+  }
+  if (galeriaImagenes.some((u) => !isValidProductMediaUrl(u))) {
+    return { error: "Una o más URLs de la galería son inválidas" };
   }
 
   const { data, error } = await supabase
@@ -126,6 +119,9 @@ export async function updateProduct(id: string, formData: FormData) {
     redirect("/login");
   }
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const updates: Record<string, unknown> = {};
   const titulo = formData.get("titulo") as string;
   if (titulo) updates.titulo = titulo;
@@ -164,6 +160,9 @@ export async function deleteProduct(id: string) {
     redirect("/login");
   }
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const { error } = await supabase
     .from("products_services")
     .update({ estatus: "eliminado" })
@@ -188,13 +187,8 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
     redirect("/login");
   }
 
-  // Resume requires seller mode; pause is allowed for ex-sellers (so the
-  // server action `updateProfile` can call this idempotently while users
-  // are turning seller mode off, and so any cleanup path still works).
-  if (newStatus === "disponible") {
-    const guard = await requireSeller(supabase, user.id);
-    if (guard) return guard;
-  }
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const { error } = await supabase
     .from("products_services")

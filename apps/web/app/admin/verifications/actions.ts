@@ -1,7 +1,8 @@
 "use server";
 
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { approveVerificationSchema, rejectVerificationSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 const uuidSchema = z.string().uuid();
 const rejectSchema = z.object({
@@ -21,12 +22,18 @@ async function requireAdmin() {
 }
 
 export async function approveVerification(verificationId: string, userId: string) {
-  if (!uuidSchema.safeParse(verificationId).success || !uuidSchema.safeParse(userId).success)
-    return { error: "Datos inválidos" };
-  const admin = await requireAdmin();
-  if (!admin) return { error: "No autorizado" };
+  const { supabase, user } = await requireAdmin();
 
-  const supabase = await createClient();
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = approveVerificationSchema.safeParse({
+    verification_id: verificationId,
+    user_id: userId,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
 
   // Update seller_verification
   const { error: verError } = await supabase
@@ -35,7 +42,7 @@ export async function approveVerification(verificationId: string, userId: string
       status: "approved",
       reviewed_at: new Date().toISOString(),
     })
-    .eq("id", verificationId);
+    .eq("id", parsed.data.verification_id);
 
   if (verError) return { error: verError.message };
 
@@ -47,22 +54,22 @@ export async function approveVerification(verificationId: string, userId: string
       verified_at: new Date().toISOString(),
       trust_points: 30, // Will be added via trigger if we had one, manually set for now
     })
-    .eq("id", userId);
+    .eq("id", parsed.data.user_id);
 
   // Notify seller
   await supabase.from("notifications").insert({
-    user_id: userId,
+    user_id: parsed.data.user_id,
     tipo: "trust_upgrade",
     titulo: "¡Identidad verificada!",
     mensaje: "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
-    data: { verification_id: verificationId },
+    data: { verification_id: parsed.data.verification_id },
   });
 
   // Upsert trust_level_verification
   const { data: existing } = await supabase
     .from("trust_level_verification")
     .select("id")
-    .eq("user_id", userId)
+    .eq("user_id", parsed.data.user_id)
     .single();
 
   if (existing) {
@@ -75,10 +82,10 @@ export async function approveVerification(verificationId: string, userId: string
         current_level: "verificado",
         level_1_completed_at: new Date().toISOString(),
       })
-      .eq("user_id", userId);
+      .eq("user_id", parsed.data.user_id);
   } else {
     await supabase.from("trust_level_verification").insert({
-      user_id: userId,
+      user_id: parsed.data.user_id,
       id_verified: true,
       selfie_verified: true,
       selfie_match_verified: true,
@@ -99,18 +106,24 @@ export async function approveVerification(verificationId: string, userId: string
 }
 
 export async function rejectVerification(verificationId: string, note: string) {
-  const parsed = rejectSchema.safeParse({ verificationId, note });
-  if (!parsed.success) return { error: "Datos inválidos" };
-  const admin = await requireAdmin();
-  if (!admin) return { error: "No autorizado" };
+  const { supabase, user } = await requireAdmin();
 
-  const supabase = await createClient();
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = rejectVerificationSchema.safeParse({
+    verification_id: verificationId,
+    note: note ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
 
   // Get user_id from verification
   const { data: ver } = await supabase
     .from("seller_verification")
     .select("user_id")
-    .eq("id", verificationId)
+    .eq("id", parsed.data.verification_id)
     .single();
 
   const { error } = await supabase
@@ -118,9 +131,9 @@ export async function rejectVerification(verificationId: string, note: string) {
     .update({
       status: "rejected",
       reviewed_at: new Date().toISOString(),
-      reviewer_note: note || null,
+      reviewer_note: parsed.data.note || null,
     })
-    .eq("id", verificationId);
+    .eq("id", parsed.data.verification_id);
 
   if (error) return { error: error.message };
 
@@ -138,10 +151,10 @@ export async function rejectVerification(verificationId: string, note: string) {
       user_id: ver.user_id,
       tipo: "trust_upgrade",
       titulo: "Verificación rechazada",
-      mensaje: note
-        ? `Tu verificación fue rechazada: ${note}. Puedes intentar de nuevo.`
+      mensaje: parsed.data.note
+        ? `Tu verificación fue rechazada: ${parsed.data.note}. Puedes intentar de nuevo.`
         : "Tu verificación fue rechazada. Puedes intentar de nuevo.",
-      data: { verification_id: verificationId },
+      data: { verification_id: parsed.data.verification_id },
     });
   }
 

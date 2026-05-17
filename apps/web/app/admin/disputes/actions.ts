@@ -1,12 +1,22 @@
 "use server";
 
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { resolveDisputeSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
-const resolveDisputeSchema = z.object({
-  disputeId: z.string().uuid(),
-  resolution: z.enum(["resolved_buyer", "resolved_seller", "resolved_partial", "dismissed"]),
-});
+export async function resolveDispute(disputeId: string, resolution: string) {
+  const { supabase, user } = await requireAdmin();
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = resolveDisputeSchema.safeParse({
+    dispute_id: disputeId,
+    resolution,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -30,12 +40,12 @@ export async function resolveDispute(disputeId: string, resolution: string) {
   const { error } = await supabase
     .from("disputes")
     .update({
-      status: resolution,
-      resolucion: resolution,
-      admin_id: admin.id,
+      status: parsed.data.resolution,
+      resolucion: parsed.data.resolution,
+      admin_id: user.id,
       resolved_at: new Date().toISOString(),
     })
-    .eq("id", parsed.data.disputeId);
+    .eq("id", parsed.data.dispute_id);
 
   if (error) return { error: error.message };
 

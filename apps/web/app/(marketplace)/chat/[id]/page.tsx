@@ -43,7 +43,7 @@ export default async function ChatDetailPage({ params }: Props) {
   // Get initial messages
   const { data: messages } = await supabase
     .from("messages")
-    .select("id, chat_id, autor_id, texto, attachments, created_at")
+    .select("id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor")
     .eq("chat_id", chatId)
     .order("created_at", { ascending: true })
     .limit(50);
@@ -83,12 +83,10 @@ export default async function ChatDetailPage({ params }: Props) {
       chatId={chatId}
       currentUserId={user.id}
       isBuyer={isBuyer}
-      buyerId={chat.comprador_id}
-      sellerId={chat.vendedor_id}
       otherUser={otherUser ?? null}
       product={product ?? null}
       initialMessages={messages ?? []}
-      saleConfirmations={saleConfirmations ?? []}
+      initialSaleConfirmations={saleConfirmations ?? []}
     />
   );
 }

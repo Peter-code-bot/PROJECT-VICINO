@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { signUp } from "../actions";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function RegisterForm() {
@@ -26,18 +27,14 @@ export function RegisterForm() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: nombre },
-      },
-    });
+    const result = await signUp(email, password, nombre);
 
-    if (error) {
-      const msg = error.message.toLowerCase();
+    if (result.error) {
+      const msg = result.error.toLowerCase();
       if (msg.includes("already registered")) {
         setError("Este email ya está registrado. Intenta iniciar sesión.");
+      } else if (msg.includes("demasiadas") || msg.includes("too many")) {
+        setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
       } else {
         setError("Error al crear la cuenta. Intenta de nuevo.");
       }
@@ -45,7 +42,7 @@ export function RegisterForm() {
       return;
     }
 
-    if (data.session) {
+    if (result.hasSession) {
       router.push("/");
       router.refresh();
     } else {

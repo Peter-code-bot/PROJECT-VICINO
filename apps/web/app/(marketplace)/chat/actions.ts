@@ -3,6 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  sendMessageSchema,
+  getOrCreateChatSchema,
+  markChatReadSchema,
+  createSaleConfirmationSchema,
+  confirmSaleSchema,
+  cancelSaleSchema,
+} from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function getOrCreateChat(sellerId: string, productId?: string) {
   const supabase = await createClient();
@@ -12,10 +21,21 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
 
   if (!user) redirect("/login");
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = getOrCreateChatSchema.safeParse({
+    seller_id: sellerId,
+    product_id: productId,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
+
   const { data: chatId, error } = await supabase.rpc("get_or_create_chat", {
     p_comprador_id: user.id,
-    p_vendedor_id: sellerId,
-    p_producto_id: productId ?? null,
+    p_vendedor_id: parsed.data.seller_id,
+    p_producto_id: parsed.data.product_id ?? null,
   });
 
   if (error) return { error: error.message };
@@ -35,10 +55,18 @@ export async function sendMessage(chatId: string, texto: string) {
 
   if (!user) return { error: "No autenticado" };
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = sendMessageSchema.safeParse({ chat_id: chatId, texto });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
+  }
+
   const { error } = await supabase.from("messages").insert({
-    chat_id: chatId,
+    chat_id: parsed.data.chat_id,
     autor_id: user.id,
-    texto: safeTexto,
+    texto: parsed.data.texto,
   });
 
   if (error) return { error: error.message };
@@ -53,16 +81,20 @@ export async function markAsRead(chatId: string) {
 
   if (!user) return;
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return;
+
+  const parsed = markChatReadSchema.safeParse({ chat_id: chatId });
+  if (!parsed.success) return;
+
   await supabase.rpc("mark_messages_as_read", {
-    p_chat_id: chatId,
+    p_chat_id: parsed.data.chat_id,
     p_user_id: user.id,
   });
 }
 
 export async function createSaleConfirmation(data: {
   productId: string;
-  buyerId: string;
-  sellerId: string;
   chatId: string;
   precioAcordado: number;
   cantidad: number;
@@ -77,28 +109,50 @@ export async function createSaleConfirmation(data: {
 
   if (!user) return { error: "No autenticado" };
 
-  // Prevent duplicate active confirmations
-  const { data: existing } = await supabase
-    .from("sale_confirmations")
-    .select("id")
-    .eq("chat_id", data.chatId)
-    .eq("status", "pending_confirmation")
-    .maybeSingle();
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
-  if (existing) return { error: "Ya hay una confirmación en curso para este chat." };
+  const parsed = createSaleConfirmationSchema.safeParse({
+    product_id: data.productId,
+    chat_id: data.chatId,
+    precio_acordado: data.precioAcordado,
+    cantidad: data.cantidad,
+    metodo_pago: data.metodoPago,
+    notas: data.notas,
+    tipo_entrega: data.tipoEntrega === "envio" ? "envio" : "pickup",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
+
+  // Derive buyer/seller server-side from chat record — never trust client-supplied IDs.
+  const { data: chat, error: chatErr } = await supabase
+    .from("chats")
+    .select("comprador_id, vendedor_id")
+    .eq("id", parsed.data.chat_id)
+    .single();
+
+  if (chatErr || !chat) {
+    if (chatErr) console.error("[createSaleConfirmation] chat lookup:", chatErr);
+    return { error: chatErr?.message ?? "Chat no encontrado" };
+  }
+
+  if (user.id !== chat.comprador_id && user.id !== chat.vendedor_id) {
+    return { error: "No autorizado para este chat" };
+  }
 
   const { data: confirmation, error } = await supabase
     .from("sale_confirmations")
     .insert({
-      product_id: data.productId,
-      buyer_id: data.buyerId,
-      seller_id: data.sellerId,
-      chat_id: data.chatId,
-      precio_acordado: data.precioAcordado,
-      cantidad: data.cantidad,
-      metodo_pago: data.metodoPago ?? null,
-      notas: data.notas ?? null,
-      tipo_entrega: data.tipoEntrega,
+      product_id: parsed.data.product_id,
+      buyer_id: chat.comprador_id,
+      seller_id: chat.vendedor_id,
+      chat_id: parsed.data.chat_id,
+      precio_acordado: parsed.data.precio_acordado,
+      cantidad: parsed.data.cantidad,
+      metodo_pago: parsed.data.metodo_pago ?? null,
+      notas: parsed.data.notas ?? null,
+      tipo_entrega: parsed.data.tipo_entrega,
       initiated_by: user.id,
     })
     .select()
@@ -110,7 +164,6 @@ export async function createSaleConfirmation(data: {
   }
 
   // Send auto-message in chat
-  const initiatorIsbuyer = user.id === data.buyerId;
   const { data: profile } = await supabase
     .from("profiles")
     .select("nombre")
@@ -120,15 +173,19 @@ export async function createSaleConfirmation(data: {
   const { data: product } = await supabase
     .from("products_services")
     .select("titulo")
-    .eq("id", data.productId)
+    .eq("id", parsed.data.product_id)
     .single();
 
-  await supabase.from("messages").insert({
-    chat_id: data.chatId,
+  const { error: autoMsgErr } = await supabase.from("messages").insert({
+    chat_id: parsed.data.chat_id,
     autor_id: user.id,
-    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — $${data.precioAcordado} MXN. Confirma para completar la venta.`,
+    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — $${parsed.data.precio_acordado} MXN. Confirma para completar la venta.`,
   });
+  if (autoMsgErr) {
+    console.error("[createSaleConfirmation] auto-message insert:", autoMsgErr);
+  }
 
+  revalidatePath(`/chat/${parsed.data.chat_id}`);
   return { confirmation };
 }
 
@@ -140,13 +197,18 @@ export async function confirmSale(saleConfirmationId: string) {
 
   if (!user) return { error: "No autenticado" };
 
-  // Fetch current state including confirmation flags + status — needed for idempotency check
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = confirmSaleSchema.safeParse({ sale_confirmation_id: saleConfirmationId });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Confirmación inválida" };
+  }
+
   const { data: sc } = await supabase
     .from("sale_confirmations")
-    .select(
-      "buyer_id, seller_id, chat_id, product_id, precio_acordado, status, buyer_confirmed, seller_confirmed",
-    )
-    .eq("id", saleConfirmationId)
+    .select("buyer_id, seller_id, chat_id, product_id, precio_acordado")
+    .eq("id", parsed.data.sale_confirmation_id)
     .single();
 
   if (!sc) return { error: "Confirmación no encontrada" };
@@ -169,19 +231,17 @@ export async function confirmSale(saleConfirmationId: string) {
   const { data: updatedRows, error: updateError } = await supabase
     .from("sale_confirmations")
     .update(updates)
-    .eq("id", saleConfirmationId)
-    .eq("status", "pending_confirmation")
-    .eq(isBuyer ? "buyer_confirmed" : "seller_confirmed", false)
-    .select("status, chat_id");
+    .eq("id", parsed.data.sale_confirmation_id)
+    .eq("status", "pending_confirmation");
 
   if (updateError) return { error: updateError.message };
 
-  // 0 rows updated → another request beat us (already-confirmed by us in the gap).
-  // Treat as idempotent success; do NOT insert duplicate message.
-  const updatedSc = updatedRows?.[0];
-  if (!updatedSc) {
-    return { success: true, alreadyConfirmed: true };
-  }
+  // Check if both confirmed now
+  const { data: updated } = await supabase
+    .from("sale_confirmations")
+    .select("status")
+    .eq("id", parsed.data.sale_confirmation_id)
+    .single();
 
   // Only insert the "venta confirmada" message if THIS update flipped status to completed.
   if (updatedSc.status === "completed" && updatedSc.chat_id) {
@@ -191,21 +251,19 @@ export async function confirmSale(saleConfirmationId: string) {
       .eq("id", sc.product_id)
       .single();
 
-    const { error: insertError } = await supabase.from("messages").insert({
-      chat_id: updatedSc.chat_id,
+    const { error: completedMsgErr } = await supabase.from("messages").insert({
+      chat_id: sc.chat_id,
       autor_id: user.id,
       texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo}" — $${sc.precio_acordado} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
       sale_confirmation_id: saleConfirmationId,
       message_type: "sale_confirmed",
     });
-
-    // 23505 = unique_violation. The DB-level partial unique index blocked a duplicate
-    // — exactly the defense-in-depth behavior we want. Treat as idempotent success.
-    if (insertError && insertError.code !== "23505") {
-      return { error: insertError.message };
+    if (completedMsgErr) {
+      console.error("[confirmSale] completed-message insert:", completedMsgErr);
     }
   }
 
+  if (sc.chat_id) revalidatePath(`/chat/${sc.chat_id}`);
   return { success: true };
 }
 
@@ -217,18 +275,32 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
 
   if (!user) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = cancelSaleSchema.safeParse({
+    sale_confirmation_id: saleConfirmationId,
+    reason,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
+
+  const { data: cancelled, error } = await supabase
     .from("sale_confirmations")
     .update({
       status: "cancelled",
       cancelled_at: new Date().toISOString(),
       cancelled_by: user.id,
-      cancel_reason: reason ?? null,
+      cancel_reason: parsed.data.reason ?? null,
     })
-    .eq("id", saleConfirmationId)
-    .eq("status", "pending_confirmation");
+    .eq("id", parsed.data.sale_confirmation_id)
+    .eq("status", "pending_confirmation")
+    .select("chat_id")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  if (cancelled?.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
   return { success: true };
 }
 

@@ -32,8 +32,8 @@ export function SaleConfirmationCard({
   confirmation: sc,
   currentUserId,
 }: SaleConfirmationCardProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const productTitle = Array.isArray(sc.products_services)
     ? sc.products_services[0]?.titulo
@@ -46,20 +46,20 @@ export function SaleConfirmationCard({
   const isCompleted = sc.status === "completed";
   const canConfirm = !myConfirmed && sc.status === "pending_confirmation";
 
-  function handleConfirm() {
-    if (isPending || myConfirmed || sc.status !== "pending_confirmation") return;
-    startTransition(async () => {
-      await confirmSale(sc.id);
-      router.refresh();
-    });
+  async function handleConfirm() {
+    setLoading(true);
+    setError("");
+    const result = await confirmSale(sc.id);
+    if (result?.error) setError(result.error);
+    setLoading(false);
   }
 
-  function handleCancel() {
-    if (isPending || sc.status !== "pending_confirmation") return;
-    startTransition(async () => {
-      await cancelSale(sc.id);
-      router.refresh();
-    });
+  async function handleCancel() {
+    setLoading(true);
+    setError("");
+    const result = await cancelSale(sc.id);
+    if (result?.error) setError(result.error);
+    setLoading(false);
   }
 
   const statusColor = isCompleted
@@ -97,6 +97,10 @@ export function SaleConfirmationCard({
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
+
+      {error && (
+        <p className="text-[10px] text-red-600 dark:text-red-400">{error}</p>
+      )}
 
       {/* Action buttons */}
       {canConfirm && (

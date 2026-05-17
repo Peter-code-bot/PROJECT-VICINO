@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ProductCarousel } from "@/components/home/product-carousel";
+import { ProductCard } from "@/components/product/product-card";
+import { LocationBar } from "@/components/shared/location-bar";
 import { CATEGORIES } from "@vicino/shared";
 import {
   UtensilsCrossed,
@@ -144,6 +145,13 @@ export default async function HomePage() {
               </span>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ─── CERCA DE TI (geo island) ───────────────────────── */}
+      <section className="px-4 pb-6">
+        <div className="max-w-7xl mx-auto">
+          <LocationBar />
         </div>
       </section>
 

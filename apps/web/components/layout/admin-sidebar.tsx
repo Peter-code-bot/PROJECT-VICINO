@@ -6,22 +6,16 @@ import { LayoutDashboard, Users, ShieldCheck, AlertTriangle, Flag, Settings, Che
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Panel", icon: LayoutDashboard, exact: true, roles: ["admin", "moderator"] },
-  { href: "/admin/users", label: "Usuarios", icon: Users, roles: ["admin"] },
-  { href: "/admin/verifications", label: "Verificaciones", icon: ShieldCheck, roles: ["admin", "moderator"] },
-  { href: "/admin/disputes", label: "Disputas", icon: AlertTriangle, roles: ["admin", "moderator"] },
-  { href: "/admin/moderation", label: "Moderación", icon: Flag, roles: ["admin", "moderator"] },
+  { href: "/admin", label: "Panel", icon: LayoutDashboard, exact: true },
+  { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/verifications", label: "Verificaciones", icon: ShieldCheck },
+  { href: "/admin/disputes", label: "Disputas", icon: AlertTriangle },
+  { href: "/admin/moderation", label: "Moderación", icon: Flag },
 ] as const;
 
-interface AdminSidebarProps {
-  userRole?: string;
-}
-
-export function AdminSidebar({ userRole = "admin" }: AdminSidebarProps) {
+export function AdminSidebar() {
   const pathname = usePathname();
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(userRole)
-  );
+  const visibleItems = NAV_ITEMS;
 
   return (
     <>

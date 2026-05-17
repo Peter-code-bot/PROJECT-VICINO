@@ -94,11 +94,10 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
         <Link href="/" className="flex items-center gap-2.5 group">
           <Image
             src="/vicino-logo.png"
-            alt="VICINO"
-            width={48}
-            height={48}
-            className="shrink-0"
-            priority
+            alt="Vicino Logo"
+            width={36}
+            height={36}
+            className="rounded-xl shadow-sm"
           />
           <span className="font-heading font-bold text-lg">VICINO</span>
         </Link>

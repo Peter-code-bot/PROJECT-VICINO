@@ -8,7 +8,10 @@ export * from "./validators/profile";
 export * from "./validators/review";
 export * from "./validators/sale-confirmation";
 export * from "./validators/coupon";
-export * from "./validators/moderation";
+export * from "./validators/chat";
+export * from "./validators/favorite";
+export * from "./validators/notification";
+export * from "./validators/admin";
 
 // Utils
 export * from "./utils/format";

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { markNotificationReadSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 const uuidSchema = z.string().uuid();
 
@@ -14,10 +16,18 @@ export async function markAsRead(notificationId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = markNotificationReadSchema.safeParse({ notification_id: notificationId });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Notificación inválida" };
+  }
+
   await supabase
     .from("notifications")
     .update({ leida: true })
-    .eq("id", notificationId)
+    .eq("id", parsed.data.notification_id)
     .eq("user_id", user.id);
 
   revalidatePath("/notificaciones");
@@ -30,6 +40,9 @@ export async function markAllAsRead() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   await supabase
     .from("notifications")

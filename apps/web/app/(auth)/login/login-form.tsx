@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { signInWithPassword } from "../actions";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function LoginForm() {
@@ -19,18 +20,15 @@ export function LoginForm() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const result = await signInWithPassword(email, password);
 
-    if (error) {
-      const msg = error.message.toLowerCase();
+    if (result.error) {
+      const msg = result.error.toLowerCase();
       if (msg.includes("invalid login credentials")) {
         setError("Email o contraseña incorrectos");
       } else if (msg.includes("email not confirmed")) {
         setError("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.");
-      } else if (msg.includes("too many requests")) {
+      } else if (msg.includes("too many requests") || msg.includes("demasiadas")) {
         setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
       } else {
         setError("Error al iniciar sesión. Intenta de nuevo.");

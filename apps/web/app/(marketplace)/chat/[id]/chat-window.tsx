@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeTime } from "@vicino/shared";
-import { Send, Handshake, ArrowLeft } from "lucide-react";
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { Send, Handshake, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
 import { SaleConfirmationCard } from "./sale-confirmation-card";
@@ -19,6 +18,8 @@ interface Message {
   texto: string;
   attachments: unknown;
   created_at: string;
+  leido_por_comprador: boolean;
+  leido_por_vendedor: boolean;
 }
 
 interface SaleConfirmation {
@@ -42,35 +43,35 @@ interface ChatWindowProps {
   chatId: string;
   currentUserId: string;
   isBuyer: boolean;
-  buyerId: string;
-  sellerId: string;
   otherUser: { id: string; nombre: string; foto: string | null; trust_level: string } | null;
   product: { id: string; titulo: string; precio: number; imagen_principal: string | null } | null;
   initialMessages: Message[];
-  saleConfirmations: SaleConfirmation[];
+  initialSaleConfirmations: SaleConfirmation[];
 }
 
 export function ChatWindow({
   chatId,
   currentUserId,
   isBuyer,
-  buyerId,
-  sellerId,
   otherUser,
   product,
   initialMessages,
-  saleConfirmations,
+  initialSaleConfirmations,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [saleConfirmations, setSaleConfirmations] = useState<SaleConfirmation[]>(
+    initialSaleConfirmations,
+  );
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  // Subscribe to new messages
+  // Subscribe to new messages and read receipt updates
   useEffect(() => {
     const channel = supabase
       .channel(`chat:${chatId}`)
@@ -87,6 +88,67 @@ export function ChatWindow({
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Message;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "sale_confirmations",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        async (payload) => {
+          const newSc = payload.new as Omit<SaleConfirmation, "products_services">;
+          // Realtime payload does not include the join; fetch product title.
+          const { data: prod } = await supabase
+            .from("products_services")
+            .select("titulo")
+            .eq("id", newSc.product_id)
+            .single();
+          setSaleConfirmations((prev) => {
+            if (prev.some((s) => s.id === newSc.id)) return prev;
+            return [{ ...newSc, products_services: prod ?? null }, ...prev];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "sale_confirmations",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Omit<SaleConfirmation, "products_services">;
+          // Mirror the SSR query: only pending_confirmation and completed are
+          // displayed. Drop the row on cancel/expire so the card disappears
+          // live instead of lingering until refresh.
+          const visibleStatuses = ["pending_confirmation", "completed"];
+          setSaleConfirmations((prev) => {
+            if (!visibleStatuses.includes(updated.status)) {
+              return prev.filter((s) => s.id !== updated.id);
+            }
+            return prev.map((s) =>
+              s.id === updated.id ? { ...s, ...updated } : s
+            );
           });
         }
       )
@@ -109,6 +171,7 @@ export function ChatWindow({
     const text = input.trim();
     setInput("");
     setSending(true);
+    setSendError("");
 
     // Optimistic update
     const optimisticMsg: Message = {
@@ -118,13 +181,16 @@ export function ChatWindow({
       texto: text,
       attachments: [],
       created_at: new Date().toISOString(),
+      leido_por_comprador: isBuyer,
+      leido_por_vendedor: !isBuyer,
     };
     setMessages((prev) => [...prev, optimisticMsg]);
 
     const result = await sendMessage(chatId, text);
     if (result.error) {
-      // Remove optimistic message on error
+      // Remove optimistic message on error and surface the reason
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+      setSendError(result.error);
     }
     setSending(false);
   }
@@ -168,8 +234,6 @@ export function ChatWindow({
       {showSaleForm && (
         <SaleConfirmationForm
           chatId={chatId}
-          buyerId={buyerId}
-          sellerId={sellerId}
           currentUserId={currentUserId}
           product={product}
           onClose={() => setShowSaleForm(false)}
@@ -221,6 +285,11 @@ export function ChatWindow({
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-2">
         {messages.map((msg) => {
           const isOwn = msg.autor_id === currentUserId;
+          // Read receipt: check if the OTHER party has read the message
+          const isRead = isOwn
+            ? (isBuyer ? msg.leido_por_vendedor : msg.leido_por_comprador)
+            : false;
+
           return (
             <div
               key={msg.id}
@@ -238,14 +307,21 @@ export function ChatWindow({
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
-                <p
+                <div
                   className={cn(
-                    "text-[10px] mt-1",
+                    "flex items-center justify-end gap-1 mt-1",
                     isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                   )}
                 >
-                  {formatRelativeTime(msg.created_at)}
-                </p>
+                  <span className="text-[10px]">
+                    {formatRelativeTime(msg.created_at)}
+                  </span>
+                  {isOwn && (
+                    isRead
+                      ? <CheckCheck className="w-3 h-3 text-emerald-400" />
+                      : <Check className="w-3 h-3 opacity-60" />
+                  )}
+                </div>
               </div>
               {!isOwn && (
                 // Botón de reportar mensaje. Visible siempre con baja opacidad,
@@ -267,6 +343,13 @@ export function ChatWindow({
         })}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Send error */}
+      {sendError && (
+        <p className="px-4 pt-2 text-xs text-red-600 dark:text-red-400">
+          {sendError}
+        </p>
+      )}
 
       {/* Input */}
       <form

@@ -1,45 +1,24 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
-
-async function requireAdminOrModerator() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: isAdmin } = await supabase.rpc("has_role", {
-    _user_id: user.id,
-    _role: "admin",
-  });
-  if (isAdmin) return { user, role: "admin" as const };
-  const { data: isModerator } = await supabase.rpc("has_role", {
-    _user_id: user.id,
-    _role: "moderator",
-  });
-  if (isModerator) return { user, role: "moderator" as const };
-  return null;
-}
-
-async function requireAdmin() {
-  const ctx = await requireAdminOrModerator();
-  return ctx?.role === "admin" ? ctx.user : null;
-}
-
-// =============================================================================
-// Acciones LEGACY sobre tabla `reviews` — mantenidas para backward-compat.
-// Se eliminan en una migración futura junto con las columnas reviews.reportada
-// y reviews.visible. Ver supabase/migrations/20260429120000_moderation_reports.sql
-// =============================================================================
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { moderateReviewSchema } from "@vicino/shared";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 export async function hideReview(reviewId: string) {
-  const ctx = await requireAdminOrModerator();
-  if (!ctx) return { error: "No autorizado" };
+  const { supabase, user } = await requireAdmin();
 
-  const supabase = await createClient();
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
+  }
+
   const { error } = await supabase
     .from("reviews")
-    .update({ is_hidden: true })
-    .eq("id", reviewId);
+    .update({ visible: false })
+    .eq("id", parsed.data.review_id);
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
@@ -55,16 +34,20 @@ export async function hideReview(reviewId: string) {
 }
 
 export async function approveReview(reviewId: string) {
-  const ctx = await requireAdminOrModerator();
-  if (!ctx) return { error: "No autorizado" };
+  const { supabase, user } = await requireAdmin();
 
-  const supabase = await createClient();
-  // Marca la review como no oculta. NO toca el flag legacy `reportada`
-  // (eso lo hace dismissReportsForTarget abajo).
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
+  }
+
   const { error } = await supabase
     .from("reviews")
-    .update({ is_hidden: false })
-    .eq("id", reviewId);
+    .update({ reportada: false, visible: true })
+    .eq("id", parsed.data.review_id);
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
