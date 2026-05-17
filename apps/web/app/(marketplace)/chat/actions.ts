@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   sendMessageSchema,
@@ -126,7 +127,10 @@ export async function createSaleConfirmation(data: {
     .eq("id", parsed.data.chat_id)
     .single();
 
-  if (chatErr || !chat) return { error: "Chat no encontrado" };
+  if (chatErr || !chat) {
+    if (chatErr) console.error("[createSaleConfirmation] chat lookup:", chatErr);
+    return { error: chatErr?.message ?? "Chat no encontrado" };
+  }
 
   if (user.id !== chat.comprador_id && user.id !== chat.vendedor_id) {
     return { error: "No autorizado para este chat" };
@@ -164,12 +168,16 @@ export async function createSaleConfirmation(data: {
     .eq("id", parsed.data.product_id)
     .single();
 
-  await supabase.from("messages").insert({
+  const { error: autoMsgErr } = await supabase.from("messages").insert({
     chat_id: parsed.data.chat_id,
     autor_id: user.id,
     texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — $${parsed.data.precio_acordado} MXN. Confirma para completar la venta.`,
   });
+  if (autoMsgErr) {
+    console.error("[createSaleConfirmation] auto-message insert:", autoMsgErr);
+  }
 
+  revalidatePath(`/chat/${parsed.data.chat_id}`);
   return { confirmation };
 }
 
@@ -224,13 +232,17 @@ export async function confirmSale(saleConfirmationId: string) {
       .eq("id", sc.product_id)
       .single();
 
-    await supabase.from("messages").insert({
+    const { error: completedMsgErr } = await supabase.from("messages").insert({
       chat_id: sc.chat_id,
       autor_id: user.id,
       texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo}" — $${sc.precio_acordado} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
     });
+    if (completedMsgErr) {
+      console.error("[confirmSale] completed-message insert:", completedMsgErr);
+    }
   }
 
+  if (sc.chat_id) revalidatePath(`/chat/${sc.chat_id}`);
   return { success: true };
 }
 
@@ -253,7 +265,7 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  const { error } = await supabase
+  const { data: cancelled, error } = await supabase
     .from("sale_confirmations")
     .update({
       status: "cancelled",
@@ -262,8 +274,11 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
       cancel_reason: parsed.data.reason ?? null,
     })
     .eq("id", parsed.data.sale_confirmation_id)
-    .eq("status", "pending_confirmation");
+    .eq("status", "pending_confirmation")
+    .select("chat_id")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  if (cancelled?.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
   return { success: true };
 }

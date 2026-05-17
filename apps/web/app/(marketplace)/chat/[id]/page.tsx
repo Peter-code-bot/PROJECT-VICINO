@@ -86,7 +86,7 @@ export default async function ChatDetailPage({ params }: Props) {
       otherUser={otherUser ?? null}
       product={product ?? null}
       initialMessages={messages ?? []}
-      saleConfirmations={saleConfirmations ?? []}
+      initialSaleConfirmations={saleConfirmations ?? []}
     />
   );
 }

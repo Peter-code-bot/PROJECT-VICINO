@@ -32,6 +32,7 @@ export function SaleConfirmationCard({
   currentUserId,
 }: SaleConfirmationCardProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const productTitle = Array.isArray(sc.products_services)
     ? sc.products_services[0]?.titulo
@@ -46,13 +47,17 @@ export function SaleConfirmationCard({
 
   async function handleConfirm() {
     setLoading(true);
-    await confirmSale(sc.id);
+    setError("");
+    const result = await confirmSale(sc.id);
+    if (result?.error) setError(result.error);
     setLoading(false);
   }
 
   async function handleCancel() {
     setLoading(true);
-    await cancelSale(sc.id);
+    setError("");
+    const result = await cancelSale(sc.id);
+    if (result?.error) setError(result.error);
     setLoading(false);
   }
 
@@ -91,6 +96,10 @@ export function SaleConfirmationCard({
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
+
+      {error && (
+        <p className="text-[10px] text-red-600 dark:text-red-400">{error}</p>
+      )}
 
       {/* Action buttons */}
       {canConfirm && (

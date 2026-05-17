@@ -45,7 +45,7 @@ interface ChatWindowProps {
   otherUser: { id: string; nombre: string; foto: string | null; trust_level: string } | null;
   product: { id: string; titulo: string; precio: number; imagen_principal: string | null } | null;
   initialMessages: Message[];
-  saleConfirmations: SaleConfirmation[];
+  initialSaleConfirmations: SaleConfirmation[];
 }
 
 export function ChatWindow({
@@ -55,11 +55,15 @@ export function ChatWindow({
   otherUser,
   product,
   initialMessages,
-  saleConfirmations,
+  initialSaleConfirmations,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [saleConfirmations, setSaleConfirmations] = useState<SaleConfirmation[]>(
+    initialSaleConfirmations,
+  );
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -100,6 +104,52 @@ export function ChatWindow({
           );
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "sale_confirmations",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        async (payload) => {
+          const newSc = payload.new as Omit<SaleConfirmation, "products_services">;
+          // Realtime payload does not include the join; fetch product title.
+          const { data: prod } = await supabase
+            .from("products_services")
+            .select("titulo")
+            .eq("id", newSc.product_id)
+            .single();
+          setSaleConfirmations((prev) => {
+            if (prev.some((s) => s.id === newSc.id)) return prev;
+            return [{ ...newSc, products_services: prod ?? null }, ...prev];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "sale_confirmations",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Omit<SaleConfirmation, "products_services">;
+          // Mirror the SSR query: only pending_confirmation and completed are
+          // displayed. Drop the row on cancel/expire so the card disappears
+          // live instead of lingering until refresh.
+          const visibleStatuses = ["pending_confirmation", "completed"];
+          setSaleConfirmations((prev) => {
+            if (!visibleStatuses.includes(updated.status)) {
+              return prev.filter((s) => s.id !== updated.id);
+            }
+            return prev.map((s) =>
+              s.id === updated.id ? { ...s, ...updated } : s
+            );
+          });
+        }
+      )
       .subscribe();
 
     return () => {
@@ -119,6 +169,7 @@ export function ChatWindow({
     const text = input.trim();
     setInput("");
     setSending(true);
+    setSendError("");
 
     // Optimistic update
     const optimisticMsg: Message = {
@@ -135,8 +186,9 @@ export function ChatWindow({
 
     const result = await sendMessage(chatId, text);
     if (result.error) {
-      // Remove optimistic message on error
+      // Remove optimistic message on error and surface the reason
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+      setSendError(result.error);
     }
     setSending(false);
   }
@@ -282,6 +334,13 @@ export function ChatWindow({
         })}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Send error */}
+      {sendError && (
+        <p className="px-4 pt-2 text-xs text-red-600 dark:text-red-400">
+          {sendError}
+        </p>
+      )}
 
       {/* Input */}
       <form
