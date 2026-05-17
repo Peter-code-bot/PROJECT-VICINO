@@ -45,7 +45,7 @@ export function ProductCard({
   return (
     <Link
       href={`/${categoria}/${slug}`}
-      className="group block rounded-2xl bg-card border border-border/40 overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-brand/15"
+      className="group block w-full min-w-0 rounded-2xl bg-card border border-border/40 overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/15"
       id={`product-${slug}`}
     >
       <div className="aspect-square relative bg-card dark:bg-neutral-800 overflow-hidden">
@@ -103,7 +103,7 @@ export function ProductCard({
 
       {/* Content */}
       <div className="p-3 space-y-1.5">
-        <h3 className="text-sm font-medium line-clamp-2 leading-snug group-hover:text-brand transition-colors duration-200">
+        <h3 className="text-sm font-medium line-clamp-2 leading-snug group-hover:text-primary transition-colors duration-200">
           {titulo}
         </h3>
 

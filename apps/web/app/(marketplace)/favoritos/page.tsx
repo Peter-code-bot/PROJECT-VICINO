@@ -73,7 +73,7 @@ export default async function FavoritosPage() {
           </p>
           <Link
             href="/buscar"
-            className="inline-flex rounded-xl bg-brand text-white px-4 py-2 text-sm font-medium hover:bg-brand/90"
+            className="inline-flex rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90"
           >
             Explorar productos
           </Link>

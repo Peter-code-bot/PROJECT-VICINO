@@ -184,8 +184,8 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
-                  ? "bg-brand/10 text-brand"
-                  : "text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-foreground"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <UserAvatar src={profile?.foto} name={profile?.nombre ?? "?"} size="xs" />
@@ -259,10 +259,10 @@ function NavItem({
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors relative",
         active
-          ? "bg-brand/10 text-brand font-semibold"
+          ? "bg-primary/10 text-primary font-semibold"
           : highlight
-            ? "text-brand hover:bg-brand/5"
-            : "text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-foreground"
+            ? "text-primary hover:bg-primary/5"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >
       <Icon className="h-5 w-5" />

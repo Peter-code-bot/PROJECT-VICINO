@@ -22,12 +22,12 @@ export function LocationBar() {
         <button
           onClick={request}
           disabled={state.status === "loading"}
-          className="flex items-center gap-2 rounded-full border border-border/50 bg-card px-3 py-1.5 text-xs font-medium shadow-sm hover:border-brand/40 hover:bg-brand/5 transition-all duration-200 disabled:opacity-60"
+          className="flex items-center gap-2 rounded-full border border-border/50 bg-card px-3 py-1.5 text-xs font-medium shadow-sm hover:border-terracotta/40 hover:bg-terracotta/5 transition-all duration-200 disabled:opacity-60"
         >
           {state.status === "loading" ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-brand" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-terracotta" />
           ) : (
-            <Navigation className="w-3.5 h-3.5 text-brand" />
+            <Navigation className="w-3.5 h-3.5 text-terracotta" />
           )}
           {state.status === "success"
             ? "Actualizar ubicación"
@@ -44,7 +44,7 @@ export function LocationBar() {
       {position && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <MapPin className="w-4 h-4 text-brand" />
+            <MapPin className="w-4 h-4 text-terracotta" />
             <h2 className="font-heading font-semibold text-lg">Cerca de ti</h2>
             {loading && (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -74,7 +74,7 @@ export function LocationBar() {
           ) : !loading ? (
             <p className="text-sm text-muted-foreground py-4">
               Sin publicaciones en un radio de 5 km.{" "}
-              <a href="/buscar" className="text-brand font-medium hover:underline">
+              <a href="/buscar" className="text-terracotta font-medium hover:underline">
                 Explorar todo
               </a>
             </p>

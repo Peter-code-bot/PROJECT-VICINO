@@ -47,7 +47,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 w-16 h-full text-xs transition-all duration-200",
                   isActive
-                    ? "text-brand"
+                    ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
                   isVender && "relative"
                 )}
@@ -57,9 +57,9 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                   <div
                     className={cn(
                       "flex items-center justify-center w-11 h-11 rounded-2xl -mt-5 shadow-lg transition-all duration-200 active:scale-[0.93]",
-                      "bg-brand text-white",
-                      "hover:bg-brand-dark hover:shadow-xl",
-                      "ring-4 ring-cream dark:ring-[#0D0D1A]"
+                      "bg-primary text-white",
+                      "hover:bg-primary/90 hover:shadow-xl",
+                      "ring-4 ring-background"
                     )}
                   >
                     <Icon className="h-5 w-5" />
@@ -68,7 +68,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                   <div
                     className={cn(
                       "relative flex items-center justify-center w-10 h-8 rounded-xl transition-all duration-200",
-                      isActive && "bg-brand-50 dark:bg-brand/10"
+                      isActive && "bg-primary/10 dark:bg-primary/10"
                     )}
                   >
                     <Icon
@@ -84,7 +84,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                     )}
                     {/* Active indicator dot */}
                     {isActive && (
-                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-brand" />
+                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
                     )}
                   </div>
                 )}

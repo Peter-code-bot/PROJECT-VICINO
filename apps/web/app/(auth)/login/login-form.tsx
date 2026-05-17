@@ -71,7 +71,7 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           placeholder="tu@email.com"
-          className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -82,7 +82,7 @@ export function LoginForm() {
           </label>
           <Link
             href="/forgot-password"
-            className="text-xs font-medium text-brand hover:text-brand-dark transition-colors"
+            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
           >
             ¿Olvidaste?
           </Link>
@@ -94,7 +94,7 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           placeholder="••••••••"
-          className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -138,7 +138,7 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿No tienes cuenta?{" "}
-        <Link href="/register" className="font-semibold text-brand hover:underline">
+        <Link href="/register" className="font-semibold text-primary hover:underline">
           Regístrate gratis
         </Link>
       </p>
