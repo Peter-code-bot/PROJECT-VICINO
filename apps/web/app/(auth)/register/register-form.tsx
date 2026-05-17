@@ -81,7 +81,7 @@ export function RegisterForm() {
           onChange={(e) => setNombre(e.target.value)}
           required
           placeholder="Tu nombre"
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
         />
       </div>
 
@@ -96,7 +96,7 @@ export function RegisterForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           placeholder="tu@email.com"
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
         />
       </div>
 
@@ -112,7 +112,7 @@ export function RegisterForm() {
           required
           minLength={6}
           placeholder="Mínimo 6 caracteres"
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
         />
       </div>
 
@@ -156,7 +156,7 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="font-semibold text-primary hover:underline">
+        <Link href="/login" className="font-semibold text-brand hover:underline">
           Inicia sesión
         </Link>
       </p>

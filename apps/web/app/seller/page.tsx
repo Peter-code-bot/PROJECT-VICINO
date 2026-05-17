@@ -97,15 +97,15 @@ export default async function SellerOverviewPage() {
           <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(monthTotal)} en ventas</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-primary/30 transition-colors">
+        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white dark:bg-neutral-900 p-5 shadow-sm group hover:border-brand/30 transition-colors">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <div className="p-2.5 rounded-xl bg-brand/10 text-brand">
               <Package className="h-5 w-5" />
             </div>
             <span className="text-sm font-medium text-muted-foreground">Inventario</span>
           </div>
           <p className="text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
-          <p className="text-sm font-medium text-primary/80">Publicaciones activas</p>
+          <p className="text-sm font-medium text-brand/80">Publicaciones activas</p>
         </div>
 
         <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-gold/30 transition-colors">
@@ -144,7 +144,7 @@ export default async function SellerOverviewPage() {
         {/* Trust level progress */}
         <div className="lg:col-span-2 rounded-3xl border border-border/50 bg-card p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
               <Award className="w-5 h-5" />
             </div>
             <div>
@@ -166,7 +166,7 @@ export default async function SellerOverviewPage() {
             <div className="space-y-2">
               <div className="h-3 bg-border rounded-full overflow-hidden shadow-inner">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-1000 ease-out relative"
+                  className="h-full bg-brand rounded-full transition-all duration-1000 ease-out relative"
                   style={{ width: `${Math.max(5, progressPercent)}%` }}
                 >
                   <div className="absolute inset-0 bg-white/20 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />

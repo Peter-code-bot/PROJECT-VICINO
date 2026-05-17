@@ -118,28 +118,34 @@ export default async function HomePage() {
   return (
     <div className="w-full min-w-0 min-h-screen">
       {/* ─── HERO SECTION (mini — app-style, not landing) ─── */}
-      <section className="py-6 px-4">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative py-6 px-4">
+        {/* Subtle background accent */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-brand/5 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-48 h-48 rounded-full bg-emerald-trust/5 blur-3xl" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto">
           {/* Welcome + Search */}
           <div className="mb-6">
             <div className="flex items-center gap-1.5 mb-1">
-              <MapPin className="w-3.5 h-3.5 text-primary" />
+              <MapPin className="w-3.5 h-3.5 text-brand" />
               <span className="text-xs text-muted-foreground font-medium">
                 Tu zona
               </span>
             </div>
             <h1 className="font-heading font-bold text-2xl sm:text-3xl mb-4">
               Descubre lo mejor{" "}
-              <span className="text-primary">cerca de ti</span>
+              <span className="text-brand">cerca de ti</span>
             </h1>
 
             {/* Search Bar */}
             <Link
               href="/buscar"
-              className="flex items-center gap-3 w-full rounded-2xl bg-card border border-border/40 px-4 py-3 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
+              className="flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-neutral-900 border border-border/40 px-4 py-3 shadow-sm hover:shadow-md hover:border-brand/20 transition-all duration-200"
               id="home-search"
             >
-              <Search className="h-5 w-5 text-primary/50" />
+              <Search className="h-5 w-5 text-brand/50" />
               <span className="text-sm text-muted-foreground">
                 ¿Qué estás buscando?
               </span>
@@ -162,7 +168,7 @@ export default async function HomePage() {
             <h2 className="font-heading font-semibold text-lg">Categorías</h2>
             <Link
               href="/buscar"
-              className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
+              className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 group transition-colors"
               id="home-see-all-categories"
             >
               Ver todas
@@ -194,39 +200,62 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── PRODUCT CAROUSELS ──────────────────────────────── */}
-      {all.length > 0 ? (
-        <div className="space-y-8 px-4 pb-8">
-          {/* Recientes */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading font-semibold text-lg">Recientes</h2>
-              <Link
-                href="/buscar"
-                className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
-                id="home-see-all-products"
-              >
-                Ver más
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-            <ProductCarousel products={all.slice(0, 20)} />
-          </section>
+      {/* ─── PRODUCTS GRID ──────────────────────────────────── */}
+      <section className="px-4 pb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-heading font-semibold text-lg">
+              Recientes
+            </h2>
+            <Link
+              href="/buscar"
+              className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 group transition-colors"
+              id="home-see-all-products"
+            >
+              Ver más
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
 
-          {/* Per-category carousels */}
-          {categoryCarousels.map(([slug, ps]) => {
-            const label = CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
-            return (
-              <section key={slug}>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-heading font-semibold text-lg">{label}</h2>
-                  <Link
-                    href={`/buscar?category=${slug}`}
-                    className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
-                  >
-                    Ver más
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
+          {products && products.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 stagger">
+              {products.map((product) => {
+                const profile = Array.isArray(product.profiles)
+                  ? product.profiles[0]
+                  : product.profiles;
+                return (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    titulo={product.titulo}
+                    precio={Number(product.precio)}
+                    imagen={product.imagen_principal}
+                    categoria={product.categoria}
+                    slug={product.slug ?? product.id}
+                    vendedor={{
+                      nombre: profile?.nombre ?? "Vendedor",
+                      trust_level:
+                        (profile?.trust_level as TrustLevel) ?? "nuevo",
+                    }}
+                    rating={Number(profile?.average_rating_as_seller ?? 0)}
+                    reviewsCount={Number(
+                      profile?.reviews_count_as_seller ?? 0
+                    )}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            /* ─── EMPTY STATE ─────────────────────────────── */
+            <div className="text-center py-20 px-4">
+              <div className="max-w-sm mx-auto">
+                {/* Decorative illustration */}
+                <div className="relative w-24 h-24 mx-auto mb-6">
+                  <div className="absolute inset-0 rounded-3xl bg-brand/8 rotate-6" />
+                  <div className="absolute inset-0 rounded-3xl bg-brand/5 -rotate-3" />
+                  <div className="relative w-24 h-24 rounded-3xl bg-brand-50 dark:bg-brand/10 flex items-center justify-center">
+                    <span className="text-4xl">🏪</span>
+                  </div>
                 </div>
                 <ProductCarousel products={ps.slice(0, 20)} />
               </section>

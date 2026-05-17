@@ -67,7 +67,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors",
             tab === "products"
-              ? "border-primary text-primary"
+              ? "border-brand text-brand"
               : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >
@@ -79,7 +79,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors",
             tab === "reviews"
-              ? "border-primary text-primary"
+              ? "border-brand text-brand"
               : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >
@@ -129,7 +129,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
               <p className="text-3xl mb-2">📦</p>
               <p className="text-sm text-muted-foreground">Sin productos publicados</p>
               {isVendedor && (
-                <Link href="/vender" className="text-sm text-primary font-medium hover:underline mt-2 inline-block">
+                <Link href="/vender" className="text-sm text-brand font-medium hover:underline mt-2 inline-block">
                   Publicar mi primer producto →
                 </Link>
               )}

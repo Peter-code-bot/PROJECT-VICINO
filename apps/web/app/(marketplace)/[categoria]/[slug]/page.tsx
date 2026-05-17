@@ -129,9 +129,9 @@ export default async function ProductDetailPage({ params }: Props) {
     <div className="max-w-4xl mx-auto md:py-8 animate-fade-in">
       {/* Breadcrumbs (Desktop only) */}
       <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mb-6 px-4">
-        <Link href="/" className="hover:text-primary transition-colors">Inicio</Link>
+        <Link href="/" className="hover:text-brand transition-colors">Inicio</Link>
         <ChevronRight className="w-4 h-4" />
-        <Link href={`/buscar?category=${product.categoria}`} className="hover:text-primary transition-colors capitalize">
+        <Link href={`/buscar?category=${product.categoria}`} className="hover:text-brand transition-colors capitalize">
           {product.categoria.replace("-", " ")}
         </Link>
         <ChevronRight className="w-4 h-4" />
@@ -165,7 +165,7 @@ export default async function ProductDetailPage({ params }: Props) {
           <div>
             {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-3">
-              <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary capitalize">
+              <span className="inline-flex items-center rounded-md bg-brand/10 px-2 py-1 text-xs font-semibold text-brand capitalize">
                 {product.categoria.replace("-", " ")}
               </span>
               {product.estado && (
@@ -196,13 +196,13 @@ export default async function ProductDetailPage({ params }: Props) {
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground font-medium">
               {product.ubicacion && (
-                <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-lg">
-                  <MapPin className="h-4 w-4 text-primary" />
+                <span className="flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-800/50 px-2.5 py-1 rounded-lg">
+                  <MapPin className="h-4 w-4 text-brand" />
                   {product.ubicacion}
                 </span>
               )}
-              <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-lg">
-                <Truck className="h-4 w-4 text-primary" />
+              <span className="flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-800/50 px-2.5 py-1 rounded-lg">
+                <Truck className="h-4 w-4 text-brand" />
                 {deliveryLabel}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default async function ProductDetailPage({ params }: Props) {
           <hr className="border-border/50" />
 
           {/* Seller Card mini */}
-          <Link href={`/vendedor/${seller?.id}`} className="group block p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300">
+          <Link href={`/vendedor/${seller?.id}`} className="group block p-4 rounded-2xl bg-card border border-border/50 hover:border-brand/30 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-4">
               <div className="relative w-12 h-12 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden border border-border/40 shadow-sm shrink-0">
                 {seller?.foto ? (
@@ -222,7 +222,7 @@ export default async function ProductDetailPage({ params }: Props) {
                     className="object-cover"
                   />
                 ) : (
-                  <span className="text-lg font-heading font-semibold text-primary">
+                  <span className="text-lg font-heading font-semibold text-brand">
                     {seller?.nombre?.charAt(0)?.toUpperCase() ?? "V"}
                   </span>
                 )}
@@ -235,7 +235,7 @@ export default async function ProductDetailPage({ params }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-base group-hover:text-primary transition-colors truncate">
+                  <span className="font-semibold text-base group-hover:text-brand transition-colors truncate">
                     {seller?.nombre ?? "Vendedor Local"}
                   </span>
                   <SellerBadge level={(seller?.trust_level as TrustLevel) ?? "nuevo"} size="sm" />
@@ -250,7 +250,7 @@ export default async function ProductDetailPage({ params }: Props) {
                   <span className="font-medium text-foreground">{seller?.total_sales ?? 0} ventas</span>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-brand group-hover:translate-x-1 transition-all" />
             </div>
           </Link>
 
@@ -352,7 +352,7 @@ export default async function ProductDetailPage({ params }: Props) {
               return (
                 <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-primary">
+                    <div className="w-10 h-10 rounded-full bg-cream-dark dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-brand">
                       {reviewer?.nombre?.charAt(0)?.toUpperCase()}
                     </div>
                     <div className="flex-1">
@@ -377,8 +377,8 @@ export default async function ProductDetailPage({ params }: Props) {
                     </p>
                   )}
                   {review.respuesta && (
-                    <div className="ml-13 p-3 mt-3 rounded-lg bg-muted/50 text-sm">
-                      <div className="flex items-center gap-1.5 mb-1 text-primary font-medium text-xs">
+                    <div className="ml-13 p-3 mt-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 text-sm">
+                      <div className="flex items-center gap-1.5 mb-1 text-brand font-medium text-xs">
                         <MessageCircle className="w-3.5 h-3.5 fill-current" />
                         Respuesta del vendedor
                       </div>

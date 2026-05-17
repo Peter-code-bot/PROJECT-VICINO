@@ -133,7 +133,7 @@ export function ReviewForm({
         <p className="text-sm text-muted-foreground">Gracias por tu feedback. Redirigiendo al historial...</p>
         <button
           onClick={() => router.push("/historial")}
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-2 text-sm font-medium text-brand hover:underline"
         >
           ← Volver al historial
         </button>
@@ -233,7 +233,7 @@ export function ReviewForm({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-brand/40 hover:text-brand transition-colors"
             >
               <ImagePlus className="w-5 h-5" />
               <span className="text-[10px] mt-0.5">Agregar</span>
