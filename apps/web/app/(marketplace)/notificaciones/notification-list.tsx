@@ -161,7 +161,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
         <button
           onClick={handleMarkAllRead}
           disabled={isPending}
-          className="text-xs text-primary font-medium hover:underline mb-2 disabled:opacity-50"
+          className="text-xs text-brand font-medium hover:underline mb-2 disabled:opacity-50"
         >
           Marcar todo como leído
         </button>
@@ -180,16 +180,16 @@ export function NotificationList({ notifications }: NotificationListProps) {
             className={cn(
               "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors cursor-pointer border",
               n.leida
-                ? "bg-transparent hover:bg-muted/50 border-transparent"
-                : "bg-primary/5 dark:bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/15 border-transparent",
-              config.accent && "border-primary/30",
+                ? "bg-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                : "bg-brand/5 dark:bg-brand/10 hover:bg-brand/10 dark:hover:bg-brand/15"
             )}
           >
             <div
               className={cn(
                 "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-                config.iconBg,
-                config.iconColor,
+                n.leida
+                  ? "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground"
+                  : "bg-brand/10 text-brand"
               )}
             >
               <Icon className="w-4 h-4" />
@@ -209,7 +209,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
                   </span>
                 )}
                 {!n.leida && (
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="No leída" />
+                  <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{n.mensaje}</p>

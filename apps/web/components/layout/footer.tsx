@@ -15,13 +15,9 @@ export function Footer({ isVendedor = false }: FooterProps) {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <Image
-                src="/vicino-logo.png"
-                alt="VICINO"
-                width={28}
-                height={28}
-                className="shrink-0"
-              />
+              <div className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center">
+                <MapPin className="w-3.5 h-3.5 text-white" />
+              </div>
               <span className="font-heading font-bold text-base text-white">
                 VICINO
               </span>
@@ -41,7 +37,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/buscar"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Explorar
                 </Link>
@@ -49,21 +45,19 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/buscar"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Buscar
                 </Link>
               </li>
-              {isVendedor && (
-                <li>
-                  <Link
-                    href="/vender"
-                    className="text-xs hover:text-primary transition-colors"
-                  >
-                    Vender
-                  </Link>
-                </li>
-              )}
+              <li>
+                <Link
+                  href="/vender"
+                  className="text-xs hover:text-brand-light transition-colors"
+                >
+                  Vender
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -76,7 +70,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/chat"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Centro de Ayuda
                 </Link>
@@ -84,7 +78,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/perfil"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Mi Cuenta
                 </Link>
@@ -101,7 +95,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/terminos"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Términos
                 </Link>
@@ -109,7 +103,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
               <li>
                 <Link
                   href="/privacidad"
-                  className="text-xs hover:text-primary transition-colors"
+                  className="text-xs hover:text-brand-light transition-colors"
                 >
                   Privacidad
                 </Link>

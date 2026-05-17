@@ -192,7 +192,7 @@ export default async function SearchPage({ searchParams }: Props) {
                   href={pageUrl(page)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                     page === currentPage
-                      ? "bg-primary text-white"
+                      ? "bg-brand text-white"
                       : "hover:bg-accent text-muted-foreground"
                   }`}
                 >

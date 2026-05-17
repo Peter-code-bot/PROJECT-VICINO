@@ -153,9 +153,9 @@ export function SearchFilters({
           className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
         >
           {geoLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-terracotta" />
+            <Loader2 className="h-4 w-4 animate-spin text-brand" />
           ) : (
-            <Navigation className="h-4 w-4 text-terracotta" />
+            <Navigation className="h-4 w-4 text-brand" />
           )}
           <span className="hidden sm:inline">Cerca</span>
         </button>
@@ -172,10 +172,10 @@ export function SearchFilters({
       {/* Badge de resultados cercanos activos */}
       {initialLat && (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-terracotta/10 border border-terracotta/20 px-3 py-1 text-xs font-medium text-terracotta">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/20 px-3 py-1 text-xs font-medium text-brand">
             <Navigation className="w-3 h-3" />
             Resultados cercanos
-            <button onClick={clearGeo} className="ml-1 hover:text-terracotta-dark" aria-label="Quitar filtro de ubicación">
+            <button onClick={clearGeo} className="ml-1 hover:text-brand-dark" aria-label="Quitar filtro de ubicación">
               <X className="w-3 h-3" />
             </button>
           </span>
