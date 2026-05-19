@@ -146,7 +146,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             type="text"
             required
             defaultValue={profile?.nombre ?? ""}
-            className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
@@ -165,17 +165,56 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
 
         {/* Avatar upload */}
         <div className="space-y-2">
-          <label htmlFor="foto" className="text-sm font-medium text-foreground/80">
-            URL de foto de perfil <span className="text-muted-foreground font-normal">(opcional)</span>
-          </label>
-          <input
-            id="foto"
-            name="foto"
-            type="url"
-            defaultValue={profile?.foto ?? ""}
-            placeholder="https://..."
-            className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
-          />
+          <label className="text-sm font-medium text-foreground/80">Foto de perfil</label>
+          <input type="hidden" name="foto" value={avatarUrl} />
+          <div className="flex items-center gap-4">
+            <div className="relative w-20 h-20 rounded-full bg-muted overflow-hidden shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
+                  {profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
+                </div>
+              )}
+              {avatarUploading && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                </div>
+              )}
+            </div>
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={avatarUploading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) { setError("La imagen no debe exceder 5MB"); return; }
+                  setAvatarUploading(true);
+                  try {
+                    const supabase = (await import("@/lib/supabase/client")).createClient();
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) throw new Error("No autenticado");
+                    const ext = file.name.split(".").pop() ?? "jpg";
+                    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+                    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+                    if (upErr) throw upErr;
+                    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+                    setAvatarUrl(urlData.publicUrl);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Error al subir foto");
+                  }
+                  setAvatarUploading(false);
+                }}
+              />
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
+                {avatarUrl ? "Cambiar foto" : "Subir foto"}
+              </span>
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">JPG, PNG o WebP · Máx 5MB</p>
         </div>
 
         <div className="space-y-2">
@@ -188,7 +227,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             rows={3}
             defaultValue={profile?.bio ?? ""}
             placeholder="Cuéntanos un poco sobre ti..."
-            className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20 resize-y"
+            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
           />
         </div>
 
@@ -202,7 +241,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             type="text"
             defaultValue={profile?.ubicacion ?? ""}
             placeholder="Ej: Col. Roma, CDMX"
-            className="w-full rounded-xl border border-border/50 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
@@ -210,7 +249,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
       {/* Seller Section */}
       <div className={`p-5 rounded-3xl border transition-all duration-300 stagger ${
         esVendedor 
-          ? "bg-brand/5 border-brand/20 shadow-sm" 
+          ? "bg-primary/5 border-primary/20 shadow-sm" 
           : "bg-card border-border/40"
       }`}>
         <label className="flex items-start gap-4 cursor-pointer group mb-1">
@@ -227,12 +266,12 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
               }}
               className="peer sr-only"
             />
-            <div className="w-5 h-5 rounded border-2 border-muted-foreground/40 peer-checked:bg-brand peer-checked:border-brand transition-colors flex items-center justify-center">
+            <div className="w-5 h-5 rounded border-2 border-muted-foreground/40 peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
               <CheckCircle2 className="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
             </div>
           </div>
           <div>
-            <h3 className="font-heading font-semibold text-lg group-hover:text-brand transition-colors">
+            <h3 className="font-heading font-semibold text-lg group-hover:text-primary transition-colors">
               Modo Vendedor
             </h3>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -242,7 +281,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
         </label>
 
         <div className={`grid transition-all duration-300 ${
-          esVendedor ? "grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-brand/10" : "grid-rows-[0fr] opacity-0"
+          esVendedor ? "grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-primary/10" : "grid-rows-[0fr] opacity-0"
         }`}>
           <div className="overflow-hidden space-y-4">
             {/* Seller type */}
@@ -278,7 +317,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
                     type="text"
                     defaultValue={profile?.nombre_negocio ?? ""}
                     placeholder="Mi Tienda Local"
-                    className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+                    className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
@@ -292,7 +331,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
                     rows={2}
                     defaultValue={profile?.descripcion_negocio ?? ""}
                     placeholder="¿Qué tipo de productos ofreces?"
-                    className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20 resize-y"
+                    className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
                   />
                 </div>
               </>
@@ -302,22 +341,66 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
               <label className="text-sm font-medium text-foreground/80">
                 Métodos de pago aceptados
               </label>
-              <input
-                id="metodos_pago_aceptados"
-                name="metodos_pago_aceptados"
-                type="text"
-                defaultValue={profile?.metodos_pago_aceptados ?? ""}
-                placeholder="Efectivo, transferencia, MercadoPago..."
-                className="w-full rounded-xl border border-border/50 bg-white dark:bg-neutral-900 px-4 py-3 text-sm outline-none transition-all focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
-              />
+              <input type="hidden" name="metodos_pago_aceptados" value={metodosSeleccionados.join(", ")} />
+
+              {/* Botón desplegable */}
+              <button
+                type="button"
+                onClick={() => setMetodosOpen(!metodosOpen)}
+                className="w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm text-left transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              >
+                <span className={metodosSeleccionados.length > 0 ? "text-foreground truncate pr-2" : "text-muted-foreground"}>
+                  {metodosSeleccionados.length > 0
+                    ? metodosSeleccionados.join(", ")
+                    : "Selecciona métodos de pago..."}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${metodosOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Panel expandible INLINE (NO absolute — el padre tiene overflow-hidden) */}
+              <div className={`grid transition-all duration-300 ${metodosOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="rounded-xl border border-border/50 bg-card mt-1">
+                    <div className="p-2 space-y-0.5">
+                      {METODOS_PAGO.map((metodo) => (
+                        <label
+                          key={metodo}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                            metodosSeleccionados.includes(metodo)
+                              ? "bg-primary/10 text-foreground"
+                              : "hover:bg-muted text-foreground/80"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={metodosSeleccionados.includes(metodo)}
+                            onChange={() => toggleMetodo(metodo)}
+                          />
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            metodosSeleccionados.includes(metodo)
+                              ? "bg-primary border-primary"
+                              : "border-muted-foreground/40"
+                          }`}>
+                            {metodosSeleccionados.includes(metodo) && (
+                              <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
+                            )}
+                          </div>
+                          <span className="text-sm">{metodo}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="pt-2">
               <Link
                 href="/seller/verificacion"
-                className="inline-flex items-center text-sm font-semibold text-brand hover:text-brand-dark hover:underline transition-all group"
+                className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 hover:underline transition-all group"
               >
-                <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center mr-2 group-hover:scale-110 transition-transform">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 group-hover:scale-110 transition-transform">
                   <ShieldAlert className="w-3.5 h-3.5" />
                 </div>
                 Verificar identidad para subir nivel de confianza →

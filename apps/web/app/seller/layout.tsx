@@ -43,9 +43,14 @@ export default async function SellerLayout({
         <div className="flex items-center gap-3 md:gap-4">
           <SellerMobileDrawer storeName={storeName} />
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:-translate-y-0.5">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
+            <Image
+              src="/vicino-logo.png"
+              alt="VICINO"
+              width={40}
+              height={40}
+              className="shrink-0 group-hover:-translate-y-0.5 transition-transform"
+              priority
+            />
             <span className="font-heading font-bold text-xl leading-none hidden sm:block">
               VICINO
             </span>
@@ -54,10 +59,8 @@ export default async function SellerLayout({
 
           <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-2xl border border-border/50 shadow-sm">
             <div className="flex items-center gap-2">
-              <Store className="w-4 h-4 text-brand" />
-              <span className="font-semibold text-sm">
-                {profile?.nombre_negocio ?? profile?.nombre ?? "Mi Tienda Local"}
-              </span>
+              <Store className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">{storeName}</span>
             </div>
             <div className="w-px h-4 bg-border/60" />
             <SellerBadge

@@ -32,9 +32,14 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
-            <MapPin className="w-4 h-4 text-white" />
-          </div>
+          <Image
+            src="/vicino-logo.png"
+            alt="VICINO"
+            width={36}
+            height={36}
+            className="shrink-0"
+            priority
+          />
           <div className="flex flex-col">
             <span className="font-heading font-bold text-base leading-none tracking-tight">
               VICINO
@@ -45,37 +50,17 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           </div>
         </Link>
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-xl">
-          <Link
-            href="/buscar"
-            className={cn(
-              "flex items-center gap-2 w-full rounded-xl border px-3.5 py-2 text-sm transition-all duration-200",
-              "bg-cream-dark/60 dark:bg-neutral-800/40 border-border/50",
-              "hover:border-brand/30 hover:shadow-sm",
-              pathname === "/buscar" && "border-brand/40 shadow-sm"
-            )}
-            id="header-search"
-          >
-            <Search className="h-4 w-4 text-brand/60" />
-            <span className="text-muted-foreground text-sm">
-              Busca en VICINO...
-            </span>
-          </Link>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1.5">
-          <button
-            className="relative p-2 rounded-xl hover:bg-cream-dark/80 dark:hover:bg-neutral-800/50 transition-colors"
-            id="header-notifications"
-            aria-label="Notificaciones"
-          >
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            {/* Notification dot */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand ring-2 ring-cream dark:ring-[#0D0D1A]" />
-          </button>
-        </div>
+        {/* Notifications */}
+        <Link
+          href="/notificaciones"
+          className="relative w-10 h-10 rounded-full hover:bg-muted active:bg-muted transition-colors flex items-center justify-center"
+          aria-label="Notificaciones"
+        >
+          <Bell className="h-5 w-5 text-foreground" />
+          {unreadNotifications > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
+          )}
+        </Link>
       </div>
     </header>
   );

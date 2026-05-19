@@ -32,15 +32,15 @@ export function AdminSidebar() {
               className={cn(
                 "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 overflow-hidden",
                 isActive
-                  ? "bg-brand/10 text-brand font-semibold"
-                  : "text-muted-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-foreground"
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand rounded-r-md" />
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-md" />
               )}
               <div className="flex items-center gap-3">
-                <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", isActive && "fill-brand/20")} />
+                <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", isActive && "fill-primary/20")} />
                 {label}
               </div>
               {isActive && (
@@ -73,7 +73,7 @@ export function AdminSidebar() {
                 href={href}
                 className={cn(
                   "flex flex-col items-center gap-0.5 py-2 px-1 min-w-[56px]",
-                  isActive ? "text-brand" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
