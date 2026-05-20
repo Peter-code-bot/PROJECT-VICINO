@@ -12,6 +12,7 @@ export * from "./validators/chat";
 export * from "./validators/favorite";
 export * from "./validators/notification";
 export * from "./validators/admin";
+export * from "./validators/moderation";
 
 // Utils
 export * from "./utils/format";
