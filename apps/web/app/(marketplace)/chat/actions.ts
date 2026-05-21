@@ -207,7 +207,7 @@ export async function confirmSale(saleConfirmationId: string) {
 
   const { data: sc } = await supabase
     .from("sale_confirmations")
-    .select("buyer_id, seller_id, chat_id, product_id, precio_acordado")
+    .select("buyer_id, seller_id, chat_id, product_id, precio_acordado, buyer_confirmed, seller_confirmed, status")
     .eq("id", parsed.data.sale_confirmation_id)
     .single();
 
@@ -244,7 +244,7 @@ export async function confirmSale(saleConfirmationId: string) {
     .single();
 
   // Only insert the "venta confirmada" message if THIS update flipped status to completed.
-  if (updatedSc.status === "completed" && updatedSc.chat_id) {
+  if (updated?.status === "completed" && sc.chat_id) {
     const { data: product } = await supabase
       .from("products_services")
       .select("titulo")
