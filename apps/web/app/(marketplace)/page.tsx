@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/product/product-card";
+import { ProductCarousel } from "@/components/home/product-carousel";
 import { LocationBar } from "@/components/shared/location-bar";
 import { CATEGORIES } from "@vicino/shared";
 import {
