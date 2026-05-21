@@ -9,6 +9,7 @@ import { sendMessage } from "../actions";
 import { SaleConfirmationCard } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
 
 interface Message {
