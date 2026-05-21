@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, Clock, CheckCheck } from "lucide-react";
 import { confirmSale, cancelSale } from "../actions";
@@ -34,6 +34,7 @@ export function SaleConfirmationCard({
 }: SaleConfirmationCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isPending = loading;
 
   const productTitle = Array.isArray(sc.products_services)
     ? sc.products_services[0]?.titulo
