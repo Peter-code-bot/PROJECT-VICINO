@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { updateProfileSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 const updateProfileSchema = z.object({
