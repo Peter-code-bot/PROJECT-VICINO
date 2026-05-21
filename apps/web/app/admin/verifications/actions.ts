@@ -4,23 +4,6 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { approveVerificationSchema, rejectVerificationSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
-const uuidSchema = z.string().uuid();
-const rejectSchema = z.object({
-  verificationId: z.string().uuid(),
-  note: z.string().max(1000).optional(),
-});
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: isAdmin } = await supabase.rpc("has_role", {
-    _user_id: user.id,
-    _role: "admin",
-  });
-  return isAdmin ? user : null;
-}
-
 export async function approveVerification(verificationId: string, userId: string) {
   const { supabase, user } = await requireAdmin();
 
@@ -95,7 +78,7 @@ export async function approveVerification(verificationId: string, userId: string
   }
 
   await supabase.from("audit_log").insert({
-    actor_id: admin.id,
+    actor_id: user.id,
     action: "approve_verification",
     target_type: "verification",
     target_id: verificationId,
@@ -138,10 +121,10 @@ export async function rejectVerification(verificationId: string, note: string) {
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
-    actor_id: admin.id,
+    actor_id: user.id,
     action: "reject_verification",
     target_type: "verification",
-    target_id: parsed.data.verificationId,
+    target_id: parsed.data.verification_id,
     metadata: { note: parsed.data.note ?? null },
   });
 
