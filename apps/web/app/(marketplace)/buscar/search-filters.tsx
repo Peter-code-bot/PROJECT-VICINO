@@ -2,12 +2,20 @@
 
 import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X, Navigation, Loader2 } from "lucide-react";
+import {
+  Search, SlidersHorizontal, X, Navigation, Loader2,
+  type LucideIcon,
+  UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
+  Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
+  Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
+  Stethoscope, Camera, Building, Warehouse, Briefcase, MoreHorizontal,
+} from "lucide-react";
 import { CATEGORIES } from "@vicino/shared";
 import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
 import type { ListingType } from "@/components/search/listing-type-switch";
 import { SearchHistoryDropdown } from "@/components/search/search-history-dropdown";
 import { useSearchHistory } from "@/hooks/use-search-history";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   comida: UtensilsCrossed,
@@ -61,6 +69,9 @@ export function SearchFilters({
   const [query, setQuery] = useState(initialQuery ?? "");
   const [showFilters, setShowFilters] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const { history, addQuery, removeQuery, clearAll } = useSearchHistory();
+  const showHistoryDropdown = isInputFocused && history.length > 0;
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -76,6 +87,12 @@ export function SearchFilters({
     },
     [router, searchParams]
   );
+
+  function handleHistorySelect(item: string) {
+    setQuery(item);
+    setIsInputFocused(false);
+    updateParams({ q: item, page: undefined });
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
