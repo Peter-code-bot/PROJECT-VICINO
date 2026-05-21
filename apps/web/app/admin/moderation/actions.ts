@@ -1,6 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
 import { moderateReviewSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
@@ -22,7 +25,7 @@ export async function hideReview(reviewId: string) {
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
-    actor_id: ctx.user.id,
+    actor_id: user.id,
     action: "hide_review",
     target_type: "review",
     target_id: reviewId,
@@ -51,7 +54,7 @@ export async function approveReview(reviewId: string) {
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
-    actor_id: ctx.user.id,
+    actor_id: user.id,
     action: "approve_review",
     target_type: "review",
     target_id: reviewId,
@@ -205,7 +208,7 @@ export async function dismissReportsForTarget(
 // =============================================================================
 
 export async function suspendUser(userId: string) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin puede suspender usuarios" };
 
   const supabase = await createClient();
@@ -229,7 +232,7 @@ export async function suspendUser(userId: string) {
 }
 
 export async function unsuspendUser(userId: string) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin puede restaurar usuarios" };
 
   const supabase = await createClient();
@@ -285,7 +288,7 @@ export async function markAuthorityNotified(
   reference: string,
   notes?: string,
 ) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin" };
 
   const supabase = await createClient();
