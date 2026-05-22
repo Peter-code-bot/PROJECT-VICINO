@@ -25,11 +25,18 @@ export default async function NotificacionesPage() {
 
   return (
     <div className="flex gap-6 max-w-7xl mx-auto px-4 py-6">
-      <main className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-heading font-bold">Notificaciones</h1>
+      <main className="min-w-0 flex-1">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
+              Actividad
+            </div>
+            <h1 className="font-heading text-2xl font-bold text-[color:var(--fg)]">
+              Notificaciones
+            </h1>
+          </div>
           {unreadCount > 0 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="inline-flex items-center rounded-full bg-[color:var(--brand-tint-strong)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
               {unreadCount} sin leer
             </span>
           )}
@@ -38,12 +45,14 @@ export default async function NotificacionesPage() {
         {notifications && notifications.length > 0 ? (
           <NotificationList notifications={notifications} />
         ) : (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
-              <Bell className="w-8 h-8 text-muted-foreground" />
+          <div className="py-20 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+              <Bell className="h-7 w-7 text-[color:var(--brand-hi)]" />
             </div>
-            <h2 className="font-heading font-bold text-lg mb-2">Sin notificaciones</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="mb-2 font-heading text-lg font-bold text-[color:var(--fg)]">
+              Sin notificaciones
+            </h2>
+            <p className="text-sm text-[color:var(--fg-muted)]">
               Cuando tengas actividad, las notificaciones aparecerán aquí
             </p>
           </div>

@@ -34,17 +34,17 @@ export function DeleteAccountSection() {
 
   if (confirming) {
     return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 p-4 bg-red-50/50 dark:bg-red-950/10">
-        <p className="text-sm font-medium text-foreground mb-1">
+      <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+        <p className="mb-1 text-sm font-semibold text-[color:var(--fg)]">
           ¿Eliminar tu cuenta permanentemente?
         </p>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="mb-4 text-xs text-[color:var(--fg-muted)]">
           Esta acción es irreversible. Se borrarán tu perfil, publicaciones,
           chats, reseñas y todos tus datos.
         </p>
-        <p className="text-xs font-medium text-foreground mb-2">
+        <p className="mb-2 text-xs font-medium text-[color:var(--fg)]">
           Escribe{" "}
-          <span className="font-mono font-bold text-red-600 dark:text-red-400">
+          <span className="font-mono font-bold text-[color:var(--danger)]">
             {CONFIRM_WORD}
           </span>{" "}
           para confirmar:
@@ -55,11 +55,11 @@ export function DeleteAccountSection() {
           onChange={(e) => setInputValue(e.target.value)}
           disabled={loading}
           placeholder={CONFIRM_WORD}
-          className="w-full mb-4 px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
+          className="mb-4 w-full rounded-lg bg-[color:var(--card-2)] px-3 py-2 text-sm font-mono text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-[color:var(--fg-dim)] focus:outline-none focus:shadow-[inset_0_0_0_1px_rgba(255,59,48,0.45)] disabled:opacity-50"
           aria-label="Escribe ELIMINAR para confirmar"
         />
         {error && (
-          <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+          <p className="mb-3 text-xs text-[color:var(--danger)]">
             {error}
           </p>
         )}
@@ -68,7 +68,7 @@ export function DeleteAccountSection() {
             onClick={handleDelete}
             disabled={loading || inputValue !== CONFIRM_WORD}
             aria-label="Confirmar eliminación de cuenta"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-lg bg-[color:var(--danger)] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
             {loading ? "Eliminando..." : "Sí, eliminar mi cuenta"}
@@ -80,7 +80,7 @@ export function DeleteAccountSection() {
               setError(null);
             }}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-border hover:bg-muted text-sm font-medium transition-colors disabled:opacity-50"
+            className="inline-flex items-center rounded-lg bg-[color:var(--card-2)] px-4 py-2 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -93,7 +93,7 @@ export function DeleteAccountSection() {
     <button
       onClick={() => setConfirming(true)}
       aria-label="Eliminar mi cuenta"
-      className="flex items-center gap-3 w-full rounded-xl border border-red-200 dark:border-red-800 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--card)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)] transition-colors hover:bg-[rgba(255,59,48,0.06)]"
     >
       <Trash2 className="h-4 w-4" />
       Eliminar mi cuenta

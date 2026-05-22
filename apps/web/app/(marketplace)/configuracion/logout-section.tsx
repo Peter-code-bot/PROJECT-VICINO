@@ -16,9 +16,11 @@ export function LogoutSection() {
 
   if (confirming) {
     return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 p-4 bg-red-50/50 dark:bg-red-950/10">
-        <p className="text-sm font-medium text-foreground mb-1">¿Cerrar sesión?</p>
-        <p className="text-xs text-muted-foreground mb-4">
+      <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+        <p className="mb-1 text-sm font-semibold text-[color:var(--fg)]">
+          ¿Cerrar sesión?
+        </p>
+        <p className="mb-4 text-xs text-[color:var(--fg-muted)]">
           Tendrás que volver a iniciar sesión la próxima vez.
         </p>
         <div className="flex gap-2">
@@ -26,7 +28,7 @@ export function LogoutSection() {
             onClick={handleConfirm}
             disabled={loading}
             aria-label="Confirmar cierre de sesión"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[color:var(--danger)] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-95 disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />
             {loading ? "Cerrando..." : "Sí, cerrar sesión"}
@@ -34,7 +36,7 @@ export function LogoutSection() {
           <button
             onClick={() => setConfirming(false)}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-border hover:bg-muted text-sm font-medium transition-colors disabled:opacity-50"
+            className="inline-flex items-center rounded-lg bg-[color:var(--card-2)] px-4 py-2 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -47,7 +49,7 @@ export function LogoutSection() {
     <button
       onClick={() => setConfirming(true)}
       aria-label="Cerrar sesión"
-      className="flex items-center gap-3 w-full rounded-xl border border-red-200 dark:border-red-800 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--card)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)] transition-colors hover:bg-[rgba(255,59,48,0.06)]"
     >
       <LogOut className="h-4 w-4" />
       Cerrar sesión
