@@ -19,10 +19,11 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 transition-all duration-300",
+        "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300",
+        "bg-[color:var(--bg)]/80 backdrop-blur-xl",
         scrolled
-          ? "bg-background/90 backdrop-blur-md"
-          : "bg-background/80 backdrop-blur-sm"
+          ? "shadow-[inset_0_-1px_0_0_var(--border)]"
+          : "shadow-none"
       )}
     >
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
@@ -41,10 +42,10 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
             priority
           />
           <div className="flex flex-col">
-            <span className="font-heading font-bold text-base leading-none tracking-tight">
+            <span className="font-heading font-bold text-base leading-none tracking-tight text-[color:var(--fg)]">
               VICINO
             </span>
-            <span className="text-[9px] text-muted-foreground font-medium tracking-wider uppercase leading-none mt-0.5 hidden sm:block">
+            <span className="mt-0.5 hidden text-[9px] font-semibold uppercase leading-none tracking-[0.15em] text-[color:var(--fg-dim)] sm:block">
               Confianza Local
             </span>
           </div>
@@ -53,12 +54,19 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
         {/* Notifications */}
         <Link
           href="/notificaciones"
-          className="relative w-10 h-10 rounded-full hover:bg-muted active:bg-muted transition-colors flex items-center justify-center"
+          className={cn(
+            "relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+            "bg-[color:var(--card-2)] text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]",
+            "shadow-[inset_0_0_0_1px_var(--border)]"
+          )}
           aria-label="Notificaciones"
         >
-          <Bell className="h-5 w-5 text-foreground" />
+          <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
           {unreadNotifications > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
+            <span
+              className="absolute top-[9px] right-[9px] h-[7px] w-[7px] rounded-full bg-[color:var(--brand)] shadow-[0_0_0_2px_var(--card-2)]"
+              aria-label={`${unreadNotifications} notificaciones sin leer`}
+            />
           )}
         </Link>
       </div>
