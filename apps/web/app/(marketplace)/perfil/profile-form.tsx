@@ -145,6 +145,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             name="nombre"
             type="text"
             required
+            maxLength={100}
             defaultValue={profile?.nombre ?? ""}
             className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
@@ -225,6 +226,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             id="bio"
             name="bio"
             rows={3}
+            maxLength={500}
             defaultValue={profile?.bio ?? ""}
             placeholder="Cuéntanos un poco sobre ti..."
             className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
@@ -239,6 +241,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
             id="ubicacion"
             name="ubicacion"
             type="text"
+            maxLength={200}
             defaultValue={profile?.ubicacion ?? ""}
             placeholder="Ej: Col. Roma, CDMX"
             className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
@@ -315,6 +318,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
                     id="nombre_negocio"
                     name="nombre_negocio"
                     type="text"
+                    maxLength={100}
                     defaultValue={profile?.nombre_negocio ?? ""}
                     placeholder="Mi Tienda Local"
                     className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
@@ -329,6 +333,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
                     id="descripcion_negocio"
                     name="descripcion_negocio"
                     rows={2}
+                    maxLength={1000}
                     defaultValue={profile?.descripcion_negocio ?? ""}
                     placeholder="¿Qué tipo de productos ofreces?"
                     className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
