@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { getNearbyProducts, type NearbyProduct } from "@/lib/geo/actions";
 import type { GeoPosition } from "./useGeolocation";
 
@@ -27,8 +27,10 @@ export function useNearbyProducts({
     if (!position) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    startTransition(() => {
+      setLoading(true);
+      setError(null);
+    });
 
     getNearbyProducts({
       lat: position.lat,

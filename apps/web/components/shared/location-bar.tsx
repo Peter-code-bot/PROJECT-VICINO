@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { MapPin, Loader2, Navigation } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useNearbyProducts } from "@/hooks/useNearbyProducts";
@@ -80,12 +81,12 @@ export function LocationBar() {
           ) : !loading ? (
             <p className="py-4 text-sm text-[color:var(--fg-muted)]">
               Sin publicaciones en un radio de 5 km.{" "}
-              <a
+              <Link
                 href="/buscar"
                 className="font-medium text-[color:var(--brand-hi)] hover:underline"
               >
                 Explorar todo
-              </a>
+              </Link>
             </p>
           ) : null}
         </div>
