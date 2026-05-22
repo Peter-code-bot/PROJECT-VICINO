@@ -38,7 +38,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
         <div
           className={cn(
             "flex items-center gap-1 rounded-pill p-1.5",
-            "bg-[color:var(--card-2)] backdrop-blur-xl",
+            "bg-card-2 backdrop-blur-xl",
             "shadow-[inset_0_0_0_1px_var(--border),0_12px_40px_rgba(0,0,0,0.30)]"
           )}
         >
@@ -56,8 +56,8 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                 className={cn(
                   "relative inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[12px] font-medium transition-colors duration-150",
                   isActive
-                    ? "text-[color:var(--brand-hi)] bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                    : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+                    ? "text-brand-hi bg-brand-tint-strong shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                    : "text-fg-muted hover:text-fg"
                 )}
               >
                 <Icon
@@ -77,7 +77,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                 </span>
                 {href === "/chat" && unreadChatMessages > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--danger)] px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card-2)]"
+                    className="absolute -top-1 -right-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card-2)]"
                     aria-label={`${unreadChatMessages} mensajes sin leer`}
                   >
                     {unreadChatMessages > 99 ? "99+" : unreadChatMessages}

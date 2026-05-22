@@ -97,6 +97,11 @@
   --shadow-glow: 0 10px 24px rgba(31,90,78,0.45);
 }
 
+.dark ::selection {
+  background: rgba(46, 135, 115, 0.45);
+  color: var(--fg);
+}
+
 /* ─── TAILWIND v4 THEME ──────────────────────────────────── */
 
 @theme inline {
@@ -143,6 +148,7 @@
   --radius-lg:   var(--r-lg);
   --radius-xl:   var(--r-xl);
   --radius-pill: var(--r-pill);
+  --breakpoint-xs: 360px;
 
   --font-sans:    var(--font-inter);
   --font-heading: var(--font-outfit);

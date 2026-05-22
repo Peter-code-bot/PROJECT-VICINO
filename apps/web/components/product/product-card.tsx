@@ -49,12 +49,12 @@ export function ProductCard({
       href={`/${categoria}/${slug}`}
       id={`product-${slug}`}
       className={cn(
-        "group block w-full min-w-0 overflow-hidden rounded-xl bg-[color:var(--card)] transition-all duration-300",
+        "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",
         "shadow-[inset_0_0_0_1px_var(--border)]",
         "hover:-translate-y-0.5 hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
       )}
     >
-      <div className="relative aspect-square overflow-hidden bg-[color:var(--bg-elev-2)]">
+      <div className="relative aspect-square overflow-hidden bg-bg-elev-2">
         {imagen ? (
           <Image
             src={imagen}
@@ -67,7 +67,7 @@ export function ProductCard({
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
               <span className="mb-1 block text-3xl">📷</span>
-              <span className="text-xs text-[color:var(--fg-dim)]">Sin imagen</span>
+              <span className="text-xs text-fg-dim">Sin imagen</span>
             </div>
           </div>
         )}
@@ -77,14 +77,14 @@ export function ProductCard({
           <div
             className={cn(
               "inline-flex items-center rounded-md px-2 py-1",
-              "bg-white/92 text-[color:var(--brand-dark)]",
+              "bg-white/92 text-brand-dark",
               "shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
             )}
           >
             <PriceDisplay
               amount={precio}
               size="sm"
-              className="font-heading font-bold text-[color:var(--brand-dark)]"
+              className="font-heading font-bold text-brand-dark"
             />
           </div>
         </div>
@@ -95,7 +95,7 @@ export function ProductCard({
             <span
               className={cn(
                 "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)]",
+                "bg-brand-tint-strong text-brand-hi",
                 "shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               )}
             >
@@ -122,7 +122,7 @@ export function ProductCard({
             "absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
             "backdrop-blur-md hover:scale-110 active:scale-95",
             isFavorite
-              ? "bg-[color:var(--danger)] text-white shadow-[0_4px_12px_rgba(255,59,48,0.35)]"
+              ? "bg-danger text-white shadow-[0_4px_12px_rgba(255,59,48,0.35)]"
               : "bg-black/40 text-white hover:bg-black/55"
           )}
         >
@@ -132,7 +132,7 @@ export function ProductCard({
 
       {/* Content */}
       <div className="space-y-1.5 p-3">
-        <h3 className="line-clamp-2 font-heading text-[14px] font-semibold leading-snug text-[color:var(--fg)] transition-colors duration-200 group-hover:text-[color:var(--brand-hi)]">
+        <h3 className="line-clamp-2 font-heading text-[14px] font-semibold leading-snug text-fg transition-colors duration-200 group-hover:text-brand-hi">
           {titulo}
         </h3>
 
@@ -144,7 +144,7 @@ export function ProductCard({
               aria-hidden
             />
           )}
-          <span className="truncate text-xs text-[color:var(--fg-muted)]">
+          <span className="truncate text-xs text-fg-muted">
             {vendedor.nombre}
           </span>
           <SellerBadge level={vendedor.trust_level} showLabel={false} size="sm" />

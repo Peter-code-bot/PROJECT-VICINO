@@ -20,7 +20,7 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
     <header
       className={cn(
         "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300",
-        "bg-[color:var(--bg)]/80 backdrop-blur-xl",
+        "bg-bg/80 backdrop-blur-xl",
         scrolled
           ? "shadow-[inset_0_-1px_0_0_var(--border)]"
           : "shadow-none"
@@ -42,10 +42,10 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
             priority
           />
           <div className="flex flex-col">
-            <span className="font-heading font-bold text-base leading-none tracking-tight text-[color:var(--fg)]">
+            <span className="font-heading font-bold text-base leading-none tracking-tight text-fg">
               VICINO
             </span>
-            <span className="mt-0.5 hidden text-[9px] font-semibold uppercase leading-none tracking-[0.15em] text-[color:var(--fg-dim)] sm:block">
+            <span className="mt-0.5 hidden text-[9px] font-semibold uppercase leading-none tracking-[0.15em] text-fg-dim sm:block">
               Confianza Local
             </span>
           </div>
@@ -56,7 +56,7 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           href="/notificaciones"
           className={cn(
             "relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-            "bg-[color:var(--card-2)] text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]",
+            "bg-card-2 text-fg-muted hover:text-fg",
             "shadow-[inset_0_0_0_1px_var(--border)]"
           )}
           aria-label="Notificaciones"
@@ -64,7 +64,7 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
           {unreadNotifications > 0 && (
             <span
-              className="absolute top-[9px] right-[9px] h-[7px] w-[7px] rounded-full bg-[color:var(--brand)] shadow-[0_0_0_2px_var(--card-2)]"
+              className="absolute top-[9px] right-[9px] h-[7px] w-[7px] rounded-full bg-brand shadow-[0_0_0_2px_var(--card-2)]"
               aria-label={`${unreadNotifications} notificaciones sin leer`}
             />
           )}
