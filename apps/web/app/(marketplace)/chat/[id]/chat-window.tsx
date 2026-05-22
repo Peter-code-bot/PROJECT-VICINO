@@ -199,22 +199,22 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
-        <Link href="/chat" className="md:hidden">
+      <div className="flex shrink-0 items-center gap-3 px-4 py-3 shadow-[inset_0_-1px_0_0_var(--border)]">
+        <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <Link
           href={`/vendedor/${otherUser?.id ?? ""}`}
-          className="flex items-center gap-3 flex-1 min-w-0 -mx-2 px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+          className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
           aria-label={otherUser?.nombre ? `Ver perfil de ${otherUser.nombre}` : "Perfil de usuario"}
         >
           <UserAvatar src={otherUser?.foto} name={otherUser?.nombre ?? "?"} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[color:var(--fg)]">
               {otherUser?.nombre ?? "Usuario"}
             </p>
             {product && (
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="truncate text-xs text-[color:var(--fg-muted)]">
                 {product.titulo}
               </p>
             )}
@@ -223,7 +223,7 @@ export function ChatWindow({
         {saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
           <button
             onClick={() => setShowSaleForm(!showSaleForm)}
-            className="flex items-center gap-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-[color:var(--brand-dark)]"
           >
             <Handshake className="h-3.5 w-3.5" />
             Confirmar Venta
@@ -245,18 +245,18 @@ export function ChatWindow({
       {product && (
         <Link
           href={`/buscar?q=${encodeURIComponent(product.titulo)}`}
-          className="flex items-center gap-2.5 px-4 py-2 border-b border-border/30 hover:bg-muted/40 transition-colors"
+          className="flex items-center gap-2.5 px-4 py-2 shadow-[inset_0_-1px_0_0_var(--border)] transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
         >
-          <div className="w-8 h-8 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
             {product.imagen_principal ? (
-              <img src={product.imagen_principal} alt="" className="w-full h-full object-cover" />
+              <img src={product.imagen_principal} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-xs text-muted-foreground">{product.titulo[0]}</span>
+              <span className="text-xs text-[color:var(--fg-muted)]">{product.titulo[0]}</span>
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground truncate">{product.titulo}</p>
-            <p className="text-[10px] text-muted-foreground">${product.precio.toLocaleString("es-MX")} MXN</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-[color:var(--fg)]">{product.titulo}</p>
+            <p className="text-[10px] text-[color:var(--brand-hi)]">${product.precio.toLocaleString("es-MX")} MXN</p>
           </div>
         </Link>
       )}
@@ -266,11 +266,11 @@ export function ChatWindow({
         <div className="mx-3 my-1">
           <button
             onClick={() => setShowSaleDetails(!showSaleDetails)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+            className="flex w-full items-center gap-2.5 rounded-xl bg-[color:var(--brand-tint)] px-3 py-2 text-left shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-[color:var(--brand-tint-strong)]"
           >
-            <Handshake className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-xs font-semibold text-foreground flex-1">Confirmación de venta</span>
-            <span className="text-[10px] text-muted-foreground">{showSaleDetails ? "Ocultar" : "Ver detalles"}</span>
+            <Handshake className="h-4 w-4 shrink-0 text-[color:var(--brand-hi)]" />
+            <span className="flex-1 text-xs font-semibold text-[color:var(--fg)]">Confirmación de venta</span>
+            <span className="text-[10px] text-[color:var(--fg-muted)]">{showSaleDetails ? "Ocultar" : "Ver detalles"}</span>
           </button>
           {showSaleDetails && (
             <div className="mt-1 space-y-1 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
@@ -303,15 +303,15 @@ export function ChatWindow({
                 className={cn(
                   "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
                   isOwn
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-muted rounded-bl-md"
+                    ? "rounded-br-md bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)]"
+                    : "rounded-bl-md bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)]"
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
                 <div
                   className={cn(
-                    "flex items-center justify-end gap-1 mt-1",
-                    isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+                    "mt-1 flex items-center justify-end gap-1",
+                    isOwn ? "text-white/70" : "text-[color:var(--fg-muted)]"
                   )}
                 >
                   <span className="text-[10px]">
@@ -319,7 +319,7 @@ export function ChatWindow({
                   </span>
                   {isOwn && (
                     isRead
-                      ? <CheckCheck className="w-3 h-3 text-emerald-400" />
+                      ? <CheckCheck className="w-3 h-3 text-[color:var(--trust-emerald)]" />
                       : <Check className="w-3 h-3 opacity-60" />
                   )}
                 </div>
@@ -347,7 +347,7 @@ export function ChatWindow({
 
       {/* Send error */}
       {sendError && (
-        <p className="px-4 pt-2 text-xs text-red-600 dark:text-red-400">
+        <p className="px-4 pt-2 text-xs text-[color:var(--danger)]">
           {sendError}
         </p>
       )}
@@ -355,19 +355,19 @@ export function ChatWindow({
       {/* Input */}
       <form
         onSubmit={handleSend}
-        className="flex items-center gap-2 px-4 py-3 border-t shrink-0"
+        className="flex shrink-0 items-center gap-2 px-4 py-3 shadow-[inset_0_1px_0_0_var(--border)]"
       >
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Escribe un mensaje..."
-          className="flex-1 rounded-full border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-[color:var(--fg-dim)] focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
         />
         <button
           type="submit"
           disabled={!input.trim() || sending}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
         >
           <Send className="h-4 w-4" />
         </button>

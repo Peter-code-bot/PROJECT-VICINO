@@ -73,10 +73,17 @@ export default async function ChatPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in-up">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-heading font-bold">Mensajes</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
+            Confianza local
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-[color:var(--fg)]">
+            Mensajes
+          </h1>
+        </div>
         {visibleChats.length > 0 && (
-          <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--brand-tint-strong)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
             {visibleChats.length} conversaciones
           </span>
         )}
@@ -111,15 +118,20 @@ export default async function ChatPage({ searchParams }: Props) {
           })}
         </div>
       ) : (
-        <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border/60 bg-card/50">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-primary/5 flex items-center justify-center mb-6">
-            <span className="text-4xl translate-y-1">💬</span>
+        <div className="rounded-3xl bg-[color:var(--card)] px-4 py-20 text-center shadow-[inset_0_0_0_1px_var(--border)]">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+            <span className="translate-y-1 text-4xl">💬</span>
           </div>
-          <h2 className="text-xl font-heading font-bold mb-2">Sin conversaciones</h2>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+          <h2 className="mb-2 font-heading text-xl font-bold text-[color:var(--fg)]">
+            Sin conversaciones
+          </h2>
+          <p className="mx-auto max-w-xs text-sm text-[color:var(--fg-muted)]">
             Tus chats con vendedores y compradores aparecerán aquí cuando empieces a interactuar.
           </p>
-          <Link href="/buscar" className="inline-flex items-center justify-center px-6 py-2.5 mt-6 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm">
+          <Link
+            href="/buscar"
+            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[color:var(--brand)] px-6 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
+          >
             Explorar productos
           </Link>
         </div>

@@ -98,10 +98,10 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className={`h-full w-full flex flex-col items-center justify-center gap-1 text-white text-xs font-semibold transition-colors duration-200 ${
+          className={`h-full w-full flex flex-col items-center justify-center gap-1 text-white text-xs font-semibold transition-[filter,background-color] duration-200 ${
             confirming
-              ? "bg-red-700"
-              : "bg-red-600 active:bg-red-700"
+              ? "bg-[color:var(--danger)] brightness-90"
+              : "bg-[color:var(--danger)] active:brightness-90"
           } ${deleting ? "opacity-50 pointer-events-none" : ""}`}
         >
           <Trash2 className="h-5 w-5" />
@@ -144,15 +144,15 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
             // Prevent navigation when the card is swiped open
             if (swiped) e.preventDefault();
           }}
-          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+          className={`relative flex items-center gap-4 overflow-hidden rounded-2xl p-4 transition-all duration-300 ${
             chat.unread > 0
-              ? "bg-card border-primary/30 shadow-md"
-              : "bg-card border-border/40 hover:border-primary/20 hover:shadow-sm"
+              ? "bg-[color:var(--card)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
+              : "bg-[color:var(--card)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
           }`}
           draggable={false}
         >
           {chat.unread > 0 && (
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[color:var(--brand)]" />
           )}
 
           <div className="relative shrink-0">
@@ -160,27 +160,27 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
               src={chat.otherUser?.foto}
               name={chat.otherUser?.nombre ?? "?"}
               size="lg"
-              className="border-2 border-background"
+              className="shadow-[0_0_0_2px_var(--card)]"
             />
             {chat.unread > 0 && (
-              <span className="absolute -bottom-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+              <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--brand)] px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card)]">
                 {chat.unread > 99 ? "99+" : chat.unread}
               </span>
             )}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center justify-between">
               <span
-                className={`text-base truncate transition-colors ${
+                className={`truncate text-base transition-colors ${
                   chat.unread > 0
-                    ? "font-semibold text-foreground"
-                    : "font-medium group-hover:text-primary"
+                    ? "font-semibold text-[color:var(--fg)]"
+                    : "font-medium text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)]"
                 }`}
               >
                 {chat.otherUser?.nombre ?? "Usuario"}
               </span>
-              <span className="text-xs whitespace-nowrap ml-2 text-muted-foreground">
+              <span className="ml-2 whitespace-nowrap text-xs text-[color:var(--fg-dim)]">
                 {formatRelativeTime(chat.updated_at)}
               </span>
             </div>
@@ -188,16 +188,16 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
             <div className="flex items-center gap-2">
               {chat.productoTitulo ? (
                 <p
-                  className={`text-sm truncate ${
+                  className={`truncate text-sm ${
                     chat.unread > 0
-                      ? "font-medium text-foreground/90"
-                      : "text-muted-foreground"
+                      ? "font-medium text-[color:var(--fg)]"
+                      : "text-[color:var(--fg-muted)]"
                   }`}
                 >
                   {chat.productoTitulo}
                 </p>
               ) : (
-                <p className="text-sm text-muted-foreground/60 italic">
+                <p className="text-sm italic text-[color:var(--fg-dim)]">
                   Chat general
                 </p>
               )}
