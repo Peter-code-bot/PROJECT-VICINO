@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 interface BottomNavProps {
   /**
    * Whether the current user has opted in to seller mode. When false, the
-   * central "Vender" CTA is hidden and the nav renders 4 items instead of 5.
+   * "Vender" item is hidden and the nav renders 4 items instead of 5.
    */
   isVendedor: boolean;
 }
@@ -34,15 +34,10 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
       className="fixed inset-x-0 z-50 md:hidden"
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
     >
-      <div className="mx-auto w-fit max-w-[calc(100%-24px)] px-2">
-        <div
-          className={cn(
-            "flex items-center gap-1 rounded-pill p-1.5",
-            "bg-card-2 backdrop-blur-xl",
-            "shadow-[inset_0_0_0_1px_var(--border),0_12px_40px_rgba(0,0,0,0.30)]"
-          )}
-        >
+      <div className="mx-3">
+        <div className="glass flex items-center justify-around gap-2 rounded-xl p-2 shadow-[0_12px_40px_rgba(0,0,0,0.30)]">
           {navItems.map(({ href, label, icon: Icon }) => {
+            const isVender = href === "/vender";
             const isActive =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -54,27 +49,15 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                 aria-current={isActive ? "page" : undefined}
                 id={`nav-${label.toLowerCase()}`}
                 className={cn(
-                  "relative inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[12px] font-medium transition-colors duration-150",
-                  isActive
-                    ? "text-brand-hi bg-brand-tint-strong shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                    : "text-fg-muted hover:text-fg"
+                  "relative inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors duration-150",
+                  isVender
+                    ? "bg-brand text-white shadow-[var(--shadow-glow)] hover:bg-brand-hi"
+                    : isActive
+                      ? "bg-brand-tint text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                      : "text-fg-muted hover:text-fg"
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-[18px] w-[18px] transition-transform duration-200",
-                    isActive && "scale-105"
-                  )}
-                  strokeWidth={2}
-                />
-                <span
-                  className={cn(
-                    "hidden xs:inline",
-                    isActive ? "inline" : "max-[360px]:hidden"
-                  )}
-                >
-                  {label}
-                </span>
+                <Icon className="h-5 w-5" strokeWidth={2} />
                 {href === "/chat" && unreadChatMessages > 0 && (
                   <span
                     className="absolute -top-1 -right-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card-2)]"
