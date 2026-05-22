@@ -88,18 +88,23 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
   const otherCategories = CATEGORIES.filter((c) => c.type === "otro");
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 bg-card border-r border-border/40 overflow-y-auto shrink-0">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--bg-elev-1)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-border/20">
-        <Link href="/" className="flex items-center gap-2.5 group">
+      <div className="px-5 py-5 shadow-[inset_0_-1px_0_0_var(--border)]">
+        <Link href="/" className="group flex items-center gap-2.5">
           <Image
             src="/vicino-logo.png"
             alt="Vicino Logo"
             width={36}
             height={36}
-            className="rounded-xl shadow-sm"
+            className="rounded-xl"
           />
-          <span className="font-heading font-bold text-lg">VICINO</span>
+          <div className="flex flex-col leading-none">
+            <span className="font-heading text-lg font-bold tracking-tight text-[color:var(--fg)]">VICINO</span>
+            <span className="mt-0.5 text-[8.5px] font-semibold uppercase tracking-[0.18em] text-[color:var(--fg-dim)]">
+              Confianza Local
+            </span>
+          </div>
         </Link>
       </div>
 
@@ -113,10 +118,10 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
         <button
           onClick={() => setCategoriesOpen(!categoriesOpen)}
           className={cn(
-            "flex items-center justify-between w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
             categoriesOpen
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-[color:var(--bg-elev-2)] text-[color:var(--fg)]"
+              : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
           )}
         >
           <span className="flex items-center gap-3">
@@ -128,23 +133,23 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
 
         {categoriesOpen && (
           <div className="ml-4 pl-4 border-l border-border/30 space-y-0.5 py-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-3 py-1">Productos</p>
+            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Productos</p>
             {productCategories.map((cat) => {
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
               );
             })}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-3 py-1 mt-2">Servicios</p>
+            <p className="mt-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Servicios</p>
             {serviceCategories.map((cat) => {
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
@@ -154,7 +159,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
@@ -163,7 +168,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
           </div>
         )}
 
-        <div className="h-px bg-border/30 my-2" />
+        <div className="my-2 h-px bg-[color:var(--border)]" />
 
         {/* Auth-required items */}
         {user ? (
@@ -176,7 +181,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
             <NavItem href="/citas" icon={Calendar} label="Mis citas" active={isActive("/citas")} />
             <NavItem href="/notificaciones" icon={Bell} label="Notificaciones" active={isActive("/notificaciones")} badge={unreadNotifications} />
 
-            <div className="h-px bg-border/30 my-2" />
+            <div className="my-2 h-px bg-[color:var(--border)]" />
 
             {/* Profile */}
             <Link
@@ -184,8 +189,8 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
               )}
             >
               <UserAvatar src={profile?.foto} name={profile?.nombre ?? "?"} size="xs" />
@@ -199,7 +204,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
               <NavItem href="/admin" icon={ShieldAlert} label="Admin" active={isActive("/admin")} />
             )}
 
-            <div className="h-px bg-border/30 my-2" />
+            <div className="my-2 h-px bg-[color:var(--border)]" />
 
             <ThemeToggle />
 
@@ -211,11 +216,11 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
             <NavItem href="/chat" icon={MessageCircle} label="Chat" active={false} disabled />
             <NavItem href="/favoritos" icon={Heart} label="Favoritos" active={false} disabled />
 
-            <div className="h-px bg-border/30 my-2" />
+            <div className="my-2 h-px bg-[color:var(--border)]" />
 
             <Link
               href="/login"
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-3 rounded-xl bg-[color:var(--brand)] px-3 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
             >
               <LogIn className="h-5 w-5" />
               Iniciar sesión
@@ -246,7 +251,7 @@ function NavItem({
 }) {
   if (disabled) {
     return (
-      <span className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground/40 cursor-not-allowed" title="Inicia sesión para usar esta función">
+      <span className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--fg-dim)]" title="Inicia sesión para usar esta función">
         <Icon className="h-5 w-5" />
         {label}
       </span>
@@ -257,18 +262,18 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors relative",
+        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
         active
-          ? "bg-primary/10 text-primary font-semibold"
+          ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
           : highlight
-            ? "text-primary hover:bg-primary/5"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            ? "text-[color:var(--brand-hi)] hover:bg-[color:var(--brand-tint)]"
+            : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
       )}
     >
       <Icon className="h-5 w-5" />
       {label}
       {badge && badge > 0 ? (
-        <span className="ml-auto bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+        <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-[color:var(--brand)] px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--bg-elev-1)]">
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
