@@ -183,9 +183,9 @@ export function ProductForm() {
   return (
     <form action={handleSubmit} className="space-y-6 animate-scale-in">
       {error && (
-        <div className="rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400">
-          <p className="font-semibold flex items-center gap-2">
-             <span className="text-lg">⚠️</span> {error}
+        <div className="rounded-xl bg-[rgba(255,59,48,0.10)] p-4 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.30)]">
+          <p className="flex items-center gap-2 font-semibold">
+            <span className="text-lg">⚠️</span> {error}
           </p>
         </div>
       )}
@@ -204,15 +204,17 @@ export function ProductForm() {
               className="peer sr-only"
             />
             <div className={cn(
-              "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 bg-card group-hover:border-primary/40",
-              tipoSeleccionado === "producto" ? "border-primary shadow-sm bg-primary/5 text-primary" : "border-border/50 text-muted-foreground"
+              "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
+              tipoSeleccionado === "producto"
+                ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             )}>
-              <PackageOpen className={cn("w-6 h-6 mb-2 transition-colors", tipoSeleccionado === "producto" ? "text-primary" : "text-muted-foreground group-hover:text-primary/70")} />
-              <span className="font-semibold text-sm">Producto físico</span>
+              <PackageOpen className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "producto" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+              <span className="text-sm font-semibold">Producto físico</span>
             </div>
             {tipoSeleccionado === "producto" && (
-              <div className="absolute top-3 right-3 text-primary">
-                <CheckCircle2 className="w-4 h-4" />
+              <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                <CheckCircle2 className="h-4 w-4" />
               </div>
             )}
           </label>
@@ -227,15 +229,17 @@ export function ProductForm() {
               className="peer sr-only"
             />
             <div className={cn(
-              "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 bg-card group-hover:border-primary/40",
-              tipoSeleccionado === "servicio" ? "border-primary shadow-sm bg-primary/5 text-primary" : "border-border/50 text-muted-foreground"
+              "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
+              tipoSeleccionado === "servicio"
+                ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             )}>
-              <Store className={cn("w-6 h-6 mb-2 transition-colors", tipoSeleccionado === "servicio" ? "text-primary" : "text-muted-foreground group-hover:text-primary/70")} />
-              <span className="font-semibold text-sm">Servicio local</span>
+              <Store className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "servicio" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+              <span className="text-sm font-semibold">Servicio local</span>
             </div>
             {tipoSeleccionado === "servicio" && (
-              <div className="absolute top-3 right-3 text-primary">
-                <CheckCircle2 className="w-4 h-4" />
+              <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                <CheckCircle2 className="h-4 w-4" />
               </div>
             )}
           </label>
@@ -253,9 +257,18 @@ export function ProductForm() {
             <button
               type="button"
               onClick={() => setAllowAppointments(!allowAppointments)}
-              className={`w-11 h-6 rounded-full transition-colors relative ${allowAppointments ? "bg-primary" : "bg-muted"}`}
+              className={`relative h-6 w-11 rounded-full transition-colors ${
+                allowAppointments
+                  ? "bg-[color:var(--brand)] shadow-[var(--shadow-glow)]"
+                  : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
+              }`}
+              aria-pressed={allowAppointments}
             >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${allowAppointments ? "translate-x-5" : ""}`} />
+              <span
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  allowAppointments ? "translate-x-5" : ""
+                }`}
+              />
             </button>
           </div>
           <input type="hidden" name="allow_appointments" value={allowAppointments ? "true" : "false"} />
@@ -394,7 +407,7 @@ export function ProductForm() {
                           onClick={() => { setSelectedCategory(cat.slug); setCategoryOpen(false); setCategorySearch(""); }}
                           className={cn(
                             "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
-                            selectedCategory === cat.slug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+                            selectedCategory === cat.slug ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] font-semibold" : "hover:bg-[color:var(--bg-elev-2)]"
                           )}
                         >
                           {cat.name}
@@ -483,7 +496,7 @@ export function ProductForm() {
                 <X className="w-3 h-3 text-white" />
               </button>
               {i === 0 && (
-                <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-primary text-white px-1 rounded font-medium">
+                <span className="absolute bottom-0.5 left-0.5 rounded bg-[color:var(--brand)] px-1 text-[9px] font-medium text-white">
                   Portada
                 </span>
               )}
@@ -518,7 +531,7 @@ export function ProductForm() {
       <button
         type="submit"
         disabled={loading || uploading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-base font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
+        className="sticky bottom-20 z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
