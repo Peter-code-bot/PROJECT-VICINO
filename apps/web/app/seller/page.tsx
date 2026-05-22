@@ -128,15 +128,15 @@ export default async function SellerOverviewPage() {
           <p className="text-sm font-medium text-gold/80">Aprobación de clientes</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-blue-500/30 transition-colors">
+        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-fg/20 transition-colors">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+            <div className="p-2.5 rounded-xl bg-muted text-fg">
               <TrendingUp className="h-5 w-5" />
             </div>
             <span className="text-sm font-medium text-muted-foreground">Histórico</span>
           </div>
           <p className="text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
-          <p className="text-sm font-medium text-blue-500/80">Ventas totales en Vicino</p>
+          <p className="text-sm font-medium text-fg-muted">Ventas totales en Vicino</p>
         </div>
       </div>
 
@@ -192,28 +192,28 @@ export default async function SellerOverviewPage() {
           <h2 className="font-heading font-semibold text-lg pb-1">Acciones</h2>
           {/* Pending reviews alert */}
           <div className={`p-4 rounded-3xl border transition-all ${
-            pendingReviews > 0 
-              ? "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50 hover:shadow-md" 
+            pendingReviews > 0
+              ? "bg-warning/10 border-warning/30 hover:shadow-md"
               : "bg-card border-border/40"
           }`}>
             <div className="flex items-start gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                pendingReviews > 0 ? "bg-amber-200 dark:bg-amber-800" : "bg-muted"
+                pendingReviews > 0 ? "bg-warning/20" : "bg-muted"
               }`}>
                 {pendingReviews > 0 ? (
-                  <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-200" />
+                  <AlertCircle className="w-4 h-4 text-warning" />
                 ) : (
                   <Star className="w-4 h-4 text-muted-foreground" />
                 )}
               </div>
               <div>
                 <h3 className={`font-semibold text-sm ${
-                  pendingReviews > 0 ? "text-amber-900 dark:text-amber-100" : "text-foreground"
+                  pendingReviews > 0 ? "text-fg" : "text-foreground"
                 }`}>
                   Califica a tus compradores
                 </h3>
                 {pendingReviews > 0 ? (
-                  <p className="text-xs mt-1 text-amber-700 dark:text-amber-300">
+                  <p className="text-xs mt-1 text-warning">
                     Tienes <strong>{pendingReviews}</strong> ventas completadas sin calificar.
                   </p>
                 ) : (
@@ -222,7 +222,7 @@ export default async function SellerOverviewPage() {
                   </p>
                 )}
                 {pendingReviews > 0 && (
-                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-amber-800 dark:text-amber-200 hover:underline mt-2">
+                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-warning hover:text-warning/80 hover:underline mt-2 transition-colors">
                     Ir a reseñas →
                   </Link>
                 )}

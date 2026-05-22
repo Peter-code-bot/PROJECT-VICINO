@@ -41,7 +41,7 @@ export default async function CuponesPage() {
                     {c.codigo}
                   </span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${c.activo ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"}`}
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.activo ? "bg-emerald-trust/10 text-emerald-trust" : "bg-muted text-muted-foreground"}`}
                   >
                     {c.activo ? "Activo" : "Inactivo"}
                   </span>

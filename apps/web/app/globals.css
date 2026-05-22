@@ -12,6 +12,7 @@
   --trust-emerald:   #2D8F6F;
   --trust-gold:      #D4A853;
   --danger:          #FF3B30;
+  --warning:         #B8862A;
 
   /* Aliases used inline in the V2 reference */
   --brand:    var(--brand-base);
@@ -73,6 +74,7 @@
   --fg-dim:        #5C6360;
   --border:        #1F3530;
   --border-strong: #2A4640;
+  --warning:       #E5BD68;
 
   /* shadcn aliases — dark variants */
   --background:           var(--bg);
@@ -135,6 +137,7 @@
   --color-emerald-trust: var(--trust-emerald);
   --color-gold:         var(--trust-gold);
   --color-danger:       var(--danger);
+  --color-warning:      var(--warning);
 
   --color-fg:        var(--fg);
   --color-fg-muted:  var(--fg-muted);

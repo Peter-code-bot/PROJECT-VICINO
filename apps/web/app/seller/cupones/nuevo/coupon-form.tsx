@@ -20,7 +20,7 @@ export function CouponForm() {
   return (
     <form action={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-md bg-red-50 dark:bg-red-950 p-3 text-sm text-red-600 dark:text-red-400">
+        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {error}
         </div>
       )}

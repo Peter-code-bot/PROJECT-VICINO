@@ -64,7 +64,7 @@ export default async function ListingsModerationPage() {
                   <span className="text-xs text-muted-foreground">
                     Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/10 text-warning">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
                   </span>
                 </div>
@@ -93,7 +93,7 @@ export default async function ListingsModerationPage() {
                     </div>
                     <div className="flex gap-2">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${listing.is_hidden ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}`}
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${listing.is_hidden ? "bg-danger/10 text-danger" : "bg-emerald-trust/10 text-emerald-trust"}`}
                       >
                         {listing.is_hidden ? "Oculto" : "Visible"}
                       </span>

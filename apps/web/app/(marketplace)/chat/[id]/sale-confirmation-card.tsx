@@ -64,19 +64,19 @@ export function SaleConfirmationCard({
   }
 
   const statusColor = isCompleted
-    ? "border-emerald-500/30 bg-muted"
-    : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30";
+    ? "border-emerald-trust/30 bg-emerald-trust/5"
+    : "border-warning/30 bg-warning/5";
 
   return (
-    <div className={`rounded-lg border p-3 space-y-2 text-xs ${statusColor}`}>
+    <div className={`rounded-lg border p-3 space-y-2 text-xs text-fg ${statusColor}`}>
       <div className="flex items-center justify-between">
-        <span className="font-semibold">
+        <span className="font-semibold text-fg">
           {isCompleted ? "✅ Venta confirmada" : "🤝 Confirmación de venta"}
         </span>
         {isCompleted ? (
-          <CheckCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <CheckCheck className="h-4 w-4 text-emerald-trust" />
         ) : (
-          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <Clock className="h-4 w-4 text-warning" />
         )}
       </div>
 
@@ -91,16 +91,16 @@ export function SaleConfirmationCard({
 
       {/* Confirmation status */}
       <div className="flex gap-2 text-[10px]">
-        <span className={sc.buyer_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+        <span className={sc.buyer_confirmed ? "text-emerald-trust font-medium" : "text-fg-muted"}>
           {sc.buyer_confirmed ? "✓" : "○"} Comprador
         </span>
-        <span className={sc.seller_confirmed ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+        <span className={sc.seller_confirmed ? "text-emerald-trust font-medium" : "text-fg-muted"}>
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
 
       {error && (
-        <p className="text-[10px] text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-[10px] text-danger">{error}</p>
       )}
 
       {/* Action buttons */}
@@ -109,7 +109,7 @@ export function SaleConfirmationCard({
           <button
             onClick={handleConfirm}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md bg-emerald-trust text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-trust/90 disabled:opacity-50 transition-colors"
           >
             <Check className="h-3 w-3" />
             Confirmar
@@ -117,7 +117,7 @@ export function SaleConfirmationCard({
           <button
             onClick={handleCancel}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border text-fg px-3 py-1.5 text-xs font-medium hover:bg-bg-elev-2 disabled:opacity-50 transition-colors"
           >
             <X className="h-3 w-3" />
             Rechazar
@@ -126,7 +126,7 @@ export function SaleConfirmationCard({
       )}
 
       {myConfirmed && !otherConfirmed && !isCompleted && (
-        <p className="text-[10px] text-amber-600 dark:text-amber-400">
+        <p className="text-[10px] text-warning">
           Esperando confirmación del {isBuyer ? "vendedor" : "comprador"}...
         </p>
       )}
@@ -134,7 +134,7 @@ export function SaleConfirmationCard({
       {isCompleted && (
         <a
           href={`/historial`}
-          className="inline-block text-green-700 dark:text-green-400 underline"
+          className="inline-block text-emerald-trust font-medium underline hover:text-emerald-trust/80 transition-colors"
         >
           Deja tu reseña →
         </a>

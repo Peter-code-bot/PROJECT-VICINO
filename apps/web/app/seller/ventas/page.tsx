@@ -35,9 +35,9 @@ export default async function VentasPage() {
   const reviewedIds = new Set(myReviews?.map((r) => r.sale_confirmation_id) ?? []);
 
   const statusConfig: Record<string, { label: string; color: string }> = {
-    pending_confirmation: { label: "Pendiente", color: "bg-amber-50 text-amber-600 dark:bg-amber-950/50" },
-    completed: { label: "Completada", color: "bg-green-500/10 text-green-500" },
-    cancelled: { label: "Cancelada", color: "bg-red-50 text-red-500 dark:bg-red-950/50" },
+    pending_confirmation: { label: "Pendiente", color: "bg-warning/10 text-warning" },
+    completed: { label: "Completada", color: "bg-emerald-trust/10 text-emerald-trust" },
+    cancelled: { label: "Cancelada", color: "bg-danger/10 text-danger" },
     expired: { label: "Expirada", color: "bg-muted text-muted-foreground" },
   };
 

@@ -93,11 +93,11 @@ export function VerificationUpload({
 
   const statusIcon =
     status === "approved" ? (
-      <CheckCircle className="h-5 w-5 text-green-500" />
+      <CheckCircle className="h-5 w-5 text-emerald-trust" />
     ) : status === "pending" ? (
-      <Clock className="h-5 w-5 text-amber-500" />
+      <Clock className="h-5 w-5 text-warning" />
     ) : status === "rejected" ? (
-      <XCircle className="h-5 w-5 text-red-500" />
+      <XCircle className="h-5 w-5 text-danger" />
     ) : null;
 
   return (
@@ -114,7 +114,7 @@ export function VerificationUpload({
       )}
 
       {error && (
-        <div className="rounded-md bg-red-50 dark:bg-red-950 p-3 text-sm text-red-600 dark:text-red-400">
+        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {error}
         </div>
       )}
@@ -126,7 +126,7 @@ export function VerificationUpload({
               <div>
                 <p className="font-medium text-sm">{label}</p>
                 {existingDocs[key] ? (
-                  <p className="text-xs text-green-600">Subido</p>
+                  <p className="text-xs text-emerald-trust">Subido</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">No subido</p>
                 )}

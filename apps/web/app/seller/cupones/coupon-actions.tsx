@@ -29,14 +29,14 @@ export function CouponActions({ id, activo }: CouponActionsProps) {
       <button
         onClick={handleToggle}
         disabled={loading}
-        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        className="text-xs font-medium text-fg-muted hover:text-fg disabled:opacity-50 transition-colors"
       >
         {activo ? "Desactivar" : "Activar"}
       </button>
       <button
         onClick={handleDelete}
         disabled={loading}
-        className="text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+        className="text-xs font-medium text-danger hover:text-danger/80 disabled:opacity-50 transition-colors"
       >
         Eliminar
       </button>

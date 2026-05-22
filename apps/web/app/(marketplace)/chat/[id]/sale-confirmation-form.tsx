@@ -62,7 +62,7 @@ export function SaleConfirmationForm({
       </div>
 
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <p className="text-xs text-danger">{error}</p>
       )}
 
       {product && (
@@ -132,7 +132,7 @@ export function SaleConfirmationForm({
         <button
           type="submit"
           disabled={loading || !product}
-          className="col-span-2 rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-xs font-medium disabled:opacity-50"
+          className="col-span-2 rounded-md bg-emerald-trust hover:bg-emerald-trust/90 text-white px-3 py-2 text-xs font-medium disabled:opacity-50 transition-colors"
         >
           {loading ? "Enviando..." : "Iniciar Confirmación"}
         </button>
