@@ -18,7 +18,6 @@ interface BottomNavProps {
   /**
    * Whether the current user has opted in to seller mode. When false, the
    * central "Vender" CTA is hidden and the nav renders 4 items instead of 5.
-   * Phase 9: gating extends to /vender route via middleware + seller layout.
    */
   isVendedor: boolean;
 }
@@ -31,80 +30,64 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
     : NAV_ITEMS.filter((item) => item.href !== "/vender");
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Glassmorphism background */}
-      <div className="glass dark:glass-dark border-t border-border/30 shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
-        <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
+    <nav
+      className="fixed inset-x-0 z-50 md:hidden"
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+    >
+      <div className="mx-auto w-fit max-w-[calc(100%-24px)] px-2">
+        <div
+          className={cn(
+            "flex items-center gap-1 rounded-pill p-1.5",
+            "bg-[color:var(--card-2)] backdrop-blur-xl",
+            "shadow-[inset_0_0_0_1px_var(--border),0_12px_40px_rgba(0,0,0,0.30)]"
+          )}
+        >
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
-            const isVender = href === "/vender";
 
             return (
               <Link
                 key={href}
                 href={href}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 w-16 h-full text-xs transition-all duration-200",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
-                  isVender && "relative"
-                )}
+                aria-label={label}
+                aria-current={isActive ? "page" : undefined}
                 id={`nav-${label.toLowerCase()}`}
-              >
-                {isVender ? (
-                  <div
-                    className={cn(
-                      "flex items-center justify-center w-11 h-11 rounded-2xl -mt-5 shadow-lg transition-all duration-200 active:scale-[0.93]",
-                      "bg-primary text-white",
-                      "hover:bg-primary/90 hover:shadow-xl",
-                      "ring-4 ring-background"
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "relative flex items-center justify-center w-10 h-8 rounded-xl transition-all duration-200",
-                      isActive && "bg-primary/10 dark:bg-primary/10"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-5 w-5 transition-transform duration-200",
-                        isActive && "scale-110"
-                      )}
-                    />
-                    {href === "/chat" && unreadChatMessages > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
-                        {unreadChatMessages > 99 ? "99+" : unreadChatMessages}
-                      </span>
-                    )}
-                    {/* Active indicator dot */}
-                    {isActive && (
-                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
-                    )}
-                  </div>
+                className={cn(
+                  "relative inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[12px] font-medium transition-colors duration-150",
+                  isActive
+                    ? "text-[color:var(--brand-hi)] bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                    : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
                 )}
+              >
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] transition-transform duration-200",
+                    isActive && "scale-105"
+                  )}
+                  strokeWidth={2}
+                />
                 <span
                   className={cn(
-                    "text-[10px] font-medium transition-colors",
-                    isVender && "mt-0.5",
-                    isActive && "font-semibold"
+                    "hidden xs:inline",
+                    isActive ? "inline" : "max-[360px]:hidden"
                   )}
                 >
                   {label}
                 </span>
+                {href === "/chat" && unreadChatMessages > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--danger)] px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card-2)]"
+                    aria-label={`${unreadChatMessages} mensajes sin leer`}
+                  >
+                    {unreadChatMessages > 99 ? "99+" : unreadChatMessages}
+                  </span>
+                )}
               </Link>
             );
           })}
         </div>
       </div>
-
-      {/* Safe area spacing for iOS */}
-      <div className="h-[env(safe-area-inset-bottom)] glass dark:glass-dark" />
     </nav>
   );
 }
