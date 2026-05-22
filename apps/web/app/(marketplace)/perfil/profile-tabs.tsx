@@ -61,14 +61,14 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex border-b border-border/40 mb-4">
+      <div className="mb-4 flex shadow-[inset_0_-1px_0_0_var(--border)]">
         <button
           onClick={() => setTab("products")}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors",
+            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "products"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "border-[color:var(--brand)] text-[color:var(--brand-hi)]"
+              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
           <Grid3X3 className="w-4 h-4" />
@@ -77,10 +77,10 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
         <button
           onClick={() => setTab("reviews")}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors",
+            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "reviews"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "border-[color:var(--brand)] text-[color:var(--brand-hi)]"
+              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
           <Star className="w-4 h-4" />
@@ -117,7 +117,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                     </span>
                   </div>
                   {p.estatus === "pausado" && (
-                    <div className="absolute top-1 right-1 bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold">
+                    <div className="absolute right-1 top-1 rounded bg-[color:var(--trust-gold)] px-1.5 py-0.5 text-[8px] font-bold text-[color:var(--brand-dark)]">
                       PAUSADO
                     </div>
                   )}
@@ -125,11 +125,16 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-3xl mb-2">📦</p>
-              <p className="text-sm text-muted-foreground">Sin productos publicados</p>
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+                <span className="text-2xl">📦</span>
+              </div>
+              <p className="text-sm text-[color:var(--fg-muted)]">Sin productos publicados</p>
               {isVendedor && (
-                <Link href="/vender" className="text-sm text-primary font-medium hover:underline mt-2 inline-block">
+                <Link
+                  href="/vender"
+                  className="mt-3 inline-block text-sm font-semibold text-[color:var(--brand-hi)] hover:text-[color:var(--brand)]"
+                >
                   Publicar mi primer producto →
                 </Link>
               )}
@@ -149,20 +154,23 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                 : r.products_services;
               const isOwnReview = currentUserId != null && r.reviewer_id === currentUserId;
               return (
-                <div key={r.id} className="rounded-xl border border-border/40 p-4 space-y-2">
+                <div
+                  key={r.id}
+                  className="space-y-2 rounded-xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]"
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-muted overflow-hidden shrink-0">
+                    <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
                       {reviewer?.foto ? (
-                        <Image src={reviewer.foto} alt="" width={28} height={28} className="object-cover w-full h-full" />
+                        <Image src={reviewer.foto} alt="" width={28} height={28} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs font-bold">
+                        <div className="flex h-full w-full items-center justify-center text-xs font-bold text-[color:var(--fg-muted)]">
                           {reviewer?.nombre?.charAt(0) ?? "?"}
                         </div>
                       )}
                     </div>
-                    <span className="text-sm font-medium">{reviewer?.nombre ?? "Usuario"}</span>
+                    <span className="text-sm font-semibold text-[color:var(--fg)]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-muted-foreground ml-auto">{formatDate(r.created_at)}</span>
+                    <span className="ml-auto text-xs text-[color:var(--fg-dim)]">{formatDate(r.created_at)}</span>
                     {currentUserId && !isOwnReview && (
                       <ReportMenuButton
                         targetType="review"
@@ -174,10 +182,10 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                     )}
                   </div>
                   {r.comentario && (
-                    <p className="text-sm text-muted-foreground">{r.comentario}</p>
+                    <p className="text-sm text-[color:var(--fg-muted)]">{r.comentario}</p>
                   )}
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide shrink-0">
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
                       {r.review_type === "buyer_to_seller" ? "Como vendedor" : "Como comprador"}
                     </span>
                     <ReviewProductLink product={reviewedProduct ?? null} />
@@ -186,9 +194,11 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
               );
             })
           ) : (
-            <div className="text-center py-12">
-              <p className="text-3xl mb-2">⭐</p>
-              <p className="text-sm text-muted-foreground">Sin reseñas aún</p>
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(212,168,83,0.18)] shadow-[inset_0_0_0_1px_rgba(212,168,83,0.30)]">
+                <span className="text-2xl">⭐</span>
+              </div>
+              <p className="text-sm text-[color:var(--fg-muted)]">Sin reseñas aún</p>
             </div>
           )}
         </div>
