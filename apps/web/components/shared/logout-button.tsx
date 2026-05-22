@@ -28,7 +28,7 @@ export function LogoutButton({ variant = "default", className }: LogoutButtonPro
         onClick={handleLogout}
         disabled={loading}
         className={cn(
-          "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full",
+          "flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[rgba(255,59,48,0.08)]",
           className
         )}
       >
@@ -44,7 +44,7 @@ export function LogoutButton({ variant = "default", className }: LogoutButtonPro
         onClick={handleLogout}
         disabled={loading}
         className={cn(
-          "flex flex-col items-center gap-0.5 py-2 px-1 min-w-[56px] text-red-500",
+          "flex min-w-[56px] flex-col items-center gap-0.5 px-1 py-2 text-[color:var(--danger)]",
           className
         )}
       >
@@ -59,7 +59,7 @@ export function LogoutButton({ variant = "default", className }: LogoutButtonPro
       onClick={handleLogout}
       disabled={loading}
       className={cn(
-        "flex items-center justify-center gap-2 w-full rounded-xl border border-red-200 dark:border-red-800 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50",
+        "flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--card)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)] transition-colors hover:bg-[rgba(255,59,48,0.06)] disabled:opacity-50",
         className
       )}
     >
