@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, startTransition } from "react";
 
 export interface GeoPosition {
   lat: number;
@@ -43,7 +43,9 @@ export function useGeolocation() {
     // porque el primer render coincidirá siempre con el servidor (idle).
     const cached = readCache();
     if (cached) {
-      setState({ status: "success", position: cached });
+      startTransition(() => {
+        setState({ status: "success", position: cached });
+      });
     }
   }, []);
 

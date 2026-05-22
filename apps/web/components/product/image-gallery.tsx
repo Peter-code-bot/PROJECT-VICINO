@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, startTransition, useState } from "react";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 
@@ -33,7 +33,9 @@ export function ImageGallery({
   useEffect(() => {
     if (!emblaApi) return;
     emblaApi.on("select", onSelect);
-    onSelect();
+    startTransition(() => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+    });
     return () => {
       emblaApi.off("select", onSelect);
     };

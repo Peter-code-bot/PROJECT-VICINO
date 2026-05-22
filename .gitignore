@@ -43,3 +43,6 @@ audit-session-export.txt
 
 # Graphify (local knowledge graph)
 graphify-out/
+
+# RuVector (external AI tooling artifact, not for repo)
+ruvector.db

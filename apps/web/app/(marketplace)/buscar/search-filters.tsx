@@ -15,6 +15,7 @@ import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
 import type { ListingType } from "@/components/search/listing-type-switch";
 import { SearchHistoryDropdown } from "@/components/search/search-history-dropdown";
 import { useSearchHistory } from "@/hooks/use-search-history";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -162,12 +163,13 @@ export function SearchFilters({
             />
           )}
         </div>
-        <button
+        <Button
+          variant="secondary"
+          size="md"
           type="button"
           onClick={handleGeo}
           disabled={geoLoading}
           title="Cerca de mí"
-          className="inline-flex items-center gap-1 rounded-full bg-[color:var(--card-2)] px-3 py-2 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-60"
         >
           {geoLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-[color:var(--brand-hi)]" />
@@ -175,15 +177,16 @@ export function SearchFilters({
             <Navigation className="h-4 w-4 text-[color:var(--brand-hi)]" />
           )}
           <span className="hidden sm:inline">Cerca</span>
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className="inline-flex items-center gap-1 rounded-full bg-[color:var(--card-2)] px-3 py-2 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
         >
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filtros</span>
-        </button>
+        </Button>
       </form>
 
       {/* Badge de resultados cercanos activos */}
