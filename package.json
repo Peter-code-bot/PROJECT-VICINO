@@ -10,8 +10,18 @@
   "devDependencies": {
     "dotenv": "^17.4.2",
     "tsx": "^4.21.0",
-    "turbo": "^2.4.0",
+    "turbo": "^2.9.14",
     "typescript": "^5.7.0"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "serialize-javascript": ">=7.0.3",
+      "picomatch": ">=4.0.4",
+      "lodash": ">=4.18.0",
+      "fast-uri": ">=3.1.2",
+      "@xmldom/xmldom": ">=0.8.13",
+      "@babel/plugin-transform-modules-systemjs": ">=7.29.4"
+    }
+  }
 }

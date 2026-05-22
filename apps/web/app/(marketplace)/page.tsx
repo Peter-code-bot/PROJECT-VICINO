@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ProductCard } from "@/components/product/product-card";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { LocationBar } from "@/components/shared/location-bar";
 import { CATEGORIES } from "@vicino/shared";
@@ -118,34 +117,48 @@ export default async function HomePage() {
 
   return (
     <div className="w-full min-w-0 min-h-screen">
-      {/* ─── HERO SECTION (mini — app-style, not landing) ─── */}
-      <section className="py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Welcome + Search */}
-          <div className="mb-6">
-            <div className="flex items-center gap-1.5 mb-1">
-              <MapPin className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs text-muted-foreground font-medium">
-                Tu zona
-              </span>
-            </div>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl mb-4">
-              Descubre lo mejor{" "}
-              <span className="text-primary">cerca de ti</span>
-            </h1>
-
-            {/* Search Bar */}
-            <Link
-              href="/buscar"
-              className="flex items-center gap-3 w-full rounded-2xl bg-card border border-border/40 px-4 py-3 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
-              id="home-search"
+      {/* ─── ZONE + SEARCH (app-style hero) ───────────────── */}
+      <section className="px-4 pt-6 pb-4">
+        <div className="max-w-7xl mx-auto space-y-4">
+          {/* Zone card — V2 ref ~line 2557 */}
+          <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card)] p-3 shadow-[inset_0_0_0_1px_var(--border)]">
+            <span
+              aria-hidden
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]"
             >
-              <Search className="h-5 w-5 text-primary/50" />
-              <span className="text-sm text-muted-foreground">
-                ¿Qué estás buscando?
-              </span>
-            </Link>
+              <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[color:var(--fg-dim)]">
+                Tu zona · 5 km
+              </div>
+              <div className="text-[13px] font-semibold text-[color:var(--fg)]">
+                Activa tu ubicación
+              </div>
+            </div>
           </div>
+
+          {/* Headline */}
+          <h1 className="font-heading text-3xl font-bold leading-[1.1] tracking-tight text-[color:var(--fg)]">
+            Descubre lo mejor{" "}
+            <span className="text-[color:var(--brand-hi)]">cerca de ti</span>
+          </h1>
+
+          {/* Search bar — V2 ref ~line 2593 */}
+          <Link
+            href="/buscar"
+            id="home-search"
+            className="flex items-center gap-3 rounded-2xl bg-[color:var(--card-2)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+          >
+            <Search className="h-[17px] w-[17px] text-[color:var(--brand-hi)]" strokeWidth={2} />
+            <span className="flex-1 text-sm text-[color:var(--fg-dim)]">
+              ¿Qué buscas hoy?
+            </span>
+            <span className="h-4 w-px bg-[color:var(--border-strong)]" aria-hidden />
+            <span className="text-xs font-semibold text-[color:var(--fg-muted)]">
+              Filtros
+            </span>
+          </Link>
         </div>
       </section>
 
@@ -159,33 +172,42 @@ export default async function HomePage() {
       {/* ─── CATEGORIES ─────────────────────────────────────── */}
       <section className="px-4 pb-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading font-semibold text-lg">Categorías</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-heading text-lg font-semibold text-[color:var(--fg)]">
+              Categorías
+            </h2>
             <Link
               href="/buscar"
-              className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
               id="home-see-all-categories"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
             >
               Ver todas
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2 py-3 -my-3 scrollbar-hide -mx-4 px-4">
-            {CATEGORIES.map((cat) => {
+          <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
+            {CATEGORIES.map((cat, i) => {
               const IconComponent = CATEGORY_ICONS[cat.slug] || MoreHorizontal;
+              const isFeatured = i === 0;
 
               return (
                 <Link
                   key={cat.id}
                   href={`/buscar?category=${cat.slug}`}
-                  className="flex flex-col items-center gap-1.5 min-w-[72px] text-center group"
                   id={`cat-${cat.slug}`}
+                  className="group flex min-w-[72px] flex-col items-center gap-1.5 text-center"
                 >
-                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-muted transition-all duration-200 group-hover:scale-110 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:bg-accent">
-                    <IconComponent className="w-6 h-6 text-foreground/70" />
+                  <div
+                    className={
+                      isFeatured
+                        ? "flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-all duration-200 group-hover:-translate-y-0.5"
+                        : "flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--card)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                    }
+                  >
+                    <IconComponent className="h-6 w-6" strokeWidth={1.8} />
                   </div>
-                  <span className="text-[11px] text-muted-foreground font-medium group-hover:text-foreground transition-colors">
+                  <span className="text-[11px] font-medium text-[color:var(--fg-muted)] transition-colors group-hover:text-[color:var(--fg)]">
                     {cat.name}
                   </span>
                 </Link>
@@ -200,16 +222,23 @@ export default async function HomePage() {
         <div className="space-y-8 px-4 pb-8">
           {/* Recientes */}
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading font-semibold text-lg">Recientes</h2>
-              <Link
-                href="/buscar"
-                className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
-                id="home-see-all-products"
-              >
-                Ver más
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
+            <div className="mb-3">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
+                Publicados hoy
+              </div>
+              <div className="mt-0.5 flex items-center justify-between">
+                <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
+                  Recientes
+                </h2>
+                <Link
+                  href="/buscar"
+                  id="home-see-all-products"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
+                >
+                  Ver más
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
             </div>
             <ProductCarousel products={all.slice(0, 20)} />
           </section>
@@ -219,14 +248,16 @@ export default async function HomePage() {
             const label = CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
             return (
               <section key={slug}>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-heading font-semibold text-lg">{label}</h2>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
+                    {label}
+                  </h2>
                   <Link
                     href={`/buscar?category=${slug}`}
-                    className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 group transition-colors"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
                   >
                     Ver más
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
                 <ProductCarousel products={ps.slice(0, 20)} />
@@ -237,30 +268,30 @@ export default async function HomePage() {
       ) : (
         /* ─── EMPTY STATE ─────────────────────────────── */
         <section className="px-4 pb-8">
-          <div className="text-center py-20 px-4">
-            <div className="max-w-sm mx-auto">
-              <div className="relative w-24 h-24 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-3xl bg-primary/8 rotate-6" />
-                <div className="absolute inset-0 rounded-3xl bg-primary/5 -rotate-3" />
-                <div className="relative w-24 h-24 rounded-3xl bg-primary/10 dark:bg-primary/10 flex items-center justify-center">
+          <div className="px-4 py-20 text-center">
+            <div className="mx-auto max-w-sm">
+              <div className="relative mx-auto mb-6 h-24 w-24">
+                <div className="absolute inset-0 rotate-6 rounded-3xl bg-[color:var(--brand-tint)]" />
+                <div className="absolute inset-0 -rotate-3 rounded-3xl bg-[color:var(--brand-tint)]" />
+                <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
                   <span className="text-4xl">🏪</span>
                 </div>
               </div>
-              <h3 className="font-heading font-bold text-xl mb-2">
+              <h3 className="mb-2 font-heading text-xl font-bold text-[color:var(--fg)]">
                 Bienvenido a VICINO
               </h3>
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              <p className="mb-6 text-sm leading-relaxed text-[color:var(--fg-muted)]">
                 Tu mercado de confianza. Aún no hay productos publicados.
                 ¡Sé el primero en vender!
               </p>
               {viewerIsVendedor && (
                 <Link
                   href="/vender"
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
                   id="cta-publish"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-6 py-3 font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.97]"
                 >
                   Publicar producto
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
             </div>

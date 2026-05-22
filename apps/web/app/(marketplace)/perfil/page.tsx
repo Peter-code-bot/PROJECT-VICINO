@@ -75,8 +75,11 @@ export default async function PerfilPage() {
           userId={profile?.user_id}
           userIsVendedor={profile?.es_vendedor ?? false}
           trigger={
-            <button aria-label="Menú de cuenta" className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground">
-              <Menu className="w-6 h-6" />
+            <button
+              aria-label="Menú de cuenta"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+            >
+              <Menu className="w-5 h-5" />
             </button>
           }
         />

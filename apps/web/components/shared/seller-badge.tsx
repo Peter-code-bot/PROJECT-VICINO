@@ -4,36 +4,36 @@ import { Shield, ShieldCheck, Star, Crown } from "lucide-react";
 
 const BADGE_CONFIG: Record<
   TrustLevel,
-  { label: string; color: string; bg: string; icon: typeof Shield }
+  { label: string; classes: string; icon: typeof Shield }
 > = {
   nuevo: {
     label: "Nuevo",
-    color: "text-muted-foreground",
-    bg: "bg-muted",
+    classes:
+      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]",
     icon: Shield,
   },
   verificado: {
     label: "Verificado",
-    color: "text-emerald-trust",
-    bg: "bg-emerald-trust/10",
+    classes:
+      "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]",
     icon: ShieldCheck,
   },
   confiable: {
     label: "Confiable",
-    color: "text-emerald-trust",
-    bg: "bg-emerald-trust/10",
+    classes:
+      "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]",
     icon: ShieldCheck,
   },
   estrella: {
     label: "Estrella",
-    color: "text-gold",
-    bg: "bg-gold/10",
+    classes:
+      "bg-[rgba(212,168,83,0.18)] text-gold shadow-[inset_0_0_0_1px_rgba(212,168,83,0.30)]",
     icon: Star,
   },
   elite: {
     label: "Élite",
-    color: "text-gold",
-    bg: "bg-gold/10",
+    classes:
+      "bg-[rgba(212,168,83,0.22)] text-gold shadow-[inset_0_0_0_1px_rgba(212,168,83,0.36)]",
     icon: Crown,
   },
 };
@@ -59,8 +59,7 @@ export function SellerBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
-        config.bg,
-        config.color,
+        config.classes,
         className
       )}
     >

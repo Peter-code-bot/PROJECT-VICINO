@@ -165,11 +165,11 @@ export default async function ProductDetailPage({ params }: Props) {
           <div>
             {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-3">
-              <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary capitalize">
+              <span className="inline-flex items-center rounded-md bg-[color:var(--brand-tint-strong)] px-2 py-1 text-xs font-semibold text-[color:var(--brand-hi)] capitalize shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
                 {product.categoria.replace("-", " ")}
               </span>
               {product.estado && (
-                <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground capitalize">
+                <span className="inline-flex items-center rounded-md bg-[color:var(--card-2)] px-2 py-1 text-xs font-medium text-[color:var(--fg-muted)] capitalize shadow-[inset_0_0_0_1px_var(--border)]">
                   {product.estado}
                 </span>
               )}
@@ -194,15 +194,15 @@ export default async function ProductDetailPage({ params }: Props) {
               <PriceDisplay amount={Number(product.precio)} size="lg" className="text-3xl animate-slide-in-right" />
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground font-medium">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
               {product.ubicacion && (
-                <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-lg">
-                  <MapPin className="h-4 w-4 text-primary" />
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--card-2)] px-2.5 py-1 text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]">
+                  <MapPin className="h-4 w-4 text-[color:var(--brand-hi)]" />
                   {product.ubicacion}
                 </span>
               )}
-              <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-lg">
-                <Truck className="h-4 w-4 text-primary" />
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--card-2)] px-2.5 py-1 text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]">
+                <Truck className="h-4 w-4 text-[color:var(--brand-hi)]" />
                 {deliveryLabel}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default async function ProductDetailPage({ params }: Props) {
           <hr className="border-border/50" />
 
           {/* Seller Card mini */}
-          <Link href={`/vendedor/${seller?.id}`} className="group block p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300">
+          <Link href={`/vendedor/${seller?.id}`} className="group block rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)] transition-all duration-300 hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]">
             <div className="flex items-center gap-4">
               <div className="relative w-12 h-12 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden border border-border/40 shadow-sm shrink-0">
                 {seller?.foto ? (
@@ -255,18 +255,18 @@ export default async function ProductDetailPage({ params }: Props) {
           </Link>
 
           {/* Description */}
-          <div className="space-y-3 p-5 rounded-2xl bg-muted/50 border border-border/30">
-            <h3 className="font-heading font-semibold text-base">Descripción</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+          <div className="space-y-3 rounded-2xl bg-[color:var(--card)] p-5 shadow-[inset_0_0_0_1px_var(--border)]">
+            <h3 className="font-heading text-base font-semibold text-[color:var(--fg)]">Descripción</h3>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--fg-muted)]">
               {product.descripcion}
             </p>
             {seller?.metodos_pago_aceptados && (
-               <div className="pt-3 mt-3 border-t border-border/50 text-sm">
-                 <span className="font-medium text-foreground">Pagos: </span>
-                 <span className="text-muted-foreground">
-                   {seller.metodos_pago_aceptados}
-                 </span>
-               </div>
+              <div className="mt-3 border-t border-[color:var(--border)] pt-3 text-sm">
+                <span className="font-medium text-[color:var(--fg)]">Pagos: </span>
+                <span className="text-[color:var(--fg-muted)]">
+                  {seller.metodos_pago_aceptados}
+                </span>
+              </div>
             )}
           </div>
 
@@ -297,7 +297,7 @@ export default async function ProductDetailPage({ params }: Props) {
             {user && user.id !== product.creador_id && (
               <Link
                 href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
-                className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-base font-semibold text-primary-foreground shadow-md hover:shadow-lg hover:bg-primary/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+                className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-6 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[color:var(--brand-dark)] active:scale-95"
               >
                 <ShoppingBag className="h-5 w-5" />
                 Quiero comprarlo
@@ -318,12 +318,12 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="flex gap-3">
               <Link
                 href={`/chat?seller=${seller?.id}&product=${product.id}`}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary/60 px-6 py-3 text-sm font-semibold text-primary hover:bg-primary/10 active:scale-95 transition-all duration-200"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--card-2)] px-6 py-3 text-sm font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-all duration-200 hover:bg-[color:var(--brand-tint)] active:scale-95"
               >
                 <MessageCircle className="h-4 w-4" />
                 Contactar Vendedor
               </Link>
-              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" variant="standalone" className="w-14 h-14 rounded-xl border border-primary/60" />
+              <FavoriteButton productId={product.id} initialFavorite={isFavorite} size="lg" variant="standalone" className="h-14 w-14 rounded-xl bg-[color:var(--card-2)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]" />
             </div>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 : review.products_services;
               const isOwnReview = user?.id === review.reviewer_id;
               return (
-                <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm space-y-3">
+                <div key={review.id} className="space-y-3 rounded-2xl bg-[color:var(--card)] p-5 shadow-[inset_0_0_0_1px_var(--border)]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-primary">
                       {reviewer?.nombre?.charAt(0)?.toUpperCase()}
@@ -400,10 +400,10 @@ export default async function ProductDetailPage({ params }: Props) {
       )}
 
       {/* Sticky Mobile Nav Button */}
-      <div className="md:hidden sticky bottom-[4.5rem] left-0 right-0 p-4 pb-2 z-30 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
+      <div className="pointer-events-none sticky bottom-[4.5rem] left-0 right-0 z-30 bg-gradient-to-t from-[color:var(--bg)] via-[color:var(--bg)]/95 to-transparent p-4 pb-2 md:hidden">
         <Link
           href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
-          className="flex items-center justify-center gap-2 w-full rounded-2xl bg-primary px-4 py-4 text-sm font-semibold text-primary-foreground shadow-lg pointer-events-auto active:scale-95 transition-transform"
+          className="pointer-events-auto flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] px-4 py-4 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
         >
           <ShoppingBag className="h-5 w-5" />
           Quiero comprarlo

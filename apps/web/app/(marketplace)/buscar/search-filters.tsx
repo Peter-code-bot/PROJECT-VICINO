@@ -145,13 +145,13 @@ export function SearchFilters({
             setTimeout(() => setIsInputFocused(false), 150);
           }}
         >
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--brand-hi)]" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Busca en VICINO..."
-            className="w-full rounded-full border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-2xl bg-[color:var(--card-2)] pl-10 pr-4 py-2.5 text-sm text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-colors focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
           />
           {showHistoryDropdown && (
             <SearchHistoryDropdown
@@ -167,19 +167,19 @@ export function SearchFilters({
           onClick={handleGeo}
           disabled={geoLoading}
           title="Cerca de mí"
-          className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
+          className="inline-flex items-center gap-1 rounded-full bg-[color:var(--card-2)] px-3 py-2 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-60"
         >
           {geoLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-terracotta" />
+            <Loader2 className="h-4 w-4 animate-spin text-[color:var(--brand-hi)]" />
           ) : (
-            <Navigation className="h-4 w-4 text-terracotta" />
+            <Navigation className="h-4 w-4 text-[color:var(--brand-hi)]" />
           )}
           <span className="hidden sm:inline">Cerca</span>
         </button>
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm hover:bg-accent"
+          className="inline-flex items-center gap-1 rounded-full bg-[color:var(--card-2)] px-3 py-2 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
         >
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filtros</span>
@@ -189,10 +189,10 @@ export function SearchFilters({
       {/* Badge de resultados cercanos activos */}
       {initialLat && (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-terracotta/10 border border-terracotta/20 px-3 py-1 text-xs font-medium text-terracotta">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-tint-strong)] px-3 py-1 text-xs font-medium text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
             <Navigation className="w-3 h-3" />
             Resultados cercanos
-            <button onClick={clearGeo} className="ml-1 hover:text-terracotta-dark" aria-label="Quitar filtro de ubicación">
+            <button onClick={clearGeo} className="ml-1 hover:text-[color:var(--brand)]" aria-label="Quitar filtro de ubicación">
               <X className="w-3 h-3" />
             </button>
           </span>
@@ -204,10 +204,10 @@ export function SearchFilters({
         <button
           onClick={() => updateParams({ category: undefined })}
           className={cn(
-            "shrink-0 rounded-full px-4 py-2 text-sm font-medium border transition-colors",
+            "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
             !initialCategory
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card text-foreground border-border hover:bg-muted"
+              ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              : "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
           )}
         >
           Todos
@@ -224,10 +224,10 @@ export function SearchFilters({
                 })
               }
               className={cn(
-                "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium border transition-colors",
+                "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:bg-muted"
+                  ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  : "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -249,12 +249,13 @@ export function SearchFilters({
 
       {/* Expanded filters */}
       {showFilters && (
-        <div className="rounded-lg border p-4 space-y-4">
+        <div className="space-y-4 rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Filtros</span>
+            <span className="text-sm font-semibold text-[color:var(--fg)]">Filtros</span>
             <button
               onClick={() => setShowFilters(false)}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)]"
+              aria-label="Cerrar filtros"
             >
               <X className="h-4 w-4" />
             </button>
@@ -262,10 +263,10 @@ export function SearchFilters({
 
           {/* Price range */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--fg-dim)]">
               Precio (MXN)
             </label>
-            <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2">
               <input
                 type="number"
                 placeholder="Mín"
@@ -273,9 +274,9 @@ export function SearchFilters({
                 onChange={(e) =>
                   updateParams({ price_min: e.target.value || undefined })
                 }
-                className="w-24 rounded-md border bg-background px-2 py-1.5 text-xs"
+                className="w-24 rounded-md bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               />
-              <span className="text-muted-foreground">—</span>
+              <span className="text-[color:var(--fg-dim)]">—</span>
               <input
                 type="number"
                 placeholder="Máx"
@@ -283,14 +284,14 @@ export function SearchFilters({
                 onChange={(e) =>
                   updateParams({ price_max: e.target.value || undefined })
                 }
-                className="w-24 rounded-md border bg-background px-2 py-1.5 text-xs"
+                className="w-24 rounded-md bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               />
             </div>
           </div>
 
           {/* Sort */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--fg-dim)]">
               Ordenar por
             </label>
             <select
@@ -301,7 +302,7 @@ export function SearchFilters({
                     e.target.value === "newest" ? undefined : e.target.value,
                 })
               }
-              className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+              className="w-full rounded-md bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             >
               <option value="newest">Más recientes</option>
               <option value="price_asc">Precio: menor a mayor</option>

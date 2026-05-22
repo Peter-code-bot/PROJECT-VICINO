@@ -53,10 +53,10 @@ export function FavoriteButton({
       className={cn(
         "rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-50",
         variant === "standalone"
-          ? "hover:bg-primary/10"
+          ? "hover:bg-[color:var(--brand-tint)]"
           : isFavorite
-            ? "bg-red-500/80 text-white"
-            : "bg-black/40 backdrop-blur-sm hover:bg-black/60 border border-white/20",
+            ? "bg-[color:var(--danger)] text-white shadow-[0_4px_12px_rgba(255,59,48,0.35)]"
+            : "bg-black/40 backdrop-blur-md hover:bg-black/55 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]",
         sizeClasses[size],
         className
       )}
@@ -66,8 +66,8 @@ export function FavoriteButton({
           iconSize[size],
           variant === "standalone"
             ? isFavorite
-              ? "fill-current text-primary"
-              : "text-foreground"
+              ? "fill-current text-[color:var(--danger)]"
+              : "text-[color:var(--fg)]"
             : isFavorite
               ? "fill-current"
               : "text-white"

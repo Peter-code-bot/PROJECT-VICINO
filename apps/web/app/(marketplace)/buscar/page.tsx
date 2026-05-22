@@ -109,13 +109,28 @@ export default async function SearchPage({ searchParams }: Props) {
       />
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {totalCount ?? 0} resultado{totalCount !== 1 ? "s" : ""}
-          {params.q && ` para "${params.q}"`}
-          {categoryName && ` en ${categoryName}`}
+        <p className="text-sm text-[color:var(--fg-muted)]">
+          <span className="font-semibold text-[color:var(--fg)]">
+            {totalCount ?? 0}
+          </span>{" "}
+          resultado{totalCount !== 1 ? "s" : ""}
+          {params.q && (
+            <>
+              {" "}para{" "}
+              <span className="text-[color:var(--brand-hi)]">
+                &ldquo;{params.q}&rdquo;
+              </span>
+            </>
+          )}
+          {categoryName && (
+            <>
+              {" "}en{" "}
+              <span className="text-[color:var(--fg)]">{categoryName}</span>
+            </>
+          )}
         </p>
         {totalPages > 1 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-[color:var(--fg-dim)]">
             Página {currentPage} de {totalPages}
           </p>
         )}
@@ -147,10 +162,14 @@ export default async function SearchPage({ searchParams }: Props) {
           })}
         </div>
       ) : (
-        <div className="text-center py-16 space-y-2">
-          <p className="text-4xl">🔍</p>
-          <p className="font-medium">No se encontraron resultados</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="space-y-2 py-16 text-center">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+            <span className="text-3xl">🔍</span>
+          </div>
+          <p className="font-heading text-base font-semibold text-[color:var(--fg)]">
+            No se encontraron resultados
+          </p>
+          <p className="text-sm text-[color:var(--fg-muted)]">
             Intenta con otros términos o filtros
           </p>
         </div>
@@ -162,13 +181,13 @@ export default async function SearchPage({ searchParams }: Props) {
           {currentPage > 1 ? (
             <Link
               href={pageUrl(currentPage - 1)}
-              className="flex items-center gap-1 rounded-xl border border-border/50 px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+              className="inline-flex items-center gap-1 rounded-xl bg-[color:var(--card-2)] px-4 py-2 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-all hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             >
               <ChevronLeft className="w-4 h-4" />
               Anterior
             </Link>
           ) : (
-            <span className="flex items-center gap-1 rounded-xl border border-border/20 px-4 py-2 text-sm font-medium text-muted-foreground/40">
+            <span className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-medium text-[color:var(--fg-dim)] shadow-[inset_0_0_0_1px_var(--border)]">
               <ChevronLeft className="w-4 h-4" />
               Anterior
             </span>
@@ -190,11 +209,12 @@ export default async function SearchPage({ searchParams }: Props) {
                 <Link
                   key={page}
                   href={pageUrl(page)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
                     page === currentPage
-                      ? "bg-primary text-white"
-                      : "hover:bg-accent text-muted-foreground"
+                      ? "bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)]"
+                      : "text-[color:var(--fg-muted)] hover:bg-[color:var(--brand-tint)] hover:text-[color:var(--brand-hi)]"
                   }`}
+                  aria-current={page === currentPage ? "page" : undefined}
                 >
                   {page}
                 </Link>
@@ -205,13 +225,13 @@ export default async function SearchPage({ searchParams }: Props) {
           {currentPage < totalPages ? (
             <Link
               href={pageUrl(currentPage + 1)}
-              className="flex items-center gap-1 rounded-xl border border-border/50 px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+              className="inline-flex items-center gap-1 rounded-xl bg-[color:var(--card-2)] px-4 py-2 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-all hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             >
               Siguiente
               <ChevronRight className="w-4 h-4" />
             </Link>
           ) : (
-            <span className="flex items-center gap-1 rounded-xl border border-border/20 px-4 py-2 text-sm font-medium text-muted-foreground/40">
+            <span className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-medium text-[color:var(--fg-dim)] shadow-[inset_0_0_0_1px_var(--border)]">
               Siguiente
               <ChevronRight className="w-4 h-4" />
             </span>

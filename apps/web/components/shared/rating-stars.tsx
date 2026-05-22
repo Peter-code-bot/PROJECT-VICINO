@@ -33,7 +33,7 @@ export function RatingStars({
               "transition-colors duration-200",
               star <= Math.round(rating)
                 ? "fill-gold text-gold"
-                : "fill-neutral-200 text-neutral-200 dark:fill-neutral-700 dark:text-neutral-700"
+                : "fill-[color:var(--border)] text-[color:var(--border)]"
             )}
           />
         ))}

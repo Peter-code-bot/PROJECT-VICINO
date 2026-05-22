@@ -138,7 +138,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
         <div className="flex items-center gap-2 flex-wrap">
           <SellerBadge level={(profile.trust_level as TrustLevel) ?? "nuevo"} showLabel size="md" />
           {profile.is_verified && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--brand-tint-strong)] px-2.5 py-1 text-xs font-medium text-[color:var(--trust-emerald)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
               <BadgeCheck className="w-3.5 h-3.5" />
               Verificado
             </span>
@@ -154,12 +154,19 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
           const progress = next ? Math.min(100, ((points - currentMin) / (nextMin - currentMin)) * 100) : 100;
           return (
             <div className="space-y-1">
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.max(5, progress)}%` }} />
+              <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
+                <div
+                  className="h-full rounded-full bg-[color:var(--brand)] shadow-[var(--shadow-glow)] transition-all"
+                  style={{ width: `${Math.max(5, progress)}%` }}
+                />
               </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>{points} pts</span>
-                {next ? <span>{next[1].minPoints - points} pts para {next[1].label}</span> : <span>Nivel máximo</span>}
+              <div className="flex justify-between text-[10px] text-[color:var(--fg-dim)]">
+                <span className="font-semibold text-[color:var(--fg)]">{points} pts</span>
+                {next ? (
+                  <span>{next[1].minPoints - points} pts para <span className="text-[color:var(--brand-hi)]">{next[1].label}</span></span>
+                ) : (
+                  <span className="text-[color:var(--trust-gold)]">Nivel máximo</span>
+                )}
               </div>
             </div>
           );
@@ -168,15 +175,15 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
 
       {/* Seller info */}
       {profile.es_vendedor && profile.nombre_negocio && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-lg text-xs font-medium">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand-tint-strong)] px-2.5 py-1 text-xs font-medium text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
             <Store className="w-3 h-3" />
             {profile.nombre_negocio}
           </span>
           {profile.metodos_pago_aceptados?.split(",").map((m) => (
             <span
               key={m.trim()}
-              className="bg-muted px-2 py-1 rounded-lg text-xs text-muted-foreground"
+              className="rounded-lg bg-[color:var(--card-2)] px-2 py-1 text-xs text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]"
             >
               {m.trim()}
             </span>
@@ -186,10 +193,10 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
 
       {/* Action buttons */}
       {isPublic ? (
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <Link
             href={`/chat?seller=${profile.id}`}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
           >
             <MessageCircle className="w-4 h-4" />
             Contactar
@@ -201,7 +208,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
               targetLabel={profile.nombre_negocio ?? profile.nombre}
               blockableUserId={profile.id}
               ariaLabel="Reportar o bloquear usuario"
-              className="border border-border/50 rounded-xl h-[42px] w-[42px] flex items-center justify-center"
+              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)]"
             />
           )}
         </div>
@@ -209,7 +216,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
         <div className="flex gap-2">
           <Link
             href="/perfil/editar"
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
           >
             <Settings className="w-4 h-4" />
             Editar perfil
@@ -217,7 +224,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
           {profile.es_vendedor && (
             <Link
               href="/seller"
-              className="flex items-center justify-center gap-2 rounded-xl border border-border/50 px-4 py-2.5 text-sm font-semibold hover:bg-accent transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--card-2)] px-4 py-2.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
             >
               <Handshake className="w-4 h-4" />
               Mi tienda

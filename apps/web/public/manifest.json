@@ -4,8 +4,8 @@
   "description": "Tu mercado de confianza — Compra y vende con confianza",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F0E8",
-  "theme_color": "#FF3B30",
+  "background_color": "#FFF8F0",
+  "theme_color": "#1F5A4E",
   "lang": "es-MX",
   "icons": [
     { "src": "/icons/icon-72.png",   "sizes": "72x72",     "type": "image/png" },

@@ -9,6 +9,7 @@ import { PriceDisplay } from "@/components/shared/price-display";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   id: string;
@@ -42,49 +43,70 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
   const [isPending, startTransition] = useTransition();
+
   return (
     <Link
       href={`/${categoria}/${slug}`}
-      className="group block w-full min-w-0 rounded-2xl bg-card border border-border/40 overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/15"
       id={`product-${slug}`}
+      className={cn(
+        "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",
+        "shadow-[inset_0_0_0_1px_var(--border)]",
+        "hover:-translate-y-0.5 hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
+      )}
     >
-      <div className="aspect-square relative bg-card dark:bg-neutral-800 overflow-hidden">
+      <div className="relative aspect-square overflow-hidden bg-bg-elev-2">
         {imagen ? (
           <Image
             src={imagen}
             alt={titulo}
             fill
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <span className="text-3xl block mb-1">📷</span>
-              <span className="text-xs text-muted-foreground">Sin imagen</span>
+              <span className="mb-1 block text-3xl">📷</span>
+              <span className="text-xs text-fg-dim">Sin imagen</span>
             </div>
           </div>
         )}
 
-        {/* Price Badge — glassmorphism bottom-left */}
-        <div className="absolute bottom-2 left-2">
-          <div className="px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-sm border border-white/10 text-white">
-            <PriceDisplay amount={precio} size="sm" className="font-heading font-bold text-white" />
+        {/* Price chip — refinada variant, top-right */}
+        <div className="pointer-events-none absolute top-2 right-2">
+          <div
+            className={cn(
+              "inline-flex items-center rounded-md px-2 py-1",
+              "bg-white/92 text-brand-dark",
+              "shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
+            )}
+          >
+            <PriceDisplay
+              amount={precio}
+              size="sm"
+              className="font-heading font-bold text-brand-dark"
+            />
           </div>
         </div>
 
-        {/* Badge — top-left */}
+        {/* Negociable badge — top-left, brand tone */}
         {precioNegociable && (
           <div className="absolute top-2 left-2">
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                "bg-brand-tint-strong text-brand-hi",
+                "shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              )}
+            >
               Negociable
             </span>
           </div>
         )}
 
-        {/* Favorite Button — top-right translucent */}
+        {/* Favorite — bottom-right floating */}
         <button
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 border border-white/20 ${isFavorite ? "bg-red-500/80 text-white" : "bg-black/40 hover:bg-black/60"}`}
+          type="button"
           disabled={isPending}
           onClick={(e) => {
             e.preventDefault();
@@ -96,23 +118,33 @@ export function ProductCard({
             });
           }}
           aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+          className={cn(
+            "absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
+            "backdrop-blur-md hover:scale-110 active:scale-95",
+            isFavorite
+              ? "bg-danger text-white shadow-[0_4px_12px_rgba(255,59,48,0.35)]"
+              : "bg-black/40 text-white hover:bg-black/55"
+          )}
         >
-          <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : "text-white"}`} />
+          <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} strokeWidth={2} />
         </button>
       </div>
 
       {/* Content */}
-      <div className="p-3 space-y-1.5">
-        <h3 className="text-sm font-medium line-clamp-2 leading-snug group-hover:text-primary transition-colors duration-200">
+      <div className="space-y-1.5 p-3">
+        <h3 className="line-clamp-2 font-heading text-[14px] font-semibold leading-snug text-fg transition-colors duration-200 group-hover:text-brand-hi">
           {titulo}
         </h3>
 
-        {/* Seller info */}
+        {/* Seller row: trust dot inline + name + badge */}
         <div className="flex items-center gap-1.5">
           {vendedor.trust_level !== "nuevo" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-trust flex-shrink-0" />
+            <span
+              className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[color:var(--trust-emerald)]"
+              aria-hidden
+            />
           )}
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="truncate text-xs text-fg-muted">
             {vendedor.nombre}
           </span>
           <SellerBadge level={vendedor.trust_level} showLabel={false} size="sm" />

@@ -98,8 +98,8 @@ export function ImageGallery({
             aria-label={`Ver imagen ${i + 1}`}
             className={`transition-all duration-200 rounded-full ${
               i === selectedIndex
-                ? "w-4 h-1.5 bg-terracotta"
-                : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+                ? "w-4 h-1.5 bg-[color:var(--brand-hi)]"
+                : "w-1.5 h-1.5 bg-[color:var(--fg-muted)]/30 hover:bg-[color:var(--fg-muted)]/60"
             }`}
           />
         ))}

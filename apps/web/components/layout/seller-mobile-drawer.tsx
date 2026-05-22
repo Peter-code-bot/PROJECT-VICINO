@@ -33,39 +33,39 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
       {/* Hamburger trigger — mobile only */}
       <button
         onClick={() => setOpen(true)}
-        className="md:hidden w-10 h-10 rounded-xl hover:bg-muted active:bg-muted flex items-center justify-center transition-colors"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] md:hidden"
         aria-label="Abrir menú de tienda"
       >
-        <Menu className="w-5 h-5 text-foreground" />
+        <Menu className="h-5 w-5" />
       </button>
 
       {/* Drawer + backdrop */}
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/60 animate-fade-in"
+            className="absolute inset-0 animate-fade-in bg-black/60"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-r border-border flex flex-col animate-slide-in-left">
+          <div className="absolute bottom-0 left-0 top-0 flex w-[85vw] max-w-sm animate-slide-in-left flex-col bg-[color:var(--bg-elev-1)] shadow-[inset_-1px_0_0_0_var(--border)]">
             {/* Header */}
-            <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-border">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold text-foreground truncate">{storeName}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+            <div className="flex items-start justify-between px-5 pb-4 pt-5 shadow-[inset_0_-1px_0_0_var(--border)]">
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-base font-semibold text-[color:var(--fg)]">{storeName}</h2>
+                <p className="mt-0.5 text-xs text-[color:var(--fg-muted)]">
                   Resumen de tu actividad y métricas de ventas
                 </p>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center shrink-0 ml-2"
+                className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)]"
                 aria-label="Cerrar menú"
               >
-                <X className="w-4 h-4 text-muted-foreground" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Nav items */}
-            <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+            <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
               {SELLER_NAV_ITEMS.map((item) => {
                 const { href, label, icon: Icon } = item;
                 const active = isSellerNavItemActive(item, pathname);
@@ -75,25 +75,25 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                     href={href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "relative flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-colors overflow-hidden",
+                      "relative flex items-center justify-between overflow-hidden rounded-xl px-4 py-3 text-sm font-medium transition-colors",
                       active
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-foreground hover:bg-muted"
+                        ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                        : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                     )}
                   >
                     {active && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-md" />
+                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-md bg-[color:var(--brand)]" />
                     )}
                     <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5 shrink-0" />
                       {label}
                     </div>
-                    {active && <ChevronRight className="h-4 w-4 opacity-50" />}
+                    {active && <ChevronRight className="h-4 w-4 opacity-60" />}
                   </Link>
                 );
               })}
 
-              <div className="my-3 h-px bg-border/40" />
+              <div className="my-3 h-px bg-[color:var(--border)]" />
 
               <Link
                 href={SELLER_SETTINGS_ITEM.href}
@@ -101,8 +101,8 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors",
                   pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-foreground hover:bg-muted"
+                    ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                    : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                 )}
               >
                 <SELLER_SETTINGS_ITEM.icon className="h-5 w-5 shrink-0" />

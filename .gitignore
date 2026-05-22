@@ -32,8 +32,7 @@ Thumbs.db
 supabase/.temp/
 
 # Debug
-npm-debug.log*
-pnpm-debug.log*
+.pnpm-debug.log*
 
 # Vercel
 .vercel/
@@ -41,3 +40,6 @@ pnpm-debug.log*
 # Security audit artifacts (raw Codex logs, not for repo)
 codex-audit-output.md
 audit-session-export.txt
+
+# Graphify (local knowledge graph)
+graphify-out/
