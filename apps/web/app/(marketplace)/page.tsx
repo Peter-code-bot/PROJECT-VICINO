@@ -35,6 +35,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 /* ─── Category icon mapping ─────────────────────────────── */
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
