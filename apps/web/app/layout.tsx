@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Inter, Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { CapacitorInit } from "@/components/capacitor-init";
@@ -73,8 +74,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="/theme-init.js" />
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
       </head>
       <body className="min-h-full flex flex-col font-sans antialiased bg-background text-foreground">
         <ThemeProvider
