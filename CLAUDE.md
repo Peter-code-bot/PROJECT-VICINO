@@ -95,14 +95,15 @@ Próximo paso: [push / corregir / revisar con Pedro]
 
 El deploy es automático: Vercel observa el repo en GitHub y dispara builds en cada push.
 
-- **Push a `master`** → auto-deploy a producción (`https://startup-marketplace-web.vercel.app`).
+- **Push a `master`** → auto-deploy a producción (`https://vicinomarket.com`).
 - **Push a cualquier otra rama** → preview deployment automático. La URL del preview aparece en el PR de GitHub y en el dashboard de Vercel.
 
 No se ejecuta ningún comando manual desde local para deployar.
 
 ### Estado del deploy
 - **Plataforma:** Vercel
-- **URL producción:** `https://startup-marketplace-web.vercel.app`
+- **URL producción:** `https://vicinomarket.com` (canonical desde 2026-05-01).
+  `startup-marketplace-web.vercel.app` se mantiene como 308 -> vicinomarket.com por requisito de Google Play Data Safety URL.
 - **CI/CD target:** master → producción | cualquier otra rama → preview automático
 
 ### Variables de entorno (configurar en Vercel Dashboard, NO en repo)
