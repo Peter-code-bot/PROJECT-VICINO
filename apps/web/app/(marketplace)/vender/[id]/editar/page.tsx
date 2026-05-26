@@ -23,10 +23,10 @@ export default async function EditarPublicacionPage({ params }: Props) {
   const { data: product } = await supabase
     .from("products_services")
     .select(
-      "id, titulo, descripcion, precio, tipo, categoria, ubicacion, " +
-        "delivery_radius_km, tipo_entrega, allow_appointments, " +
-        "appointment_start_time, appointment_end_time, appointment_duration_minutes, " +
-        "imagen_principal, galeria_imagenes",
+      `id, titulo, descripcion, precio, tipo, categoria, ubicacion,
+       delivery_radius_km, tipo_entrega, allow_appointments,
+       appointment_start_time, appointment_end_time, appointment_duration_minutes,
+       imagen_principal, galeria_imagenes`,
     )
     .eq("id", id)
     .eq("creador_id", user.id)
