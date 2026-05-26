@@ -37,8 +37,20 @@
                 <data android:scheme="vicino" />
             </intent-filter>
 
-            <!-- App Links: https://startup-marketplace-web.vercel.app -->
+            <!-- App Links: https://vicinomarket.com (canonical, autoVerify) -->
             <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="vicinomarket.com" />
+                <data android:scheme="https" android:host="www.vicinomarket.com" />
+            </intent-filter>
+
+            <!-- Legacy host (Play Data Safety URL). No autoVerify because
+                 vercel.app serves a 308 to vicinomarket.com and cannot
+                 publish a directly-fetched assetlinks.json. App still
+                 accepts the link manually via "Open with...". -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
