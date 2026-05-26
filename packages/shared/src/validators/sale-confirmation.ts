@@ -5,7 +5,7 @@ import { z } from "zod";
 export const createSaleConfirmationSchema = z.object({
   product_id: z.string().uuid(),
   chat_id: z.string().uuid(),
-  precio_acordado: z.number().positive("El precio debe ser mayor a 0").max(9_999_999),
+  precio_acordado: z.number().positive("El precio debe ser mayor a 0").max(99_999_999),
   cantidad: z.number().int().positive().max(9999).default(1),
   metodo_pago: z.string().max(200).optional(),
   notas: z.string().max(1000).optional(),

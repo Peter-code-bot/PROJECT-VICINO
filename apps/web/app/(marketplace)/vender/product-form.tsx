@@ -457,7 +457,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               type="number"
               required
               min={1}
-              max={999999}
+              max={99999999}
               step="0.01"
               defaultValue={initialValues?.precio ?? ""}
               placeholder="0.00"

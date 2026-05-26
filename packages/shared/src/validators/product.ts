@@ -16,7 +16,7 @@ export const deliveryValues = DELIVERY_OPTIONS.map((o) => o.value) as [string, .
 export const createProductSchema = z.object({
   titulo: z.string().min(3, "Mínimo 3 caracteres").max(120),
   descripcion: z.string().min(10, "Mínimo 10 caracteres").max(5000),
-  precio: z.number().positive("El precio debe ser mayor a 0").max(999999),
+  precio: z.number().positive("El precio debe ser mayor a 0").max(99999999),
   tipo: z.enum(["producto", "servicio"]),
   categoria: z.string().min(1, "Selecciona una categoría"),
   ubicacion: z.string().optional(),
