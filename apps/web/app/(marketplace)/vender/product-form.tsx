@@ -6,27 +6,77 @@ import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
 
 const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
-import { createProduct } from "./actions";
+import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 
-export function ProductForm() {
+type Mode = "create" | "edit";
+
+export interface ProductInitialValues {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  precio: number;
+  tipo: "producto" | "servicio";
+  categoria: string;
+  ubicacion?: string | null;
+  delivery_radius_km?: number | null;
+  tipo_entrega: string;
+  allow_appointments: boolean;
+  appointment_start_time?: string | null;
+  appointment_end_time?: string | null;
+  appointment_duration_minutes?: number | null;
+  imagen_principal?: string | null;
+  galeria_imagenes: string[];
+}
+
+interface ProductFormProps {
+  mode?: Mode;
+  initialValues?: ProductInitialValues;
+}
+
+const VIDEO_EXT_RE = /\.(mp4|webm|mov)$/i;
+function isVideoUrl(url: string): boolean {
+  return VIDEO_EXT_RE.test(url.split("?")[0] ?? "");
+}
+
+type ExistingMedia = { kind: "existing"; url: string; isVideo: boolean };
+type PendingMedia = { kind: "pending"; file: File; preview: string; isVideo: boolean };
+type MediaItem = ExistingMedia | PendingMedia;
+
+export function ProductForm({ mode = "create", initialValues }: ProductFormProps) {
   const submittingRef = useRef(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">("producto");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">(
+    initialValues?.tipo ?? "producto",
+  );
+  const [selectedCategory, setSelectedCategory] = useState(initialValues?.categoria ?? "");
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [locationData, setLocationData] = useState({ lat: 0, lng: 0, address: "", radius: 5 });
-  const [allowAppointments, setAllowAppointments] = useState(false);
-  const [apptStart, setApptStart] = useState("09:00");
-  const [apptEnd, setApptEnd] = useState("18:00");
-  const [apptDuration, setApptDuration] = useState("60");
-  const [media, setMedia] = useState<{ file: File; preview: string; isVideo: boolean }[]>([]);
-  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [locationData, setLocationData] = useState({
+    lat: 0,
+    lng: 0,
+    address: initialValues?.ubicacion ?? "",
+    radius: initialValues?.delivery_radius_km ?? 5,
+  });
+  const [allowAppointments, setAllowAppointments] = useState(initialValues?.allow_appointments ?? false);
+  const [apptStart, setApptStart] = useState(initialValues?.appointment_start_time ?? "09:00");
+  const [apptEnd, setApptEnd] = useState(initialValues?.appointment_end_time ?? "18:00");
+  const [apptDuration, setApptDuration] = useState(
+    initialValues?.appointment_duration_minutes != null
+      ? String(initialValues.appointment_duration_minutes)
+      : "60",
+  );
+  const [media, setMedia] = useState<MediaItem[]>(
+    (initialValues?.galeria_imagenes ?? []).map((url) => ({
+      kind: "existing" as const,
+      url,
+      isVideo: isVideoUrl(url),
+    })),
+  );
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // In-flight thumbnail generations, keyed by source File. The upload path
@@ -48,7 +98,8 @@ export function ProductForm() {
       if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
     }
     setError("");
-    const newMedia = files.map((file) => ({
+    const newMedia: PendingMedia[] = files.map((file) => ({
+      kind: "pending",
       file,
       preview: URL.createObjectURL(file),
       isVideo: file.type.startsWith("video/"),
@@ -75,29 +126,39 @@ export function ProductForm() {
   function removeMedia(index: number) {
     setMedia((prev) => {
       const item = prev[index];
-      if (item) {
+      if (item && item.kind === "pending") {
         URL.revokeObjectURL(item.preview);
         pendingThumbsRef.current.delete(item.file);
       }
+      // Existing items: the actual Storage cleanup happens server-side AFTER
+      // the UPDATE confirms (see updateProductFull). Removing from state here
+      // only marks the URL for diff calculation.
       return prev.filter((_, i) => i !== index);
     });
   }
 
-  async function uploadMedia(): Promise<string[]> {
+  // Returns the final ordered gallery (existing URLs preserved + new uploads in their place).
+  async function uploadMediaAndBuildGallery(): Promise<string[]> {
     if (media.length === 0) return [];
     setUploading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id ?? "anon";
-    const urls: string[] = [];
     const timestamp = Date.now();
+    const finalUrls: string[] = [];
+    let pendingIdx = 0;
     for (let i = 0; i < media.length; i++) {
-      const img = media[i]!;
-      const ext = img.file.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/${timestamp}-${i}.${ext}`;
+      const item = media[i]!;
+      if (item.kind === "existing") {
+        finalUrls.push(item.url);
+        continue;
+      }
+      const ext = item.file.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/${timestamp}-${pendingIdx}.${ext}`;
+      pendingIdx++;
       const { error: uploadErr } = await supabase.storage
         .from("product-media")
-        .upload(path, img.file);
+        .upload(path, item.file);
       if (uploadErr) {
         setUploading(false);
         throw new Error(`Error subiendo imagen ${i + 1}: ${uploadErr.message}`);
@@ -105,7 +166,7 @@ export function ProductForm() {
       const { data: urlData } = supabase.storage
         .from("product-media")
         .getPublicUrl(path);
-      urls.push(urlData.publicUrl);
+      finalUrls.push(urlData.publicUrl);
 
       // Best-effort thumbnail upload for videos. Path mirrors the
       // derivedThumbnailUrl convention in lib/video-thumbnail.ts so the
@@ -115,8 +176,8 @@ export function ProductForm() {
       // ultimately resolves. A failure (rejection or upload error) is
       // logged but does not abort the product upload — display falls
       // back to <video #t=0.1> for missing thumbs.
-      if (img.isVideo) {
-        const pending = pendingThumbsRef.current.get(img.file);
+      if (item.isVideo) {
+        const pending = pendingThumbsRef.current.get(item.file);
         let thumbBlob: Blob | null = null;
         if (pending) {
           // Race the pending generation against an 8s timeout. Canvas decode
@@ -141,7 +202,7 @@ export function ProductForm() {
           }
         }
         if (thumbBlob) {
-          const thumbPath = `${userId}/${timestamp}-${i}_thumb.jpg`;
+          const thumbPath = `${userId}/${timestamp}-${pendingIdx - 1}_thumb.jpg`;
           const { error: thumbErr } = await supabase.storage
             .from("product-media")
             .upload(thumbPath, thumbBlob, { contentType: "image/jpeg" });
@@ -153,7 +214,7 @@ export function ProductForm() {
       }
     }
     setUploading(false);
-    return urls;
+    return finalUrls;
   }
 
   async function handleSubmit(formData: FormData) {
@@ -162,16 +223,34 @@ export function ProductForm() {
     setError("");
     setLoading(true);
     try {
-      const urls = await uploadMedia();
-      if (urls.length > 0 && urls[0]) {
-        formData.set("imagen_principal", urls[0]);
-        formData.set("galeria_imagenes", JSON.stringify(urls));
-      }
-      const result = await createProduct(formData);
-      if (result?.error) {
-        setError(result.error);
-        setLoading(false);
-        submittingRef.current = false;
+      const finalUrls = await uploadMediaAndBuildGallery();
+      formData.set("imagen_principal", finalUrls[0] ?? "");
+      formData.set("galeria_imagenes", JSON.stringify(finalUrls));
+
+      if (mode === "edit" && initialValues) {
+        // Compute removed URLs = initial gallery minus surviving existing URLs.
+        // Pending uploads don't count (they had no DB presence).
+        const originalUrls = initialValues.galeria_imagenes ?? [];
+        const survivingExistingUrls = media
+          .filter((m): m is ExistingMedia => m.kind === "existing")
+          .map((m) => m.url);
+        const removedUrls = originalUrls.filter((u) => !survivingExistingUrls.includes(u));
+        formData.set("removed_urls", JSON.stringify(removedUrls));
+
+        const result = await updateProductFull(initialValues.id, formData);
+        if (result?.error) {
+          setError(result.error);
+          setLoading(false);
+          submittingRef.current = false;
+        }
+        // success: updateProductFull redirects to /seller/listings
+      } else {
+        const result = await createProduct(formData);
+        if (result?.error) {
+          setError(result.error);
+          setLoading(false);
+          submittingRef.current = false;
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al subir imágenes");
@@ -179,6 +258,8 @@ export function ProductForm() {
       submittingRef.current = false;
     }
   }
+
+  const isEdit = mode === "edit";
 
   return (
     <form action={handleSubmit} className="space-y-6 animate-scale-in">
@@ -190,61 +271,83 @@ export function ProductForm() {
         </div>
       )}
 
-      {/* Tipo Toggle Buttons */}
-      <div className="space-y-3 pb-4 border-b border-border/40">
-        <label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">¿Qué tipo de publicación es?</label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="group relative cursor-pointer">
-            <input
-              type="radio"
-              name="tipo"
-              value="producto"
-              checked={tipoSeleccionado === "producto"}
-              onChange={() => setTipoSeleccionado("producto")}
-              className="peer sr-only"
-            />
-            <div className={cn(
-              "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
-              tipoSeleccionado === "producto"
-                ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-            )}>
-              <PackageOpen className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "producto" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
-              <span className="text-sm font-semibold">Producto físico</span>
-            </div>
-            {tipoSeleccionado === "producto" && (
-              <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
+      {/* Tipo Toggle / Locked Display */}
+      {isEdit ? (
+        <div className="space-y-3 pb-4 border-b border-border/40">
+          <label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">Tipo de publicación</label>
+          <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+            {tipoSeleccionado === "producto" ? (
+              <PackageOpen className="h-5 w-5 text-[color:var(--brand-hi)]" />
+            ) : (
+              <Store className="h-5 w-5 text-[color:var(--brand-hi)]" />
             )}
-          </label>
-
-          <label className="group relative cursor-pointer">
-            <input
-              type="radio"
-              name="tipo"
-              value="servicio"
-              checked={tipoSeleccionado === "servicio"}
-              onChange={() => setTipoSeleccionado("servicio")}
-              className="peer sr-only"
-            />
-            <div className={cn(
-              "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
-              tipoSeleccionado === "servicio"
-                ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-            )}>
-              <Store className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "servicio" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
-              <span className="text-sm font-semibold">Servicio local</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[color:var(--fg)]">
+                {tipoSeleccionado === "producto" ? "Producto físico" : "Servicio local"}
+              </p>
+              <p className="text-xs text-[color:var(--fg-muted)] mt-0.5">
+                No se puede cambiar después de publicar.
+              </p>
             </div>
-            {tipoSeleccionado === "servicio" && (
-              <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-            )}
-          </label>
+          </div>
+          <input type="hidden" name="tipo" value={tipoSeleccionado} />
         </div>
-      </div>
+      ) : (
+        <div className="space-y-3 pb-4 border-b border-border/40">
+          <label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">¿Qué tipo de publicación es?</label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="group relative cursor-pointer">
+              <input
+                type="radio"
+                name="tipo"
+                value="producto"
+                checked={tipoSeleccionado === "producto"}
+                onChange={() => setTipoSeleccionado("producto")}
+                className="peer sr-only"
+              />
+              <div className={cn(
+                "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
+                tipoSeleccionado === "producto"
+                  ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              )}>
+                <PackageOpen className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "producto" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+                <span className="text-sm font-semibold">Producto físico</span>
+              </div>
+              {tipoSeleccionado === "producto" && (
+                <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              )}
+            </label>
+
+            <label className="group relative cursor-pointer">
+              <input
+                type="radio"
+                name="tipo"
+                value="servicio"
+                checked={tipoSeleccionado === "servicio"}
+                onChange={() => setTipoSeleccionado("servicio")}
+                className="peer sr-only"
+              />
+              <div className={cn(
+                "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
+                tipoSeleccionado === "servicio"
+                  ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              )}>
+                <Store className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "servicio" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+                <span className="text-sm font-semibold">Servicio local</span>
+              </div>
+              {tipoSeleccionado === "servicio" && (
+                <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              )}
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Appointment config — services only */}
       {tipoSeleccionado === "servicio" && (
@@ -335,6 +438,7 @@ export function ProductForm() {
             required
             minLength={3}
             maxLength={120}
+            defaultValue={initialValues?.titulo ?? ""}
             placeholder={tipoSeleccionado === "producto" ? "Ej: iPhone 13 Pro Max - Como nuevo" : "Ej: Clases de regularización de matemáticas"}
             className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
           />
@@ -355,6 +459,7 @@ export function ProductForm() {
               min={1}
               max={999999}
               step="0.01"
+              defaultValue={initialValues?.precio ?? ""}
               placeholder="0.00"
               className="w-full rounded-xl border border-border/50 bg-card pl-8 pr-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
             />
@@ -434,6 +539,7 @@ export function ProductForm() {
           minLength={10}
           maxLength={5000}
           rows={5}
+          defaultValue={initialValues?.descripcion ?? ""}
           placeholder="Describe los detalles, condición, medidas, o lo que incluye tu servicio..."
           className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y placeholder:text-muted-foreground/50"
         />
@@ -444,6 +550,11 @@ export function ProductForm() {
         <label className="text-sm font-medium text-foreground/80">
           Zona de entrega / operación <span className="text-muted-foreground font-normal">(opcional)</span>
         </label>
+        {isEdit && (
+          <p className="text-xs text-muted-foreground">
+            La ubicación guardada se conserva si no tocas el mapa. Mueve el marcador solo si quieres cambiarla.
+          </p>
+        )}
         <input type="hidden" name="ubicacion" value={locationData.address} />
         <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
         <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
@@ -461,7 +572,7 @@ export function ProductForm() {
           <label className="text-sm font-medium text-foreground/80">Opciones de entrega</label>
           <select
             name="tipo_entrega"
-            defaultValue="punto_encuentro"
+            defaultValue={initialValues?.tipo_entrega ?? "punto_encuentro"}
             className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 appearance-none"
             style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
           >
@@ -481,32 +592,35 @@ export function ProductForm() {
           Fotos y videos <span className="text-muted-foreground font-normal">(máx. 5, primera será la portada)</span>
         </label>
         <div className="flex gap-2 flex-wrap">
-          {media.map((item, i) => (
-            <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50 group">
-              {item.isVideo ? (
-                <video src={item.preview} className="w-full h-full object-cover" />
-              ) : (
-                <Image src={item.preview} alt={`Preview ${i + 1}`} fill className="object-cover" />
-              )}
-              <button
-                type="button"
-                onClick={() => removeMedia(i)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-3 h-3 text-white" />
-              </button>
-              {i === 0 && (
-                <span className="absolute bottom-0.5 left-0.5 rounded bg-[color:var(--brand)] px-1 text-[9px] font-medium text-white">
-                  Portada
-                </span>
-              )}
-              {item.isVideo && (
-                <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/70 text-white px-1 rounded font-medium">
-                  Video
-                </span>
-              )}
-            </div>
-          ))}
+          {media.map((item, i) => {
+            const previewSrc = item.kind === "pending" ? item.preview : item.url;
+            return (
+              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50 group">
+                {item.isVideo ? (
+                  <video src={previewSrc} className="w-full h-full object-cover" />
+                ) : (
+                  <Image src={previewSrc} alt={`Preview ${i + 1}`} fill className="object-cover" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeMedia(i)}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+                {i === 0 && (
+                  <span className="absolute bottom-0.5 left-0.5 rounded bg-[color:var(--brand)] px-1 text-[9px] font-medium text-white">
+                    Portada
+                  </span>
+                )}
+                {item.isVideo && (
+                  <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/70 text-white px-1 rounded font-medium">
+                    Video
+                  </span>
+                )}
+              </div>
+            );
+          })}
           {media.length < 5 && (
             <button
               type="button"
@@ -535,6 +649,8 @@ export function ProductForm() {
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
+        ) : isEdit ? (
+          "Guardar cambios"
         ) : (
           "Publicar ahora"
         )}
