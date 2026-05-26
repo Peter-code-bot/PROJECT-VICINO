@@ -87,3 +87,55 @@ export async function getNearbyProducts(
 
   return { products };
 }
+
+interface GetNearbyVendorCountParams {
+  lat: number;
+  lng: number;
+  radiusMeters?: number;
+}
+
+interface GetNearbyVendorCountResult {
+  count: number;
+  error?: string;
+}
+
+export async function getNearbyVendorCount(
+  params: GetNearbyVendorCountParams,
+): Promise<GetNearbyVendorCountResult> {
+  if (!Number.isFinite(params.lat) || !Number.isFinite(params.lng)) {
+    return { count: 0, error: "Coordenadas inválidas" };
+  }
+  if (Math.abs(params.lat) > 90 || Math.abs(params.lng) > 180) {
+    return { count: 0, error: "Coordenadas fuera de rango" };
+  }
+
+  const ip = getClientIp(await headers());
+  const rate = await enforce(readHeavyRateLimit, `read:${ip}`);
+  if (!rate.ok) return { count: 0, error: rate.error };
+
+  const radius = Math.min(Math.max(params.radiusMeters ?? 5000, 100), 50_000);
+  const snapped = fuzzCoordinate(params.lat, params.lng);
+  const snappedRadius = Math.ceil(radius / 100) * 100 + 100;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("nearby_products", {
+    user_lat: snapped.lat,
+    user_lng: snapped.lng,
+    radius_meters: snappedRadius,
+    category_filter: null,
+    result_limit: 100,
+  });
+
+  if (error) return { count: 0, error: error.message };
+
+  // Aproximación: el RPC nearby_products no expone creador_id, y el spec
+  // prohíbe crear nuevas migraciones / RPCs. Contar nombres únicos subestima
+  // sólo si dos vendedores distintos tienen exactamente el mismo display name
+  // en el mismo radio — aceptable para un indicador agregado "● N cerca".
+  const names = new Set(
+    ((data ?? []) as Array<{ vendedor_nombre: string }>).map(
+      (p) => p.vendedor_nombre,
+    ),
+  );
+  return { count: names.size };
+}

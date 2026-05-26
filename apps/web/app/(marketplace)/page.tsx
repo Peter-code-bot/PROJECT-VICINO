@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { LocationBar } from "@/components/shared/location-bar";
+import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES } from "@vicino/shared";
 import {
   UtensilsCrossed,
@@ -17,7 +18,6 @@ import {
   Briefcase,
   MoreHorizontal,
   ArrowRight,
-  MapPin,
   Search,
   Dumbbell,
   Baby,
@@ -121,22 +121,7 @@ export default async function HomePage() {
       <section className="px-4 pt-6 pb-4">
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Zone card — V2 ref ~line 2557 */}
-          <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card)] p-3 shadow-[inset_0_0_0_1px_var(--border)]">
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]"
-            >
-              <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[color:var(--fg-dim)]">
-                Tu zona · 5 km
-              </div>
-              <div className="text-[13px] font-semibold text-[color:var(--fg)]">
-                Activa tu ubicación
-              </div>
-            </div>
-          </div>
+          <ZoneCard />
 
           {/* Headline */}
           <h1 className="font-heading text-3xl font-bold leading-[1.1] tracking-tight text-[color:var(--fg)]">
