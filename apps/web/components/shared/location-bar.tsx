@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Loader2, Navigation } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useNearbyProducts } from "@/hooks/useNearbyProducts";
 import { ProductCard } from "@/components/product/product-card";
 import type { TrustLevel } from "@vicino/shared";
-import { cn } from "@/lib/utils";
 
 export function LocationBar() {
-  const { state, request } = useGeolocation();
+  const { state } = useGeolocation();
   const position = state.status === "success" ? state.position : null;
 
   const { products, loading } = useNearbyProducts({
@@ -19,34 +18,6 @@ export function LocationBar() {
 
   return (
     <div className="space-y-4">
-      {/* Pill de ubicación */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={request}
-          disabled={state.status === "loading"}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 disabled:opacity-60",
-            "bg-[color:var(--card-2)] text-[color:var(--fg)]",
-            "shadow-[inset_0_0_0_1px_var(--border)]",
-            "hover:bg-[color:var(--brand-tint)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-          )}
-        >
-          {state.status === "loading" ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-[color:var(--brand-hi)]" />
-          ) : (
-            <Navigation className="h-3.5 w-3.5 text-[color:var(--brand-hi)]" />
-          )}
-          {state.status === "success"
-            ? "Actualizar ubicación"
-            : state.status === "loading"
-              ? "Obteniendo ubicación..."
-              : "Usar mi ubicación"}
-        </button>
-        {state.status === "error" && (
-          <span className="text-xs text-[color:var(--fg-muted)]">{state.message}</span>
-        )}
-      </div>
-
       {/* Grid de productos cercanos — solo visible cuando hay posición */}
       {position && (
         <div>
