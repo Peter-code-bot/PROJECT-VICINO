@@ -213,6 +213,21 @@ export async function updateProductFull(
     imagen_principal: galeriaImagenes[0] ?? null,
   };
 
+  // Reset gallery_sizes (custom layout saved via ProductGallery's mini-edit
+  // "Editar diseño") when the gallery composition changes. Removing a photo
+  // shifts the index of every subsequent surviving photo, so the saved sizes
+  // array stops aligning with galeria_imagenes — the visible layout becomes
+  // garbled. Nulling forces the gallery to fall back to defaultSizes
+  // (ProductGallery.tsx:76-79). Consistent with C2: imagen_principal is also
+  // recalculated when the gallery changes.
+  //
+  // We deliberately do NOT reset on pure additions (no removals): new photos
+  // at the end inherit defaultSize via the `sizes[i] ?? defaultSize` fallback
+  // in ProductGallery:145, while existing photos keep their custom layout.
+  if (removedUrls.length > 0) {
+    updateObj.gallery_sizes = null;
+  }
+
   if (parsed.data.titulo !== undefined) updateObj.titulo = parsed.data.titulo;
   if (parsed.data.descripcion !== undefined) updateObj.descripcion = parsed.data.descripcion;
   if (parsed.data.precio !== undefined) updateObj.precio = parsed.data.precio;
