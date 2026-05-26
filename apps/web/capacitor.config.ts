@@ -5,10 +5,14 @@ const config: CapacitorConfig = {
   appName: 'VICINO',
   webDir: 'dist',
   server: {
-    // Production: loads the Vercel deployment
-    url: 'https://startup-marketplace-web.vercel.app',
+    // Production: canonical domain. The legacy vercel.app host stays in
+    // allowNavigation because Google Play Data Safety still references it
+    // and it serves a 308 to vicinomarket.com.
+    url: 'https://vicinomarket.com',
     cleartext: false,
     allowNavigation: [
+      'vicinomarket.com',
+      'www.vicinomarket.com',
       'startup-marketplace-web.vercel.app',
       '*.supabase.co',
       'accounts.google.com',
