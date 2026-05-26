@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
-import { Pause, Play, Trash2 } from "lucide-react";
+import { Pause, Pencil, Play, Trash2 } from "lucide-react";
 
 interface ListingActionsProps {
   id: string;
@@ -32,6 +33,13 @@ export function ListingActions({ id, estatus }: ListingActionsProps) {
 
   return (
     <div className="flex gap-2 md:shrink-0 w-full md:w-auto">
+      <Link
+        href={`/vender/${id}/editar`}
+        className="flex flex-1 md:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground transition-colors text-xs font-medium"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+        Editar
+      </Link>
       <button
         onClick={handleToggle}
         disabled={loading}
