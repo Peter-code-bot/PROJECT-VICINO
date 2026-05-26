@@ -81,5 +81,21 @@ export function useGeolocation() {
     );
   }, []);
 
-  return { state, request };
+  const setManualPosition = useCallback((pos: { lat: number; lng: number }) => {
+    if (
+      !Number.isFinite(pos.lat) ||
+      !Number.isFinite(pos.lng) ||
+      Math.abs(pos.lat) > 90 ||
+      Math.abs(pos.lng) > 180
+    ) {
+      // Rechazo silencioso — el caller pasó coords inválidas, no contaminamos
+      // el caché. La app sigue con la posición anterior.
+      return;
+    }
+    const position: GeoPosition = { lat: pos.lat, lng: pos.lng };
+    writeCache(position);
+    setState({ status: "success", position });
+  }, []);
+
+  return { state, request, setManualPosition };
 }
