@@ -114,3 +114,12 @@ No se ejecuta ningún comando manual desde local para deployar.
 ### Branches
 - **master** — Pedro (backend, lógica, integraciones)
 - **design** — Alejandro (UI/UX, componentes visuales)
+
+---
+
+## Limitaciones conocidas
+
+### Editar publicación: cambiar categoría rompe la URL anterior del producto
+La página de detalle vive en `/[categoria]/[slug]` y el `slug` NO se regenera al editar (queda invariante para no romper enlaces compartidos ni SEO). Si el vendedor cambia la categoría en el formulario de editar, la URL canónica del producto pasa de `/<categoria_vieja>/<slug>` a `/<categoria_nueva>/<slug>`. La ruta vieja deja de resolver (404). Enlaces compartidos por WhatsApp, email o redes sociales antes del cambio se rompen.
+
+Tradeoff aceptado para MVP del feature Editar publicación (decisión D6, plan firmado 2026-05-26). Si las métricas de uso muestran que el cambio de categoría es frecuente, agregar un handler de fallback en `app/(marketplace)/[categoria]/[slug]/page.tsx` que busque por slug solo y haga 308 a la categoría actual.
