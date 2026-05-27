@@ -1,38 +1,29 @@
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import type { RankedSeller } from "@/lib/rankings/types";
 import { ConfiableBadge } from "./confiable-badge";
+import type { RankedSeller } from "@/lib/rankings/types";
 
 interface PodioRankingProps {
   top3: RankedSeller[];
-  className?: string;
 }
 
-/**
- * Asymmetric 1-2-3 podium. #2 left, #1 elevated center, #3 right.
- * If fewer than 3 sellers are given, renders only those positions:
- *   1 seller  -> centered #1 only
- *   2 sellers -> #1 center + #2 left
- *   3 sellers -> full podium
- */
-export function PodioRanking({ top3, className }: PodioRankingProps) {
-  const byRank = new Map<number, RankedSeller>(top3.map((s) => [s.rank, s]));
-  const first = byRank.get(1);
-  const second = byRank.get(2);
-  const third = byRank.get(3);
+export function PodioRanking({ top3 }: PodioRankingProps) {
+  if (top3.length === 0) return null;
 
-  if (!first) return null;
+  const first = top3[0] ?? null;
+  const second = top3[1] ?? null;
+  const third = top3[2] ?? null;
 
   return (
-    <div className={cn("grid grid-cols-3 items-end gap-3 px-2 pt-6", className)}>
+    <div className="grid grid-cols-3 items-end gap-3 px-4 pt-6">
       <div className="flex justify-center">
-        {second ? <PodioSlot seller={second} position={2} /> : <div aria-hidden />}
-      </div>
-      <div className="flex justify-center -mt-6">
-        <PodioSlot seller={first} position={1} />
+        {second ? <PodioSlot seller={second} position={2} /> : <div />}
       </div>
       <div className="flex justify-center">
-        {third ? <PodioSlot seller={third} position={3} /> : <div aria-hidden />}
+        {first ? <PodioSlot seller={first} position={1} /> : <div />}
+      </div>
+      <div className="flex justify-center">
+        {third ? <PodioSlot seller={third} position={3} /> : <div />}
       </div>
     </div>
   );
@@ -45,54 +36,55 @@ interface PodioSlotProps {
 
 function PodioSlot({ seller, position }: PodioSlotProps) {
   const isFirst = position === 1;
+  const scoreText = Math.round(seller.composite_score).toLocaleString("es-MX");
+  const name = seller.display_name ?? "Vendedor";
+
   return (
-    <div className="flex flex-col items-center text-center">
-      <div
+    <div
+      className={cn(
+        "flex flex-col items-center text-center min-w-0 max-w-[8.5rem]",
+        isFirst && "-mt-6",
+      )}
+    >
+      <UserAvatar
+        src={seller.foto}
+        name={name}
+        size={isFirst ? "xl" : "lg"}
         className={cn(
-          "relative rounded-full",
           isFirst
             ? "ring-2 ring-gold shadow-[0_0_60px_-12px_rgba(212,168,83,0.4)]"
             : "ring-2 ring-border-strong",
         )}
+      />
+      <div
+        className={cn(
+          "mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full font-display text-sm font-semibold tabular-nums",
+          isFirst
+            ? "bg-gold/20 text-gold"
+            : "bg-muted text-muted-foreground border border-border",
+        )}
       >
-        <UserAvatar
-          src={seller.foto}
-          name={seller.display_name}
-          size={isFirst ? "xl" : "lg"}
-        />
-        <span
-          className={cn(
-            "absolute -bottom-2 left-1/2 -translate-x-1/2 inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-display font-semibold tabular-nums",
-            isFirst
-              ? "bg-gold/20 text-gold ring-1 ring-inset ring-gold"
-              : "bg-muted text-foreground ring-1 ring-inset ring-border-strong",
-          )}
-        >
-          {position}
-        </span>
+        {position}
       </div>
-
       <p
         className={cn(
-          "mt-4 max-w-[10rem] truncate text-sm font-medium",
+          "mt-2 w-full truncate text-sm font-medium",
           isFirst ? "text-foreground" : "text-muted-foreground",
         )}
-        title={seller.display_name}
+        title={name}
       >
-        {seller.display_name}
+        {name}
       </p>
-
       <p
         className={cn(
-          "mt-1 font-display tabular-nums",
-          isFirst ? "text-2xl text-gold font-semibold" : "text-base text-foreground",
+          "mt-0.5 font-display text-lg leading-none tabular-nums",
+          isFirst ? "text-gold" : "text-foreground",
         )}
       >
-        {Math.round(seller.composite_score)}
+        {scoreText}
       </p>
-
       {seller.is_confiable ? (
-        <div className="mt-2">
+        <div className="mt-1.5">
           <ConfiableBadge />
         </div>
       ) : null}

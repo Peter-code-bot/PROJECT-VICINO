@@ -1,22 +1,22 @@
-export type RankedSeller = {
+export interface RankedSeller {
   rank: number;
   seller_id: string;
-  display_name: string;
+  display_name: string | null;
   foto: string | null;
   composite_score: number;
   trust_points: number;
   is_confiable: boolean;
-  distancia_aprox?: number;
-};
+  distancia_aprox: number | null;
+}
 
-export type RankingPeriod = {
+export interface RankingPeriod {
   period: string;
   is_frozen: boolean;
-};
+}
 
-export type Category = {
+export interface Category {
   id: string;
   nombre: string;
   slug: string;
-  icono: string;
-};
+  icono: string | null;
+}

@@ -1,17 +1,29 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Category, RankingPeriod } from "@/lib/rankings/types";
 
 interface RankingHeaderProps {
   categories: Category[];
   periods: RankingPeriod[];
-  currentCategoryId: string | null;
+  currentCategoryId: string | undefined;
   currentPeriod: string;
+}
+
+const monthFormatter = new Intl.DateTimeFormat("es-MX", {
+  month: "long",
+  year: "numeric",
+});
+
+function formatPeriod(period: string): string {
+  const date = new Date(`${period}-01T12:00:00`);
+  if (Number.isNaN(date.getTime())) return period;
+  const label = monthFormatter.format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export function RankingHeader({
@@ -22,72 +34,58 @@ export function RankingHeader({
 }: RankingHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
 
-  const periodLabel = useMemo(() => formatPeriodLabel(currentPeriod), [currentPeriod]);
+  const periodList = useMemo<RankingPeriod[]>(() => {
+    if (periods.some((p) => p.period === currentPeriod)) return periods;
+    return [{ period: currentPeriod, is_frozen: false }, ...periods];
+  }, [periods, currentPeriod]);
 
-  const updateParam = (key: "category" | "period", value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(key, value);
-    startTransition(() => {
-      router.push(`?${params.toString()}`, { scroll: false });
-    });
-  };
+  const setParam = useCallback(
+    (key: string, value: string) => {
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
+      next.set(key, value);
+      router.push(`/rankings?${next.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   return (
-    <header className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Los Mejores de Vicino
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ranking hiperlocal por categoría — solo vendedores en tu zona.
-          </p>
-        </div>
+    <header className="px-4 pt-6">
+      <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+        Los Mejores de Vicino
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Top de vendedores cerca de ti, mes con mes.
+      </p>
 
+      <div className="mt-4">
         <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors",
-                "hover:border-border-strong",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              )}
-              aria-label="Cambiar mes"
-            >
-              <span className="capitalize">{periodLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-            </button>
+          <PopoverTrigger
+            className={cn(
+              "inline-flex items-center gap-2 rounded-pill border border-border bg-muted px-3 py-1.5",
+              "text-xs font-medium text-foreground transition-colors hover:border-border-strong",
+            )}
+          >
+            {formatPeriod(currentPeriod)}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-48">
-            <ul className="flex flex-col gap-0.5">
-              {periods.length === 0 ? (
-                <li className="px-2 py-2 text-xs text-muted-foreground">
-                  No hay períodos disponibles
-                </li>
-              ) : null}
-              {periods.map((p) => {
-                const isActive = p.period === currentPeriod;
+          <PopoverContent align="start" className="max-h-72 overflow-y-auto">
+            <ul className="flex flex-col">
+              {periodList.map((p) => {
+                const active = p.period === currentPeriod;
                 return (
                   <li key={p.period}>
                     <button
                       type="button"
-                      onClick={() => updateParam("period", p.period)}
+                      onClick={() => setParam("period", p.period)}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm capitalize transition-colors",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground hover:bg-muted",
+                        "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                        active
+                          ? "bg-primary/10 text-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       )}
                     >
-                      <span>{formatPeriodLabel(p.period)}</span>
-                      {p.is_frozen ? (
-                        <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          cerrado
-                        </span>
-                      ) : null}
+                      {formatPeriod(p.period)}
                     </button>
                   </li>
                 );
@@ -99,23 +97,21 @@ export function RankingHeader({
 
       <nav
         aria-label="Categorías"
-        className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
-        data-pending={pending ? "true" : undefined}
+        className="scrollbar-hide mt-5 flex gap-2 overflow-x-auto pb-1"
       >
         {categories.map((cat) => {
-          const isActive = cat.id === currentCategoryId;
+          const active = cat.id === currentCategoryId;
           return (
             <button
               key={cat.id}
               type="button"
-              onClick={() => updateParam("category", cat.id)}
+              onClick={() => setParam("category", cat.id)}
               className={cn(
-                "inline-flex h-9 shrink-0 items-center rounded-full px-3 text-xs font-medium transition-colors",
-                isActive
+                "shrink-0 rounded-pill px-3 py-1.5 text-xs font-medium transition-colors",
+                active
                   ? "bg-primary text-primary-foreground"
                   : "border border-border bg-muted text-muted-foreground hover:border-border-strong hover:text-foreground",
               )}
-              aria-pressed={isActive}
             >
               {cat.nombre}
             </button>
@@ -124,19 +120,4 @@ export function RankingHeader({
       </nav>
     </header>
   );
-}
-
-function formatPeriodLabel(period: string): string {
-  // period is YYYY-MM. Build a Date on day 1 in CDMX-equivalent UTC, then
-  // format with Intl in es-MX.
-  const match = /^(\d{4})-(\d{2})$/.exec(period);
-  if (!match) return period;
-  const year = Number.parseInt(match[1]!, 10);
-  const month = Number.parseInt(match[2]!, 10) - 1;
-  const d = new Date(Date.UTC(year, month, 15));
-  return new Intl.DateTimeFormat("es-MX", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(d);
 }
