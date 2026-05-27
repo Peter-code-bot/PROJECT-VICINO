@@ -324,6 +324,14 @@ BEGIN
   -- For each seller in the ranking, find their most recently published product
   -- in this category that has a known location. We never expose this product's
   -- coordinates outside the function.
+  --
+  -- profiles.is_hidden = FALSE is filtered HERE (upstream of ROW_NUMBER) on
+  -- purpose: if we filtered hidden sellers in the final JOIN instead, they
+  -- would still get a rank number assigned by ROW_NUMBER() and then disappear
+  -- from the result, leaving gaps like {1, 2, 4, 5}. By excluding them at this
+  -- stage, ROW_NUMBER enumerates only visible sellers and produces consecutive
+  -- ranks 1..N without holes. profiles.is_hidden comes from
+  -- 20260429120000_moderation_reports.sql.
   seller_latest_product AS (
     SELECT
       sr.seller_id,
@@ -352,6 +360,9 @@ BEGIN
         LIMIT 1
       ) AS geog
     FROM seller_rankings sr
+    JOIN profiles pf
+      ON  pf.id        = sr.seller_id
+      AND pf.is_hidden = FALSE
     WHERE sr.category_id = p_category_id
       AND sr.period      = p_period
   ),
@@ -390,13 +401,10 @@ BEGIN
     (p.trust_level IN ('confiable', 'estrella', 'elite')) AS is_confiable,
     o.distancia_aprox
   FROM ordered o
-  -- Hide moderation-suspended/banned sellers from the public ranking.
-  -- INNER JOIN with is_hidden = FALSE excludes them entirely; we do NOT
-  -- want suspended users showcased as top sellers. is_hidden on profiles
-  -- comes from 20260429120000_moderation_reports.sql.
-  JOIN profiles p
-    ON  p.id        = o.seller_id
-    AND p.is_hidden = FALSE
+  -- Plain INNER JOIN: hidden sellers were already filtered upstream in
+  -- seller_latest_product so ranks 1..N have no gaps. JOIN here is only
+  -- to fetch display_name / foto / trust columns for output.
+  JOIN profiles p ON p.id = o.seller_id
   ORDER BY o.rank
   LIMIT p_limit;
 END;
