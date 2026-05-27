@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
-    "tsx": "^4.21.0",
-    "turbo": "^2.9.14",
+    "tsx": "^4.22.3",
+    "turbo": "^2.9.15",
     "typescript": "^5.7.0"
   },
   "packageManager": "pnpm@9.15.0",
