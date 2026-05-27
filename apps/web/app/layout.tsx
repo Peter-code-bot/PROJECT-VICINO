@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Inter, Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { CapacitorInit } from "@/components/capacitor-init";
+import { CapacitorSentryInit } from "@/components/capacitor-sentry-init";
 import { OfflineDetector } from "@/components/offline-detector";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -85,6 +86,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CapacitorInit />
+          <CapacitorSentryInit />
           <OfflineDetector />
           {children}
           <Toaster richColors position="bottom-center" />
