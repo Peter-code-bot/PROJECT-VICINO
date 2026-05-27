@@ -199,13 +199,19 @@ BEGIN
     s.seller_id,
     p_category_id,
     p_period,
+    -- Cast to numeric is REQUIRED before ROUND(.., 2). The inner expression
+    -- mixes double precision (PERCENT_RANK returns double) with numeric, and
+    -- in Postgres double + numeric = double. ROUND has no double-precision
+    -- 2-arg overload, so without this cast the function errors with
+    --   42883: function round(double precision, integer) does not exist.
+    -- The cast is the last step so the arithmetic itself stays in double.
     ROUND(
-      (s.s_ventas    * 0.40
-     + s.s_ingresos  * 0.25
-     + s.s_rating    * 0.20
-     + s.s_response  * 0.10
-     + s.s_trust     * 0.05
-      ) * 1000.0
+      ((s.s_ventas    * 0.40
+      + s.s_ingresos  * 0.25
+      + s.s_rating    * 0.20
+      + s.s_response  * 0.10
+      + s.s_trust     * 0.05
+       ) * 1000.0)::numeric
     , 2)::NUMERIC(7,2)                       AS composite_score,
     s.ventas_count,
     s.ingresos,
