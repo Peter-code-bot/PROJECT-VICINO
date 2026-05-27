@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   Settings,
   LogIn,
+  Trophy,
   ChevronDown,
   ChevronRight,
   UtensilsCrossed,
@@ -113,6 +114,7 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
         {/* Main nav */}
         <NavItem href="/" icon={Home} label="Inicio" active={isActive("/", true)} />
         <NavItem href="/buscar" icon={Search} label="Buscar" active={isActive("/buscar")} />
+        <NavItem href="/rankings" icon={Trophy} label="Rankings" active={isActive("/rankings")} />
 
         {/* Categories expandable */}
         <button
