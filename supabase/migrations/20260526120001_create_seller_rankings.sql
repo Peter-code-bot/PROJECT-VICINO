@@ -1,75 +1,100 @@
--- Monthly snapshot of seller rankings, computed per (seller, category, period).
--- Period format is 'YYYY-MM'. One row per seller per category per month.
+-- Hyperlocal seller rankings snapshots.
+-- One row per (seller, category, YYYY-MM). Computed nightly by an Edge Function
+-- ("recompute-rankings") and frozen the day after the period ends so historic
+-- months become immutable evidence of past standings.
 --
--- Privacy: this table never stores user coordinates. Geo filtering happens at
--- read time via get_ranking_hiperlocal() which snaps inputs and buckets outputs.
---
--- Inmutability: once is_frozen = TRUE, the row cannot be UPDATEd (see trigger).
--- The recompute function uses ON CONFLICT ... WHERE is_frozen = FALSE so the
--- nightly job naturally skips frozen rows.
---
--- NOT applied automatically. Apply manually:
---   npx supabase db push
+-- NOT applied automatically. Javier applies manually:
+--   npx supabase db diff      # review
+--   npx supabase db push      # apply
 
-CREATE TABLE IF NOT EXISTS seller_rankings (
-  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  seller_id               UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  category_id             UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-  period                  TEXT NOT NULL,
-  composite_score         NUMERIC(7,2) NOT NULL DEFAULT 0,
-  ventas_count            INTEGER NOT NULL DEFAULT 0,
-  ingresos                NUMERIC(12,2) NOT NULL DEFAULT 0,
-  rating_avg              NUMERIC(3,2),
-  response_avg_minutes    INTEGER,
-  trust_points_snapshot   INTEGER NOT NULL DEFAULT 0,
-  is_frozen               BOOLEAN NOT NULL DEFAULT FALSE,
-  computed_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT seller_rankings_period_format CHECK (period ~ '^\d{4}-(0[1-9]|1[0-2])$'),
-  CONSTRAINT seller_rankings_unique UNIQUE (seller_id, category_id, period)
+CREATE TABLE seller_rankings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  seller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  period TEXT NOT NULL,
+
+  composite_score NUMERIC(7,2) NOT NULL,
+
+  -- Auditable raw inputs
+  ventas_count INTEGER NOT NULL DEFAULT 0,
+  ingresos_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  rating_avg NUMERIC(3,2),
+  response_time_avg_minutes INTEGER,
+  trust_points_snapshot INTEGER NOT NULL DEFAULT 0,
+
+  -- Normalized sub-scores (0..1) used in the composite formula
+  score_ventas NUMERIC(5,4),
+  score_ingresos NUMERIC(5,4),
+  score_rating NUMERIC(5,4),
+  score_response NUMERIC(5,4),
+  score_trust NUMERIC(5,4),
+
+  is_frozen BOOLEAN NOT NULL DEFAULT FALSE,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT seller_rankings_unique UNIQUE (seller_id, category_id, period),
+  CONSTRAINT seller_rankings_period_format CHECK (period ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  CONSTRAINT seller_rankings_score_range CHECK (composite_score >= 0 AND composite_score <= 1000),
+  CONSTRAINT seller_rankings_ventas_nonneg CHECK (ventas_count >= 0),
+  CONSTRAINT seller_rankings_ingresos_nonneg CHECK (ingresos_total >= 0)
 );
 
-CREATE INDEX IF NOT EXISTS idx_seller_rankings_category_period
-  ON seller_rankings (category_id, period);
-CREATE INDEX IF NOT EXISTS idx_seller_rankings_period
-  ON seller_rankings (period);
-CREATE INDEX IF NOT EXISTS idx_seller_rankings_seller
-  ON seller_rankings (seller_id);
+CREATE INDEX idx_seller_rankings_category_period_score
+  ON seller_rankings (category_id, period, composite_score DESC);
 
-ALTER TABLE seller_rankings ENABLE ROW LEVEL SECURITY;
+CREATE INDEX idx_seller_rankings_seller_period
+  ON seller_rankings (seller_id, period DESC);
 
--- Read: any authenticated user can SELECT. Rankings are public-facing.
-DROP POLICY IF EXISTS "Rankings are publicly readable" ON seller_rankings;
-CREATE POLICY "Rankings are publicly readable"
-  ON seller_rankings
-  FOR SELECT
-  TO authenticated
-  USING (TRUE);
+CREATE INDEX idx_seller_rankings_period
+  ON seller_rankings (period DESC);
 
--- INSERT / UPDATE / DELETE: no policies for public roles, so only the service_role
--- bypass (used by the nightly Edge Function) can write. This is the same pattern
--- used in 20260320000002_profiles.sql for trust-managed fields.
-
--- Inmutability trigger: once is_frozen flips to TRUE, the row is read-only.
-CREATE OR REPLACE FUNCTION prevent_frozen_update()
+-- Immutability trigger: once a row is frozen it must never be mutated again.
+-- The compute functions write `is_frozen = FALSE` for the in-progress month and
+-- only flip it to TRUE on the first run after the period ends.
+CREATE OR REPLACE FUNCTION prevent_frozen_seller_rankings_update()
 RETURNS TRIGGER AS $$
 BEGIN
   IF OLD.is_frozen = TRUE THEN
-    RAISE EXCEPTION 'seller_rankings row is frozen and cannot be modified (id=%)', OLD.id
-      USING ERRCODE = 'check_violation';
+    RAISE EXCEPTION 'seller_rankings row is frozen and cannot be modified (seller_id=%, category_id=%, period=%)',
+      OLD.seller_id, OLD.category_id, OLD.period;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_prevent_frozen_update ON seller_rankings;
-CREATE TRIGGER trg_prevent_frozen_update
+CREATE TRIGGER seller_rankings_prevent_frozen_update
   BEFORE UPDATE ON seller_rankings
-  FOR EACH ROW
-  EXECUTE FUNCTION prevent_frozen_update();
+  FOR EACH ROW EXECUTE FUNCTION prevent_frozen_seller_rankings_update();
+
+-- Block deletes of frozen rows too — they are the historical record.
+CREATE OR REPLACE FUNCTION prevent_frozen_seller_rankings_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.is_frozen = TRUE THEN
+    RAISE EXCEPTION 'seller_rankings row is frozen and cannot be deleted (seller_id=%, category_id=%, period=%)',
+      OLD.seller_id, OLD.category_id, OLD.period;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER seller_rankings_prevent_frozen_delete
+  BEFORE DELETE ON seller_rankings
+  FOR EACH ROW EXECUTE FUNCTION prevent_frozen_seller_rankings_delete();
+
+-- RLS: rankings are public reads, writes belong to service_role (the cron).
+ALTER TABLE seller_rankings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Rankings are publicly readable"
+  ON seller_rankings FOR SELECT
+  TO authenticated, anon
+  USING (TRUE);
+
+-- No INSERT/UPDATE/DELETE policies are declared, so authenticated users cannot
+-- write to this table. The Edge Function uses service_role which bypasses RLS.
 
 COMMENT ON TABLE seller_rankings IS
-  'Monthly snapshot of seller ranking per category. Period is YYYY-MM. Rows with is_frozen=TRUE are immutable (trg_prevent_frozen_update).';
-COMMENT ON COLUMN seller_rankings.composite_score IS
-  '0..1000 weighted: ventas 40%, ingresos 25%, rating 20%, response_time 10%, trust 5%.';
-COMMENT ON COLUMN seller_rankings.is_frozen IS
-  'TRUE = row is the immutable historical record for that period. See follow-up freeze job.';
+  'Monthly snapshot of seller composite scores per category. Frozen rows are immutable historic records.';
+COMMENT ON COLUMN seller_rankings.period IS 'YYYY-MM in America/Mexico_City local time.';
+COMMENT ON COLUMN seller_rankings.composite_score IS 'Weighted score scaled to 0..1000. Higher is better.';
+COMMENT ON COLUMN seller_rankings.is_frozen IS 'TRUE after the period has ended and the final pass has run. Frozen rows cannot be updated or deleted.';

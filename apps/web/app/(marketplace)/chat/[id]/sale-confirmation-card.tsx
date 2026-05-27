@@ -1,7 +1,6 @@
 "use client";
 
-import { useTransition, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Check, X, Clock, CheckCheck } from "lucide-react";
 import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
@@ -43,7 +42,6 @@ export function SaleConfirmationCard({
   const isBuyer = currentUserId === sc.buyer_id;
   const myConfirmed = isBuyer ? sc.buyer_confirmed : sc.seller_confirmed;
   const otherConfirmed = isBuyer ? sc.seller_confirmed : sc.buyer_confirmed;
-  const isInitiator = currentUserId === sc.initiated_by;
   const isCompleted = sc.status === "completed";
   const canConfirm = !myConfirmed && sc.status === "pending_confirmation";
 
@@ -64,19 +62,25 @@ export function SaleConfirmationCard({
   }
 
   const statusColor = isCompleted
-    ? "border-emerald-trust/30 bg-emerald-trust/5"
-    : "border-warning/30 bg-warning/5";
+    ? "border border-[color:var(--trust-emerald)]/30 bg-[color:var(--card-2)] rounded-[var(--r-xl)] p-3"
+    : "border border-[color:var(--brand-tint-strong)] bg-[color:var(--brand-tint)] rounded-[var(--r-xl)] p-3";
 
   return (
-    <div className={`rounded-lg border p-3 space-y-2 text-xs text-fg ${statusColor}`}>
+    <div className={`space-y-2 text-xs text-[color:var(--fg)] ${statusColor}`}>
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-fg">
+        <span
+          className={
+            isCompleted
+              ? "text-[color:var(--trust-emerald)] font-semibold"
+              : "text-[color:var(--fg)] font-semibold"
+          }
+        >
           {isCompleted ? "✅ Venta confirmada" : "🤝 Confirmación de venta"}
         </span>
         {isCompleted ? (
-          <CheckCheck className="h-4 w-4 text-emerald-trust" />
+          <CheckCheck className="h-4 w-4 text-[color:var(--trust-emerald)]" />
         ) : (
-          <Clock className="h-4 w-4 text-warning" />
+          <Clock className="h-4 w-4 text-amber-400" />
         )}
       </div>
 
@@ -91,16 +95,16 @@ export function SaleConfirmationCard({
 
       {/* Confirmation status */}
       <div className="flex gap-2 text-[10px]">
-        <span className={sc.buyer_confirmed ? "text-emerald-trust font-medium" : "text-fg-muted"}>
+        <span className={sc.buyer_confirmed ? "text-[color:var(--trust-emerald)] font-medium" : "text-[color:var(--fg-dim)]"}>
           {sc.buyer_confirmed ? "✓" : "○"} Comprador
         </span>
-        <span className={sc.seller_confirmed ? "text-emerald-trust font-medium" : "text-fg-muted"}>
+        <span className={sc.seller_confirmed ? "text-[color:var(--trust-emerald)] font-medium" : "text-[color:var(--fg-dim)]"}>
           {sc.seller_confirmed ? "✓" : "○"} Vendedor
         </span>
       </div>
 
       {error && (
-        <p className="text-[10px] text-danger">{error}</p>
+        <p className="text-[10px] text-[color:var(--danger)]">{error}</p>
       )}
 
       {/* Action buttons */}
@@ -109,7 +113,7 @@ export function SaleConfirmationCard({
           <button
             onClick={handleConfirm}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md bg-emerald-trust text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-trust/90 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] px-4 py-1.5 text-xs font-semibold hover:bg-[color:var(--brand-dark)] disabled:opacity-50 transition-colors"
           >
             <Check className="h-3 w-3" />
             Confirmar
@@ -117,7 +121,7 @@ export function SaleConfirmationCard({
           <button
             onClick={handleCancel}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md border border-border text-fg px-3 py-1.5 text-xs font-medium hover:bg-bg-elev-2 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 border border-[color:var(--border-strong)] text-[color:var(--fg-muted)] rounded-[var(--r-pill)] px-4 py-1.5 text-xs hover:bg-[color:var(--bg-elev-2)] disabled:opacity-50 transition-colors"
           >
             <X className="h-3 w-3" />
             Rechazar
@@ -126,7 +130,7 @@ export function SaleConfirmationCard({
       )}
 
       {myConfirmed && !otherConfirmed && !isCompleted && (
-        <p className="text-[10px] text-warning">
+        <p className="text-amber-400 text-[10px]">
           Esperando confirmación del {isBuyer ? "vendedor" : "comprador"}...
         </p>
       )}
@@ -134,7 +138,7 @@ export function SaleConfirmationCard({
       {isCompleted && (
         <a
           href={`/historial`}
-          className="inline-block text-emerald-trust font-medium underline hover:text-emerald-trust/80 transition-colors"
+          className="inline-block text-[color:var(--trust-emerald)] underline text-xs"
         >
           Deja tu reseña →
         </a>

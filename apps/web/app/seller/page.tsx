@@ -81,40 +81,40 @@ export default async function SellerOverviewPage() {
     <div className="space-y-8 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-heading font-bold mb-1">Mi Tienda</h1>
-        <p className="text-sm text-muted-foreground">Resumen de tu actividad y métricas de ventas</p>
+        <p className="text-sm text-[color:var(--fg-muted)]">Resumen de tu actividad y métricas de ventas</p>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-emerald-trust/30 transition-colors">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-emerald-trust/10 text-emerald-trust">
+            <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)]">
               <Handshake className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Mes Actual</span>
+            <span className="text-sm font-medium text-[color:var(--fg-muted)]">Mes Actual</span>
           </div>
           <p className="text-3xl font-heading font-bold mb-1">{monthCount}</p>
-          <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(monthTotal)} en ventas</p>
+          <p className="text-sm font-medium text-[color:var(--trust-emerald)]">{formatPrice(monthTotal)} en ventas</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-primary/30 transition-colors">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]">
               <Package className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Inventario</span>
+            <span className="text-sm font-medium text-[color:var(--fg-muted)]">Inventario</span>
           </div>
           <p className="text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
-          <p className="text-sm font-medium text-primary/80">Publicaciones activas</p>
+          <p className="text-sm font-medium text-[color:var(--brand-hi)]">Publicaciones activas</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-gold/30 transition-colors">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-gold/10 text-gold">
+              <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)]">
                 <Star className="h-5 w-5" />
               </div>
-              <span className="text-sm font-medium text-muted-foreground">Reputación</span>
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Reputación</span>
             </div>
             <RatingStars
               rating={Number(profile?.average_rating ?? 0)}
@@ -125,62 +125,62 @@ export default async function SellerOverviewPage() {
           <p className="text-3xl font-heading font-bold mb-1 tabular-nums">
             {Number(profile?.average_rating ?? 0).toFixed(1)}
           </p>
-          <p className="text-sm font-medium text-gold/80">Aprobación de clientes</p>
+          <p className="text-sm font-medium text-[color:var(--trust-gold)]">Aprobación de clientes</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-fg/20 transition-colors">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-muted text-fg">
+            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg-muted)]">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Histórico</span>
+            <span className="text-sm font-medium text-[color:var(--fg-muted)]">Histórico</span>
           </div>
           <p className="text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
-          <p className="text-sm font-medium text-fg-muted">Ventas totales en Vicino</p>
+          <p className="text-sm font-medium text-[color:var(--fg-muted)]">Ventas totales en Vicino</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trust level progress */}
-        <div className="lg:col-span-2 rounded-3xl border border-border/50 bg-card p-6 shadow-sm">
+        <div className="lg:col-span-2 rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <div className="w-10 h-10 rounded-xl bg-[color:var(--brand-tint)] flex items-center justify-center text-[color:var(--brand-hi)]">
               <Award className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-heading font-bold text-lg">Nivel de Confianza</h2>
-              <p className="text-sm text-muted-foreground">Gana puntos para desbloquear beneficios</p>
+              <p className="text-sm text-[color:var(--fg-muted)]">Gana puntos para desbloquear beneficios</p>
             </div>
           </div>
           
-          <div className="p-5 rounded-2xl bg-muted/50 border border-border/30 space-y-4">
+          <div className="p-5 rounded-[var(--r-xl)] bg-[color:var(--bg-elev-2)] border border-[color:var(--border)] space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SellerBadge level={trustLevel} size="md" />
               </div>
-              <span className="text-sm font-bold bg-card px-3 py-1 rounded-lg border border-border/50 shadow-sm">
+              <span className="text-sm font-bold bg-[color:var(--bg-elev-2)] px-3 py-1 rounded-lg border border-[color:var(--border)]">
                 {profile?.trust_points ?? 0} pts
               </span>
             </div>
             
             <div className="space-y-2">
-              <div className="h-3 bg-border rounded-full overflow-hidden shadow-inner">
+              <div className="h-3 bg-[color:var(--border)] rounded-full overflow-hidden shadow-inner">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-1000 ease-out relative"
+                  className="h-full bg-[color:var(--brand)] rounded-full transition-all duration-1000 ease-out relative"
                   style={{ width: `${Math.max(5, progressPercent)}%` }}
                 >
                   <div className="absolute inset-0 bg-white/20 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
                 </div>
               </div>
               
-              <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+              <div className="flex items-center justify-between text-xs text-[color:var(--fg-muted)] font-medium">
                 <span className="capitalize">{trustLevel}</span>
                 {nextLevel ? (
                   <span>
-                    Faltan <strong className="text-foreground">{nextLevelPoints - (profile?.trust_points ?? 0)} pts</strong> para <span className="capitalize text-foreground">{nextLevel[1].label}</span>
+                    Faltan <strong className="text-[color:var(--fg)]">{nextLevelPoints - (profile?.trust_points ?? 0)} pts</strong> para <span className="capitalize text-[color:var(--fg)]">{nextLevel[1].label}</span>
                   </span>
                 ) : (
-                  <span className="text-gold font-bold">¡Nivel Máximo!</span>
+                  <span className="text-[color:var(--trust-gold)] font-bold">¡Nivel Máximo!</span>
                 )}
               </div>
             </div>
@@ -193,36 +193,36 @@ export default async function SellerOverviewPage() {
           {/* Pending reviews alert */}
           <div className={`p-4 rounded-3xl border transition-all ${
             pendingReviews > 0
-              ? "bg-warning/10 border-warning/30 hover:shadow-md"
-              : "bg-card border-border/40"
+              ? "bg-amber-400/10 border-amber-400/30"
+              : "bg-[color:var(--card-2)] border-[color:var(--border)]"
           }`}>
             <div className="flex items-start gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                pendingReviews > 0 ? "bg-warning/20" : "bg-muted"
+                pendingReviews > 0 ? "bg-amber-400/20" : "bg-[color:var(--bg-elev-2)]"
               }`}>
                 {pendingReviews > 0 ? (
-                  <AlertCircle className="w-4 h-4 text-warning" />
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
                 ) : (
-                  <Star className="w-4 h-4 text-muted-foreground" />
+                  <Star className="w-4 h-4 text-[color:var(--fg-muted)]" />
                 )}
               </div>
               <div>
                 <h3 className={`font-semibold text-sm ${
-                  pendingReviews > 0 ? "text-fg" : "text-foreground"
+                  pendingReviews > 0 ? "text-[color:var(--fg)]" : "text-[color:var(--fg)]"
                 }`}>
                   Califica a tus compradores
                 </h3>
                 {pendingReviews > 0 ? (
-                  <p className="text-xs mt-1 text-warning">
+                  <p className="text-xs mt-1 text-amber-400">
                     Tienes <strong>{pendingReviews}</strong> ventas completadas sin calificar.
                   </p>
                 ) : (
-                  <p className="text-xs mt-1 text-muted-foreground">
+                  <p className="text-xs mt-1 text-[color:var(--fg-muted)]">
                     Estás al día con tus calificaciones.
                   </p>
                 )}
                 {pendingReviews > 0 && (
-                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-warning hover:text-warning/80 hover:underline mt-2 transition-colors">
+                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-amber-400 hover:text-amber-400/80 hover:underline mt-2 transition-colors">
                     Ir a reseñas →
                   </Link>
                 )}

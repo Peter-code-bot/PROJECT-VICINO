@@ -217,7 +217,7 @@ export default async function CitaDetailPage({ params }: PageProps) {
 function StatusBadge({ status, isPast }: { status: string; isPast: boolean }) {
   if (status === "completed") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 text-xs font-semibold">
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-trust/15 text-emerald-trust text-xs font-semibold">
         <CheckCircle2 size={12} />
         Completada
       </span>

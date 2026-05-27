@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { CalendarOff, Clock, ChevronRight } from "lucide-react";
+import { CalendarOff, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -63,19 +63,23 @@ export function CitasList({ appointments, currentUserId }: Props) {
   return (
     <div>
       {/* Tabs */}
-      <div className="flex border-b border-border mb-4">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 mb-4">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-              tab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+              tab === t.key
+                ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
+                : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
             )}
           >
             {t.label}
             {groups[t.key].length > 0 && (
-              <span className="ml-1 text-xs opacity-60">({groups[t.key].length})</span>
+              <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5 opacity-60">
+                {groups[t.key].length}
+              </span>
             )}
           </button>
         ))}
@@ -84,15 +88,15 @@ export function CitasList({ appointments, currentUserId }: Props) {
       {/* List */}
       {current.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-            <CalendarOff className="w-6 h-6 text-muted-foreground" />
+          <div className="w-14 h-14 rounded-full bg-[color:var(--bg-elev-2)] flex items-center justify-center mb-3">
+            <CalendarOff className="w-6 h-6 text-[color:var(--fg-dim)]" />
           </div>
-          <p className="font-semibold text-foreground mb-1">
+          <p className="font-semibold text-[color:var(--fg)] mb-1">
             {tab === "proximas" && "Sin citas próximas"}
             {tab === "pasadas" && "Sin citas pasadas"}
             {tab === "canceladas" && "Sin citas canceladas"}
           </p>
-          <p className="text-sm text-muted-foreground max-w-xs">
+          <p className="text-sm text-[color:var(--fg-muted)] max-w-xs">
             {tab === "proximas" && "Cuando agendes o recibas citas, aparecerán aquí."}
             {tab === "pasadas" && "Tu historial de citas completadas aparecerá aquí."}
             {tab === "canceladas" && "Las citas canceladas aparecerán aquí."}
@@ -118,24 +122,24 @@ export function CitasList({ appointments, currentUserId }: Props) {
 
             return (
               <li key={a.id}>
-                <Link href={`/citas/${a.id}`} className={cn("block bg-card border border-border rounded-2xl p-4 hover:bg-muted/40 transition-colors", a.status === "cancelled" && "opacity-60")}>
+                <Link href={`/citas/${a.id}`} className={cn("block bg-[color:var(--card-2)] border border-[color:var(--border)] rounded-[var(--r-xl)] p-4 hover:bg-[color:var(--bg-elev-2)] transition-colors", a.status === "cancelled" && "opacity-60")}>
                   <div className="flex items-start gap-3">
                     <UserAvatar src={other?.foto} name={other?.nombre ?? "?"} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-1.5 mb-0.5">
-                        <span className="text-xs text-muted-foreground">{isBuyer ? "Con" : "Para"}</span>
-                        <span className="text-sm font-semibold text-foreground truncate">{other?.nombre ?? "Usuario"}</span>
+                        <span className="text-xs text-[color:var(--fg-muted)]">{isBuyer ? "Con" : "Para"}</span>
+                        <span className="text-sm font-semibold text-[color:var(--fg)] truncate">{other?.nombre ?? "Usuario"}</span>
                       </div>
-                      {product && <p className="text-sm text-foreground truncate mb-1">{product.titulo}</p>}
+                      {product && <p className="text-sm text-[color:var(--fg)] truncate mb-1">{product.titulo}</p>}
                       <div className="flex items-center gap-1.5 text-xs">
-                        <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground tabular-nums">
+                        <Clock className="w-3 h-3 text-[color:var(--fg-muted)] shrink-0" />
+                        <span className="text-[color:var(--fg-muted)] tabular-nums">
                           {dayLabel} · {timeLabel}
                           {a.status === "cancelled" && " · Cancelada"}
                         </span>
                       </div>
                       {a.notes && tab === "proximas" && (
-                        <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1 italic">&ldquo;{a.notes}&rdquo;</p>
+                        <p className="text-xs text-[color:var(--fg-muted)] opacity-80 mt-1 line-clamp-1 italic">&ldquo;{a.notes}&rdquo;</p>
                       )}
                     </div>
                   </div>

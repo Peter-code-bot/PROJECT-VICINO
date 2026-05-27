@@ -15,8 +15,8 @@ interface SaleItem {
   buyer_id: string;
   seller_id: string;
   products_services: { id: string; titulo: string; imagen_principal: string | null } | { id: string; titulo: string; imagen_principal: string | null }[] | null;
-  buyer?: { nombre: string } | { nombre: string }[] | null;
-  seller?: { nombre: string } | { nombre: string }[] | null;
+  buyer?: { nombre: string; trust_level?: string } | { nombre: string; trust_level?: string }[] | null;
+  seller?: { nombre: string; trust_level?: string } | { nombre: string; trust_level?: string }[] | null;
 }
 
 interface HistorialTabsProps {
@@ -27,48 +27,118 @@ interface HistorialTabsProps {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending_confirmation: { label: "Pendiente", color: "text-amber-600 bg-amber-50 dark:bg-amber-950/50" },
-  completed: { label: "Completada", color: "text-green-600 bg-green-50 dark:bg-green-950/50" },
-  cancelled: { label: "Cancelada", color: "text-red-600 bg-red-50 dark:bg-red-950/50" },
-  expired: { label: "Expirada", color: "text-gray-500 bg-muted/50" },
+  pending_confirmation: {
+    label: "Pendiente",
+    color:
+      "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+  },
+  completed: {
+    label: "Completada",
+    color:
+      "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+  },
+  cancelled: {
+    label: "Cancelada",
+    color:
+      "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+  },
+  expired: {
+    label: "Expirada",
+    color:
+      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+  },
+};
+
+const TRUST_BADGE_CLASSES: Record<string, string> = {
+  verificado:
+    "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] border border-[color:var(--brand-tint-strong)]",
+  confiable:
+    "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] border border-[color:var(--brand-tint-strong)]",
+  estrella:
+    "bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] border border-[rgba(212,168,83,0.30)]",
+  elite:
+    "bg-[rgba(212,168,83,0.22)] text-[color:var(--trust-gold)] border border-[rgba(212,168,83,0.36)]",
 };
 
 export function HistorialTabs({
   ventas,
   compras,
   reviewedSales,
-  currentUserId,
 }: HistorialTabsProps) {
   const [tab, setTab] = useState<"ventas" | "compras">("ventas");
   const items = tab === "ventas" ? ventas : compras;
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const enCurso = ventas.filter((v) => v.status === "pending_confirmation").length;
+  const completadas = ventas.filter((v) => v.status === "completed").length;
+  const estaSemana = ventas.filter((v) => new Date(v.created_at) >= weekAgo).length;
 
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex border-b">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1">
         <button
           onClick={() => setTab("ventas")}
           className={cn(
-            "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
             tab === "ventas"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
+              : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
-          Mis ventas ({ventas.length})
+          Mis ventas
+          <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
+            {ventas.length}
+          </span>
         </button>
         <button
           onClick={() => setTab("compras")}
           className={cn(
-            "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
             tab === "compras"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
+              : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
-          Mis compras ({compras.length})
+          Mis compras
+          <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
+            {compras.length}
+          </span>
         </button>
       </div>
+
+      {/* Stats Bar (only for ventas tab) */}
+      {tab === "ventas" && (
+        <div className="grid grid-cols-3 divide-x divide-[color:var(--border)] bg-[color:var(--card-2)] rounded-[var(--r-xl)] border border-[color:var(--border)] mb-4">
+          {/* EN CURSO */}
+          <div className="flex flex-col items-center py-3 px-2 gap-1">
+            <span className="text-xl font-bold text-[color:var(--trust-gold)]">
+              {enCurso}
+            </span>
+            <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
+              EN CURSO
+            </span>
+          </div>
+          {/* COMPLETADAS */}
+          <div className="flex flex-col items-center py-3 px-2 gap-1">
+            <span className="text-xl font-bold text-[color:var(--trust-gold)]">
+              {completadas}
+            </span>
+            <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
+              COMPLETADAS
+            </span>
+          </div>
+          {/* ESTA SEMANA */}
+          <div className="flex flex-col items-center py-3 px-2 gap-1">
+            <span className="text-xl font-bold text-[color:var(--trust-gold)]">
+              {estaSemana}
+            </span>
+            <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
+              ESTA SEMANA
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Items */}
       {items.length > 0 ? (
@@ -85,30 +155,56 @@ export function HistorialTabs({
             const hasReviewed = reviewedSales.has(`${item.id}-${reviewType}`);
             const canReview = item.status === "completed" && !hasReviewed;
             const status = STATUS_LABELS[item.status] ?? { label: item.status, color: "" };
+            const trustLevel = otherUser?.trust_level;
+            const trustBadgeClass =
+              trustLevel && trustLevel !== "nuevo"
+                ? TRUST_BADGE_CLASSES[trustLevel] ?? TRUST_BADGE_CLASSES.verificado
+                : null;
 
             return (
-              <div key={item.id} className="rounded-lg border p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-sm truncate">
+              <div
+                key={item.id}
+                className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-medium text-sm text-[color:var(--fg)] truncate">
                     {product?.titulo ?? "Producto"}
                   </h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.color}`}
-                  >
+                  <span className={status.color}>
                     {status.label}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {tab === "ventas" ? "Comprador" : "Vendedor"}:{" "}
-                    {otherUser?.nombre ?? "Usuario"}
+                <div className="flex">
+                  <span className="text-xs text-[color:var(--fg-dim)] ml-auto">
+                    {formatDate(item.created_at)}
                   </span>
-                  <span>{formatDate(item.created_at)}</span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-7 h-7 rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] text-xs font-bold flex items-center justify-center shrink-0">
+                    {otherUser?.nombre?.charAt(0).toUpperCase() ?? "U"}
+                  </span>
+                  <span className="text-xs text-[color:var(--fg-dim)]">
+                    {tab === "ventas" ? "Comprador" : "Vendedor"}
+                  </span>
+                  <span className="text-sm text-[color:var(--fg)] truncate">
+                    {otherUser?.nombre ?? "Usuario"}
+                  </span>
+                  {trustBadgeClass && (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-[var(--r-pill)] px-2 py-0.5 text-[10px] font-semibold capitalize",
+                        trustBadgeClass
+                      )}
+                    >
+                      {trustLevel}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-sm text-[color:var(--fg)]">
                     {formatPrice(item.precio_acordado)}
                     {item.cantidad > 1 && ` x${item.cantidad}`}
                   </span>
@@ -116,14 +212,14 @@ export function HistorialTabs({
                   {canReview && (
                     <Link
                       href={`/historial/review?sale=${item.id}&type=${reviewType}&product=${product?.id}`}
-                      className="text-xs font-medium text-primary hover:underline"
+                      className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
                     >
                       Dejar reseña →
                     </Link>
                   )}
 
                   {hasReviewed && (
-                    <span className="text-xs text-green-600">✓ Reseña dejada</span>
+                    <span className="text-xs text-[color:var(--trust-emerald)]">✓ Reseña dejada</span>
                   )}
                 </div>
               </div>

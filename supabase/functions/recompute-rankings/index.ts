@@ -1,49 +1,53 @@
-// Supabase Edge Function: recompute seller rankings for the current month.
-// Triggered by Vercel Cron (apps/web/app/api/cron/recompute-rankings/route.ts)
-// which proxies the call with the shared CRON_SECRET. We also accept the call
-// directly if Authorization is correct.
+// Supabase Edge Function: recompute seller rankings for the current period.
+// Triggered by Vercel Cron via /api/cron/recompute-rankings.
 //
-// Deploy with: supabase functions deploy recompute-rankings
-// Set secret with: supabase secrets set CRON_SECRET=<random 32+ chars>
+// The function:
+//   1. Verifies an Authorization: Bearer <CRON_SECRET> header.
+//   2. Resolves the current period as YYYY-MM in America/Mexico_City.
+//   3. Calls the SQL orchestrator recompute_seller_rankings(period).
+//   4. Returns { ok, period, categories_processed }.
+//
+// Deploy: supabase functions deploy recompute-rankings
+// Set CRON_SECRET as a function secret in the Supabase dashboard.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-function currentPeriodInMexicoCity(): string {
-  // en-CA yields ISO-like YYYY-MM-DD; we want YYYY-MM in CDMX.
-  const fmt = new Intl.DateTimeFormat("en-CA", {
+function periodInMexicoCity(now: Date): string {
+  // Intl.DateTimeFormat with timeZone gives us the local-CDMX date components.
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
     month: "2-digit",
-  });
-  const parts = fmt.formatToParts(new Date());
+  }).formatToParts(now);
   const year = parts.find((p) => p.type === "year")?.value ?? "0000";
   const month = parts.find((p) => p.type === "month")?.value ?? "00";
   return `${year}-${month}`;
 }
 
-Deno.serve(async (req: Request) => {
-  const expected = Deno.env.get("CRON_SECRET");
-  if (!expected) {
+Deno.serve(async (req) => {
+  const expectedSecret = Deno.env.get("CRON_SECRET");
+  if (!expectedSecret) {
     return new Response(
-      JSON.stringify({ ok: false, error: "CRON_SECRET not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: "CRON_SECRET not configured" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${expected}`) {
-    return new Response(
-      JSON.stringify({ ok: false, error: "unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (authHeader !== `Bearer ${expectedSecret}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const period = currentPeriodInMexicoCity();
+  const period = periodInMexicoCity(new Date());
+
   const { data, error } = await supabase.rpc("recompute_seller_rankings", {
     p_period: period,
   });
@@ -51,7 +55,7 @@ Deno.serve(async (req: Request) => {
   if (error) {
     return new Response(
       JSON.stringify({ ok: false, period, error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -60,8 +64,8 @@ Deno.serve(async (req: Request) => {
       ok: true,
       period,
       categories_processed: data,
-      computed_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
     }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
+    { status: 200, headers: { "Content-Type": "application/json" } }
   );
 });

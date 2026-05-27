@@ -45,26 +45,29 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
   const [tab, setTab] = useState<"received" | "given" | "pending">("received");
 
   const tabs = [
-    { key: "received" as const, label: `Recibidas (${received.length})` },
-    { key: "given" as const, label: `Dejadas (${given.length})` },
-    { key: "pending" as const, label: `Pendientes (${pending.length})` },
+    { key: "received" as const, label: "Recibidas", count: received.length },
+    { key: "given" as const, label: "Dejadas", count: given.length },
+    { key: "pending" as const, label: "Pendientes", count: pending.length },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="flex border-b">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+              "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
               tab === t.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
+                : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
             )}
           >
             {t.label}
+            <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
+              {t.count}
+            </span>
           </button>
         ))}
       </div>
@@ -78,29 +81,29 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-lg border p-4 space-y-2">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-muted-foreground ml-auto">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
                   </div>
-                  {r.comentario && <p className="text-sm text-muted-foreground">{r.comentario}</p>}
+                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)]">{r.comentario}</p>}
                   {r.respuesta ? (
-                    <div className="ml-4 pl-3 border-l text-sm">
+                    <div className="ml-4 pl-3 border-l border-[color:var(--border)] text-sm">
                       <span className="font-medium">Tu respuesta:</span>{" "}
-                      <span className="text-muted-foreground">{r.respuesta}</span>
+                      <span className="text-[color:var(--fg-muted)]">{r.respuesta}</span>
                     </div>
                   ) : (
                     <RespondForm reviewId={r.id} />
                   )}
-                  <div className="pt-2 border-t border-border/30">
+                  <div className="pt-2 border-t border-[color:var(--border)]">
                     <ReviewProductLink product={reviewedProduct ?? null} />
                   </div>
                 </div>
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas recibidas</p>
+            <p className="text-sm text-[color:var(--fg-muted)] py-8 text-center">Sin reseñas recibidas</p>
           )}
         </div>
       )}
@@ -114,21 +117,21 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-lg border p-4 space-y-2">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-muted-foreground ml-auto">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
                   </div>
-                  {r.comentario && <p className="text-sm text-muted-foreground">{r.comentario}</p>}
-                  <div className="pt-2 border-t border-border/30">
+                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)]">{r.comentario}</p>}
+                  <div className="pt-2 border-t border-[color:var(--border)]">
                     <ReviewProductLink product={reviewedProduct ?? null} />
                   </div>
                 </div>
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas dejadas</p>
+            <p className="text-sm text-[color:var(--fg-muted)] py-8 text-center">Sin reseñas dejadas</p>
           )}
         </div>
       )}
@@ -140,14 +143,14 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               const product = Array.isArray(s.products_services) ? s.products_services[0] : s.products_services;
               const buyer = Array.isArray(s.buyer) ? s.buyer[0] : s.buyer;
               return (
-                <div key={s.id} className="rounded-lg border p-4 flex items-center justify-between">
+                <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{product?.titulo ?? "Producto"}</p>
-                    <p className="text-xs text-muted-foreground">Comprador: {buyer?.nombre ?? "Usuario"}</p>
+                    <p className="text-xs text-[color:var(--fg-muted)]">Comprador: {buyer?.nombre ?? "Usuario"}</p>
                   </div>
                   <Link
                     href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${product?.id ?? ""}`}
-                    className="text-xs font-medium text-primary hover:underline"
+                    className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
                   >
                     Evaluar →
                   </Link>
@@ -155,7 +158,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin reseñas pendientes</p>
+            <p className="text-sm text-[color:var(--fg-muted)] py-8 text-center">Sin reseñas pendientes</p>
           )}
         </div>
       )}

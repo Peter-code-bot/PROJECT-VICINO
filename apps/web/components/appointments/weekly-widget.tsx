@@ -88,7 +88,7 @@ export function WeeklyAppointmentsWidget() {
                 <li key={a.id} className="rounded-xl p-2 -mx-1 hover:bg-muted transition-colors">
                   <p className="text-xs font-medium text-foreground">
                     {dia} {dayNum} | {h12}:{m} {ampm}
-                    {a.isPast && <span className="text-red-400 ml-1">(Vencida)</span>}
+                    {a.isPast && <span className="text-danger ml-1">(Vencida)</span>}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {a.otherName} · {a.productTitle}

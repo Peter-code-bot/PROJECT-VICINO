@@ -21,10 +21,14 @@ export default async function ListingsPage() {
     .order("created_at", { ascending: false });
 
   const statusColors: Record<string, string> = {
-    disponible: "bg-emerald-trust/10 text-emerald-trust",
-    pausado: "bg-warning/10 text-warning",
-    borrador: "bg-muted text-muted-foreground",
-    agotado: "bg-danger/10 text-danger",
+    disponible:
+      "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    pausado:
+      "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    borrador:
+      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    agotado:
+      "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
   };
 
   return (
@@ -33,7 +37,7 @@ export default async function ListingsPage() {
         <h1 className="text-xl font-bold truncate">Mis publicaciones</h1>
         <Link
           href="/vender"
-          className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 whitespace-nowrap"
+          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--brand)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] whitespace-nowrap transition-colors"
         >
           <span className="hidden sm:inline">Publicar nuevo</span>
           <span className="sm:hidden">Publicar</span>
@@ -45,23 +49,23 @@ export default async function ListingsPage() {
           {products.map((p) => (
             <div
               key={p.id}
-              className="rounded-lg border p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
+              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
             >
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <Link
                     href={`/${p.categoria}/${p.slug}`}
-                    className="font-medium text-sm hover:underline truncate min-w-0"
+                    className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate min-w-0"
                   >
                     {p.titulo}
                   </Link>
                   <span
-                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.estatus] ?? ""}`}
+                    className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}
                   >
                     {p.estatus}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--fg-muted)]">
                   <span>{formatPrice(Number(p.precio))}</span>
                   <span>{p.ventas_count} ventas</span>
                   <span>{p.vistas_count} vistas</span>
@@ -76,7 +80,7 @@ export default async function ListingsPage() {
         <div className="text-center py-12 space-y-2">
           <p className="text-4xl">📦</p>
           <p className="font-medium">Sin publicaciones</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[color:var(--fg-muted)]">
             Publica tu primer producto o servicio
           </p>
         </div>

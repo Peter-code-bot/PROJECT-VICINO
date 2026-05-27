@@ -44,7 +44,7 @@ export function AnalyticsCharts({
                 <Line
                   type="monotone"
                   dataKey="ventas"
-                  stroke="#2563eb"
+                  stroke="var(--brand-base)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
                 />
@@ -74,7 +74,7 @@ export function AnalyticsCharts({
                   width={120}
                 />
                 <Tooltip contentStyle={{ fontSize: 12 }} />
-                <Bar dataKey="ventas" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="ventas" fill="var(--brand-base)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

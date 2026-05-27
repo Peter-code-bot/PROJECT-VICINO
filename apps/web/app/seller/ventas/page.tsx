@@ -35,10 +35,26 @@ export default async function VentasPage() {
   const reviewedIds = new Set(myReviews?.map((r) => r.sale_confirmation_id) ?? []);
 
   const statusConfig: Record<string, { label: string; color: string }> = {
-    pending_confirmation: { label: "Pendiente", color: "bg-warning/10 text-warning" },
-    completed: { label: "Completada", color: "bg-emerald-trust/10 text-emerald-trust" },
-    cancelled: { label: "Cancelada", color: "bg-danger/10 text-danger" },
-    expired: { label: "Expirada", color: "bg-muted text-muted-foreground" },
+    pending_confirmation: {
+      label: "Pendiente",
+      color:
+        "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    },
+    completed: {
+      label: "Completada",
+      color:
+        "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    },
+    cancelled: {
+      label: "Cancelada",
+      color:
+        "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    },
+    expired: {
+      label: "Expirada",
+      color:
+        "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+    },
   };
 
   return (
@@ -54,16 +70,16 @@ export default async function VentasPage() {
             const canReview = s.status === "completed" && !reviewedIds.has(s.id);
 
             return (
-              <div key={s.id} className="rounded-lg border p-4 space-y-2">
+              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm truncate">
                     {product?.titulo ?? "Producto"}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.color}`}>
+                  <span className={status.color}>
                     {status.label}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-[color:var(--fg-muted)]">
                   <span>Comprador: {buyer?.nombre ?? "Usuario"}</span>
                   <span>{formatDate(s.created_at)}</span>
                 </div>
@@ -75,7 +91,7 @@ export default async function VentasPage() {
                   {canReview && (
                     <Link
                       href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${(product as { id?: string })?.id ?? ""}`}
-                      className="text-xs font-medium text-primary hover:underline"
+                      className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
                     >
                       Evaluar comprador →
                     </Link>
@@ -89,7 +105,7 @@ export default async function VentasPage() {
         <div className="text-center py-12 space-y-2">
           <p className="text-4xl">🤝</p>
           <p className="font-medium">Sin ventas aún</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[color:var(--fg-muted)]">
             Tus ventas confirmadas aparecerán aquí
           </p>
         </div>

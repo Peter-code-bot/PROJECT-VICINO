@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, formatDate } from "@vicino/shared";
 import { HistorialTabs } from "./historial-tabs";
 import { ChevronLeft } from "lucide-react";
 
@@ -25,7 +24,7 @@ export default async function HistorialPage() {
       id, precio_acordado, cantidad, status, created_at, completed_at,
       buyer_id, seller_id,
       products_services(id, titulo, imagen_principal),
-      buyer:profiles!buyer_id(nombre)
+      buyer:profiles!buyer_id(nombre, trust_level)
     `
     )
     .eq("seller_id", user.id)
@@ -40,7 +39,7 @@ export default async function HistorialPage() {
       id, precio_acordado, cantidad, status, created_at, completed_at,
       buyer_id, seller_id,
       products_services(id, titulo, imagen_principal),
-      seller:profiles!seller_id(nombre)
+      seller:profiles!seller_id(nombre, trust_level)
     `
     )
     .eq("buyer_id", user.id)
@@ -61,7 +60,7 @@ export default async function HistorialPage() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <Link
         href="/"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] mb-4 transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
         Inicio

@@ -25,7 +25,7 @@ export default async function CuponesPage() {
         <h1 className="text-xl font-bold">Cupones</h1>
         <Link
           href="/seller/cupones/nuevo"
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="rounded-[var(--r-pill)] bg-[color:var(--brand)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] transition-colors"
         >
           Crear cupón
         </Link>
@@ -34,14 +34,14 @@ export default async function CuponesPage() {
       {coupons && coupons.length > 0 ? (
         <div className="space-y-3">
           {coupons.map((c) => (
-            <div key={c.id} className="rounded-lg border p-4 space-y-2">
+            <div key={c.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-sm bg-muted px-2 py-0.5 rounded">
+                  <span className="font-mono font-bold text-sm bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] px-2 py-0.5 rounded-[var(--r-sm)]">
                     {c.codigo}
                   </span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.activo ? "bg-emerald-trust/10 text-emerald-trust" : "bg-muted text-muted-foreground"}`}
+                    className={`text-xs px-2 py-0.5 rounded-[var(--r-pill)] font-medium border ${c.activo ? "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border-[color:var(--trust-emerald)]/30" : "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border-[color:var(--border)]"}`}
                   >
                     {c.activo ? "Activo" : "Inactivo"}
                   </span>
@@ -53,7 +53,7 @@ export default async function CuponesPage() {
                   ? `${c.valor}% de descuento`
                   : `$${c.valor} MXN de descuento`}
               </p>
-              <div className="flex gap-4 text-xs text-muted-foreground">
+              <div className="flex gap-4 text-xs text-[color:var(--fg-muted)]">
                 {c.fecha_expiracion && (
                   <span>Expira: {formatDate(c.fecha_expiracion)}</span>
                 )}
@@ -70,7 +70,7 @@ export default async function CuponesPage() {
         <div className="text-center py-12 space-y-2">
           <p className="text-4xl">🏷️</p>
           <p className="font-medium">Sin cupones</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[color:var(--fg-muted)]">
             Crea cupones para atraer compradores. Se muestran en tus productos.
           </p>
         </div>

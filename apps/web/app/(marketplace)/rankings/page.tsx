@@ -1,52 +1,32 @@
 import { Suspense } from "react";
 import { Trophy } from "lucide-react";
-import { ActivateLocationCard } from "@/components/rankings/activate-location-card";
-import { PodioRanking } from "@/components/rankings/podio-ranking";
-import { RankingHeader } from "@/components/rankings/ranking-header";
-import { RankingList } from "@/components/rankings/ranking-list";
 import {
-  currentPeriodInMexicoCity,
-  getAvailablePeriods,
   getCategories,
+  getAvailablePeriods,
   getRankingHiperlocal,
+  currentPeriodInMexicoCity,
 } from "@/lib/rankings/queries";
-import type { RankedSeller } from "@/lib/rankings/types";
+import { RankingHeader } from "@/components/rankings/ranking-header";
+import { PodioRanking } from "@/components/rankings/podio-ranking";
+import { RankingList } from "@/components/rankings/ranking-list";
+import { ActivateLocationCard } from "@/components/rankings/activate-location-card";
 
-export const dynamic = "force-dynamic";
+export const metadata = { title: "Los Mejores de Vicino" };
 
-interface RankingsPageProps {
-  searchParams: Promise<{
-    category?: string;
-    period?: string;
-    lat?: string;
-    lng?: string;
-  }>;
-}
+type SearchParams = Promise<{
+  category?: string;
+  period?: string;
+  lat?: string;
+  lng?: string;
+}>;
 
-function parseLatLng(latRaw?: string, lngRaw?: string): { lat: number; lng: number } | null {
-  if (!latRaw || !lngRaw) return null;
-  const lat = Number.parseFloat(latRaw);
-  const lng = Number.parseFloat(lngRaw);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { lat, lng };
-}
-
-export default async function RankingsPage({ searchParams }: RankingsPageProps) {
-  const sp = await searchParams;
-
-  return (
-    <Suspense fallback={<RankingSkeleton />}>
-      <RankingsContent searchParams={sp} />
-    </Suspense>
-  );
-}
-
-async function RankingsContent({
+export default async function RankingsPage({
   searchParams,
 }: {
-  searchParams: Awaited<RankingsPageProps["searchParams"]>;
+  searchParams: SearchParams;
 }) {
+  const sp = await searchParams;
+
   const [categories, periods] = await Promise.all([
     getCategories(),
     getAvailablePeriods(),
@@ -54,49 +34,35 @@ async function RankingsContent({
 
   if (categories.length === 0) {
     return (
-      <main className="min-h-screen bg-background">
+      <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <EmptyState
-          title="Aún no hay categorías activas"
-          message="Vuelve pronto."
+          title="Aún no hay categorías"
+          description="Vuelve más tarde cuando haya categorías activas."
         />
       </main>
     );
   }
 
   const currentCategoryId =
-    searchParams.category && categories.some((c) => c.id === searchParams.category)
-      ? searchParams.category
-      : categories[0]!.id;
+    sp.category && categories.some((c) => c.id === sp.category)
+      ? sp.category
+      : (categories[0]?.id ?? null);
 
   const currentPeriod =
-    searchParams.period ?? periods[0]?.period ?? currentPeriodInMexicoCity();
+    sp.period && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.period)
+      ? sp.period
+      : (periods[0]?.period ?? currentPeriodInMexicoCity());
 
-  const geo = parseLatLng(searchParams.lat, searchParams.lng);
-
-  let rankings: RankedSeller[] = [];
-  let queryError: string | null = null;
-
-  if (geo) {
-    try {
-      rankings = await getRankingHiperlocal({
-        category_id: currentCategoryId,
-        period: currentPeriod,
-        user_lat: geo.lat,
-        user_lng: geo.lng,
-        radius_meters: 5000,
-        limit: 10,
-      });
-    } catch (error: unknown) {
-      queryError =
-        error instanceof Error ? error.message : "No pudimos cargar el ranking";
-    }
-  }
-
-  const top3 = rankings.slice(0, 3);
-  const rest = rankings.slice(3);
+  const lat = sp.lat ? Number.parseFloat(sp.lat) : Number.NaN;
+  const lng = sp.lng ? Number.parseFloat(sp.lng) : Number.NaN;
+  const hasLocation =
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180;
 
   return (
-    <main className="min-h-screen bg-background pb-12">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-12 pt-6">
       <RankingHeader
         categories={categories}
         periods={periods}
@@ -104,58 +70,113 @@ async function RankingsContent({
         currentPeriod={currentPeriod}
       />
 
-      {!geo ? (
-        <ActivateLocationCard />
-      ) : queryError ? (
-        <EmptyState
-          title="No pudimos cargar el ranking"
-          message={queryError}
-        />
-      ) : rankings.length === 0 ? (
-        <EmptyState
-          title="Aún no hay ranking en tu zona"
-          message="Sé el primero en vender este mes."
-        />
-      ) : (
-        <>
-          <PodioRanking top3={top3} />
-          <RankingList sellers={rest} />
-        </>
-      )}
+      <div className="mt-6">
+        {hasLocation && currentCategoryId ? (
+          <Suspense
+            key={`${currentCategoryId}:${currentPeriod}:${sp.lat}:${sp.lng}`}
+            fallback={<RankingSkeleton />}
+          >
+            <RankingResults
+              categoryId={currentCategoryId}
+              period={currentPeriod}
+              lat={lat}
+              lng={lng}
+            />
+          </Suspense>
+        ) : (
+          <ActivateLocationCard />
+        )}
+      </div>
     </main>
   );
 }
 
-function EmptyState({ title, message }: { title: string; message: string }) {
+async function RankingResults({
+  categoryId,
+  period,
+  lat,
+  lng,
+}: {
+  categoryId: string;
+  period: string;
+  lat: number;
+  lng: number;
+}) {
+  const result = await getRankingHiperlocal({
+    category_id: categoryId,
+    period,
+    user_lat: lat,
+    user_lng: lng,
+    radius_meters: 5000,
+    limit: 10,
+  });
+
+  if (!result.ok) {
+    return (
+      <EmptyState
+        title="No pudimos cargar el ranking"
+        description={result.error}
+      />
+    );
+  }
+
+  if (result.sellers.length === 0) {
+    return (
+      <EmptyState
+        title="Aún no hay ranking en tu zona"
+        description="Sé el primero en vender este mes y aparecerás aquí."
+      />
+    );
+  }
+
+  const top3 = result.sellers.filter((s) => s.rank <= 3);
+  const rest = result.sellers.filter((s) => s.rank > 3);
+
   return (
-    <section className="mx-4 mt-8 rounded-xl border border-border bg-card p-8 text-center">
-      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Trophy className="h-6 w-6" aria-hidden />
-      </div>
-      <h2 className="mt-4 font-display text-lg font-semibold text-foreground">
+    <div className="flex flex-col gap-6">
+      <PodioRanking top3={top3} />
+      {rest.length > 0 ? <RankingList sellers={rest} /> : null}
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-10 text-center">
+      <Trophy className="h-8 w-8 text-muted-foreground" aria-hidden />
+      <h2 className="font-display text-lg font-semibold text-foreground">
         {title}
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-    </section>
+      <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+    </div>
   );
 }
 
 function RankingSkeleton() {
   return (
-    <main className="min-h-screen bg-background">
-      <div className="px-4 pt-6">
-        <div className="skeleton h-8 w-2/3" />
-        <div className="skeleton mt-2 h-4 w-1/2" />
-        <div className="skeleton mt-4 h-7 w-32" />
-        <div className="mt-5 flex gap-2">
-          <div className="skeleton h-7 w-20" />
-          <div className="skeleton h-7 w-24" />
-          <div className="skeleton h-7 w-16" />
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-3 items-end gap-3 px-2 pt-6">
+        <div className="flex justify-center">
+          <div className="skeleton h-24 w-24 rounded-full" />
+        </div>
+        <div className="-mt-6 flex justify-center">
+          <div className="skeleton h-32 w-32 rounded-full" />
+        </div>
+        <div className="flex justify-center">
+          <div className="skeleton h-24 w-24 rounded-full" />
         </div>
       </div>
-      <div className="mt-8 px-4">
-        <div className="skeleton h-40 w-full" />
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="skeleton h-14 w-full rounded-xl" />
+        ))}
       </div>
-    </main>
+    </div>
   );
 }

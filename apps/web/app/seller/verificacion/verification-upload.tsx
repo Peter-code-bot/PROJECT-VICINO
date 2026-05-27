@@ -93,17 +93,17 @@ export function VerificationUpload({
 
   const statusIcon =
     status === "approved" ? (
-      <CheckCircle className="h-5 w-5 text-emerald-trust" />
+      <CheckCircle className="h-5 w-5 text-[color:var(--trust-emerald)]" />
     ) : status === "pending" ? (
-      <Clock className="h-5 w-5 text-warning" />
+      <Clock className="h-5 w-5 text-amber-400" />
     ) : status === "rejected" ? (
-      <XCircle className="h-5 w-5 text-danger" />
+      <XCircle className="h-5 w-5 text-[color:var(--danger)]" />
     ) : null;
 
   return (
     <div className="space-y-4">
       {status !== "none" && (
-        <div className="flex items-center gap-2 rounded-lg border p-3">
+        <div className="flex items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3">
           {statusIcon}
           <span className="text-sm font-medium">
             {status === "approved" && "Verificación aprobada"}
@@ -114,21 +114,21 @@ export function VerificationUpload({
       )}
 
       {error && (
-        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
+        <div className="rounded-[var(--r-lg)] bg-[color:var(--danger)]/10 p-3 text-sm text-[color:var(--danger)]">
           {error}
         </div>
       )}
 
       <div className="space-y-3">
         {DOCS.map(({ key, label, accept }) => (
-          <div key={key} className="rounded-lg border p-4">
+          <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-sm">{label}</p>
                 {existingDocs[key] ? (
-                  <p className="text-xs text-emerald-trust">Subido</p>
+                  <p className="text-xs text-[color:var(--trust-emerald)]">Subido</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No subido</p>
+                  <p className="text-xs text-[color:var(--fg-muted)]">No subido</p>
                 )}
               </div>
               <label className="cursor-pointer">
@@ -142,7 +142,7 @@ export function VerificationUpload({
                   }}
                   disabled={uploading !== null}
                 />
-                <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent">
+                <span className="inline-flex items-center gap-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-[color:var(--fg-muted)] px-3 py-1.5 text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
                   <Upload className="h-3 w-3" />
                   {uploading === key ? "Subiendo..." : existingDocs[key] ? "Reemplazar" : "Subir"}
                 </span>
