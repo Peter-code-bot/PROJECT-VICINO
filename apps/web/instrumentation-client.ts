@@ -35,7 +35,7 @@ if (!isCapacitor) {
         errors: true,
       }),
     ],
-    beforeSend(event, hint) {
+    beforeSend(event: Sentry.ErrorEvent, hint: Sentry.EventHint) {
       // Drop known noise that does not represent real bugs.
       const exception = hint?.originalException;
       const msg =
