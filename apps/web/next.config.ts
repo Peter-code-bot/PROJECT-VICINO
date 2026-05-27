@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 
@@ -77,4 +78,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+// Sentry wraps PWA's transformed config (Sentry outermost). tunnelRoute keeps
+// ingest requests same-origin so CSP/ad-blockers don't drop them; the
+// middleware matcher excludes /sentry-tunnel so it stays a pass-through.
+export default withSentryConfig(withPWA(nextConfig), {
+  org: "vicino-5r",
+  project: "vicino-web",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  tunnelRoute: "/sentry-tunnel",
+  hideSourceMaps: true,
+  disableLogger: true,
+  automaticVercelMonitors: false,
+});
