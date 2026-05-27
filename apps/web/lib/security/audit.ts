@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { maskEmail } from "@/lib/privacy/mask";
 
 export type SecurityEvent =
@@ -11,7 +12,7 @@ export function logSecurityEvent(event: SecurityEvent): void {
     ? { ...event, email: maskEmail(event.email) }
     : event;
 
-  // Structured warn so log aggregators (Vercel, future Sentry/Logtail) can parse.
+  // Structured warn so log aggregators (Vercel, Sentry/Logtail) can parse.
   // Never include PII in plaintext — masked above where applicable.
   console.warn(
     "[security]",
@@ -20,4 +21,12 @@ export function logSecurityEvent(event: SecurityEvent): void {
       timestamp: new Date().toISOString(),
     })
   );
+
+  // Forward to Sentry so security events are searchable in the dashboard.
+  // safeEvent has already been PII-masked above (e.g., failed_login emails).
+  Sentry.captureMessage(`[security] ${event.type}`, {
+    level: "warning",
+    tags: { source: "security", event_type: event.type },
+    contexts: { security: safeEvent },
+  });
 }

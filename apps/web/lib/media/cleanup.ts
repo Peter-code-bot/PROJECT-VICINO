@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const PUBLIC_BUCKET_RE =
@@ -48,12 +49,21 @@ export async function cleanupRemovedMedia(
       .remove(paths);
     if (error) {
       console.warn("[media-cleanup] storage.remove error:", error.message);
+      Sentry.captureMessage("[media-cleanup] storage.remove returned error", {
+        level: "warning",
+        tags: { source: "media-cleanup" },
+        contexts: { storage: { paths_count: paths.length, error: error.message } },
+      });
       return { ok: 0, failed: paths.length };
     }
     const okCount = Array.isArray(data) ? data.length : 0;
     return { ok: okCount, failed: paths.length - okCount };
   } catch (err) {
     console.warn("[media-cleanup] storage.remove threw:", err);
+    Sentry.captureException(err, {
+      tags: { source: "media-cleanup" },
+      contexts: { storage: { paths_count: paths.length } },
+    });
     return { ok: 0, failed: paths.length };
   }
 }

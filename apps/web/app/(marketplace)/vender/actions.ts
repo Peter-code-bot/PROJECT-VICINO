@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema, updateProductSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -286,6 +287,10 @@ export async function updateProductFull(
       return { error: "No tienes permiso para editar esta publicación." };
     }
     console.error("[updateProductFull] update error:", updateErr);
+    Sentry.captureException(updateErr, {
+      tags: { action: "updateProductFull" },
+      contexts: { product: { id }, supabase: { code: updateErr.code } },
+    });
     return { error: "No se pudo guardar. Intenta de nuevo." };
   }
 
