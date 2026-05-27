@@ -78,6 +78,9 @@ BEGIN
     GROUP BY sc.seller_id
   ),
   rating_stats AS (
+    -- Excluye reviews ocultas por moderación. Las hidden suelen ser spam o
+    -- tóxicas; contarlas distorsionaría el rating del vendedor.
+    -- reviews.is_hidden viene de 20260429120000_moderation_reports.sql.
     SELECT
       r.reviewed_id AS seller_id,
       AVG(r.rating)::NUMERIC(3,2) AS rating_avg
@@ -86,18 +89,32 @@ BEGIN
       AND r.created_at >= v_start_ts
       AND r.created_at <  v_end_ts
       AND r.reviewed_id IN (SELECT seller_id FROM sellers_in_category)
+      AND r.is_hidden = FALSE
     GROUP BY r.reviewed_id
   ),
   -- For each chat the seller is in, compute minutes between chat creation and
   -- the seller's first message in that chat. Then average per seller.
+  --
+  -- Two data-quality filters on messages, both required for honest response
+  -- time (columns added by pending migrations that are already applied in
+  -- prod despite ledger drift):
+  --   - message_type = 'user_text': excludes the auto-generated
+  --     'sale_confirmed' system message that chat/actions.ts emits when a
+  --     sale is confirmed. Counting it would falsely shorten the seller's
+  --     response time. message_type is TEXT NOT NULL DEFAULT 'user_text'
+  --     (per 20260501000001), so no NULLs to handle.
+  --   - is_hidden = FALSE: excludes messages hidden by moderation
+  --     (per 20260429120000).
   per_chat_response AS (
     SELECT
       c.vendedor_id AS seller_id,
       EXTRACT(EPOCH FROM (MIN(m.created_at) - c.created_at)) / 60.0 AS minutes_to_first_reply
     FROM chats c
     JOIN messages m
-      ON m.chat_id  = c.id
-     AND m.autor_id = c.vendedor_id
+      ON  m.chat_id      = c.id
+      AND m.autor_id     = c.vendedor_id
+      AND m.message_type = 'user_text'
+      AND m.is_hidden    = FALSE
     WHERE c.vendedor_id IN (SELECT seller_id FROM sellers_in_category)
       AND c.created_at >= v_start_ts
       AND c.created_at <  v_end_ts
@@ -309,11 +326,21 @@ BEGIN
       sr.trust_points_snapshot,
       sr.computed_at,
       (
+        -- Pick the seller's most recent VISIBLE product in this category.
+        -- is_hidden filter goes INSIDE this subquery (before ORDER BY .. LIMIT 1)
+        -- on purpose: if we filtered after the LIMIT 1, a seller whose newest
+        -- listing happens to be hidden by moderation would fall out of the
+        -- ranking entirely, even if they have older visible listings. With
+        -- the filter here, the subquery returns the most recent listing among
+        -- only visible ones; the seller stays in the ranking as long as ANY
+        -- visible listing exists in the category.
+        -- products_services.is_hidden comes from 20260429120000_moderation_reports.sql.
         SELECT ps.ubicacion_geo
         FROM products_services ps
         WHERE ps.creador_id    = sr.seller_id
           AND ps.categoria_id  = p_category_id
           AND ps.estatus       = 'disponible'
+          AND ps.is_hidden     = FALSE
           AND ps.ubicacion_geo IS NOT NULL
         ORDER BY ps.created_at DESC
         LIMIT 1
@@ -357,7 +384,13 @@ BEGIN
     (p.trust_level IN ('confiable', 'estrella', 'elite')) AS is_confiable,
     o.distancia_aprox
   FROM ordered o
-  JOIN profiles p ON p.id = o.seller_id
+  -- Hide moderation-suspended/banned sellers from the public ranking.
+  -- INNER JOIN with is_hidden = FALSE excludes them entirely; we do NOT
+  -- want suspended users showcased as top sellers. is_hidden on profiles
+  -- comes from 20260429120000_moderation_reports.sql.
+  JOIN profiles p
+    ON  p.id        = o.seller_id
+    AND p.is_hidden = FALSE
   ORDER BY o.rank
   LIMIT p_limit;
 END;
