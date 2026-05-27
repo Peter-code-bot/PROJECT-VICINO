@@ -31,7 +31,7 @@ if (!isCapacitor) {
       }),
       supabaseIntegration(SupabaseClient, Sentry, {
         tracing: true,
-        breadcrumbs: true,
+        breadcrumbs: false,
         errors: true,
       }),
     ],

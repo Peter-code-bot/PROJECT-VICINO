@@ -14,7 +14,7 @@ Sentry.init({
   integrations: [
     supabaseIntegration(SupabaseClient, Sentry, {
       tracing: true,
-      breadcrumbs: true,
+      breadcrumbs: false,
       errors: true,
     }),
     // Prevent duplicate spans: supabaseIntegration creates named spans for
