@@ -87,7 +87,12 @@ export default withSentryConfig(withPWA(nextConfig), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   tunnelRoute: "/sentry-tunnel",
-  hideSourceMaps: true,
+  // hideSourceMaps was removed in @sentry/nextjs 8+. The equivalent is now
+  // nested under sourcemaps — uploads still happen, but the public client
+  // bundle does not ship the .map files alongside.
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
   disableLogger: true,
   automaticVercelMonitors: false,
 });
