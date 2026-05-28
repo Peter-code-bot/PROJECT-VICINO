@@ -62,12 +62,37 @@ export function ChatWindow({
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+
+  // FIFO map of optimistic temp ids per texto for the current user.
+  // Key is the message texto; value is an array of in-flight tempIds in
+  // submit order. Used by the realtime INSERT handler to reclaim the
+  // correct tempId when two identical sends are in flight at the same
+  // time (test #6 of MP#07 item #1 Fase 5 used to collapse both into
+  // one because the proximity fallback matched the first temp it found).
+  // Maintained from onMutate (push), onSuccess (shift on real-id swap)
+  // and onError (shift on rollback) so a failed send does not leave a
+  // zombie entry that a future send of the same texto could reclaim.
+  const tempSendsByTextRef = useRef<Map<string, string[]>>(new Map());
+
+  function trackTempId(text: string, tempId: string) {
+    const current = tempSendsByTextRef.current.get(text) ?? [];
+    tempSendsByTextRef.current.set(text, [...current, tempId]);
+  }
+
+  function releaseTempId(text: string, tempId: string) {
+    const current = tempSendsByTextRef.current.get(text);
+    if (!current) return;
+    const next = current.filter((id) => id !== tempId);
+    if (next.length === 0) tempSendsByTextRef.current.delete(text);
+    else tempSendsByTextRef.current.set(text, next);
+  }
   const router = useRouter();
 
   const sendMutation = useOptimisticMutation(
     ({ text }: { tempId: string; text: string }) => sendMessage(chatId, text),
     {
       onMutate: ({ tempId, text }) => {
+        trackTempId(text, tempId);
         const optimisticMsg: Message = {
           id: tempId,
           chat_id: chatId,
@@ -79,10 +104,12 @@ export function ChatWindow({
           leido_por_vendedor: !isBuyer,
         };
         setMessages((prev) => [...prev, optimisticMsg]);
-        return () =>
+        return () => {
+          releaseTempId(text, tempId);
           setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        };
       },
-      onSuccess: (result, { tempId }) => {
+      onSuccess: (result, { tempId, text }) => {
         // Replace the temp id with the server-generated UUID. When the
         // realtime INSERT echo arrives next, the existing prev.some
         // check matches by id and avoids the duplicate.
@@ -96,12 +123,20 @@ export function ChatWindow({
           typeof result.data.id === "string"
             ? result.data.id
             : null;
+        // Release the tempId from the FIFO tracker regardless of whether
+        // realId is available. The temp is no longer in flight.
+        releaseTempId(text, tempId);
         if (!realId) return;
         setMessages((prev) =>
           prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m)),
         );
       },
       onError: (err) => {
+        // Caveat-1 of item #14 firma: the rollback returned by onMutate
+        // already calls releaseTempId, so the FIFO tracker stays in sync
+        // with the visible messages list even on offline send failures.
+        // A subsequent retry of the same texto will not reclaim a zombie
+        // entry because the failed tempId was removed from the map.
         const message =
           err instanceof Error && err.message
             ? err.message
@@ -134,14 +169,34 @@ export function ChatWindow({
             // Already in list by real id (after onSuccess replaced temp->real).
             if (prev.some((m) => m.id === newMsg.id)) return prev;
 
-            // Edge-ordering fallback: realtime echo may arrive before the
-            // server action response on slow networks. If this echo is from
-            // the current user, look for a still-pending temp message with
-            // matching texto and a created_at within 3s and swap it for the
-            // real row instead of appending a duplicate. Window is tight on
-            // purpose so two legitimate identical sends (e.g. "hola" twice
-            // within seconds) still both appear when they are >= 3s apart.
             if (newMsg.autor_id === currentUserId) {
+              // Primary reclaim path: FIFO map keyed by texto. Two rapid
+              // identical sends (test #6 from MP#07 item #1 Fase 5) each
+              // push their own tempId into the same key. The oldest temp
+              // wins each realtime echo, so the second send is preserved
+              // as its own message instead of collapsing into the first
+              // (which is what the proximity-only fallback used to do).
+              const queue = tempSendsByTextRef.current.get(newMsg.texto);
+              if (queue && queue.length > 0) {
+                const reclaimTempId = queue[0];
+                if (queue.length === 1) {
+                  tempSendsByTextRef.current.delete(newMsg.texto);
+                } else {
+                  tempSendsByTextRef.current.set(newMsg.texto, queue.slice(1));
+                }
+                return prev.map((m) =>
+                  m.id === reclaimTempId ? newMsg : m,
+                );
+              }
+
+              // Ultimate fallback: if the Map desyncs (unmount/remount,
+              // race condition with clearTimeout, hook reset during HMR,
+              // etc) the proximity 3s window still covers the edge
+              // ordering scenario from test #4 (realtime echo before the
+              // server action response). NOT redundant with the Map: this
+              // is the safety net for cases where the Map is empty but
+              // a matching temp is still visible in the messages array.
+              // Do NOT remove this check.
               const realTime = new Date(newMsg.created_at).getTime();
               const tempMatch = prev.find((m) => {
                 if (!m.id.startsWith("temp-")) return false;
