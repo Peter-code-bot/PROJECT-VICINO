@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import Link from "next/link";
-import Image from "next/image";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Home } from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -29,17 +28,16 @@ export default async function AdminLayout({
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in-up">
       <div className="flex items-center gap-4 mb-10">
-        <Link href="/" className="flex items-center gap-2 group">
-          <Image
-            src="/vicino-logo.png"
-            alt="VICINO"
-            width={40}
-            height={40}
-            className="shrink-0 group-hover:scale-105 transition-transform"
-            priority
-          />
-          <span className="font-heading font-bold text-xl leading-none">
-            VICINO
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-card/50 transition-colors"
+          title="Volver al Inicio"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card border border-border/50 group-hover:border-border transition-colors">
+            <Home className="w-5 h-5 text-fg" />
+          </div>
+          <span className="font-heading font-bold text-xl leading-none text-fg">
+            Inicio
           </span>
         </Link>
         <span className="text-muted-foreground/40 font-light text-2xl">/</span>

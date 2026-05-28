@@ -5,8 +5,7 @@ import { SellerMobileDrawer } from "@/components/layout/seller-mobile-drawer";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
 import Link from "next/link";
-import Image from "next/image";
-import { Store } from "lucide-react";
+import { Store, Home } from "lucide-react";
 
 export default async function SellerLayout({
   children,
@@ -42,17 +41,16 @@ export default async function SellerLayout({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3 md:gap-4">
           <SellerMobileDrawer storeName={storeName} />
-          <Link href="/" className="flex items-center gap-2 group">
-            <Image
-              src="/vicino-logo.png"
-              alt="VICINO"
-              width={40}
-              height={40}
-              className="shrink-0 group-hover:-translate-y-0.5 transition-transform"
-              priority
-            />
-            <span className="font-heading font-bold text-xl leading-none hidden sm:block">
-              VICINO
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-card/50 transition-colors"
+            title="Volver al Inicio"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card border border-border/50 group-hover:border-border transition-colors">
+              <Home className="w-5 h-5 text-fg" />
+            </div>
+            <span className="font-heading font-bold text-xl leading-none hidden sm:block text-fg">
+              Inicio
             </span>
           </Link>
           <span className="text-muted-foreground/40 font-light text-2xl hidden sm:block">/</span>
