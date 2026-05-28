@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeTime } from "@vicino/shared";
-import { Send, Handshake, ArrowLeft, Check, CheckCheck } from "lucide-react";
+import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
-import { SaleConfirmationCard } from "./sale-confirmation-card";
+import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -23,22 +23,6 @@ interface Message {
   leido_por_vendedor: boolean;
 }
 
-interface SaleConfirmation {
-  id: string;
-  product_id: string;
-  buyer_id: string;
-  seller_id: string;
-  precio_acordado: number;
-  cantidad: number;
-  metodo_pago: string | null;
-  tipo_entrega: string;
-  status: string;
-  initiated_by: string;
-  buyer_confirmed: boolean;
-  seller_confirmed: boolean;
-  created_at: string;
-  products_services: { titulo: string } | { titulo: string }[] | null;
-}
 
 interface ChatWindowProps {
   chatId: string;
@@ -262,25 +246,64 @@ export function ChatWindow({
       )}
 
       {/* Sale confirmation — compact collapsible banner */}
-      {saleConfirmations.length > 0 && (
-        <div className="mx-3 my-1">
-          <button
-            onClick={() => setShowSaleDetails(!showSaleDetails)}
-            className="flex w-full items-center gap-2.5 rounded-xl bg-[color:var(--brand-tint)] px-3 py-2 text-left shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-[color:var(--brand-tint-strong)]"
-          >
-            <Handshake className="h-4 w-4 shrink-0 text-[color:var(--brand-hi)]" />
-            <span className="flex-1 text-xs font-semibold text-[color:var(--fg)]">Confirmación de venta</span>
-            <span className="text-[10px] text-[color:var(--fg-muted)]">{showSaleDetails ? "Ocultar" : "Ver detalles"}</span>
-          </button>
-          {showSaleDetails && (
-            <div className="mt-1 space-y-1 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
-              {saleConfirmations.map((sc) => (
-                <SaleConfirmationCard key={sc.id} confirmation={sc} currentUserId={currentUserId} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {saleConfirmations.length > 0 && (() => {
+        const primarySc = saleConfirmations[0];
+        if (!primarySc) return null;
+        
+        const scIsBuyer = currentUserId === primarySc.buyer_id;
+        const myConf = scIsBuyer ? primarySc.buyer_confirmed : primarySc.seller_confirmed;
+        const otherConf = scIsBuyer ? primarySc.seller_confirmed : primarySc.buyer_confirmed;
+        
+        let scStatus: ConfirmationStatus = "pendiente";
+        if (primarySc.status === "rejected" || primarySc.rejected_by) {
+          scStatus = "rechazado";
+        } else if (primarySc.status === "completed") {
+          scStatus = "completado";
+        } else if (myConf && !otherConf) {
+          scStatus = "esperando";
+        }
+
+        return (
+          <div className="mx-3 my-1">
+            <button
+              onClick={() => setShowSaleDetails(!showSaleDetails)}
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left rounded-xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-[color:var(--brand-tint-strong)]"
+            >
+              <div className="w-7 h-7 rounded-[9px] bg-[color:var(--brand)] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(31,90,78,0.4)]">
+                <Handshake className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-[color:var(--fg)]">Confirmación de venta</div>
+                <StatusPill status={scStatus} />
+              </div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[color:var(--fg-muted)]">
+                {showSaleDetails ? "Ocultar" : "Ver detalles"}
+                <ChevronDown className={cn("h-3 w-3 transition-transform", showSaleDetails && "rotate-180")} strokeWidth={2.4} />
+              </span>
+            </button>
+            {showSaleDetails && (
+              <div className="mt-1 space-y-1 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
+                {saleConfirmations.map((sc) => (
+                  <SaleConfirmationCard 
+                    key={sc.id} 
+                    confirmation={sc} 
+                    currentUserId={currentUserId}
+                    counterpart={{ 
+                      name: otherUser?.nombre ?? "Usuario", 
+                      avatarUrl: otherUser?.foto, 
+                      role: isBuyer ? "vendedor" : "comprador" 
+                    }}
+                    currentUser={{ 
+                      initial: "Y", // Using generic 'Y' for 'You' since we don't have current user's name easily accessible
+                      role: isBuyer ? "comprador" : "vendedor" 
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-2">
