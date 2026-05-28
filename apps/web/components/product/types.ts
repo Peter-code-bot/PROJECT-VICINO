@@ -13,7 +13,7 @@ export interface ProductDetailProduct {
   tipo_entrega: string | null;
   imagen_principal: string | null;
   galeria_imagenes: string[] | null;
-  gallery_sizes: unknown;
+  gallery_sizes: Array<{ colSpan: number; rowSpan: number }> | null;
   creador_id: string;
   vistas_count: number | null;
   allow_appointments: boolean | null;

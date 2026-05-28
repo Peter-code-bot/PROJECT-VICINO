@@ -9,7 +9,7 @@ interface ProductGalleryCarouselProps {
   title: string;
   // Reserved for future "preserve order" handling. Mobile carousel does not
   // honor colSpan/rowSpan but the prop is accepted so callers stay stable.
-  savedSizes?: unknown;
+  savedSizes?: Array<{ colSpan: number; rowSpan: number }> | null;
 }
 
 export function ProductGalleryCarousel({ images, title }: ProductGalleryCarouselProps) {

@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PriceDisplay } from "@/components/shared/price-display";
+import { cn } from "@/lib/utils";
 import { AppointmentButton } from "./appointment-button";
 import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
 import { GalleryTopBar } from "./gallery-top-bar";
 import { MetaRow } from "./meta-row";
 import { PaymentChips } from "./payment-chips";
+import { PreviewBanner } from "./preview-banner";
 import { ProductGalleryCarousel } from "./product-gallery-carousel";
 import { ProductReviewsTrigger } from "./product-reviews-trigger";
 import { ReviewsSummary } from "./reviews-summary";
@@ -55,8 +57,13 @@ export function ProductDetailMobile({
   const averageRating = Number(seller.average_rating ?? 0);
   const reviewsCount = Number(seller.reviews_count ?? reviews.length);
 
+  const showPreviewBanner = isOwner && isVisitorPreview;
+
   return (
-    <div className="flex flex-col bg-bg pb-28">
+    <div
+      className={cn("flex flex-col bg-bg pb-28", showPreviewBanner && "pt-12")}
+    >
+      <PreviewBanner isOwner={isOwner} />
       <div className="relative">
         <ProductGalleryCarousel
           images={images}

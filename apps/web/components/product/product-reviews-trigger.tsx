@@ -24,6 +24,12 @@ interface ProductReviewsTriggerProps {
    */
   externalOpen?: boolean;
   onExternalClose?: () => void;
+  /**
+   * Forwarded to the underlying drawer. Use "right" for the desktop side
+   * sheet, leave undefined (default "bottom") for the mobile right-overlay
+   * legacy behavior.
+   */
+  side?: "bottom" | "right";
 }
 
 export function ProductReviewsTrigger({
@@ -36,6 +42,7 @@ export function ProductReviewsTrigger({
   currentProductId,
   externalOpen,
   onExternalClose,
+  side,
 }: ProductReviewsTriggerProps) {
   const controlled = externalOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -80,6 +87,7 @@ export function ProductReviewsTrigger({
         sellerAvatar={sellerAvatar}
         currentUserId={currentUserId}
         currentProductId={currentProductId}
+        side={side}
       />
     </>
   );

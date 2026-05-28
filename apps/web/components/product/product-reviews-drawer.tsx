@@ -44,6 +44,13 @@ interface ProductReviewsDrawerProps {
   sellerAvatar: string | null;
   currentUserId: string | null;
   currentProductId: string;
+  /**
+   * "bottom" (default): legacy behavior, mobile-only right-side overlay at
+   * 92vw. Kept intact for the v2 mobile layout that already shipped.
+   * "right": desktop side-sheet at 480px, visible on every viewport because
+   * the desktop wrapper itself is hidden md:block.
+   */
+  side?: "bottom" | "right";
 }
 
 export function ProductReviewsDrawer({
@@ -56,6 +63,7 @@ export function ProductReviewsDrawer({
   sellerAvatar,
   currentUserId,
   currentProductId,
+  side = "bottom",
 }: ProductReviewsDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -75,8 +83,15 @@ export function ProductReviewsDrawer({
 
   if (!open) return null;
 
+  const overlayWrapperClass =
+    side === "right" ? "fixed inset-0 z-50" : "fixed inset-0 z-50 md:hidden";
+  const panelClass =
+    side === "right"
+      ? "absolute right-0 top-0 bottom-0 w-[min(480px,90vw)] bg-background border-l border-border flex flex-col animate-slide-in-right"
+      : "absolute right-0 top-0 bottom-0 w-[92vw] max-w-md bg-background border-l border-border flex flex-col animate-slide-in-right";
+
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className={overlayWrapperClass}>
       <div
         className="absolute inset-0 bg-black/60"
         onClick={onClose}
@@ -86,7 +101,7 @@ export function ProductReviewsDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="reviews-drawer-title"
-        className="absolute right-0 top-0 bottom-0 w-[92vw] max-w-md bg-background border-l border-border flex flex-col animate-slide-in-right"
+        className={panelClass}
       >
         <div className="sticky top-0 bg-background border-b border-border px-4 py-3 flex items-center gap-3 z-10">
           <div className="w-12 h-12 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 relative">
