@@ -21,6 +21,14 @@ export interface OptimisticMutationOpts<TArgs, TResult> {
    * point, so this is for user-visible feedback (toast, banner) only.
    */
   onError?: (error: unknown, args: TArgs) => void;
+  /**
+   * Allow multiple mutations to be in-flight at the same time. Default
+   * is `false` so a fast double-tap on an idempotent toggle (favorite,
+   * pause/resume) is collapsed to a single request. Opt in to `true`
+   * for streaming writes like chat sends where every user action must
+   * produce a distinct request, even if previous ones are still pending.
+   */
+  allowConcurrent?: boolean;
 }
 
 export interface UseOptimisticMutationResult<TArgs> {
@@ -54,7 +62,9 @@ export function useOptimisticMutation<TArgs, TResult>(
   const inFlightRef = useRef(false);
 
   const mutate = (args: TArgs): Promise<void> => {
-    if (inFlightRef.current) return Promise.resolve();
+    if (!opts.allowConcurrent && inFlightRef.current) {
+      return Promise.resolve();
+    }
     inFlightRef.current = true;
     setError(null);
 
