@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductGalleryCarouselProps {
@@ -46,8 +47,9 @@ export function ProductGalleryCarousel({ images, title }: ProductGalleryCarousel
 
   if (images.length === 0) {
     return (
-      <div className="aspect-square w-full bg-card-2 flex items-center justify-center">
-        <span className="text-sm text-fg-dim">Sin imagenes</span>
+      <div className="aspect-[4/3] w-full max-h-[300px] bg-card-2 border-b border-border flex flex-col items-center justify-center gap-2 text-fg-muted">
+        <ImageOff className="h-8 w-8 opacity-60" aria-hidden />
+        <span className="text-sm">Sin imágenes</span>
       </div>
     );
   }
