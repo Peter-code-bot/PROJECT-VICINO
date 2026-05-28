@@ -11,6 +11,8 @@
   --brand-cream:     #FFF8F0;
   --trust-emerald:   #2D8F6F;
   --trust-gold:      #D4A853;
+  --trust-silver:    #A8B0AD;
+  --trust-bronze:    #C48A5A;
   --danger:          #FF3B30;
   --warning:         #B8862A;
 
@@ -136,6 +138,8 @@
   --color-brand-cream:  var(--brand-cream);
   --color-emerald-trust: var(--trust-emerald);
   --color-gold:         var(--trust-gold);
+  --color-silver:       var(--trust-silver);
+  --color-bronze:       var(--trust-bronze);
   --color-danger:       var(--danger);
   --color-warning:      var(--warning);
 

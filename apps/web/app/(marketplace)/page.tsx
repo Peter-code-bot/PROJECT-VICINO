@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCarousel } from "@/components/home/product-carousel";
+import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
 import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES } from "@vicino/shared";
@@ -203,6 +205,11 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─── RANKING STRIP ─────────────────────────────────── */}
+      <Suspense fallback={null}>
+        <RankingsHomeStripSection />
+      </Suspense>
 
       {/* ─── PRODUCT CAROUSELS ──────────────────────────────── */}
       {all.length > 0 ? (

@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Trophy, PlusCircle, MessageCircle, User } from "lucide-react";
+import { Home, Search, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatUnread } from "@/components/layout/chat-unread-provider";
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/buscar", label: "Buscar", icon: Search },
-  { href: "/rankings", label: "Rankings", icon: Trophy },
   { href: "/vender", label: "Vender", icon: PlusCircle },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/perfil", label: "Perfil", icon: User },
