@@ -12,7 +12,7 @@ interface StickyCtaProps {
 }
 
 const SHELL =
-  "fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-border bg-bg px-4 pt-3";
+  "fixed inset-x-0 bottom-[var(--bottom-nav-h)] md:bottom-0 z-30 flex items-center gap-2 border-t border-border bg-bg px-4 pt-3";
 const SAFE_PAD = "calc(env(safe-area-inset-bottom) + 0.75rem)";
 
 export function StickyCta({

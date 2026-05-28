@@ -63,6 +63,13 @@
   --shadow-md:   0 4px 12px rgba(0,0,0,0.08);
   --shadow-lg:   0 8px 30px rgba(0,0,0,0.12);
   --shadow-glow: 0 10px 24px rgba(31,90,78,0.35);
+
+  /* Shell layout (mobile bottom-nav visual height incl. safe-area margin).
+     Consumed via bottom-[var(--bottom-nav-h)] in sticky CTAs that must
+     sit above the floating nav. Kept in :root (NOT @theme inline) so it
+     stays as an arbitrary-value CSS variable instead of a Tailwind
+     utility class with a weird auto-generated name. */
+  --bottom-nav-h: 76px;
 }
 
 .dark {

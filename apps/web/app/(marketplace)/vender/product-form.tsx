@@ -645,7 +645,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       <button
         type="submit"
         disabled={loading || uploading}
-        className="sticky bottom-20 z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
+        className="sticky bottom-[var(--bottom-nav-h)] z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

@@ -71,7 +71,7 @@ export function ProductDetailMobile({
   const reviewsCount = Number(seller.reviews_count ?? reviews.length);
 
   return (
-    <div className="flex flex-col bg-bg pb-28">
+    <div className="flex flex-col bg-bg pb-[calc(var(--bottom-nav-h)+5rem)]">
       <div className="sticky top-0 z-30 flex flex-col">
         <ListingStatusBanner isOwner={isOwner} estatus={product.estatus} />
         <PreviewBanner isOwner={isOwner} />
