@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
-import { Bell } from "lucide-react";
+import { Bell, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -51,7 +51,21 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           </div>
         </Link>
 
-        {/* Notifications */}
+        <div className="flex items-center gap-2">
+          {/* Rankings */}
+          <Link
+            href="/rankings"
+            className={cn(
+              "relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+              "bg-card-2 text-fg-muted hover:text-fg",
+              "shadow-[inset_0_0_0_1px_var(--border)]"
+            )}
+            aria-label="Rankings"
+          >
+            <Trophy className="h-[18px] w-[18px]" strokeWidth={2} />
+          </Link>
+
+          {/* Notifications */}
         <Link
           href="/notificaciones"
           className={cn(
@@ -69,6 +83,7 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
             />
           )}
         </Link>
+        </div>
       </div>
     </header>
   );
