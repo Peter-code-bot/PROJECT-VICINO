@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,27 @@ export function ProductCard({
   precioNegociable,
 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
-  const [isPending, startTransition] = useTransition();
+
+  const { mutate: toggleFav, isPending } = useOptimisticMutation(
+    toggleFavorite,
+    {
+      onMutate: () => {
+        const previous = isFavorite;
+        setIsFavorite(!previous);
+        return () => setIsFavorite(previous);
+      },
+      onSuccess: (result) => {
+        if (
+          result &&
+          typeof result === "object" &&
+          "isFavorite" in result &&
+          typeof result.isFavorite === "boolean"
+        ) {
+          setIsFavorite(result.isFavorite);
+        }
+      },
+    },
+  );
 
   return (
     <Link
@@ -111,11 +132,7 @@ export function ProductCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setIsFavorite(!isFavorite);
-            startTransition(async () => {
-              const result = await toggleFavorite(id);
-              if (result.isFavorite !== undefined) setIsFavorite(result.isFavorite);
-            });
+            void toggleFav(id);
           }}
           aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           className={cn(

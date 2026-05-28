@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Heart } from "lucide-react";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { cn } from "@/lib/utils";
 
 interface FavoriteButtonProps {
@@ -21,7 +22,24 @@ export function FavoriteButton({
   className,
 }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
-  const [isPending, startTransition] = useTransition();
+
+  const { mutate, isPending } = useOptimisticMutation(toggleFavorite, {
+    onMutate: () => {
+      const previous = isFavorite;
+      setIsFavorite(!previous);
+      return () => setIsFavorite(previous);
+    },
+    onSuccess: (result) => {
+      if (
+        result &&
+        typeof result === "object" &&
+        "isFavorite" in result &&
+        typeof result.isFavorite === "boolean"
+      ) {
+        setIsFavorite(result.isFavorite);
+      }
+    },
+  });
 
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -38,11 +56,7 @@ export function FavoriteButton({
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
-    startTransition(async () => {
-      const result = await toggleFavorite(productId);
-      if (result.isFavorite !== undefined) setIsFavorite(result.isFavorite);
-    });
+    void mutate(productId);
   }
 
   return (
