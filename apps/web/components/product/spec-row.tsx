@@ -1,4 +1,5 @@
 import { formatRelativeTime } from "@vicino/shared";
+import { formatProductCondition } from "@/lib/product-condition";
 
 interface SpecRowProps {
   estado: string | null;
@@ -34,7 +35,7 @@ function SpecCell({ label, value }: SpecCellProps) {
 export function SpecRow({ estado, deliveryLabel, createdAt }: SpecRowProps) {
   return (
     <div className="grid grid-cols-3 gap-2 rounded-[var(--r-lg)] bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)]">
-      <SpecCell label="ESTADO" value={estado ?? "—"} />
+      <SpecCell label="ESTADO" value={formatProductCondition(estado)} />
       <SpecCell label="ENTREGA" value={shortDeliveryLabel(deliveryLabel)} />
       <SpecCell label="PUBLICADO" value={formatRelativeTime(createdAt)} />
     </div>

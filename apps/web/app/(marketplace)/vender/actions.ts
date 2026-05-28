@@ -32,6 +32,7 @@ export async function createProduct(formData: FormData) {
   if (!rate.ok) return { error: rate.error };
 
   // Validate
+  const estadoRaw = (formData.get("estado") as string) || "";
   const raw = {
     titulo: formData.get("titulo") as string,
     descripcion: formData.get("descripcion") as string,
@@ -40,6 +41,7 @@ export async function createProduct(formData: FormData) {
     categoria: formData.get("categoria") as string,
     ubicacion: (formData.get("ubicacion") as string) || undefined,
     tipo_entrega: (formData.get("tipo_entrega") as string) || "pickup",
+    estado: estadoRaw === "" ? null : estadoRaw,
   };
 
   const result = createProductSchema.safeParse(raw);
@@ -90,6 +92,10 @@ export async function createProduct(formData: FormData) {
       ubicacion: result.data.ubicacion ?? null,
       tipo_entrega: result.data.tipo_entrega,
       estatus: "disponible",
+      // Physical condition only applies to productos; servicios stay null.
+      ...(result.data.tipo === "producto" && result.data.estado
+        ? { estado: result.data.estado }
+        : {}),
       imagen_principal: imagenPrincipal,
       galeria_imagenes: galeriaImagenes.length > 0 ? galeriaImagenes : [],
       delivery_radius_km: deliveryRadius,
@@ -138,12 +144,19 @@ export async function updateProductFull(
   const categoria = formData.get("categoria");
   const ubicacion = formData.get("ubicacion");
   const tipoEntrega = formData.get("tipo_entrega");
+  const estadoField = formData.get("estado");
   if (typeof titulo === "string" && titulo.length > 0) raw.titulo = titulo;
   if (typeof descripcion === "string" && descripcion.length > 0) raw.descripcion = descripcion;
   if (precio !== null && precio !== "") raw.precio = Number(precio);
   if (typeof categoria === "string" && categoria.length > 0) raw.categoria = categoria;
   if (typeof ubicacion === "string" && ubicacion.length > 0) raw.ubicacion = ubicacion;
   if (typeof tipoEntrega === "string" && tipoEntrega.length > 0) raw.tipo_entrega = tipoEntrega;
+  // estado is only present in the form when tipoSeleccionado === "producto";
+  // servicios never render the select. If the field arrives we validate it
+  // and rely on the DB CHECK constraint as the last line of defense.
+  if (typeof estadoField === "string" && estadoField.length > 0) {
+    raw.estado = estadoField;
+  }
 
   const parsed = updateProductSchema.safeParse(raw);
   if (!parsed.success) {
@@ -235,6 +248,9 @@ export async function updateProductFull(
   if (parsed.data.categoria !== undefined) updateObj.categoria = parsed.data.categoria;
   if (parsed.data.ubicacion !== undefined) updateObj.ubicacion = parsed.data.ubicacion;
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
+  if (parsed.data.estado !== undefined && parsed.data.estado !== null) {
+    updateObj.estado = parsed.data.estado;
+  }
 
   if (deliveryRadius !== null && !Number.isNaN(deliveryRadius)) {
     updateObj.delivery_radius_km = deliveryRadius;
