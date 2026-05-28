@@ -107,6 +107,9 @@ async function RankingsContent({
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3);
 
+  const selectedCategoryName =
+    categories.find((c) => c.id === currentCategoryId)?.nombre ?? "Categoría";
+
   return (
     <main className="min-h-screen bg-background pb-12">
       <RankingHeader
@@ -115,6 +118,10 @@ async function RankingsContent({
         currentCategoryId={currentCategoryId}
         currentPeriod={currentPeriod}
       />
+
+      <h2 className="mt-8 mb-4 px-4 text-center font-display text-2xl font-bold text-foreground">
+        {selectedCategoryName}
+      </h2>
 
       {!geo ? (
         <ActivateLocationCard />
