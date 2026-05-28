@@ -13,6 +13,14 @@ export const DELIVERY_OPTIONS = [
 
 export const deliveryValues = DELIVERY_OPTIONS.map((o) => o.value) as [string, ...string[]];
 
+export const PRODUCT_CONDITION_VALUES = [
+  "nuevo",
+  "como_nuevo",
+  "bueno",
+  "aceptable",
+  "para_piezas",
+] as const;
+
 export const createProductSchema = z.object({
   titulo: z.string().min(3, "Mínimo 3 caracteres").max(120),
   descripcion: z.string().min(10, "Mínimo 10 caracteres").max(5000),
@@ -21,6 +29,7 @@ export const createProductSchema = z.object({
   categoria: z.string().min(1, "Selecciona una categoría"),
   ubicacion: z.string().optional(),
   tipo_entrega: z.enum(deliveryValues).default("punto_encuentro"),
+  estado: z.enum(PRODUCT_CONDITION_VALUES).optional().nullable(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

@@ -24,7 +24,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
     .from("products_services")
     .select(
       `id, titulo, descripcion, precio, tipo, categoria, ubicacion,
-       delivery_radius_km, tipo_entrega, allow_appointments,
+       delivery_radius_km, tipo_entrega, estado, allow_appointments,
        appointment_start_time, appointment_end_time, appointment_duration_minutes,
        imagen_principal, galeria_imagenes`,
     )
@@ -50,6 +50,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
           ubicacion: product.ubicacion,
           delivery_radius_km: product.delivery_radius_km,
           tipo_entrega: product.tipo_entrega,
+          estado: product.estado ?? null,
           allow_appointments: product.allow_appointments ?? false,
           appointment_start_time: product.appointment_start_time,
           appointment_end_time: product.appointment_end_time,

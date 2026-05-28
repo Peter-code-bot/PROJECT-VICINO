@@ -24,6 +24,7 @@ export interface ProductInitialValues {
   ubicacion?: string | null;
   delivery_radius_km?: number | null;
   tipo_entrega: string;
+  estado?: string | null;
   allow_appointments: boolean;
   appointment_start_time?: string | null;
   appointment_end_time?: string | null;
@@ -54,6 +55,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     initialValues?.tipo ?? "producto",
   );
   const [selectedCategory, setSelectedCategory] = useState(initialValues?.categoria ?? "");
+  const [estado, setEstado] = useState<string>(initialValues?.estado ?? "");
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [locationData, setLocationData] = useState({
@@ -544,6 +546,39 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y placeholder:text-muted-foreground/50"
         />
       </div>
+
+      {/* Estado / condicion fisica (solo productos) */}
+      {tipoSeleccionado === "producto" && (
+        <div className="space-y-2 pt-2">
+          <label htmlFor="estado" className="text-sm font-medium text-foreground/80">
+            Estado del producto
+          </label>
+          <select
+            id="estado"
+            name="estado"
+            required
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 1rem center",
+              backgroundSize: "0.75em auto",
+              paddingRight: "2.5rem",
+            }}
+          >
+            <option value="" disabled>
+              Selecciona el estado
+            </option>
+            <option value="nuevo">Nuevo (sellado, sin abrir)</option>
+            <option value="como_nuevo">Como nuevo (usado pocas veces)</option>
+            <option value="bueno">Bueno (señales de uso normal)</option>
+            <option value="aceptable">Aceptable (marcas visibles, funcional)</option>
+            <option value="para_piezas">Para piezas (no funciona o partes faltantes)</option>
+          </select>
+        </div>
+      )}
 
       {/* Ubicación con mapa */}
       <div className="space-y-2 pt-2">
