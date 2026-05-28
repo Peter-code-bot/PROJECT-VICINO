@@ -26,7 +26,7 @@ import type {
 // rendered identically to production. Flipping to true switches to the
 // new ProductDetailMobile and ProductDetailDesktop wrappers. See plan
 // at .claude/plans/redise-o-p-gina-lazy-flame.md for the rollout.
-const RENDER_V2 = false;
+const RENDER_V2 = true;
 
 interface Props {
   params: Promise<{ categoria: string; slug: string }>;
@@ -370,8 +370,8 @@ export default async function ProductDetailPage({ params }: Props) {
       </div>
       )}
 
-      {/* Reviews Section */}
-      {reviews && reviews.length > 0 && (
+      {/* Reviews Section (legacy, replaced by ReviewsSummary in v2) */}
+      {!RENDER_V2 && reviews && reviews.length > 0 && (
         <section className="mt-12 px-4 space-y-6 max-w-2xl mx-auto md:mx-0">
           <div className="flex items-center gap-2 mb-4 block">
             <h2 className="text-xl font-heading font-bold">
@@ -440,26 +440,31 @@ export default async function ProductDetailPage({ params }: Props) {
         </section>
       )}
 
-      {/* Sticky Mobile Nav Button */}
-      <div className="pointer-events-none sticky bottom-[4.5rem] left-0 right-0 z-30 bg-gradient-to-t from-[color:var(--bg)] via-[color:var(--bg)]/95 to-transparent p-4 pb-2 md:hidden">
-        <Link
-          href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
-          className="pointer-events-auto flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] px-4 py-4 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
-        >
-          <ShoppingBag className="h-5 w-5" />
-          Quiero comprarlo
-        </Link>
-      </div>
+      {/* Sticky Mobile Nav Button (legacy, replaced by StickyCta in v2) */}
+      {!RENDER_V2 && (
+        <div className="pointer-events-none sticky bottom-[4.5rem] left-0 right-0 z-30 bg-gradient-to-t from-[color:var(--bg)] via-[color:var(--bg)]/95 to-transparent p-4 pb-2 md:hidden">
+          <Link
+            href={`/chat?seller=${seller?.id}&product=${product.id}&intent=buy`}
+            className="pointer-events-auto flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] px-4 py-4 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+          >
+            <ShoppingBag className="h-5 w-5" />
+            Quiero comprarlo
+          </Link>
+        </div>
+      )}
 
-      <ProductReviewsTrigger
-        reviews={reviews ?? []}
-        averageRating={Number(seller?.average_rating ?? 0)}
-        reviewsCount={Number(seller?.reviews_count ?? 0)}
-        sellerName={seller?.nombre ?? "Vendedor"}
-        sellerAvatar={seller?.foto ?? null}
-        currentUserId={user?.id ?? null}
-        currentProductId={product.id}
-      />
+      {/* Reviews drawer trigger (legacy uncontrolled, replaced by lifted state in v2) */}
+      {!RENDER_V2 && (
+        <ProductReviewsTrigger
+          reviews={reviews ?? []}
+          averageRating={Number(seller?.average_rating ?? 0)}
+          reviewsCount={Number(seller?.reviews_count ?? 0)}
+          sellerName={seller?.nombre ?? "Vendedor"}
+          sellerAvatar={seller?.foto ?? null}
+          currentUserId={user?.id ?? null}
+          currentProductId={product.id}
+        />
+      )}
     </div>
   );
 }
