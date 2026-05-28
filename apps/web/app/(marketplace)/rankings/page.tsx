@@ -36,8 +36,12 @@ function parseLatLng(latRaw?: string, lngRaw?: string): { lat: number; lng: numb
 export default async function RankingsPage({ searchParams }: RankingsPageProps) {
   const sp = await searchParams;
 
+  const categoryKey = sp.category ?? "default";
+  const periodKey = sp.period ?? "default";
+  const suspenseKey = `${categoryKey}-${periodKey}`;
+
   return (
-    <Suspense fallback={<RankingSkeleton />}>
+    <Suspense key={suspenseKey} fallback={<RankingSkeleton />}>
       <RankingsContent searchParams={sp} />
     </Suspense>
   );
