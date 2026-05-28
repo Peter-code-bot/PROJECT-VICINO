@@ -9,7 +9,8 @@ import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, B
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { TRUST_LEVELS } from "@vicino/shared";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
-
+import { FollowButton } from "@/components/shared/follow-button";
+import { cn } from "@/lib/utils";
 interface ProfileHeaderProps {
   profile: {
     id: string;
@@ -38,9 +39,10 @@ interface ProfileHeaderProps {
   /** Id del usuario autenticado. Se usa para esconder el botón de reportar
    *  cuando el perfil mostrado es el del propio usuario. */
   currentUserId?: string | null;
+  isFollowing?: boolean;
 }
 
-export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, currentUserId }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, currentUserId, isFollowing }: ProfileHeaderProps) {
   const [showActions, setShowActions] = useState(false);
 
   if (!profile) return null;
@@ -194,12 +196,24 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
       {/* Action buttons */}
       {isPublic ? (
         <div className="flex items-center gap-2">
+          {currentUserId && currentUserId !== profile.id && profile.es_vendedor && (
+            <FollowButton storeId={profile.id} following={isFollowing ?? false} />
+          )}
           <Link
             href={`/chat?seller=${profile.id}`}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+              currentUserId && currentUserId !== profile.id && profile.es_vendedor
+                ? "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:bg-[color:var(--bg-elev-2)]"
+                : "bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] hover:bg-[color:var(--brand-dark)]"
+            )}
           >
             <MessageCircle className="w-4 h-4" />
-            Contactar
+            {currentUserId && currentUserId !== profile.id && profile.es_vendedor
+              ? isFollowing
+                ? "💬"
+                : "Mensaje"
+              : "Contactar"}
           </Link>
           {currentUserId && currentUserId !== profile.id && (
             <ReportMenuButton
@@ -208,7 +222,7 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
               targetLabel={profile.nombre_negocio ?? profile.nombre}
               blockableUserId={profile.id}
               ariaLabel="Reportar o bloquear usuario"
-              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)]"
+              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)] shrink-0"
             />
           )}
         </div>

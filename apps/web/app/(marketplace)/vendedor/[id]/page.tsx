@@ -91,6 +91,16 @@ export default async function VendedorPage({ params }: Props) {
   } = await supabase.auth.getUser();
   const currentUserId = currentUser?.id ?? null;
 
+  let isFollowing = false;
+  if (currentUserId && publicProfile.es_vendedor) {
+    const { data: followData } = await supabase
+      .from("store_follows")
+      .select("id")
+      .match({ follower_id: currentUserId, store_id: id })
+      .maybeSingle();
+    if (followData) isFollowing = true;
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <ProfileHeader
@@ -99,6 +109,7 @@ export default async function VendedorPage({ params }: Props) {
         purchaseCount={purchaseCount ?? 0}
         isPublic
         currentUserId={currentUserId}
+        isFollowing={isFollowing}
       />
       <ProfileTabs
         products={products ?? []}
