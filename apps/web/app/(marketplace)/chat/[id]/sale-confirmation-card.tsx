@@ -36,7 +36,7 @@ interface SaleConfirmationCardProps {
   onPropose?: () => void;
 }
 
-export function StatusPill({ status }: { status: ConfirmationStatus }) {
+export function StatusPill({ status, label }: { status: ConfirmationStatus, label?: string }) {
   if (status === "pendiente") {
     return (
       <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-400">
@@ -44,7 +44,7 @@ export function StatusPill({ status }: { status: ConfirmationStatus }) {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
         </span>
-        Pendiente
+        {label || "Pendiente"}
       </span>
     );
   }
@@ -52,7 +52,7 @@ export function StatusPill({ status }: { status: ConfirmationStatus }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-400">
         <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-        Esperando respuesta
+        {label || "Esperando respuesta"}
       </span>
     );
   }
@@ -60,7 +60,7 @@ export function StatusPill({ status }: { status: ConfirmationStatus }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[color:var(--trust-emerald)]">
         <span className="relative inline-flex rounded-full h-2 w-2 bg-[color:var(--trust-emerald)]"></span>
-        Completado
+        {label || "Completado"}
       </span>
     );
   }
@@ -68,7 +68,7 @@ export function StatusPill({ status }: { status: ConfirmationStatus }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[color:var(--danger)]">
         <span className="relative inline-flex rounded-full h-2 w-2 bg-[color:var(--danger)]"></span>
-        Rechazado
+        {label || "Rechazado"}
       </span>
     );
   }

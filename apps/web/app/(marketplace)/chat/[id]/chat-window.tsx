@@ -255,12 +255,19 @@ export function ChatWindow({
         const otherConf = scIsBuyer ? primarySc.seller_confirmed : primarySc.buyer_confirmed;
         
         let scStatus: ConfirmationStatus = "pendiente";
+        let scLabel = "";
         if (primarySc.status === "rejected" || primarySc.rejected_by) {
           scStatus = "rechazado";
+          scLabel = "Venta rechazada";
         } else if (primarySc.status === "completed") {
           scStatus = "completado";
+          scLabel = "Venta confirmada";
         } else if (myConf && !otherConf) {
           scStatus = "esperando";
+          scLabel = "Esperando respuesta del " + (scIsBuyer ? "vendedor" : "comprador");
+        } else {
+          scStatus = "pendiente";
+          scLabel = "Pendiente de respuesta del " + (!scIsBuyer ? "vendedor" : "comprador");
         }
 
         return (
@@ -274,7 +281,7 @@ export function ChatWindow({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-[color:var(--fg)]">Confirmación de venta</div>
-                <StatusPill status={scStatus} />
+                <StatusPill status={scStatus} label={scLabel} />
               </div>
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[color:var(--fg-muted)]">
                 {showSaleDetails ? "Ocultar" : "Ver detalles"}

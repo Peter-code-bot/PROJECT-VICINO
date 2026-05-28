@@ -104,7 +104,7 @@ export function GalleryTopBar({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
+                    onSelect={(e: any) => {
                       e.preventDefault();
                       // TODO Fase posterior: invocar mutation pausar/reanudar listado
                       // contra products_services.estatus (requiere server action).
@@ -117,7 +117,7 @@ export function GalleryTopBar({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     destructive
-                    onSelect={(e) => {
+                    onSelect={(e: any) => {
                       e.preventDefault();
                       // TODO Fase posterior: confirm + delete o soft-delete del listado.
                       window.alert("Eliminar producto: proximamente");
@@ -130,7 +130,7 @@ export function GalleryTopBar({
               ) : (
                 <>
                   <DropdownMenuItem
-                    onSelect={(e) => {
+                    onSelect={(e: any) => {
                       e.preventDefault();
                       setReportOpen(true);
                     }}
@@ -139,7 +139,7 @@ export function GalleryTopBar({
                     Reportar producto
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
+                    onSelect={(e: any) => {
                       e.preventDefault();
                       void handleShare();
                     }}
