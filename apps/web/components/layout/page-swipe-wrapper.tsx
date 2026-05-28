@@ -23,11 +23,10 @@ import {
  *   - Pointer is not a touch (preserves trackMouse:false from prior impl)
  *   - At a list end (no wrap)
  *
- * PAGES is derived per-render from `isVendedor` prop (Phase 9): sellers see
- * the 5-page sequence including /vender; non-sellers see 4 pages without it.
+ * /vender is excluded from the swipe sequence so users cannot swipe to it.
+ * Tapping the + icon is the only way to reach it.
  */
-const ALL_PAGES = ["/", "/buscar", "/vender", "/chat", "/perfil"] as const;
-const NON_SELLER_PAGES = ALL_PAGES.filter((p) => p !== "/vender");
+const PAGES = ["/", "/buscar", "/chat", "/perfil"];
 const SWIPE_THRESHOLD_OFFSET = 60; // px — minimum drag distance to commit
 const SWIPE_THRESHOLD_VELOCITY = 500; // px/sec — fast flick commits at lower offset
 const EDGE_GUARD_PX = 30; // px from each screen edge reserved for OS gestures
@@ -54,7 +53,6 @@ export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps
   const dragControls = useDragControls();
   const cancelledRef = useRef(false);
 
-  const PAGES: readonly string[] = isVendedor ? ALL_PAGES : NON_SELLER_PAGES;
   const currentIndex = PAGES.indexOf(pathname);
 
   // Prefetch adjacent root pages so router.push lands instantly post-swipe.
