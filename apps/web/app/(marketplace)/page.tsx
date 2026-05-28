@@ -151,13 +151,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── CERCA DE TI (geo island) ───────────────────────── */}
-      <section className="px-4 pb-6">
-        <div className="max-w-7xl mx-auto">
-          <LocationBar />
-        </div>
-      </section>
-
       {/* ─── CATEGORIES ─────────────────────────────────────── */}
       <section className="px-4 pb-6">
         <div className="max-w-7xl mx-auto">
@@ -210,6 +203,13 @@ export default async function HomePage() {
       <Suspense fallback={null}>
         <RankingsHomeStripSection />
       </Suspense>
+
+      {/* ─── CERCA DE TI (geo island) ───────────────────────── */}
+      <section className="px-4 pb-6 mt-2">
+        <div className="max-w-7xl mx-auto">
+          <LocationBar />
+        </div>
+      </section>
 
       {/* ─── PRODUCT CAROUSELS ──────────────────────────────── */}
       {all.length > 0 ? (
