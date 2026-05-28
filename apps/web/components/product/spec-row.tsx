@@ -5,6 +5,13 @@ interface SpecRowProps {
   estado: string | null;
   deliveryLabel: string;
   createdAt: string;
+  /**
+   * Listing type. Optional for backward compatibility: when omitted, the
+   * row keeps the legacy 3-column layout (ESTADO + ENTREGA + PUBLICADO).
+   * When set to "servicio", the ESTADO column is hidden because physical
+   * condition does not apply to services; the grid collapses to 2 columns.
+   */
+  tipo?: string | null;
 }
 
 function shortDeliveryLabel(label: string): string {
@@ -32,10 +39,17 @@ function SpecCell({ label, value }: SpecCellProps) {
   );
 }
 
-export function SpecRow({ estado, deliveryLabel, createdAt }: SpecRowProps) {
+export function SpecRow({ estado, deliveryLabel, createdAt, tipo }: SpecRowProps) {
+  const isService = tipo === "servicio";
+  const gridClass = isService ? "grid-cols-2" : "grid-cols-3";
+
   return (
-    <div className="grid grid-cols-3 gap-2 rounded-[var(--r-lg)] bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)]">
-      <SpecCell label="ESTADO" value={formatProductCondition(estado)} />
+    <div
+      className={`grid ${gridClass} gap-2 rounded-[var(--r-lg)] bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)]`}
+    >
+      {!isService && (
+        <SpecCell label="ESTADO" value={formatProductCondition(estado)} />
+      )}
       <SpecCell label="ENTREGA" value={shortDeliveryLabel(deliveryLabel)} />
       <SpecCell label="PUBLICADO" value={formatRelativeTime(createdAt)} />
     </div>

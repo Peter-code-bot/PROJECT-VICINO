@@ -7,6 +7,7 @@ export interface ProductDetailProduct {
   descripcion: string | null;
   precio: number | string | null;
   categoria: string;
+  tipo: string | null;
   estado: string | null;
   estatus: string | null;
   ubicacion: string | null;

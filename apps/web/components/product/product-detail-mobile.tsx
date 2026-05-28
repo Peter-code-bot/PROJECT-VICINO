@@ -119,6 +119,7 @@ export function ProductDetailMobile({
             estado={product.estado}
             deliveryLabel={deliveryLabel}
             createdAt={product.created_at}
+            tipo={product.tipo}
           />
         </StaggerItem>
 

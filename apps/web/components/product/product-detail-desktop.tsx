@@ -132,6 +132,7 @@ export function ProductDetailDesktop({
               estado={product.estado}
               deliveryLabel={deliveryLabel}
               createdAt={product.created_at}
+              tipo={product.tipo}
             />
           </StaggerItem>
 
