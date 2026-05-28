@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { PriceDisplay } from "@/components/shared/price-display";
-import { cn } from "@/lib/utils";
 import { AppointmentButton } from "./appointment-button";
 import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
 import { GalleryTopBar } from "./gallery-top-bar";
+import { ListingStatusBanner } from "./listing-status-banner";
 import { MetaRow } from "./meta-row";
 import { PaymentChips } from "./payment-chips";
 import { PreviewBanner } from "./preview-banner";
@@ -25,6 +25,20 @@ interface ProductDetailMobileProps extends ProductDetailData {
   className?: string;
 }
 
+const STAGGER_MS = 50;
+
+function stagger(idx: number): CSSProperties {
+  return { animationDelay: `${idx * STAGGER_MS}ms` };
+}
+
+function StaggerItem({ idx, children }: { idx: number; children: ReactNode }) {
+  return (
+    <div className="animate-fade-in-up" style={stagger(idx)}>
+      {children}
+    </div>
+  );
+}
+
 export function ProductDetailMobile({
   product,
   seller,
@@ -37,9 +51,6 @@ export function ProductDetailMobile({
 }: ProductDetailMobileProps) {
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
-  // Owner that opted into preview should see the visitor-styled UI but the
-  // real isOwner check is preserved for the StickyCta which derives both
-  // variants from real ownership + the preview flag itself.
   const effectiveIsOwner = isOwner && !isVisitorPreview;
 
   const [reviewsOpen, setReviewsOpen] = useState(false);
@@ -51,19 +62,21 @@ export function ProductDetailMobile({
         ? [product.imagen_principal]
         : [];
 
+  const safeCoupons = coupons ?? [];
+
   const canShowAppointment =
     !!product.allow_appointments && !!user && !effectiveIsOwner;
 
   const averageRating = Number(seller.average_rating ?? 0);
   const reviewsCount = Number(seller.reviews_count ?? reviews.length);
 
-  const showPreviewBanner = isOwner && isVisitorPreview;
-
   return (
-    <div
-      className={cn("flex flex-col bg-bg pb-28", showPreviewBanner && "pt-12")}
-    >
-      <PreviewBanner isOwner={isOwner} />
+    <div className="flex flex-col bg-bg pb-28">
+      <div className="sticky top-0 z-30 flex flex-col">
+        <ListingStatusBanner isOwner={isOwner} estatus={product.estatus} />
+        <PreviewBanner isOwner={isOwner} />
+      </div>
+
       <div className="relative">
         <ProductGalleryCarousel
           images={images}
@@ -79,64 +92,84 @@ export function ProductDetailMobile({
       </div>
 
       <div className="flex flex-col gap-5 px-4 py-5">
-        <MetaRow
-          categoria={product.categoria}
-          ubicacion={product.ubicacion}
-          sellerLat={seller.ubicacion_lat ?? null}
-          sellerLng={seller.ubicacion_lng ?? null}
-        />
-
-        <h1 className="font-display text-[26px] font-semibold leading-tight text-fg">
-          {product.titulo}
-        </h1>
-
-        <div>
-          <PriceDisplay
-            amount={Number(product.precio ?? 0)}
-            size="lg"
-            className="text-3xl"
+        <StaggerItem idx={0}>
+          <MetaRow
+            categoria={product.categoria}
+            ubicacion={product.ubicacion}
+            sellerLat={seller.ubicacion_lat ?? null}
+            sellerLng={seller.ubicacion_lng ?? null}
           />
-        </div>
+        </StaggerItem>
 
-        <SpecRow
-          estado={product.estado}
-          deliveryLabel={deliveryLabel}
-          createdAt={product.created_at}
-        />
+        <StaggerItem idx={1}>
+          <div className="flex flex-col gap-4">
+            <h1 className="font-display text-[26px] font-semibold leading-tight text-fg">
+              {product.titulo}
+            </h1>
+            <PriceDisplay
+              amount={Number(product.precio ?? 0)}
+              size="lg"
+              className="text-3xl"
+            />
+          </div>
+        </StaggerItem>
 
-        <SellerCardMini seller={seller} />
+        <StaggerItem idx={2}>
+          <SpecRow
+            estado={product.estado}
+            deliveryLabel={deliveryLabel}
+            createdAt={product.created_at}
+          />
+        </StaggerItem>
 
-        <DescriptionBlock descripcion={product.descripcion} />
+        <StaggerItem idx={3}>
+          <SellerCardMini seller={seller} />
+        </StaggerItem>
 
-        <PaymentChips
-          metodosPagoAceptados={seller.metodos_pago_aceptados ?? null}
-        />
+        <StaggerItem idx={4}>
+          <DescriptionBlock descripcion={product.descripcion} />
+        </StaggerItem>
 
-        <TrustCallout />
+        <StaggerItem idx={5}>
+          <PaymentChips
+            metodosPagoAceptados={seller.metodos_pago_aceptados ?? null}
+          />
+        </StaggerItem>
 
-        <CouponBlock coupons={coupons} />
+        <StaggerItem idx={6}>
+          <TrustCallout />
+        </StaggerItem>
+
+        <StaggerItem idx={7}>
+          <CouponBlock coupons={safeCoupons} />
+        </StaggerItem>
 
         {canShowAppointment ? (
-          <AppointmentButton
-            product={{
-              id: product.id,
-              titulo: product.titulo,
-              creador_id: product.creador_id,
-              appointment_start_time:
-                product.appointment_start_time ?? "09:00",
-              appointment_end_time: product.appointment_end_time ?? "18:00",
-              appointment_duration_minutes:
-                product.appointment_duration_minutes ?? 60,
-            }}
-          />
+          <StaggerItem idx={8}>
+            <AppointmentButton
+              product={{
+                id: product.id,
+                titulo: product.titulo,
+                creador_id: product.creador_id,
+                appointment_start_time:
+                  product.appointment_start_time ?? "09:00",
+                appointment_end_time:
+                  product.appointment_end_time ?? "18:00",
+                appointment_duration_minutes:
+                  product.appointment_duration_minutes ?? 60,
+              }}
+            />
+          </StaggerItem>
         ) : null}
 
-        <ReviewsSummary
-          reviews={reviews}
-          averageRating={averageRating}
-          reviewsCount={reviewsCount}
-          onOpenReviews={() => setReviewsOpen(true)}
-        />
+        <StaggerItem idx={canShowAppointment ? 9 : 8}>
+          <ReviewsSummary
+            reviews={reviews}
+            averageRating={averageRating}
+            reviewsCount={reviewsCount}
+            onOpenReviews={() => setReviewsOpen(true)}
+          />
+        </StaggerItem>
       </div>
 
       <StickyCta
