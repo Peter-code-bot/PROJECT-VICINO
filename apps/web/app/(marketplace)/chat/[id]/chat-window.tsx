@@ -11,6 +11,7 @@ import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Message {
   id: string;
@@ -55,6 +56,7 @@ export function ChatWindow({
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   // Subscribe to new messages and read receipt updates
   useEffect(() => {
@@ -303,6 +305,15 @@ export function ChatWindow({
                     currentUser={{ 
                       initial: "Y", // Using generic 'Y' for 'You' since we don't have current user's name easily accessible
                       role: isBuyer ? "comprador" : "vendedor" 
+                    }}
+                    onRate={() => {
+                      const reviewType = isBuyer ? "buyer_to_seller" : "seller_to_buyer";
+                      router.push(`/historial/review?sale=${sc.id}&type=${reviewType}&product=${sc.product_id}`);
+                    }}
+                    onPropose={() => {
+                      setShowSaleDetails(false);
+                      // Depending on business logic, you might also clear the form or open it:
+                      // setShowSaleForm(true);
                     }}
                   />
                 ))}
