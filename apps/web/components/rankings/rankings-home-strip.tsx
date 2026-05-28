@@ -90,7 +90,7 @@ function MedalSVG({
         textAnchor="middle"
         fontSize="15"
         fontWeight="800"
-        fill="#1A1A2E"
+        fill="var(--color-foreground)"
         style={{ fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
       >
         {rank}
@@ -222,7 +222,7 @@ function RankingsHomeStrip({
               <div
                 key={rank}
                 className={cn(
-                  "relative flex min-w-0 items-center gap-2 rounded-[14px] bg-white/60 p-2.5 backdrop-blur-[10px] dark:bg-[rgba(15,22,20,0.55)]",
+                  "relative flex min-w-0 items-center gap-2 rounded-[14px] bg-card/60 p-2.5 backdrop-blur-[10px]",
                   rank === 1 ? "flex-[1.2]" : "flex-1",
                   medal.shadow,
                 )}
