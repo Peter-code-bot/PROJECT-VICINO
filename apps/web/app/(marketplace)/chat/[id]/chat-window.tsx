@@ -6,11 +6,18 @@ import { formatRelativeTime } from "@vicino/shared";
 import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
+
+// Window for the realtime fallback to reclaim an in-flight optimistic
+// message. 3s is firmed as the safe upper bound: shorter risks legitimate
+// network latency on slow connections, longer would start swallowing
+// genuinely separate sends of the same text. Keep tight on purpose.
+const TEMP_RECLAIM_WINDOW_MS = 3000;
 
 interface Message {
   id: string;
@@ -48,13 +55,64 @@ export function ChatWindow({
     initialSaleConfirmations,
   );
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+
+  const sendMutation = useOptimisticMutation(
+    ({ text }: { tempId: string; text: string }) => sendMessage(chatId, text),
+    {
+      onMutate: ({ tempId, text }) => {
+        const optimisticMsg: Message = {
+          id: tempId,
+          chat_id: chatId,
+          autor_id: currentUserId,
+          texto: text,
+          attachments: [],
+          created_at: new Date().toISOString(),
+          leido_por_comprador: isBuyer,
+          leido_por_vendedor: !isBuyer,
+        };
+        setMessages((prev) => [...prev, optimisticMsg]);
+        return () =>
+          setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      },
+      onSuccess: (result, { tempId }) => {
+        // Replace the temp id with the server-generated UUID. When the
+        // realtime INSERT echo arrives next, the existing prev.some
+        // check matches by id and avoids the duplicate.
+        const realId =
+          result &&
+          typeof result === "object" &&
+          "data" in result &&
+          result.data &&
+          typeof result.data === "object" &&
+          "id" in result.data &&
+          typeof result.data.id === "string"
+            ? result.data.id
+            : null;
+        if (!realId) return;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m)),
+        );
+      },
+      onError: (err) => {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "No se pudo enviar el mensaje";
+        setSendError(message);
+      },
+      // Chat must allow consecutive sends without blocking the second one
+      // while the first is still in flight; idempotent-toggle pattern of
+      // the default mode would swallow the second message.
+      allowConcurrent: true,
+    },
+  );
+
 
   // Subscribe to new messages and read receipt updates
   useEffect(() => {
@@ -71,7 +129,29 @@ export function ChatWindow({
         (payload) => {
           const newMsg = payload.new as Message;
           setMessages((prev) => {
+            // Already in list by real id (after onSuccess replaced temp->real).
             if (prev.some((m) => m.id === newMsg.id)) return prev;
+
+            // Edge-ordering fallback: realtime echo may arrive before the
+            // server action response on slow networks. If this echo is from
+            // the current user, look for a still-pending temp message with
+            // matching texto and a created_at within 3s and swap it for the
+            // real row instead of appending a duplicate. Window is tight on
+            // purpose so two legitimate identical sends (e.g. "hola" twice
+            // within seconds) still both appear when they are >= 3s apart.
+            if (newMsg.autor_id === currentUserId) {
+              const realTime = new Date(newMsg.created_at).getTime();
+              const tempMatch = prev.find((m) => {
+                if (!m.id.startsWith("temp-")) return false;
+                if (m.autor_id !== newMsg.autor_id) return false;
+                if (m.texto !== newMsg.texto) return false;
+                const tempTime = new Date(m.created_at).getTime();
+                return Math.abs(realTime - tempTime) < TEMP_RECLAIM_WINDOW_MS;
+              });
+              if (tempMatch) {
+                return prev.map((m) => (m.id === tempMatch.id ? newMsg : m));
+              }
+            }
             return [...prev, newMsg];
           });
         }
@@ -149,35 +229,19 @@ export function ChatWindow({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function handleSend(e: React.FormEvent) {
+  function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || sending) return;
+    if (!input.trim()) return;
 
     const text = input.trim();
     setInput("");
-    setSending(true);
     setSendError("");
 
-    // Optimistic update
-    const optimisticMsg: Message = {
-      id: `temp-${Date.now()}`,
-      chat_id: chatId,
-      autor_id: currentUserId,
-      texto: text,
-      attachments: [],
-      created_at: new Date().toISOString(),
-      leido_por_comprador: isBuyer,
-      leido_por_vendedor: !isBuyer,
-    };
-    setMessages((prev) => [...prev, optimisticMsg]);
-
-    const result = await sendMessage(chatId, text);
-    if (result.error) {
-      // Remove optimistic message on error and surface the reason
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
-      setSendError(result.error);
-    }
-    setSending(false);
+    // Unique temp id per send so rapid consecutive optimistic messages
+    // do not collide. Math.random suffix guards against same-millisecond
+    // multiple sends from a fast user.
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    void sendMutation.mutate({ tempId, text });
   }
 
   return (
@@ -396,7 +460,7 @@ export function ChatWindow({
         />
         <button
           type="submit"
-          disabled={!input.trim() || sending}
+          disabled={!input.trim()}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
         >
           <Send className="h-4 w-4" />

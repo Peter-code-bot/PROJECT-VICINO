@@ -63,14 +63,19 @@ export async function sendMessage(chatId: string, texto: string) {
     return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
   }
 
-  const { error } = await supabase.from("messages").insert({
-    chat_id: parsed.data.chat_id,
-    autor_id: user.id,
-    texto: parsed.data.texto,
-  });
+  const { data: inserted, error } = await supabase
+    .from("messages")
+    .insert({
+      chat_id: parsed.data.chat_id,
+      autor_id: user.id,
+      texto: parsed.data.texto,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
-  return { success: true };
+  if (!inserted) return { error: "No se pudo enviar el mensaje" };
+  return { success: true as const, data: { id: inserted.id } };
 }
 
 export async function markAsRead(chatId: string) {

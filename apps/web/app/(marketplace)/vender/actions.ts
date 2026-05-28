@@ -373,5 +373,10 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
     return { error: error.message };
   }
 
+  // Sync the seller listings page so navigating back from elsewhere shows
+  // the new estatus. The optimistic flip in listing-actions covers the
+  // local UI feel; this covers cross-page consistency.
+  revalidatePath("/seller/listings");
+
   return { success: true };
 }
