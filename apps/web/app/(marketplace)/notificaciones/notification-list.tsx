@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { markAsRead, markAllAsRead } from "./actions";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { formatRelativeTime } from "@vicino/shared";
 import {
   MessageCircle,
@@ -123,37 +124,71 @@ function getNotificationHref(tipo: string, data: Record<string, unknown>): strin
   }
 }
 
+interface Notification {
+  id: string;
+  tipo: string;
+  titulo: string;
+  mensaje: string;
+  leida: boolean;
+  created_at: string;
+  data: Record<string, unknown>;
+}
+
 interface NotificationListProps {
-  notifications: Array<{
-    id: string;
-    tipo: string;
-    titulo: string;
-    mensaje: string;
-    leida: boolean;
-    created_at: string;
-    data: Record<string, unknown>;
-  }>;
+  notifications: Notification[];
 }
 
 export function NotificationList({ notifications }: NotificationListProps) {
-  const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const [localNotifs, setLocalNotifs] = useState<Notification[]>(notifications);
 
-  function handleClick(n: NotificationListProps["notifications"][number]) {
+  // Resync when the RSC parent re-renders with a fresher snapshot (e.g. after
+  // revalidatePath fires on return navigation). Server is the source of truth;
+  // the local copy only exists to host the optimistic flip until that happens.
+  useEffect(() => {
+    setLocalNotifs(notifications);
+  }, [notifications]);
+
+  const markOneMutation = useOptimisticMutation(
+    (notificationId: string) => markAsRead(notificationId),
+    {
+      onMutate: (notificationId) => {
+        const previous = localNotifs;
+        setLocalNotifs((curr) =>
+          curr.map((n) => (n.id === notificationId ? { ...n, leida: true } : n)),
+        );
+        return () => setLocalNotifs(previous);
+      },
+    },
+  );
+
+  const markAllMutation = useOptimisticMutation(
+    () => markAllAsRead(),
+    {
+      onMutate: () => {
+        const previous = localNotifs;
+        setLocalNotifs((curr) =>
+          curr.map((n) => (n.leida ? n : { ...n, leida: true })),
+        );
+        return () => setLocalNotifs(previous);
+      },
+    },
+  );
+
+  function handleClick(n: Notification) {
     const href = getNotificationHref(n.tipo, n.data ?? {});
-    startTransition(async () => {
-      if (!n.leida) await markAsRead(n.id);
-      if (href) router.push(href);
-    });
+    if (!n.leida) {
+      void markOneMutation.mutate(n.id);
+    }
+    if (href) router.push(href);
   }
 
   function handleMarkAllRead() {
-    startTransition(async () => {
-      await markAllAsRead();
-    });
+    void markAllMutation.mutate(undefined);
   }
 
-  const hasUnread = notifications.some((n) => !n.leida);
+  const hasUnread = localNotifs.some((n) => !n.leida);
+  const isPending = markOneMutation.isPending || markAllMutation.isPending;
 
   return (
     <div className="space-y-2">
@@ -167,7 +202,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
         </button>
       )}
 
-      {notifications.map((n) => {
+      {localNotifs.map((n) => {
         const config = TIPO_CONFIG[n.tipo] ?? TIPO_CONFIG.message!;
         const Icon = config.icon;
         const href = getNotificationHref(n.tipo, n.data ?? {});
@@ -176,7 +211,6 @@ export function NotificationList({ notifications }: NotificationListProps) {
           <button
             key={n.id}
             onClick={() => handleClick(n)}
-            disabled={isPending}
             className={cn(
               "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors cursor-pointer border",
               n.leida
