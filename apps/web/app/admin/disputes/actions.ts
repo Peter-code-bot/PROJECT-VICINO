@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { resolveDisputeSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -46,7 +47,16 @@ export async function resolveDispute(args: ResolveDisputeArgs) {
   });
 
   if (error) {
-    console.error("[resolveDispute] RPC failed:", error);
+    // Log to Sentry without leaking the full error.message (may contain
+    // PII from the RPC payload). Only the supabase code is safe to ship
+    // as structured context. Follow-up MP07 #11 firma.
+    Sentry.captureException(error, {
+      tags: { action: "resolveDispute" },
+      contexts: {
+        dispute: { id: parsed.data.dispute_id },
+        supabase: { code: (error as { code?: string }).code },
+      },
+    });
     const msg = String(error.message ?? "");
     if (msg.includes("dispute not found or already resolved")) {
       return { error: "Dispute no encontrada o ya resuelta" };
