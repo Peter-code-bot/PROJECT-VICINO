@@ -18,11 +18,8 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300",
-        "bg-bg/80 backdrop-blur-xl",
-        scrolled
-          ? "shadow-[inset_0_-1px_0_0_var(--border)]"
-          : "shadow-none"
+        "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300 border-b border-border",
+        "bg-bg/80 backdrop-blur-xl"
       )}
     >
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
@@ -33,7 +30,7 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           id="header-logo"
         >
           <div className="flex flex-col">
-            <span className="font-heading font-bold text-base leading-none tracking-tight text-fg">
+            <span className="font-heading font-bold text-xl leading-none tracking-tight text-fg">
               VICINO
             </span>
             <span className="mt-0.5 hidden text-[9px] font-semibold uppercase leading-none tracking-[0.15em] text-fg-dim sm:block">
