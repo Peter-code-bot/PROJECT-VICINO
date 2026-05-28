@@ -32,6 +32,14 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
+  // Defense in depth: reject self-chat at the server boundary. The owner-
+  // in-preview UX path is covered by the PreviewBanner + chat/page.tsx
+  // redirect to /chat?selfChatError=1, but a direct POST that bypasses
+  // the UI would still hit get_or_create_chat without this check.
+  if (user.id === parsed.data.seller_id) {
+    return { error: "No puedes iniciar un chat contigo mismo" };
+  }
+
   const { data: chatId, error } = await supabase.rpc("get_or_create_chat", {
     p_comprador_id: user.id,
     p_vendedor_id: parsed.data.seller_id,

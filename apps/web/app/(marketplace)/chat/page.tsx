@@ -9,7 +9,12 @@ export const metadata = {
 };
 
 interface Props {
-  searchParams: Promise<{ seller?: string; product?: string; intent?: string }>;
+  searchParams: Promise<{
+    seller?: string;
+    product?: string;
+    intent?: string;
+    selfChatError?: string;
+  }>;
 }
 
 export default async function ChatPage({ searchParams }: Props) {
@@ -24,6 +29,13 @@ export default async function ChatPage({ searchParams }: Props) {
   // If seller param is present, create/get chat and redirect
   if (params.seller) {
     const result = await getOrCreateChat(params.seller, params.product);
+    // Self-chat guard: owner reached /chat?seller={ownId} (typically from
+    // a CTA tapped while in ?preview=visitor mode on their own listing).
+    // Server action returns { error }; surface it as a banner on the chat
+    // index so the owner understands why no chat opened.
+    if (result.error) {
+      redirect(`/chat?selfChatError=1`);
+    }
     if (result.chatId) {
       // Send buy intent message if intent=buy
       if (params.intent === "buy" && params.product) {
@@ -71,8 +83,15 @@ export default async function ChatPage({ searchParams }: Props) {
     return isBuyer ? !chat.oculto_para_comprador : !chat.oculto_para_vendedor;
   }) ?? [];
 
+  const showSelfChatBanner = params.selfChatError === "1";
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in-up">
+      {showSelfChatBanner && (
+        <div className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
+          No puedes iniciar un chat contigo mismo. Estabas en modo vista visitante de tu propio producto.
+        </div>
+      )}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">

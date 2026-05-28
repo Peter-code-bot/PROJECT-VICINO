@@ -80,6 +80,9 @@ export async function resolveReport(
   const ctx = await requireAdminOrModerator();
   if (!ctx) return { error: "No autorizado" };
 
+  const rate = await enforce(writeRateLimit, `write:${ctx.user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const supabase = await createClient();
   const { data: report, error: fetchError } = await supabase
     .from("reports")
@@ -138,6 +141,9 @@ export async function dismissReport(reportId: string, notes?: string) {
   const ctx = await requireAdminOrModerator();
   if (!ctx) return { error: "No autorizado" };
 
+  const rate = await enforce(writeRateLimit, `write:${ctx.user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("reports")
@@ -173,6 +179,9 @@ export async function dismissReportsForTarget(
 ) {
   const ctx = await requireAdminOrModerator();
   if (!ctx) return { error: "No autorizado" };
+
+  const rate = await enforce(writeRateLimit, `write:${ctx.user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
   const { error, count } = await supabase
@@ -211,6 +220,9 @@ export async function suspendUser(userId: string) {
   const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin puede suspender usuarios" };
 
+  const rate = await enforce(writeRateLimit, `write:${admin.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
@@ -235,6 +247,9 @@ export async function unsuspendUser(userId: string) {
   const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin puede restaurar usuarios" };
 
+  const rate = await enforce(writeRateLimit, `write:${admin.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
@@ -258,6 +273,9 @@ export async function unsuspendUser(userId: string) {
 export async function unhideListing(listingId: string) {
   const ctx = await requireAdminOrModerator();
   if (!ctx) return { error: "No autorizado" };
+
+  const rate = await enforce(writeRateLimit, `write:${ctx.user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -290,6 +308,9 @@ export async function markAuthorityNotified(
 ) {
   const { user: admin } = await requireAdmin();
   if (!admin) return { error: "Solo admin" };
+
+  const rate = await enforce(writeRateLimit, `write:${admin.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
   const { error } = await supabase
