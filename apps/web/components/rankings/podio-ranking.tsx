@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ConfiableBadge } from "./confiable-badge";
@@ -40,9 +41,10 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
   const name = seller.display_name ?? "Vendedor";
 
   return (
-    <div
+    <Link
+      href={`/vendedor/${seller.seller_id}`}
       className={cn(
-        "flex flex-col items-center text-center min-w-0 max-w-[8.5rem]",
+        "flex flex-col items-center text-center min-w-0 max-w-[8.5rem] group active:scale-95 transition-transform",
         isFirst && "-mt-6",
       )}
     >
@@ -69,7 +71,7 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
       <p
         className={cn(
           "mt-2 w-full truncate text-sm font-medium",
-          isFirst ? "text-foreground" : "text-muted-foreground",
+          isFirst ? "text-foreground group-hover:text-primary transition-colors" : "text-muted-foreground group-hover:text-foreground transition-colors",
         )}
         title={name}
       >
@@ -88,6 +90,6 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
           <ConfiableBadge />
         </div>
       ) : null}
-    </div>
+    </Link>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ConfiableBadge } from "./confiable-badge";
 import type { RankedSeller } from "@/lib/rankings/types";
@@ -25,13 +26,16 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
   const scoreText = Math.round(seller.composite_score).toLocaleString("es-MX");
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+    <Link 
+      href={`/vendedor/${seller.seller_id}`}
+      className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 active:scale-[0.98] transition-all hover:border-primary/50"
+    >
       <span className="w-6 text-sm tabular-nums text-muted-foreground">
         #{seller.rank}
       </span>
       <UserAvatar src={seller.foto} name={name} size="sm" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{name}</p>
+        <p className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">{name}</p>
         {seller.is_confiable ? (
           <div className="mt-1">
             <ConfiableBadge />
@@ -41,6 +45,6 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
       <span className="font-display text-base tabular-nums text-foreground">
         {scoreText}
       </span>
-    </div>
+    </Link>
   );
 }
