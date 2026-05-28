@@ -58,6 +58,21 @@ export async function getAvailablePeriods(): Promise<RankingPeriod[]> {
   return (data ?? []) as RankingPeriod[];
 }
 
+export async function getActiveCategoryIdsForPeriod(period: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("seller_rankings")
+    .select("category_id")
+    .eq("period", period);
+
+  if (error) {
+    console.error("Error fetching active category ids:", error);
+    return [];
+  }
+
+  return Array.from(new Set((data ?? []).map((r) => r.category_id as string)));
+}
+
 export async function getCategories(): Promise<Category[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

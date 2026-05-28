@@ -9,6 +9,7 @@ import {
   getAvailablePeriods,
   getCategories,
   getRankingHiperlocal,
+  getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { RankedSeller } from "@/lib/rankings/types";
 
@@ -47,12 +48,12 @@ async function RankingsContent({
 }: {
   searchParams: Awaited<RankingsPageProps["searchParams"]>;
 }) {
-  const [categories, periods] = await Promise.all([
+  const [allCategories, periods] = await Promise.all([
     getCategories(),
     getAvailablePeriods(),
   ]);
 
-  if (categories.length === 0) {
+  if (allCategories.length === 0) {
     return (
       <main className="min-h-screen bg-background">
         <EmptyState
@@ -63,20 +64,27 @@ async function RankingsContent({
     );
   }
 
-  const currentCategoryId =
-    searchParams.category && categories.some((c) => c.id === searchParams.category)
-      ? searchParams.category
-      : categories[0]!.id;
-
   const currentPeriod =
     searchParams.period ?? periods[0]?.period ?? currentPeriodInMexicoCity();
+
+  const activeCategoryIds = await getActiveCategoryIdsForPeriod(currentPeriod);
+  const categories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
+
+  // If no categories have data, we still need to render the header but with no categories
+  // so the user can switch periods.
+  const currentCategoryId =
+    categories.length > 0
+      ? searchParams.category && categories.some((c) => c.id === searchParams.category)
+        ? searchParams.category
+        : categories[new Date().getDate() % categories.length]?.id ?? categories[0]!.id
+      : undefined;
 
   const geo = parseLatLng(searchParams.lat, searchParams.lng);
 
   let rankings: RankedSeller[] = [];
   let queryError: string | null = null;
 
-  if (geo) {
+  if (geo && currentCategoryId) {
     try {
       rankings = await getRankingHiperlocal({
         category_id: currentCategoryId,

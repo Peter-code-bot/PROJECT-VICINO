@@ -6,6 +6,7 @@ import {
   currentPeriodInMexicoCity,
   getCategories,
   getRankingHiperlocal,
+  getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { Category, RankedSeller } from "@/lib/rankings/types";
 
@@ -111,15 +112,20 @@ function formatMonth(period: string): string {
 export async function RankingsHomeStripSection() {
   let categories: Category[] = [];
 
+  const period = currentPeriodInMexicoCity();
+
   try {
-    categories = await getCategories();
+    const [allCategories, activeCategoryIds] = await Promise.all([
+      getCategories(),
+      getActiveCategoryIdsForPeriod(period),
+    ]);
+    categories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
   } catch {
     return null;
   }
 
   if (categories.length === 0) return null;
 
-  const period = currentPeriodInMexicoCity();
   const dayIndex = new Date().getDate() % categories.length;
   const featuredCategory = categories[dayIndex] ?? categories[0];
   if (!featuredCategory) return null;
