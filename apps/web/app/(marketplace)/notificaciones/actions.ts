@@ -53,3 +53,20 @@ export async function markAllAsRead() {
   revalidatePath("/notificaciones");
   return { success: true };
 }
+
+export async function getTotalUnreadNotifications(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("leida", false)
+    .neq("tipo", "message");
+
+  return count ?? 0;
+}

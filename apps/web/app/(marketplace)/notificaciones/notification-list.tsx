@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { markAsRead, markAllAsRead } from "./actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
+import { useNotificationUnread } from "@/components/layout/notification-unread-provider";
 import { formatRelativeTime } from "@vicino/shared";
 import {
   MessageCircle,
@@ -140,6 +141,7 @@ interface NotificationListProps {
 
 export function NotificationList({ notifications }: NotificationListProps) {
   const router = useRouter();
+  const { decrement, decrementAll, increment } = useNotificationUnread();
   const [localNotifs, setLocalNotifs] = useState<Notification[]>(notifications);
 
   // Resync when the RSC parent re-renders with a fresher snapshot (e.g. after
@@ -154,10 +156,19 @@ export function NotificationList({ notifications }: NotificationListProps) {
     {
       onMutate: (notificationId) => {
         const previous = localNotifs;
+        const target = previous.find((n) => n.id === notificationId);
+        // Badge in layout.tsx counts only unread non-message rows; mirror that
+        // filter here so the provider stays in sync with the server filter.
+        const affectsBadge =
+          target !== undefined && !target.leida && target.tipo !== "message";
         setLocalNotifs((curr) =>
           curr.map((n) => (n.id === notificationId ? { ...n, leida: true } : n)),
         );
-        return () => setLocalNotifs(previous);
+        if (affectsBadge) decrement();
+        return () => {
+          setLocalNotifs(previous);
+          if (affectsBadge) increment();
+        };
       },
     },
   );
@@ -167,10 +178,17 @@ export function NotificationList({ notifications }: NotificationListProps) {
     {
       onMutate: () => {
         const previous = localNotifs;
+        const unreadBadgeCount = previous.filter(
+          (n) => !n.leida && n.tipo !== "message",
+        ).length;
         setLocalNotifs((curr) =>
           curr.map((n) => (n.leida ? n : { ...n, leida: true })),
         );
-        return () => setLocalNotifs(previous);
+        decrementAll();
+        return () => {
+          setLocalNotifs(previous);
+          for (let i = 0; i < unreadBadgeCount; i += 1) increment();
+        };
       },
     },
   );

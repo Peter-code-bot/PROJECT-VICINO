@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Bell, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useNotificationUnread } from "@/components/layout/notification-unread-provider";
 
-export function Header({ unreadNotifications = 0 }: { unreadNotifications?: number }) {
+export function Header() {
+  const { count: unreadNotifications } = useNotificationUnread();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

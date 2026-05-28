@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import { useChatUnread } from "@/components/layout/chat-unread-provider";
+import { useNotificationUnread } from "@/components/layout/notification-unread-provider";
 import {
   Home,
   Search,
@@ -71,11 +72,11 @@ interface SidebarProps {
     es_vendedor: boolean;
   } | null;
   isAdmin: boolean;
-  unreadNotifications: number;
 }
 
-export function Sidebar({ user, profile, isAdmin, unreadNotifications }: SidebarProps) {
+export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   const unreadChatMessages = useChatUnread();
+  const { count: unreadNotifications } = useNotificationUnread();
   const pathname = usePathname();
   const router = useRouter();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
