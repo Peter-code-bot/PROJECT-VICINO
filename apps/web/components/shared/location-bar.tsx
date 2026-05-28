@@ -47,7 +47,7 @@ export function LocationBar() {
                 id: p.id,
                 titulo: p.titulo,
                 precio: p.precio,
-                imagen_principal: p.imagen,
+                imagen_principal: p.imagen_principal,
                 categoria: p.categoria,
                 slug: p.slug,
                 profiles: {
