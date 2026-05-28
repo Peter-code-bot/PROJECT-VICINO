@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 
 import { Bell, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,14 +32,6 @@ export function Header({ unreadNotifications = 0 }: { unreadNotifications?: numb
           className="flex items-center gap-2 shrink-0 group"
           id="header-logo"
         >
-          <Image
-            src="/vicino-logo.png"
-            alt="VICINO"
-            width={36}
-            height={36}
-            className="shrink-0"
-            priority
-          />
           <div className="flex flex-col">
             <span className="font-heading font-bold text-base leading-none tracking-tight text-fg">
               VICINO
