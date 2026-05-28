@@ -1,5 +1,6 @@
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { approveVerificationSchema, rejectVerificationSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -18,72 +19,69 @@ export async function approveVerification(verificationId: string, userId: string
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  // Update seller_verification
-  const { error: verError } = await supabase
-    .from("seller_verification")
-    .update({
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", parsed.data.verification_id);
+  // MP#07 Fase 4 + MP#08 #6: atomic approve verification via RPC.
+  // Replaces the 3 separate writes (seller_verification UPDATE +
+  // profiles UPDATE + trust_level_verification upsert) with a single
+  // SECURITY DEFINER function that runs them in one implicit
+  // transaction. Migration: 20260528000003_rpc_approve_verification_atomic.
+  const { error: rpcError } = await supabase.rpc(
+    "approve_verification_atomic",
+    {
+      p_verification_id: parsed.data.verification_id,
+      p_user_id: parsed.data.user_id,
+    },
+  );
 
-  if (verError) return { error: verError.message };
-
-  // Update profile verification status + trust points for INE verification
-  await supabase
-    .from("profiles")
-    .update({
-      is_verified: true,
-      verified_at: new Date().toISOString(),
-      trust_points: 30, // Will be added via trigger if we had one, manually set for now
-    })
-    .eq("id", parsed.data.user_id);
-
-  // Notify seller
-  await supabase.from("notifications").insert({
-    user_id: parsed.data.user_id,
-    tipo: "trust_upgrade",
-    titulo: "¡Identidad verificada!",
-    mensaje: "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
-    data: { verification_id: parsed.data.verification_id },
-  });
-
-  // Upsert trust_level_verification
-  const { data: existing } = await supabase
-    .from("trust_level_verification")
-    .select("id")
-    .eq("user_id", parsed.data.user_id)
-    .single();
-
-  if (existing) {
-    await supabase
-      .from("trust_level_verification")
-      .update({
-        id_verified: true,
-        selfie_verified: true,
-        selfie_match_verified: true,
-        current_level: "verificado",
-        level_1_completed_at: new Date().toISOString(),
-      })
-      .eq("user_id", parsed.data.user_id);
-  } else {
-    await supabase.from("trust_level_verification").insert({
-      user_id: parsed.data.user_id,
-      id_verified: true,
-      selfie_verified: true,
-      selfie_match_verified: true,
-      current_level: "verificado",
-      level_1_completed_at: new Date().toISOString(),
+  if (rpcError) {
+    Sentry.captureException(rpcError, {
+      tags: { action: "approveVerification", step: "rpc_call" },
+      contexts: {
+        verification: { id: parsed.data.verification_id },
+        supabase: { code: (rpcError as { code?: string }).code },
+      },
     });
+    return { error: rpcError.message ?? "Error al aprobar verificacion" };
   }
 
-  await supabase.from("audit_log").insert({
-    actor_id: user.id,
-    action: "approve_verification",
-    target_type: "verification",
-    target_id: verificationId,
-    metadata: { userId },
-  });
+  // Notification INSERT outside the atomic RPC: not part of canonical
+  // mutable state, failure here does not cause divergence. Wrap in
+  // try/catch so a notifications-table outage cannot mask a successful
+  // verification approval (caveat P4 of the playbook).
+  try {
+    await supabase.from("notifications").insert({
+      user_id: parsed.data.user_id,
+      tipo: "trust_upgrade",
+      titulo: "¡Identidad verificada!",
+      mensaje: "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
+      data: { verification_id: parsed.data.verification_id },
+    });
+  } catch (notifError) {
+    Sentry.captureException(notifError, {
+      tags: { action: "approveVerification", step: "post_rpc_notification" },
+      contexts: { verification: { id: parsed.data.verification_id } },
+    });
+    // NO abortar — el approval ya fue atomico en el RPC.
+  }
+
+  // audit_log INSERT outside the atomic RPC: legal trail post-hoc, the
+  // canonical proof of approval is seller_verification.reviewed_at written
+  // by the RPC. A failure here is observable via Sentry without rolling
+  // back the verification approval.
+  try {
+    await supabase.from("audit_log").insert({
+      actor_id: user.id,
+      action: "approve_verification",
+      target_type: "verification",
+      target_id: verificationId,
+      metadata: { userId },
+    });
+  } catch (auditError) {
+    Sentry.captureException(auditError, {
+      tags: { action: "approveVerification", step: "post_rpc_audit_log" },
+      contexts: { verification: { id: parsed.data.verification_id } },
+    });
+    // NO abortar — audit_log es trazabilidad post-hoc, no estado canonico.
+  }
 
   return { success: true };
 }
