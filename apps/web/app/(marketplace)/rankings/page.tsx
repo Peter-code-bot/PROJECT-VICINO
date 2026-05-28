@@ -96,7 +96,7 @@ async function RankingsContent({
         user_lat: geo.lat,
         user_lng: geo.lng,
         radius_meters: 10000,
-        limit: 10,
+        limit: 50,
       });
     } catch (error: unknown) {
       queryError =
