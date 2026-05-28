@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
@@ -93,16 +92,9 @@ export function Sidebar({ user, profile, isAdmin, unreadNotifications }: Sidebar
       {/* Logo */}
       <div className="px-5 py-5 shadow-[inset_0_-1px_0_0_var(--border)]">
         <Link href="/" className="group flex items-center gap-2.5">
-          <Image
-            src="/vicino-logo.png"
-            alt="Vicino Logo"
-            width={36}
-            height={36}
-            className="rounded-xl"
-          />
           <div className="flex flex-col leading-none">
-            <span className="font-heading text-lg font-bold tracking-tight text-[color:var(--fg)]">VICINO</span>
-            <span className="mt-0.5 text-[8.5px] font-semibold uppercase tracking-[0.18em] text-[color:var(--fg-dim)]">
+            <span className="font-heading text-2xl font-bold tracking-tight text-[color:var(--fg)]">VICINO</span>
+            <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--fg-dim)]">
               Confianza Local
             </span>
           </div>
