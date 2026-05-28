@@ -47,8 +47,6 @@ export function ReviewsSummary({
   reviewsCount,
   onOpenReviews,
 }: ReviewsSummaryProps) {
-  if (!reviews || reviews.length === 0) return null;
-
   const breakdown = buildBreakdown(reviews);
   const best = pickBestReview(reviews);
   const bestReviewer = best
@@ -58,6 +56,26 @@ export function ReviewsSummary({
     : null;
   const totalLabel =
     reviewsCount === 1 ? `${reviewsCount} reseña` : `${reviewsCount} reseñas`;
+
+  if (!reviews || reviews.length === 0) {
+    return (
+      <section className="flex flex-col gap-4 rounded-[var(--r-lg)] bg-card p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+        <div className="flex items-center gap-3">
+          <span className="font-display text-3xl font-semibold leading-none text-fg-muted">
+            -.-
+          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <RatingStars rating={0} size="md" />
+            <span className="text-xs text-fg-muted">0 reseñas</span>
+          </div>
+        </div>
+        <div className="rounded-[var(--r-md)] bg-card-2 p-4 text-center">
+          <p className="text-sm font-medium text-fg">Sin reseñas todavía</p>
+          <p className="text-xs text-fg-muted mt-1">Este vendedor aún no ha recibido reseñas.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-4 rounded-[var(--r-lg)] bg-card p-4 shadow-[inset_0_0_0_1px_var(--border)]">

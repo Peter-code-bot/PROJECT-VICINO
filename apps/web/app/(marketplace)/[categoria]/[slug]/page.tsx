@@ -76,7 +76,7 @@ export default async function ProductDetailPage({ params }: Props) {
       products_services!product_id(id, titulo, categoria, slug, imagen_principal)
     `
     )
-    .eq("product_id", product.id)
+    .eq("reviewed_id", product.creador_id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
     .order("created_at", { ascending: false })
