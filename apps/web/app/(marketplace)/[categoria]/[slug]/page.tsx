@@ -14,6 +14,19 @@ import { MessageCircle, ShoppingBag, MapPin, Truck, ShieldCheck, ChevronRight } 
 import type { TrustLevel } from "@vicino/shared";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { ProductReviewsTrigger } from "@/components/product/product-reviews-trigger";
+import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
+import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
+import type {
+  ProductDetailCoupon,
+  ProductDetailData,
+  ProductDetailReview,
+} from "@/components/product/types";
+
+// Feature flag for the v2 redesign. While false, the legacy JSX below is
+// rendered identically to production. Flipping to true switches to the
+// new ProductDetailMobile and ProductDetailDesktop wrappers. See plan
+// at .claude/plans/redise-o-p-gina-lazy-flame.md for the rollout.
+const RENDER_V2 = false;
 
 interface Props {
   params: Promise<{ categoria: string; slug: string }>;
@@ -125,6 +138,23 @@ export default async function ProductDetailPage({ params }: Props) {
         ? "Envío disponible"
         : "Pickup o envío disponible";
 
+  const isOwner = user?.id === product.creador_id;
+
+  // Hydrated payload for the v2 wrappers. With RENDER_V2 = false the
+  // wrappers are imported but not executed at runtime, so the page
+  // continues to render the legacy JSX below identically. The cast is
+  // intentional while the wrappers are stubs; Fase 2+ will refine.
+  const data: ProductDetailData = {
+    product: product as unknown as ProductDetailData["product"],
+    seller: seller as unknown as ProductDetailData["seller"],
+    reviews: (reviews ?? []) as ProductDetailReview[],
+    coupons: (coupons ?? []) as ProductDetailCoupon[],
+    isFavorite,
+    user: user ? { id: user.id } : null,
+    isOwner,
+    deliveryLabel,
+  };
+
   return (
     <div className="max-w-4xl mx-auto md:py-8 animate-fade-in">
       {/* Breadcrumbs (Desktop only) */}
@@ -138,6 +168,16 @@ export default async function ProductDetailPage({ params }: Props) {
         <span className="text-foreground truncate max-wxs">{product.titulo}</span>
       </div>
 
+      {RENDER_V2 ? (
+        <>
+          <div className="md:hidden">
+            <ProductDetailMobile {...data} />
+          </div>
+          <div className="hidden md:block">
+            <ProductDetailDesktop {...data} />
+          </div>
+        </>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:px-4">
         {/* Left Column — Gallery */}
         <div className="relative">
@@ -328,6 +368,7 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Reviews Section */}
       {reviews && reviews.length > 0 && (
