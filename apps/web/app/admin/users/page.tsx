@@ -7,7 +7,7 @@ import { RoleActions } from "./role-actions";
 export const metadata = { title: "Admin — Usuarios" };
 
 interface Props {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; role?: string }>;
 }
 
 export default async function AdminUsersPage({ searchParams }: Props) {
@@ -35,6 +35,20 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     query = query.or(`nombre.ilike.%${params.q}%,email.ilike.%${params.q}%,user_id.ilike.%${params.q}%`);
   }
 
+  if (params.role) {
+    const { data: roleUsers } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", params.role);
+      
+    const userIds = roleUsers?.map(r => r.user_id) ?? [];
+    if (userIds.length > 0) {
+      query = query.in("id", userIds);
+    } else {
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000"); // Force empty result
+    }
+  }
+
   const { data: users } = await query;
 
   // Get roles
@@ -58,6 +72,15 @@ export default async function AdminUsersPage({ searchParams }: Props) {
           placeholder="Buscar por nombre, email o ID..."
           className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
         />
+        <select
+          name="role"
+          defaultValue={params.role || ""}
+          className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+        >
+          <option value="">Todos los roles</option>
+          <option value="admin">Administradores</option>
+          <option value="moderator">Moderadores</option>
+        </select>
         <button
           type="submit"
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
