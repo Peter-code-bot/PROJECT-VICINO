@@ -91,7 +91,7 @@ async function RankingsContent({
         period: currentPeriod,
         user_lat: geo.lat,
         user_lng: geo.lng,
-        radius_meters: 5000,
+        radius_meters: 10000,
         limit: 10,
       });
     } catch (error: unknown) {
