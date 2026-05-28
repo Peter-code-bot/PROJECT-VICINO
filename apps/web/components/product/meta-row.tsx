@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 interface MetaRowProps {
   categoria: string;
@@ -130,30 +130,35 @@ export function MetaRow({
   const sellerHasGeo =
     typeof sellerLat === "number" && typeof sellerLng === "number";
 
-  let distance: string | null = null;
+  const items: ReactNode[] = [];
   if (distanceLabel) {
-    distance = distanceLabel;
+    items.push(distanceLabel);
   } else if (sellerHasGeo && resolving) {
-    distance = "Calculando...";
+    items.push(
+      <span
+        className="inline-block h-3 w-12 rounded bg-card-2 animate-pulse"
+        aria-label="Calculando distancia"
+      />,
+    );
   } else if (sellerHasGeo && geoDenied && !ubic) {
-    distance = "Cerca de ti";
+    items.push("Cerca de ti");
   }
-
-  const parts: string[] = [];
-  if (distance) parts.push(distance);
-  if (ubic) parts.push(ubic);
-  parts.push(capitalizeFirst(categoria.replace(/-/g, " ")));
+  if (ubic) items.push(ubic);
+  items.push(capitalizeFirst(categoria.replace(/-/g, " ")));
 
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-fg-muted">
-      {parts.map((p, i) => (
-        <span key={`${p}-${i}`} className="inline-flex items-center gap-1.5">
+      {items.map((item, i) => (
+        <span
+          key={`meta-${i}`}
+          className="inline-flex items-center gap-1.5"
+        >
           {i > 0 ? (
             <span aria-hidden className="text-fg-dim">
               ·
             </span>
           ) : null}
-          <span>{p}</span>
+          {item}
         </span>
       ))}
     </div>
