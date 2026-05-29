@@ -126,11 +126,6 @@ export async function RankingsHomeStripSection() {
 
   if (categories.length === 0) return null;
 
-  const dayIndex = new Date().getDate() % categories.length;
-  const featuredCategory = categories[dayIndex] ?? categories[0];
-  if (!featuredCategory) return null;
-  // TODO: evolucionar a heuristica por popularidad cuando haya traccion.
-
   const defaultLat = Number.parseFloat(
     process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414",
   );
@@ -138,27 +133,46 @@ export async function RankingsHomeStripSection() {
     process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063",
   );
 
-  let top3: RankedSeller[] = [];
+  let bestCategory: Category | null = null;
+  let bestTop3: RankedSeller[] = [];
 
   try {
-    top3 = await getRankingHiperlocal({
-      category_id: featuredCategory.id,
-      period,
-      user_lat: defaultLat,
-      user_lng: defaultLng,
-      radius_meters: 10000,
-      limit: 3,
-    });
+    const results = await Promise.all(
+      categories.map(async (cat) => {
+        const top3 = await getRankingHiperlocal({
+          category_id: cat.id,
+          period,
+          user_lat: defaultLat,
+          user_lng: defaultLng,
+          radius_meters: 10000,
+          limit: 3,
+        });
+        return { category: cat, top3 };
+      })
+    );
+
+    // Encontrar la categoría cuyo primer lugar tenga el mayor puntaje
+    let maxScore = -1;
+    for (const { category, top3 } of results) {
+      if (top3.length >= 3) {
+        const score = Number(top3[0].composite_score);
+        if (score > maxScore) {
+          maxScore = score;
+          bestCategory = category;
+          bestTop3 = top3;
+        }
+      }
+    }
   } catch {
     return null;
   }
 
-  if (top3.length < 3) return null;
+  if (!bestCategory || bestTop3.length < 3) return null;
 
   return (
     <RankingsHomeStrip
-      top3={top3}
-      category={featuredCategory}
+      top3={bestTop3}
+      category={bestCategory}
       period={period}
     />
   );
