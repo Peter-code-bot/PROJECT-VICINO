@@ -35,6 +35,11 @@
   "exclude": [
     "node_modules",
     "playwright.config.ts",
-    "tests/**/*"
+    "tests/**/*",
+    "seed-*.ts",
+    "clean-*.ts",
+    "fix-*.ts",
+    "inspect-*.ts",
+    "update-*.ts"
   ]
 }
