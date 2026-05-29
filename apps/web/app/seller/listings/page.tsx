@@ -32,12 +32,12 @@ export default async function ListingsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold truncate">Mis publicaciones</h1>
+    <div className="space-y-4 min-w-0">
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <h1 className="text-xl font-bold truncate min-w-0">Mis publicaciones</h1>
         <Link
           href="/vender"
-          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--brand)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] whitespace-nowrap transition-colors"
+          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--brand)] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] whitespace-nowrap transition-colors"
         >
           <span className="hidden sm:inline">Publicar nuevo</span>
           <span className="sm:hidden">Publicar</span>
@@ -49,7 +49,7 @@ export default async function ListingsPage() {
           {products.map((p) => (
             <div
               key={p.id}
-              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
+              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-col md:flex-row md:items-center gap-3 md:gap-4 overflow-hidden min-w-0"
             >
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">

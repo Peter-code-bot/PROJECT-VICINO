@@ -78,14 +78,14 @@ export default async function SellerOverviewPage() {
     : 100;
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      <div>
-        <h1 className="text-2xl font-heading font-bold mb-1">Mi Tienda</h1>
-        <p className="text-sm text-[color:var(--fg-muted)]">Resumen de tu actividad y métricas de ventas</p>
+    <div className="space-y-8 animate-fade-in-up min-w-0">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-heading font-bold mb-1 truncate">Mi Tienda</h1>
+        <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger min-w-0">
         <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)]">
