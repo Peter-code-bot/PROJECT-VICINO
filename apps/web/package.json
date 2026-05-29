@@ -7,7 +7,9 @@
     "build": "node scripts/check-no-todo.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:setup": "playwright install chromium"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -55,6 +57,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",

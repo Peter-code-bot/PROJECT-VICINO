@@ -46,3 +46,9 @@ graphify-out/
 
 # RuVector (external AI tooling artifact, not for repo)
 ruvector.db
+
+# Playwright (per-run artifacts; storage-state.json contains active session)
+apps/web/tests/storage-state.json
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/playwright/.cache/
