@@ -99,7 +99,7 @@ export function ProfileHeader({
             </>
           )}
 
-          <div className="flex gap-5 text-center">
+          <div className="flex gap-5 text-center flex-wrap justify-center sm:justify-start">
             <div>
               <p className="font-heading font-bold text-sm">{profile.total_sales}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Ventas</p>
