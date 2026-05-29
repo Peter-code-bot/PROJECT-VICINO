@@ -76,7 +76,7 @@ export function HistorialTabs({
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setTab("ventas")}
           className={cn(

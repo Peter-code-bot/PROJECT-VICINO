@@ -52,7 +52,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 overflow-x-auto scrollbar-hide">
         {tabs.map((t) => (
           <button
             key={t.key}
