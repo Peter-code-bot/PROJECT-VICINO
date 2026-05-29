@@ -153,7 +153,7 @@ export async function RankingsHomeStripSection() {
     return null;
   }
 
-  if (top3.length === 0) return null;
+  if (top3.length < 3) return null;
 
   return (
     <RankingsHomeStrip
