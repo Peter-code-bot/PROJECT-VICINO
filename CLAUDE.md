@@ -117,6 +117,83 @@ No se ejecuta ningún comando manual desde local para deployar.
 
 ---
 
+## Lecciones institucionales (2026-05-29)
+
+Lecciones de proceso destiladas de la jornada del 29 de mayo. Aplicables a
+cualquier sesión que toque código, schema, RLS o git workflow.
+
+### 1. `pnpm build` local antes de CADA push
+El type-check que corre Vercel es 100% reproducible localmente (`pnpm build`
+encadena el guard CI + `next build --webpack` con el mismo TS strict).
+Este día rompimos producción dos veces porque un push se hizo sin correr el
+build local primero (un type error de seed scripts ajeno + un type-check sin
+verificar el rebase). Ambos rompimientos los habría atrapado un `pnpm build`
+local antes de `git push`.
+
+### 2. Smoke tests de RLS requieren `SET LOCAL ROLE`, no solo `set_config`
+El SQL Editor de Supabase Studio corre como rol `postgres`, que **bypasea
+RLS** salvo que la tabla tenga `FORCE ROW LEVEL SECURITY` (lo cual no es la
+configuración por default). Pasar `set_config('request.jwt.claims', ...)`
+solamente settea el claim que `auth.uid()` lee, pero NO cambia el rol de
+sesión, así que la RLS sigue bypasseada. Patrón canónico para validar
+policies bajo rol real:
+
+```sql
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claims = '{"sub":"<uuid>","role":"authenticated"}';
+-- <tests aquí>
+ROLLBACK;
+```
+
+`ROLLBACK` garantiza que ninguna mutación del test persista, así que el
+setup puede pausar/contaminar datos temporalmente sin riesgo de leak.
+Lección original: durante el VERIFY de Sesión 5a un Test D de attacker
+UPDATE pasó como falso negativo (UPDATE 3 en vez de UPDATE 0) porque corrió
+como `postgres` que bypaseó la policy ownership-aware recién creada.
+
+### 3. PASO 0 de verificación de schema antes de CREATE POLICY/FUNCTION o INSERT tipado
+Antes de cualquier policy/función/INSERT que referencie otras tablas o
+columnas, leer el DDL real de las tablas en cuestión y confirmar nombres,
+tipos y constraints. No asumir contra notas de auditoría previas — pueden
+estar desactualizadas. Precedentes:
+
+- `profiles.role` no existía; el RBAC vive en `user_roles` pivot.
+- `delete_account` no existía; la función real es `delete_user_data`.
+- Columna de `media_assets` confirmada `type` (no `media_type`) leyendo el
+  DDL de Sesión 5b.
+
+Sin este audit el CREATE/INSERT rompe en runtime con `column does not exist`
+o `function does not exist`, y se gasta tiempo diagnosticando lo que el
+PASO 0 hubiera resuelto en 30 segundos.
+
+### 4. pnpm 9 NO auto-corre el lifecycle `prebuild`
+El package manager pnpm a partir de v7 dejó de ejecutar automáticamente
+scripts `pre*`/`post*` custom (solo respeta los del lifecycle nativo de
+`install`/`publish`). Por lo tanto un script `prebuild` declarado en
+`package.json` **NO** corre antes de `pnpm build`. Para encadenar guards
+de CI (ej. `check-no-todo.mjs` de MP#07 #9), usar `&&` directamente en el
+script `build`:
+
+```jsonc
+"build": "node scripts/check-no-todo.mjs && next build --webpack"
+```
+
+Esto garantiza ejecución determinista en local, npm/pnpm, y Vercel.
+
+### 5. Verificar premisas con git, no asumir
+El estado de `master` cambia entre sesiones porque otros developers
+(Alejandro en `design`, Javier en `master`) pushean en paralelo. Antes de
+planear cualquier fix o asumir que algo "sigue local sin pushear",
+ejecutar `git fetch origin master` + `git log --oneline -5` para
+verificar el estado real contra `origin`. Lección original: una premisa
+del playbook ("C1 sigue local, producción rota") fue refutada por
+evidencia git — Javier ya había pusheado el mismo fix (con scope más
+amplio) mientras se trabajaba localmente, así que mi commit habría sido
+un duplicado redundante.
+
+---
+
 ## Limitaciones conocidas
 
 ### Editar publicación: cambiar categoría rompe la URL anterior del producto
