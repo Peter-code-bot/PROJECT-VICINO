@@ -65,6 +65,16 @@ export default async function PerfilPage() {
     .eq("buyer_id", user.id)
     .eq("status", "completed");
 
+  const { count: followersCount } = await supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", user.id);
+
+  const { count: followingCount } = await supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", user.id);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       {/* Mobile drawer trigger */}
@@ -88,6 +98,8 @@ export default async function PerfilPage() {
         profile={profile}
         productCount={products?.length ?? 0}
         purchaseCount={purchaseCount ?? 0}
+        followersCount={followersCount ?? 0}
+        followingCount={followingCount ?? 0}
       />
       <ProfileTabs
         products={products ?? []}

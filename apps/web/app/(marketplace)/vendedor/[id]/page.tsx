@@ -101,6 +101,16 @@ export default async function VendedorPage({ params }: Props) {
     if (followData) isFollowing = true;
   }
 
+  const { count: followersCount } = await supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", id);
+
+  const { count: followingCount } = await supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", id);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <ProfileHeader
@@ -110,6 +120,8 @@ export default async function VendedorPage({ params }: Props) {
         isPublic
         currentUserId={currentUserId}
         isFollowing={isFollowing}
+        followersCount={followersCount ?? 0}
+        followingCount={followingCount ?? 0}
       />
       <ProfileTabs
         products={products ?? []}

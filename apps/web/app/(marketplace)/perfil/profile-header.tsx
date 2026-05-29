@@ -40,9 +40,20 @@ interface ProfileHeaderProps {
    *  cuando el perfil mostrado es el del propio usuario. */
   currentUserId?: string | null;
   isFollowing?: boolean;
+  followersCount?: number;
+  followingCount?: number;
 }
 
-export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, currentUserId, isFollowing }: ProfileHeaderProps) {
+export function ProfileHeader({ 
+  profile, 
+  productCount, 
+  purchaseCount = 0, 
+  isPublic = false, 
+  currentUserId = null, 
+  isFollowing = false,
+  followersCount = 0,
+  followingCount = 0,
+}: ProfileHeaderProps) {
   const [showActions, setShowActions] = useState(false);
 
   if (!profile) return null;
@@ -100,6 +111,16 @@ export function ProfileHeader({ profile, productCount, purchaseCount, isPublic, 
             <div>
               <p className="font-heading font-bold text-sm">{productCount}</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Productos</p>
+            </div>
+            {profile.es_vendedor && (
+              <div>
+                <p className="font-heading font-bold text-sm">{followersCount}</p>
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Seguidores</p>
+              </div>
+            )}
+            <div>
+              <p className="font-heading font-bold text-sm">{followingCount}</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Siguiendo</p>
             </div>
             {Number(profile.average_rating) > 0 && (
               <div>
