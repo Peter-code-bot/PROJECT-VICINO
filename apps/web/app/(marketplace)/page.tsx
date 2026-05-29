@@ -196,7 +196,7 @@ export default async function HomePage({ searchParams }: Props) {
       {feed === "parati" ? (
         <>
           {/* ─── ZONE + SEARCH (app-style hero) ───────────────── */}
-          <section className="px-4 pt-6 pb-4">
+          <section className="px-4 pt-8 pb-4">
             <div className="max-w-7xl mx-auto space-y-4">
               <ZoneCard />
               <h1 className="font-heading text-3xl font-bold leading-[1.1] tracking-tight text-[color:var(--fg)]">

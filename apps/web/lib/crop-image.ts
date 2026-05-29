@@ -40,6 +40,18 @@ export async function getCroppedBlob(
   });
 }
 
+/**
+ * Product-grade crop — higher resolution (1200px) and quality (0.90)
+ * than the avatar variant (512px / 0.92). Used by product-media-cropper
+ * to produce the final image blob that gets uploaded to product-media.
+ */
+export async function getCroppedProductBlob(
+  imageSrc: string,
+  cropArea: CropArea,
+): Promise<Blob> {
+  return getCroppedBlob(imageSrc, cropArea, 1200);
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();

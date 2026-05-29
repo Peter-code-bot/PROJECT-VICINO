@@ -5,6 +5,7 @@ import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleFollowStore } from "@/app/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
+import { toast } from "sonner";
 
 export interface FollowButtonProps {
   storeId: string;
@@ -30,6 +31,9 @@ export function FollowButton({
         setFollowing(!following);
         return () => setFollowing(following); // rollback
       },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "No se pudo seguir a la tienda");
+      }
     }
   );
 

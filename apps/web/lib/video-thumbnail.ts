@@ -16,6 +16,8 @@
  * fallback so the user still sees the first frame.
  */
 
+import type { CropArea } from "@/lib/crop-image";
+
 const VIDEO_EXT_RE = /\.(mp4|webm|mov)(\?[^#]*)?(#.*)?$/i;
 const MAX_THUMB_WIDTH = 1080;
 const THUMB_SEEK_TIME_SEC = 0.1;
@@ -113,6 +115,103 @@ export function generateVideoThumbnail(file: File): Promise<Blob> {
         );
       } catch (err) {
         fail(err instanceof Error ? err : new Error("thumbnail draw failed"));
+      }
+    });
+
+    video.addEventListener("error", () => {
+      fail(new Error("video element error event"));
+    });
+
+    video.src = objectUrl;
+  });
+}
+
+/**
+ * Generate a JPEG thumbnail blob from the first frame of a video file,
+ * drawing ONLY the user-selected crop area. This produces a thumbnail
+ * that visually matches what the user chose in the cropper.
+ *
+ * Same error contract as `generateVideoThumbnail` — callers must
+ * treat failure as best-effort.
+ */
+export function generateCroppedVideoThumbnail(
+  file: File,
+  cropArea: CropArea,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let settled = false;
+
+    function cleanup() {
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+    }
+
+    function fail(err: Error) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    }
+
+    function done(blob: Blob) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(blob);
+    }
+
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+
+    video.addEventListener("loadeddata", () => {
+      try {
+        video.currentTime = THUMB_SEEK_TIME_SEC;
+      } catch (err) {
+        fail(err instanceof Error ? err : new Error("seek failed"));
+      }
+    });
+
+    video.addEventListener("seeked", () => {
+      try {
+        const { x, y, width, height } = cropArea;
+        if (!width || !height) {
+          throw new Error("crop area dimensions invalid");
+        }
+        const scale = Math.min(1, MAX_THUMB_WIDTH / width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("canvas context unavailable");
+        ctx.drawImage(
+          video,
+          x,
+          y,
+          width,
+          height,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              done(blob);
+            } else {
+              fail(new Error("toBlob returned null"));
+            }
+          },
+          "image/jpeg",
+          THUMB_JPEG_QUALITY,
+        );
+      } catch (err) {
+        fail(err instanceof Error ? err : new Error("cropped thumbnail draw failed"));
       }
     });
 

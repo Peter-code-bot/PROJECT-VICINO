@@ -6,11 +6,18 @@ import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
 
 const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
+const ProductMediaCropper = dynamic(
+  () => import("@/components/product/product-media-cropper").then((m) => m.ProductMediaCropper),
+  { ssr: false },
+);
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generateVideoThumbnail } from "@/lib/video-thumbnail";
+import { generateVideoThumbnail, generateCroppedVideoThumbnail } from "@/lib/video-thumbnail";
+import { fileToDataURL } from "@/lib/crop-image";
+import type { CropArea } from "@/lib/crop-image";
+import type { CropResult } from "@/components/product/product-media-cropper";
 
 type Mode = "create" | "edit";
 
@@ -44,8 +51,11 @@ function isVideoUrl(url: string): boolean {
 }
 
 type ExistingMedia = { kind: "existing"; url: string; isVideo: boolean };
-type PendingMedia = { kind: "pending"; file: File; preview: string; isVideo: boolean };
+type PendingMedia = { kind: "pending"; file: File; preview: string; isVideo: boolean; videoCropArea?: CropArea };
 type MediaItem = ExistingMedia | PendingMedia;
+
+/** Item queued for cropping before being added to media[] */
+type CropQueueItem = { file: File; src: string; isVideo: boolean };
 
 export function ProductForm({ mode = "create", initialValues }: ProductFormProps) {
   const submittingRef = useRef(false);
@@ -88,6 +98,12 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   // wait when the work has already finished.
   const pendingThumbsRef = useRef<Map<File, Promise<Blob | null>>>(new Map());
 
+  // Crop queue — files waiting to pass through the cropper modal
+  const [cropQueue, setCropQueue] = useState<CropQueueItem[]>([]);
+  const [cropIndex, setCropIndex] = useState(0);
+  const cropperOpen = cropQueue.length > 0 && cropIndex < cropQueue.length;
+  const currentCropItem = cropperOpen ? cropQueue[cropIndex]! : null;
+
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (media.length + files.length > 5) {
@@ -100,28 +116,68 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
     }
     setError("");
-    const newMedia: PendingMedia[] = files.map((file) => ({
-      kind: "pending",
-      file,
-      preview: URL.createObjectURL(file),
-      isVideo: file.type.startsWith("video/"),
-    }));
-    setMedia((prev) => [...prev, ...newMedia]);
 
-    // Kick off thumbnail generation in the background and stash the promise
-    // in pendingThumbsRef so uploadMedia can await it before deciding to skip
-    // the thumb. Best-effort: failure resolves to null (NOT a rejection) so a
-    // user who never submits the form doesn't leave a cached rejected promise
-    // in the Map — that would surface as an unhandledrejection warning even
-    // though the thumbnail is intentionally optional.
-    for (const item of newMedia) {
-      if (!item.isVideo) continue;
-      const promise: Promise<Blob | null> = generateVideoThumbnail(item.file).catch((err) => {
-        // Diagnostic only — user-facing display already has a fallback path.
-        console.warn("video thumbnail generation failed", item.file.name, err);
+    // Build crop queue: convert each file to a previewable src
+    const queueItems: CropQueueItem[] = [];
+    for (const file of files) {
+      const isVid = file.type.startsWith("video/");
+      // Images need a data URL for the canvas-based crop;
+      // videos use an object URL that react-easy-crop plays inline.
+      const src = isVid ? URL.createObjectURL(file) : await fileToDataURL(file);
+      queueItems.push({ file, src, isVideo: isVid });
+    }
+    setCropQueue(queueItems);
+    setCropIndex(0);
+  }
+
+  /** Called when the user confirms crop on one item in the queue */
+  function handleCropResult(result: CropResult) {
+    if (result.type === "image") {
+      const preview = URL.createObjectURL(result.blob);
+      const file = new File([result.blob], `cropped-${Date.now()}.jpg`, { type: "image/jpeg" });
+      setMedia((prev) => [...prev, { kind: "pending", file, preview, isVideo: false }]);
+    } else {
+      // Video: keep the original file, store crop area for thumbnail generation
+      const preview = URL.createObjectURL(result.file);
+      setMedia((prev) => [
+        ...prev,
+        {
+          kind: "pending",
+          file: result.file,
+          preview,
+          isVideo: true,
+          videoCropArea: result.cropArea,
+        },
+      ]);
+      // Generate a cropped thumbnail in the background
+      const thumbPromise: Promise<Blob | null> = generateCroppedVideoThumbnail(
+        result.file,
+        result.cropArea,
+      ).catch((err) => {
+        console.warn("cropped video thumbnail generation failed", result.file.name, err);
         return null;
       });
-      pendingThumbsRef.current.set(item.file, promise);
+      pendingThumbsRef.current.set(result.file, thumbPromise);
+    }
+    advanceCropQueue();
+  }
+
+  /** Called when the user skips crop — the file is NOT added */
+  function handleCropCancel() {
+    // Revoke the object URL for the skipped item to avoid memory leaks
+    const item = cropQueue[cropIndex];
+    if (item?.isVideo) URL.revokeObjectURL(item.src);
+    advanceCropQueue();
+  }
+
+  function advanceCropQueue() {
+    const nextIndex = cropIndex + 1;
+    if (nextIndex >= cropQueue.length) {
+      // Queue exhausted — clean up
+      setCropQueue([]);
+      setCropIndex(0);
+    } else {
+      setCropIndex(nextIndex);
     }
   }
 
@@ -676,6 +732,16 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           onChange={handleImageSelect}
         />
       </div>
+
+      {/* Crop modal — auto-opens for each queued file */}
+      <ProductMediaCropper
+        open={cropperOpen}
+        mediaSrc={currentCropItem?.src ?? null}
+        mediaType={currentCropItem?.isVideo ? "video" : "image"}
+        originalFile={currentCropItem?.file}
+        onCancel={handleCropCancel}
+        onCropComplete={handleCropResult}
+      />
 
       <button
         type="submit"
