@@ -42,10 +42,23 @@ export default async function SearchPage({ searchParams }: Props) {
     .eq("estatus", "disponible");
 
   if (params.q) {
-    query = query.textSearch("search_vector", params.q, {
-      type: "websearch",
-      config: "spanish",
-    });
+    const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
+
+    // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
+    const { data: sellers } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("nombre", `%${unaccentedLike}%`);
+
+    const sellerIds = sellers?.map((s) => s.id) || [];
+
+    // Buscamos en titulo y descripcion, o si el producto pertenece a un vendedor coincidente
+    let orQuery = `titulo.ilike.%${unaccentedLike}%,descripcion.ilike.%${unaccentedLike}%`;
+    if (sellerIds.length > 0) {
+      orQuery += `,creador_id.in.(${sellerIds.join(",")})`;
+    }
+
+    query = query.or(orQuery);
   }
   if (params.category) {
     query = query.eq("categoria", params.category);
