@@ -48,26 +48,29 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
     <div className="flex gap-1 sm:gap-2 md:shrink-0 w-full md:w-auto">
       <Link
         href={`/vender/${id}/editar`}
-        className="flex flex-1 md:flex-none items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 min-w-0 rounded-lg border border-border text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground transition-colors text-[10px] sm:text-xs font-medium"
+        className="flex flex-1 md:flex-none items-center justify-center sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 min-w-0 rounded-lg border border-border text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground transition-colors sm:text-xs font-medium"
+        title="Editar"
       >
-        <Pencil className="h-3.5 w-3.5 shrink-0" />
-        Editar
+        <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
+        <span className="hidden sm:inline">Editar</span>
       </Link>
       <button
         onClick={handleToggle}
         disabled={busy}
-        className="flex flex-1 md:flex-none items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 min-w-0 rounded-lg border border-brand/40 text-brand bg-transparent hover:bg-brand-tint transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"
+        className="flex flex-1 md:flex-none items-center justify-center sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 min-w-0 rounded-lg border border-brand/40 text-brand bg-transparent hover:bg-brand-tint transition-colors sm:text-xs font-medium disabled:opacity-50"
+        title={isPaused ? "Reanudar" : "Pausar"}
       >
-        {isPaused ? <Play className="h-3.5 w-3.5 shrink-0" /> : <Pause className="h-3.5 w-3.5 shrink-0" />}
-        {isPaused ? "Reanudar" : "Pausar"}
+        {isPaused ? <Play className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" /> : <Pause className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />}
+        <span className="hidden sm:inline">{isPaused ? "Reanudar" : "Pausar"}</span>
       </button>
       <button
         onClick={handleDelete}
         disabled={busy}
-        className="flex flex-1 md:flex-none items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 min-w-0 rounded-lg border border-danger/30 text-danger bg-transparent hover:bg-danger/10 transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"
+        className="flex flex-1 md:flex-none items-center justify-center sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 min-w-0 rounded-lg border border-danger/30 text-danger bg-transparent hover:bg-danger/10 transition-colors sm:text-xs font-medium disabled:opacity-50"
+        title="Eliminar"
       >
-        <Trash2 className="h-3.5 w-3.5 shrink-0" />
-        Eliminar
+        <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
+        <span className="hidden sm:inline">Eliminar</span>
       </button>
     </div>
   );

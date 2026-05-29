@@ -50,9 +50,11 @@ export default async function AnalyticsPage() {
     .map(([name, count]) => ({ name, ventas: count }));
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold">Estadísticas</h1>
-      <AnalyticsCharts dailyData={dailyData} topProducts={topProducts} />
+    <div className="space-y-6 min-w-0">
+      <h1 className="text-xl font-bold truncate">Estadísticas</h1>
+      <div className="w-full min-w-0">
+        <AnalyticsCharts dailyData={dailyData} topProducts={topProducts} />
+      </div>
     </div>
   );
 }

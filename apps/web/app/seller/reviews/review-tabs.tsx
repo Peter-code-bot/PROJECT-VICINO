@@ -81,13 +81,13 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
                   </div>
-                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)]">{r.comentario}</p>}
+                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   {r.respuesta ? (
                     <div className="ml-4 pl-3 border-l border-[color:var(--border)] text-sm">
                       <span className="font-medium">Tu respuesta:</span>{" "}
@@ -117,13 +117,13 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
                   </div>
-                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)]">{r.comentario}</p>}
+                  {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   <div className="pt-2 border-t border-[color:var(--border)]">
                     <ReviewProductLink product={reviewedProduct ?? null} />
                   </div>
@@ -143,9 +143,9 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               const product = Array.isArray(s.products_services) ? s.products_services[0] : s.products_services;
               const buyer = Array.isArray(s.buyer) ? s.buyer[0] : s.buyer;
               return (
-                <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{product?.titulo ?? "Producto"}</p>
+                <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 flex items-center justify-between gap-3 overflow-hidden min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{product?.titulo ?? "Producto"}</p>
                     <p className="text-xs text-[color:var(--fg-muted)]">Comprador: {buyer?.nombre ?? "Usuario"}</p>
                   </div>
                   <Link

@@ -103,9 +103,9 @@ export function VerificationUpload({
   return (
     <div className="space-y-4">
       {status !== "none" && (
-        <div className="flex items-start sm:items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3">
+        <div className="flex items-start sm:items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-2 sm:p-3">
           <div className="shrink-0 mt-0.5 sm:mt-0">{statusIcon}</div>
-          <span className="text-sm font-medium">
+          <span className="text-xs sm:text-sm font-medium">
             {status === "approved" && "Verificación aprobada"}
             {status === "pending" && "En revisión — espera la aprobación del admin"}
             {status === "rejected" && "Verificación rechazada — sube documentos nuevamente"}
@@ -124,16 +124,17 @@ export function VerificationUpload({
           <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-medium text-sm">{label}</p>
+                <p className="font-medium text-xs sm:text-sm">{label}</p>
                 {existingDocs[key] ? (
-                  <p className="text-xs text-[color:var(--trust-emerald)]">Subido</p>
+                  <p className="text-[10px] sm:text-xs text-[color:var(--trust-emerald)]">Subido</p>
                 ) : (
-                  <p className="text-xs text-[color:var(--fg-muted)]">No subido</p>
+                  <p className="text-[10px] sm:text-xs text-[color:var(--danger)]">Requerido</p>
                 )}
               </div>
               <label className="cursor-pointer">
                 <input
                   type="file"
+                  id={`file-upload-${key}`}
                   accept={accept}
                   className="hidden"
                   onChange={(e) => {
@@ -142,8 +143,8 @@ export function VerificationUpload({
                   }}
                   disabled={uploading !== null}
                 />
-                <span className="inline-flex items-center gap-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-[color:var(--fg-muted)] px-3 py-1.5 text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
-                  <Upload className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1.5 shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-[10px] sm:text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
+                  <Upload className="h-3 w-3 shrink-0" />
                   {uploading === key ? "Subiendo..." : existingDocs[key] ? "Reemplazar" : "Subir"}
                 </span>
               </label>

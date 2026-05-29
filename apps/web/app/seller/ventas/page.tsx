@@ -38,22 +38,22 @@ export default async function VentasPage() {
     pending_confirmation: {
       label: "Pendiente",
       color:
-        "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+        "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     completed: {
       label: "Completada",
       color:
-        "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+        "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     cancelled: {
       label: "Cancelada",
       color:
-        "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+        "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     expired: {
       label: "Expirada",
       color:
-        "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+        "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
   };
 
@@ -70,7 +70,7 @@ export default async function VentasPage() {
             const canReview = s.status === "completed" && !reviewedIds.has(s.id);
 
             return (
-              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
+              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3 sm:p-4 space-y-2 overflow-hidden min-w-0">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-sm truncate min-w-0">
                     {product?.titulo ?? "Producto"}
