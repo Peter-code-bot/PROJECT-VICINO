@@ -71,11 +71,11 @@ export default async function VentasPage() {
 
             return (
               <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm truncate">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-sm truncate min-w-0">
                     {product?.titulo ?? "Producto"}
                   </span>
-                  <span className={status.color}>
+                  <span className={`shrink-0 ${status.color}`}>
                     {status.label}
                   </span>
                 </div>

@@ -103,8 +103,8 @@ export function VerificationUpload({
   return (
     <div className="space-y-4">
       {status !== "none" && (
-        <div className="flex items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3">
-          {statusIcon}
+        <div className="flex items-start sm:items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3">
+          <div className="shrink-0 mt-0.5 sm:mt-0">{statusIcon}</div>
           <span className="text-sm font-medium">
             {status === "approved" && "Verificación aprobada"}
             {status === "pending" && "En revisión — espera la aprobación del admin"}
@@ -122,8 +122,8 @@ export function VerificationUpload({
       <div className="space-y-3">
         {DOCS.map(({ key, label, accept }) => (
           <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <p className="font-medium text-sm">{label}</p>
                 {existingDocs[key] ? (
                   <p className="text-xs text-[color:var(--trust-emerald)]">Subido</p>
