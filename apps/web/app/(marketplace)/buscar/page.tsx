@@ -4,7 +4,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
 import { CATEGORIES } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -41,16 +41,22 @@ export default async function SearchPage({ searchParams }: Props) {
     )
     .eq("estatus", "disponible");
 
+  let topUsers: any[] = [];
   if (params.q) {
     const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
     const { data: sellers } = await supabase
       .from("profiles")
-      .select("id")
-      .ilike("nombre", `%${unaccentedLike}%`);
+      .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count")
+      .ilike("nombre", `%${unaccentedLike}%`)
+      .limit(4);
 
-    const sellerIds = sellers?.map((s) => s.id) || [];
+    if (sellers) {
+      topUsers = sellers;
+    }
+
+    const sellerIds = topUsers.map((s) => s.id);
 
     // Buscamos en titulo y descripcion, o si el producto pertenece a un vendedor coincidente
     let orQuery = `titulo.ilike.%${unaccentedLike}%,descripcion.ilike.%${unaccentedLike}%`;
@@ -148,6 +154,48 @@ export default async function SearchPage({ searchParams }: Props) {
           </p>
         )}
       </div>
+
+      {topUsers.length > 0 && currentPage === 1 && (
+        <div className="space-y-3 mb-8">
+          <h2 className="text-sm font-semibold text-[color:var(--fg)] uppercase tracking-wide">Usuarios encontrados</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {topUsers.map((user) => (
+              <Link
+                key={user.id}
+                href={`/tienda/${user.id}`}
+                className="flex items-center gap-4 p-3 rounded-2xl bg-[color:var(--card-2)] hover:bg-[color:var(--card)] border border-[color:var(--border)] transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+                  {user.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar_url} alt={user.nombre ?? "Usuario"} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-semibold text-sm text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)] transition-colors truncate">
+                      {user.nombre}
+                    </h3>
+                    {user.trust_level === "verificado" && (
+                      <ShieldCheck className="w-3.5 h-3.5 text-[color:var(--brand)] flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5 text-xs font-medium text-[color:var(--fg)]">
+                    <Star className="w-3 h-3 fill-[color:var(--brand)] text-[color:var(--brand)]" />
+                    <span>{Number(user.average_rating || 0).toFixed(1)}</span>
+                    <span className="text-[color:var(--fg-muted)] font-normal">
+                      ({user.reviews_count || 0})
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[color:var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {products && products.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

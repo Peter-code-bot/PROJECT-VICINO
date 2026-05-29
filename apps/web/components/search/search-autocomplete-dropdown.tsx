@@ -118,35 +118,6 @@ export function SearchAutocompleteDropdown({
             )}
           </ul>
           
-          {/* SEARCH MODE SWITCH */}
-          <div className="bg-[color:var(--card-2)] border-t border-[color:var(--border)] p-2 space-y-1">
-            <button
-              type="button"
-              onClick={() => onSearchProducts(query)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-[color:var(--fg)] rounded-lg hover:bg-[color:var(--card)] border border-transparent hover:border-[color:var(--border)] transition-all shadow-sm"
-            >
-              <div className="h-8 w-8 rounded-full bg-[color:var(--brand-tint-strong)] flex items-center justify-center shrink-0">
-                <PackageOpen className="h-4 w-4 text-[color:var(--brand-hi)]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">Buscar en Productos</p>
-                <p className="text-xs text-[color:var(--fg-dim)] truncate">&quot;{query}&quot;</p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSearchUsers(query)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-[color:var(--fg)] rounded-lg hover:bg-[color:var(--card)] border border-transparent hover:border-[color:var(--border)] transition-all shadow-sm"
-            >
-              <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <Users className="h-4 w-4 text-indigo-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">Buscar en Usuarios</p>
-                <p className="text-xs text-[color:var(--fg-dim)] truncate">&quot;{query}&quot;</p>
-              </div>
-            </button>
-          </div>
         </>
       )}
     </div>
