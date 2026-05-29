@@ -154,7 +154,7 @@ export async function RankingsHomeStripSection() {
     // Encontrar la categoría cuyo primer lugar tenga el mayor puntaje
     let maxScore = -1;
     for (const { category, top3 } of results) {
-      if (top3.length >= 3) {
+      if (top3.length >= 3 && top3[0]) {
         const score = Number(top3[0].composite_score);
         if (score > maxScore) {
           maxScore = score;

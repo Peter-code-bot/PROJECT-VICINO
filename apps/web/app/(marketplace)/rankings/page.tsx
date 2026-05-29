@@ -72,43 +72,72 @@ async function RankingsContent({
     searchParams.period ?? periods[0]?.period ?? currentPeriodInMexicoCity();
 
   const activeCategoryIds = await getActiveCategoryIdsForPeriod(currentPeriod);
-  const categories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
-
-  // If no categories have data, we still need to render the header but with no categories
-  // so the user can switch periods.
-  const currentCategoryId =
-    categories.length > 0
-      ? searchParams.category && categories.some((c) => c.id === searchParams.category)
-        ? searchParams.category
-        : categories[new Date().getDate() % categories.length]?.id ?? categories[0]!.id
-      : undefined;
+  const potentiallyActiveCategories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
 
   const geo = parseLatLng(searchParams.lat, searchParams.lng);
+  
+  // Fallback to default coords if geo is not provided (this matches what we do in the Home widget)
+  const defaultLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
+  const defaultLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
+  const searchLat = geo?.lat ?? defaultLat;
+  const searchLng = geo?.lng ?? defaultLng;
 
-  let rankings: RankedSeller[] = [];
-  let queryError: string | null = null;
+  // Pre-fetch rankings for all potentially active categories to see which ones actually have local data
+  const localRankingsResults = await Promise.all(
+    potentiallyActiveCategories.map(async (cat) => {
+      try {
+        const rankings = await getRankingHiperlocal({
+          category_id: cat.id,
+          period: currentPeriod,
+          user_lat: searchLat,
+          user_lng: searchLng,
+          radius_meters: 10000,
+          limit: 50,
+        });
+        return { category: cat, rankings };
+      } catch {
+        return { category: cat, rankings: [] };
+      }
+    })
+  );
 
-  if (geo && currentCategoryId) {
-    try {
-      rankings = await getRankingHiperlocal({
-        category_id: currentCategoryId,
-        period: currentPeriod,
-        user_lat: geo.lat,
-        user_lng: geo.lng,
-        radius_meters: 10000,
-        limit: 50,
-      });
-    } catch (error: unknown) {
-      queryError =
-        error instanceof Error ? error.message : "No pudimos cargar el ranking";
-    }
+  // Filter out categories that have NO sellers in this local area
+  const categoriesWithData = localRankingsResults.filter((res) => res.rankings.length > 0);
+  const categories = categoriesWithData.map((res) => res.category);
+
+  // If no categories have data locally
+  if (categories.length === 0) {
+    return (
+      <main className="min-h-screen bg-background pb-12">
+        <RankingHeader
+          categories={[]}
+          periods={periods}
+          currentCategoryId={undefined}
+          currentPeriod={currentPeriod}
+        />
+        {!geo ? (
+          <ActivateLocationCard />
+        ) : (
+          <EmptyState
+            title="Aún no hay ranking en tu zona"
+            message="Sé el primero en vender este mes."
+          />
+        )}
+      </main>
+    );
   }
+
+  const currentCategoryId =
+    searchParams.category && categories.some((c) => c.id === searchParams.category)
+      ? searchParams.category
+      : categories[0]!.id;
+
+  const selectedResult = categoriesWithData.find(c => c.category.id === currentCategoryId);
+  const rankings = selectedResult?.rankings ?? [];
 
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3);
-
-  const selectedCategoryName =
-    categories.find((c) => c.id === currentCategoryId)?.nombre ?? "Categoría";
+  const selectedCategoryName = selectedResult?.category.nombre ?? "Categoría";
 
   return (
     <main className="min-h-screen bg-background pb-12">
@@ -125,16 +154,6 @@ async function RankingsContent({
 
       {!geo ? (
         <ActivateLocationCard />
-      ) : queryError ? (
-        <EmptyState
-          title="No pudimos cargar el ranking"
-          message={queryError}
-        />
-      ) : rankings.length === 0 ? (
-        <EmptyState
-          title="Aún no hay ranking en tu zona"
-          message="Sé el primero en vender este mes."
-        />
       ) : (
         <>
           <PodioRanking top3={top3} />
