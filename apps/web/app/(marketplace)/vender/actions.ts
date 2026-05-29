@@ -302,7 +302,6 @@ export async function updateProductFull(
     if (updateErr.code === "42501") {
       return { error: "No tienes permiso para editar esta publicación." };
     }
-    console.error("[updateProductFull] update error:", updateErr);
     Sentry.captureException(updateErr, {
       tags: { action: "updateProductFull" },
       contexts: { product: { id }, supabase: { code: updateErr.code } },
