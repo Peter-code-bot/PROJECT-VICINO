@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
+import { SearchFilters } from "../search-filters";
 
 const PAGE_SIZE = 20;
 
@@ -26,7 +27,9 @@ export default async function UserSearchPage({ searchParams }: Props) {
     .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count", { count: "exact" });
 
   if (params.q) {
-    query = query.ilike("nombre", `%${params.q}%`);
+    // Reemplaza vocales con '_' para hacer coincidencia ignore-case e ignore-accents en Postgres
+    const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
+    query = query.ilike("nombre", `%${unaccentedLike}%`);
   }
 
   const { data: users, count: totalCount } = await query
@@ -44,6 +47,8 @@ export default async function UserSearchPage({ searchParams }: Props) {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <SearchFilters initialQuery={params.q} />
+
       <div className="flex items-center gap-3">
         <Link
           href={`/buscar?q=${params.q || ""}`}

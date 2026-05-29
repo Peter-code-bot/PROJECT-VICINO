@@ -21,28 +21,40 @@ export function useSearchSuggestions(query: string) {
     const fetchSuggestions = async () => {
       const supabase = createClient();
       
+      const unaccentedLike = `%${trimmed.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_")}%`;
+
       // Full-text search on products_services to get matching titles
-      const { data, error } = await supabase
+      const productsPromise = supabase
         .from("products_services")
         .select("titulo")
         .eq("estatus", "disponible")
-        .textSearch("search_vector", trimmed, {
-          type: "websearch",
-          config: "spanish",
-        })
-        .limit(5);
+        .ilike("titulo", unaccentedLike)
+        .limit(4);
+
+      // Search profiles for user names
+      const usersPromise = supabase
+        .from("profiles")
+        .select("nombre")
+        .ilike("nombre", unaccentedLike)
+        .limit(2);
+
+      const [productsRes, usersRes] = await Promise.all([productsPromise, usersPromise]);
 
       if (!isMounted) return;
 
-      if (error || !data) {
-        setSuggestions([]);
-      } else {
-        // Extract unique titles, keeping them lowercase for a unified look
-        const titles = Array.from(
-          new Set(data.map((item) => item.titulo.toLowerCase()))
-        );
-        setSuggestions(titles);
+      const titles: string[] = [];
+
+      if (productsRes.data) {
+        productsRes.data.forEach((item) => titles.push(item.titulo.toLowerCase()));
       }
+      if (usersRes.data) {
+        usersRes.data.forEach((item) => {
+          if (item.nombre) titles.push(item.nombre.toLowerCase());
+        });
+      }
+
+      const uniqueTitles = Array.from(new Set(titles)).slice(0, 5);
+      setSuggestions(uniqueTitles);
       setLoading(false);
     };
 
