@@ -1,29 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { approveVerification, rejectVerification } from "./actions";
 
 export function VerificationActions({ id, userId }: { id: string; userId: string }) {
-  const [loading, setLoading] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [showReject, setShowReject] = useState(false);
   const router = useRouter();
 
-  async function handleApprove() {
-    setLoading(true);
-    await approveVerification(id, userId);
-    router.refresh();
-    setLoading(false);
+  function run<R extends { error?: string; success?: boolean }>(
+    fn: () => Promise<R>,
+    successMsg: string,
+    onSuccess?: () => void,
+  ) {
+    if (busy || pending) return;
+    setBusy(true);
+    startTransition(async () => {
+      const res = await fn();
+      setBusy(false);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(successMsg);
+      onSuccess?.();
+      router.refresh();
+    });
   }
 
-  async function handleReject() {
-    setLoading(true);
-    await rejectVerification(id, note);
-    router.refresh();
-    setLoading(false);
-    setShowReject(false);
+  function handleApprove() {
+    run(() => approveVerification(id, userId), "Verificación aprobada");
   }
+
+  function handleReject() {
+    run(
+      () => rejectVerification(id, note),
+      "Verificación rechazada",
+      () => setShowReject(false),
+    );
+  }
+
+  const loading = busy || pending;
 
   return (
     <div className="space-y-2">
