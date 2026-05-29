@@ -45,7 +45,7 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
   const busy = toggling || deleting;
 
   return (
-    <div className="flex gap-1 sm:gap-2 md:shrink-0 w-full md:w-auto">
+    <div className="flex flex-wrap gap-1 sm:gap-2 md:shrink-0 w-full md:w-auto">
       <Link
         href={`/vender/${id}/editar`}
         className="flex flex-1 md:flex-none items-center justify-center sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 min-w-0 rounded-lg border border-border text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground transition-colors sm:text-xs font-medium"

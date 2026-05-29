@@ -71,7 +71,7 @@ export default async function VentasPage() {
 
             return (
               <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3 sm:p-4 space-y-2 overflow-hidden min-w-0">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 min-w-0">
                   <span className="font-medium text-sm truncate min-w-0">
                     {product?.titulo ?? "Producto"}
                   </span>
@@ -83,7 +83,7 @@ export default async function VentasPage() {
                   <span>Comprador: {buyer?.nombre ?? "Usuario"}</span>
                   <span>{formatDate(s.created_at)}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-sm">
                     {formatPrice(Number(s.precio_acordado))}
                     {s.cantidad > 1 && ` x${s.cantidad}`}
