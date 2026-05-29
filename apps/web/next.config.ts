@@ -25,7 +25,7 @@ const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.tile.openstreetmap.org https://unpkg.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.tile.openstreetmap.org https://unpkg.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org",
   "worker-src 'self' blob:",
@@ -65,6 +65,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
       },
       {
         protocol: "https",

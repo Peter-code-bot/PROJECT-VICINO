@@ -13,7 +13,7 @@ import {
 import { CATEGORIES } from "@vicino/shared";
 import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
 import type { ListingType } from "@/components/search/listing-type-switch";
-import { SearchHistoryDropdown } from "@/components/search/search-history-dropdown";
+import { SearchAutocompleteDropdown } from "@/components/search/search-autocomplete-dropdown";
 import { useSearchHistory } from "@/hooks/use-search-history";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,7 @@ export function SearchFilters({
   const [geoLoading, setGeoLoading] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const { history, addQuery, removeQuery, clearAll } = useSearchHistory();
-  const showHistoryDropdown = isInputFocused && history.length > 0;
+  const showDropdown = isInputFocused && (history.length > 0 || query.trim().length > 0);
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -97,13 +97,23 @@ export function SearchFilters({
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = query.trim();
+    handleSearchProducts(query);
+  }
+
+  function handleSearchProducts(q: string) {
+    const trimmed = q.trim();
+    if (trimmed) addQuery(trimmed);
+    setQuery(trimmed);
+    setIsInputFocused(false);
+    updateParams({ q: trimmed || undefined, page: undefined });
+  }
+
+  function handleSearchUsers(q: string) {
+    const trimmed = q.trim();
     if (trimmed) addQuery(trimmed);
     setIsInputFocused(false);
-    // Clear `page` so a fresh query lands on page 1 instead of a possibly
-    // out-of-range page from the prior search (mirrors the listing-type
-    // switch pattern below).
-    updateParams({ q: trimmed || undefined, page: undefined });
+    // Option A: Redirect to the user search page
+    router.push(`/buscar/usuarios?q=${encodeURIComponent(trimmed)}`);
   }
 
   function handleGeo() {
@@ -154,12 +164,15 @@ export function SearchFilters({
             placeholder="Busca en VICINO..."
             className="w-full rounded-2xl bg-[color:var(--card-2)] pl-10 pr-4 py-2.5 text-sm text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-colors focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
           />
-          {showHistoryDropdown && (
-            <SearchHistoryDropdown
+          {showDropdown && (
+            <SearchAutocompleteDropdown
+              query={query}
               history={history}
               onSelect={handleHistorySelect}
-              onRemove={removeQuery}
-              onClearAll={clearAll}
+              onRemoveHistory={removeQuery}
+              onClearHistory={clearAll}
+              onSearchProducts={handleSearchProducts}
+              onSearchUsers={handleSearchUsers}
             />
           )}
         </div>
