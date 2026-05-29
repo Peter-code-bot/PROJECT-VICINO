@@ -17,3 +17,6 @@ export * from "./validators/moderation";
 // Utils
 export * from "./utils/format";
 export * from "./utils/slugify";
+
+// Types
+export * from "./types/media";

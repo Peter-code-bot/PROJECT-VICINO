@@ -1,10 +1,11 @@
 /**
  * Client-side video thumbnail generation + path-convention helpers.
  *
- * The marketplace stores product media as plain public URLs in
- * `products_services.galeria_imagenes` (TEXT[]). The polymorphic
- * `media_assets` table exists in the schema but is not wired up in
- * apps/web yet — wireup is tracked in MP#07 backlog.
+ * Product media coexists in two stores: `products_services.galeria_imagenes`
+ * (TEXT[] denormalized cache, canonical for render today) and `media_assets`
+ * (normalized, polymorphic, populated by the upload write path since
+ * MP#07 #7-5b). The render switch to media_assets is deferred to
+ * MP#07 #7-5c behind a feature flag.
  *
  * Until then, we associate a video at
  *   `${user}/${ts}-${i}.mp4`
@@ -18,7 +19,11 @@
 
 import type { CropArea } from "@/lib/crop-image";
 
-const VIDEO_EXT_RE = /\.(mp4|webm|mov)(\?[^#]*)?(#.*)?$/i;
+// Exported so server actions can reuse the same video detection regex
+// when classifying URLs into media_assets.type (image vs video) at insert
+// time, matching the same regex parity used in the 5a backfill SQL
+// (~* '\.(mp4|webm|mov)(\?.*)?$').
+export const VIDEO_EXT_RE = /\.(mp4|webm|mov)(\?[^#]*)?(#.*)?$/i;
 const MAX_THUMB_WIDTH = 1080;
 const THUMB_SEEK_TIME_SEC = 0.1;
 const THUMB_JPEG_QUALITY = 0.85;

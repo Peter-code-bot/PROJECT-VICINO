@@ -7,6 +7,68 @@ import { createClient } from "@/lib/supabase/server";
 import { createProductSchema, updateProductSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { cleanupRemovedMedia } from "@/lib/media/cleanup";
+import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
+import type { MediaAssetInsert } from "@vicino/shared";
+
+// Best-effort dual-write helper: inserts gallery URLs into media_assets
+// alongside galeria_imagenes during MP#07 #7-5b coexistence. A failure here
+// (RLS, network, supabase outage) does NOT abort the caller: galeria_imagenes
+// already commit and render keeps working from it. The error is reported to
+// Sentry with action + step tags so we observe drift without users noticing.
+//
+// 5c caveat: if delete succeeds but insert fails on update, media_assets is
+// left empty for that product and out-of-sync with galeria_imagenes. The
+// render switch in 5c must reconcile before flipping the flag.
+async function syncMediaAssetsForProduct(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  args: {
+    productId: string;
+    ownerType: "producto" | "servicio";
+    galeria: string[];
+    mode: "create" | "update";
+  },
+): Promise<void> {
+  const { productId, ownerType, galeria, mode } = args;
+
+  if (mode === "update") {
+    const { error: deleteErr } = await supabase
+      .from("media_assets")
+      .delete()
+      .eq("owner_id", productId)
+      .in("owner_type", ["producto", "servicio"]);
+    if (deleteErr) {
+      Sentry.captureException(deleteErr, {
+        tags: { action: "syncMediaAssets", step: "delete" },
+        contexts: {
+          product: { id: productId },
+          supabase: { code: deleteErr.code },
+        },
+      });
+      return;
+    }
+  }
+
+  if (galeria.length === 0) return;
+
+  const rows: MediaAssetInsert[] = galeria.map((url, idx) => ({
+    owner_type: ownerType,
+    owner_id: productId,
+    type: VIDEO_EXT_RE.test(url) ? "video" : "image",
+    url_original: url,
+    order_index: idx,
+  }));
+
+  const { error: insertErr } = await supabase.from("media_assets").insert(rows);
+  if (insertErr) {
+    Sentry.captureException(insertErr, {
+      tags: { action: "syncMediaAssets", step: "insert", mode },
+      contexts: {
+        product: { id: productId },
+        supabase: { code: insertErr.code },
+      },
+    });
+  }
+}
 
 const PRODUCT_MEDIA_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/`
@@ -107,12 +169,22 @@ export async function createProduct(formData: FormData) {
         ? { ubicacion_geo: `SRID=4326;POINT(${ubicLng} ${ubicLat})` }
         : {}),
     })
-    .select("slug, categoria")
+    .select("id, slug, categoria")
     .single();
 
   if (error) {
     return { error: error.message };
   }
+
+  // 5b dual-write to media_assets (best-effort; failures captured to Sentry
+  // do not abort the create flow because galeria_imagenes is already saved
+  // and render reads from it during coexistence).
+  await syncMediaAssetsForProduct(supabase, {
+    productId: data.id,
+    ownerType: result.data.tipo === "servicio" ? "servicio" : "producto",
+    galeria: galeriaImagenes,
+    mode: "create",
+  });
 
   redirect(`/${data.categoria}/${data.slug}`);
 }
@@ -295,7 +367,7 @@ export async function updateProductFull(
     .eq("id", id)
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
-    .select("id")
+    .select("id, tipo")
     .maybeSingle();
 
   if (updateErr) {
@@ -312,6 +384,17 @@ export async function updateProductFull(
   if (!updated) {
     return { error: "Esta publicación ya no existe." };
   }
+
+  // 5b sync media_assets to mirror the new gallery (DELETE all rows for
+  // this product, INSERT the new batch). owner_type is derived from the
+  // RETURNING `tipo` of the UPDATE (avoids a second SELECT). Best-effort
+  // failure mode: galeria_imagenes is canonical for render during 5b.
+  await syncMediaAssetsForProduct(supabase, {
+    productId: id,
+    ownerType: updated.tipo === "servicio" ? "servicio" : "producto",
+    galeria: galeriaImagenes,
+    mode: "update",
+  });
 
   if (removedUrls.length > 0) {
     await cleanupRemovedMedia(supabase, removedUrls);
