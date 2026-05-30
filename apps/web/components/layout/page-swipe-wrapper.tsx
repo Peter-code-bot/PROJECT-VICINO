@@ -28,9 +28,8 @@ import {
  */
 const PAGES = ["/", "/buscar", "/chat", "/perfil"];
 const SWIPE_THRESHOLD_OFFSET = 60; // px — minimum drag distance to commit
-const SWIPE_THRESHOLD_VELOCITY = 500; // px/sec — fast flick commits at lower offset
+const SWIPE_THRESHOLD_VELOCITY = 400; // px/sec — fast flick commits at lower offset
 const EDGE_GUARD_PX = 30; // px from each screen edge reserved for OS gestures
-const COMMIT_DURATION = 0.2; // seconds for the off-screen exit animation
 
 const SWIPE_IGNORE_SELECTOR =
   "[data-no-page-swipe], .overflow-x-auto, .overflow-x-scroll";
@@ -133,7 +132,7 @@ export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps
     } else if (swipedRight && canGoPrev) {
       await navigateTo(currentIndex - 1, "right");
     } else {
-      animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+      animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
     }
   }
 
@@ -155,8 +154,9 @@ export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps
     const targetX =
       direction === "left" ? -window.innerWidth : window.innerWidth;
     await animate(x, targetX, {
-      duration: COMMIT_DURATION,
-      ease: "easeOut",
+      type: "spring",
+      stiffness: 400,
+      damping: 35,
     }).finished;
     router.push(target);
   }
@@ -167,8 +167,11 @@ export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps
       dragDirectionLock
       dragListener={false}
       dragControls={dragControls}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.5}
+      dragConstraints={{
+        left: canGoNext ? -3000 : 0,
+        right: canGoPrev ? 3000 : 0,
+      }}
+      dragElastic={0.2}
       // Use clip-path instead of overflow-hidden: it clips off-screen content
       // during the swipe animation without establishing a new overflow ancestor,
       // so descendant `position: sticky` controls (e.g. /vender submit button)
