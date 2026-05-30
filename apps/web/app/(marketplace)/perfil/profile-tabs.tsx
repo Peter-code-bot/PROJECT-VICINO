@@ -243,7 +243,10 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           {localProducts.length > 0 ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={localProducts.map((p) => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div 
+                  className="grid grid-cols-3 gap-1.5"
+                  {...(isEditing ? { "data-no-page-swipe": "true" } : {})}
+                >
                   {localProducts.map((p) => (
                     isEditing ? (
                       <SortableProductCard key={p.id} p={p} isEditing={true} />
