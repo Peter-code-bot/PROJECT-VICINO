@@ -112,7 +112,10 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
           onPointerCancel={clearLongPress}
           // Previene el context menu nativo en dispositivos táctiles para que funcione el nuestro
           onContextMenu={(e) => {
-            if (e.pointerType === "touch" || !e.pointerType) e.preventDefault();
+            // TEMP type bridge (emergency build fix, not original author) -- pointerType
+            // exists at runtime on React's synthetic event; @Javier confirm preferred typing.
+            const pt = (e as unknown as React.PointerEvent).pointerType;
+            if (pt === "touch" || !pt) e.preventDefault();
           }}
         >
           <Link
@@ -196,4 +199,5 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
 
