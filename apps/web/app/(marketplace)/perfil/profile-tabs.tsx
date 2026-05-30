@@ -170,9 +170,11 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
     const updates = localProducts.map((p, index) => ({ id: p.id, sort_order: index }));
     const res = await updateProductsOrder(updates);
     setIsSaving(false);
-    if (!res?.error) {
-      router.push(pathname, { scroll: false });
+    if (res?.error) {
+      console.error("No se pudo guardar el orden (¿Falta la migración de sort_order?):", res.error);
     }
+    // Siempre salir del modo de edición, incluso si hay error temporal en la BD
+    router.push(pathname, { scroll: false });
   };
 
   const handleCancelEdit = () => {
