@@ -32,25 +32,25 @@ export function RespondForm({ reviewId }: { reviewId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mt-2">
+    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 mt-2 min-w-0">
       <input
         value={respuesta}
         onChange={(e) => setRespuesta(e.target.value)}
         placeholder="Tu respuesta..."
         maxLength={1000}
-        className="flex-1 rounded-[var(--r-lg)] border border-[color:var(--border)] bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+        className="flex-1 min-w-0 basis-full sm:basis-auto rounded-[var(--r-lg)] border border-[color:var(--border)] bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
       />
       <button
         type="submit"
         disabled={loading || !respuesta.trim()}
-        className="rounded-[var(--r-pill)] bg-[color:var(--brand)] px-3 py-1.5 text-xs text-white hover:bg-[color:var(--brand-dark)] disabled:opacity-50"
+        className="rounded-[var(--r-pill)] bg-[color:var(--brand)] px-3 py-1.5 text-xs text-white hover:bg-[color:var(--brand-dark)] disabled:opacity-50 shrink-0 whitespace-nowrap"
       >
         {loading ? "..." : "Enviar"}
       </button>
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="text-xs text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+        className="text-xs text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] shrink-0 whitespace-nowrap"
       >
         Cancelar
       </button>

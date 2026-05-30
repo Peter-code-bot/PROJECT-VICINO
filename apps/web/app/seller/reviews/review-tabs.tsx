@@ -82,8 +82,8 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 : r.products_services;
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-medium text-sm truncate min-w-0">{reviewer?.nombre ?? "Usuario"}</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                    <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
                   </div>
@@ -118,8 +118,8 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 : r.products_services;
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm truncate min-w-0">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                    <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
                   </div>

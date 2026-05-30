@@ -28,7 +28,7 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
     <Link
       href={`/${product.categoria}/${product.slug}`}
       className={cn(
-        "inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group",
+        "flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group min-w-0 max-w-full",
         className,
       )}
     >
@@ -44,7 +44,7 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
       ) : (
         <div className="w-10 h-10 rounded-md bg-muted shrink-0" aria-hidden="true" />
       )}
-      <span className="font-medium truncate max-w-[160px]">{product.titulo}</span>
+      <span className="font-medium truncate min-w-0 flex-1">{product.titulo}</span>
       <ChevronRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
