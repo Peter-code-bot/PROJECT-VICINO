@@ -1,0 +1,34 @@
+-- MP#08 #2 Parte 2a -- harden precio_negociable to NOT NULL
+-- Scope: DB only. Form toggle, action coercion, and pill wireup (Parte 2b)
+-- en sesion separada.
+--
+-- Que hace este archivo:
+--   ALTER COLUMN precio_negociable SET NOT NULL. La columna ya existia desde
+--   20260412000002_avatars_bucket.sql con DEFAULT false pero sin NOT NULL,
+--   y nunca fue cableada en form, action, o render (el JSX del pill
+--   "Negociable" existe orfanado en product-card.tsx:113-126 pero ningun
+--   caller le pasa la prop). Este hardening alinea el campo con el patron
+--   reciente de booleans del repo (reminder_1d_sent, reminder_1h_sent,
+--   is_hidden) que se declararon NOT NULL DEFAULT false desde arrival.
+--
+-- Sin backfill de datos: el DEFAULT false aplico retroactivamente en
+-- 2026-04-12 a las filas existentes. PASO 1 READ confirmo 0 nulls antes
+-- del ALTER (total=241, nulls=0). Por tanto no hubo UPDATE pre-ALTER.
+--
+-- DEFAULT preservation: en PostgreSQL `ALTER COLUMN ... SET NOT NULL` NO
+-- modifica el default existente. El valor `false` declarado en la migracion
+-- original se preserva sin re-declararlo. VERIFY 3.a lo confirmo
+-- empiricamente (is_nullable=NO, column_default=false).
+--
+-- RLS: cero impacto. La columna nueva no requiere policy nueva (RLS es
+-- nivel fila, no nivel columna). Las policies de products_services en
+-- 20260320000004 referencian estatus y creador_id, no columnas especificas.
+--
+-- Verificacion ejecutada (PASO 3 VERIFY en Supabase Studio):
+--   - 3.a column metadata: precio_negociable | is_nullable=NO | column_default=false
+--   - 3.b post-ALTER nulls: 0 (identico al READ 1.1)
+--   - 3.c distribucion: (false, 241) -- ningun producto negociable aun,
+--     porque el form no expone el toggle todavia (eso es Parte 2b).
+
+ALTER TABLE public.products_services
+  ALTER COLUMN precio_negociable SET NOT NULL;
