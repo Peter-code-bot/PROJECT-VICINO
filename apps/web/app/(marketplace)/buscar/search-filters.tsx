@@ -228,7 +228,7 @@ export function SearchFilters({
         >
           Todos
         </button>
-        {CATEGORIES.map((cat) => {
+        {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat) => {
           const Icon = CATEGORY_ICONS[cat.slug] ?? MoreHorizontal;
           const isActive = initialCategory === cat.slug;
           return (

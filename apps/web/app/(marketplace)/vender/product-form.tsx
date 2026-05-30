@@ -701,7 +701,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               <div className="overflow-y-auto max-h-48 p-1">
                 {["producto", "servicio", "otro"].map((type) => {
                   const label = type === "producto" ? "Productos" : type === "servicio" ? "Servicios" : "Otros";
-                  const cats = CATEGORIES.filter(c => c.type === type && c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+                  const cats = CATEGORIES.filter(c => c.type === type && !c.hidden_in_form && c.name.toLowerCase().includes(categorySearch.toLowerCase()));
                   if (cats.length === 0) return null;
                   return (
                     <div key={type}>

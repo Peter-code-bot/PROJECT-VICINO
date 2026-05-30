@@ -84,9 +84,9 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname.startsWith(href);
 
-  const productCategories = CATEGORIES.filter((c) => c.type === "producto");
-  const serviceCategories = CATEGORIES.filter((c) => c.type === "servicio");
-  const otherCategories = CATEGORIES.filter((c) => c.type === "otro");
+  const productCategories = CATEGORIES.filter((c) => c.type === "producto" && !c.hidden_in_form);
+  const serviceCategories = CATEGORIES.filter((c) => c.type === "servicio" && !c.hidden_in_form);
+  const otherCategories = CATEGORIES.filter((c) => c.type === "otro" && !c.hidden_in_form);
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--bg-elev-1)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">

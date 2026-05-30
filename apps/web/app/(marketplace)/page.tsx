@@ -240,7 +240,7 @@ export default async function HomePage({ searchParams }: Props) {
               </div>
 
               <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
-                {CATEGORIES.map((cat, i) => {
+                {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat, i) => {
                   const IconComponent = CATEGORY_ICONS[cat.slug] || MoreHorizontal;
                   const isFeatured = i === 0;
 
