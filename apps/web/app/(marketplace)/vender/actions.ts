@@ -55,7 +55,7 @@ async function syncProductCategoriesForProduct(
   const { data: category, error: lookupErr } = await supabase
     .from("categories")
     .select("id")
-    .eq("slug", categoriaSlug)
+    .eq("slug", categoriaSlug.toLowerCase())
     .maybeSingle();
 
   if (lookupErr) {
@@ -75,9 +75,10 @@ async function syncProductCategoriesForProduct(
     // "Servicios") and any future slug drift. Logged for visibility, not
     // treated as an error since the underlying products_services row is
     // already valid via categoria TEXT.
-    Sentry.captureException(
-      new Error(`product_categories sync miss: no categories.slug = "${categoriaSlug}"`),
+    Sentry.captureMessage(
+      `product_categories sync miss: no categories.slug = "${categoriaSlug}"`,
       {
+        level: "warning",
         tags: { action: "syncProductCategories", step: "category_slug_lookup_miss" },
         contexts: {
           product: { id: productId },
