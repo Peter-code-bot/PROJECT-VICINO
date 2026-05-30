@@ -71,3 +71,32 @@ export async function updateProfile(formData: FormData) {
   revalidatePath("/seller/listings");
   return { success: true };
 }
+
+export async function updateProductsOrder(updates: { id: string; sort_order: number }[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  // Ejecutamos las actualizaciones en paralelo asegurándonos de que 
+  // solo el creador pueda modificar sus productos.
+  const results = await Promise.all(
+    updates.map((update) =>
+      supabase
+        .from("products_services")
+        .update({ sort_order: update.sort_order })
+        .eq("id", update.id)
+        .eq("creador_id", user.id)
+    )
+  );
+
+  const error = results.find((r) => r.error)?.error;
+  if (error) return { error: error.message };
+
+  revalidatePath("/perfil");
+  return { success: true };
+}

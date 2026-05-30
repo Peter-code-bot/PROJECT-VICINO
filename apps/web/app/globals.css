@@ -298,6 +298,16 @@ h1, h2, h3, h4, h5, h6 {
 .animate-slide-in-right { animation: slide-in-right 0.4s ease-out forwards; }
 .animate-slide-in-left { animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
+@keyframes jiggle {
+  0% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+  100% { transform: rotate(-1.5deg); }
+}
+.animate-jiggle {
+  animation: jiggle 0.25s ease-in-out infinite;
+  transform-origin: center;
+}
+
 .skeleton {
   background: linear-gradient(90deg, var(--muted) 25%, var(--border) 50%, var(--muted) 75%);
   background-size: 200% 100%;

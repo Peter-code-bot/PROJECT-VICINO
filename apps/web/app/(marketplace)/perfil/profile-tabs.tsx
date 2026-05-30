@@ -7,8 +7,86 @@ import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { formatPrice, formatDate } from "@vicino/shared";
-import { Grid3X3, Star } from "lucide-react";
+import { Grid3X3, Star, GripVertical, Check, X, Loader2 } from "lucide-react";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { updateProductsOrder } from "./actions";
+
+// --- Subcomponente SortableProductCard ---
+function SortableProductCard({ p, isEditing }: { p: any; isEditing: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative aspect-square bg-card dark:bg-neutral-800 overflow-hidden rounded-lg group",
+        isEditing && !isDragging && "animate-jiggle",
+        isDragging && "shadow-xl scale-105 opacity-80"
+      )}
+      {...(isEditing ? attributes : {})}
+      {...(isEditing ? listeners : {})}
+    >
+      {p.imagen_principal ? (
+        <Image
+          src={p.imagen_principal}
+          alt={p.titulo}
+          fill
+          className={cn("object-cover transition-opacity", !isEditing && "group-hover:opacity-80")}
+          sizes="33vw"
+          draggable={false}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-2xl">📷</div>
+      )}
+      
+      {!isEditing && (
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="text-white font-heading font-bold text-sm">
+            {formatPrice(Number(p.precio))}
+          </span>
+        </div>
+      )}
+
+      {p.estatus === "pausado" && (
+        <div className="absolute right-1 top-1 rounded bg-[color:var(--trust-gold)] px-1.5 py-0.5 text-[8px] font-bold text-[color:var(--brand-dark)]">
+          PAUSADO
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm backdrop-blur-sm">
+            <GripVertical className="w-5 h-5 text-[color:var(--fg)]" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+// -----------------------------------------
 
 interface ProfileTabsProps {
   products: Array<{
@@ -55,8 +133,52 @@ interface ProfileTabsProps {
 
 export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor, currentUserId }: ProfileTabsProps) {
   const [tab, setTab] = useState<"products" | "reviews">("products");
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const isEditing = searchParams.get("edit") === "products" && isVendedor;
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [localProducts, setLocalProducts] = useState(products);
+
+  // Sync prop changes
+  useState(() => {
+    setLocalProducts(products);
+  });
 
   const allReviews = [...reviewsAsSeller, ...reviewsAsBuyer];
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setLocalProducts((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSaving(true);
+    const updates = localProducts.map((p, index) => ({ id: p.id, sort_order: index }));
+    const res = await updateProductsOrder(updates);
+    setIsSaving(false);
+    if (!res?.error) {
+      router.push(pathname, { scroll: false });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setLocalProducts(products); // revert
+    router.push(pathname, { scroll: false });
+  };
 
   return (
     <div>
@@ -90,40 +212,54 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
 
       {/* Products grid */}
       {tab === "products" && (
-        <div>
-          {products.length > 0 ? (
-            <div className="grid grid-cols-3 gap-1.5">
-              {products.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/${p.categoria}/${p.slug}`}
-                  className="relative aspect-square bg-card dark:bg-neutral-800 overflow-hidden rounded-lg group"
+        <div className="relative">
+          {/* Edit Banner */}
+          {isEditing && (
+            <div className="mb-4 rounded-xl bg-[color:var(--brand-tint)] border border-[color:var(--brand-tint-strong)] p-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in-up">
+              <span className="text-sm font-semibold text-[color:var(--brand-dark)] dark:text-[color:var(--brand-hi)]">
+                Estás editando tus productos, ordénalos a tu gusto.
+              </span>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-50"
                 >
-                  {p.imagen_principal ? (
-                    <Image
-                      src={p.imagen_principal}
-                      alt={p.titulo}
-                      fill
-                      className="object-cover group-hover:opacity-80 transition-opacity"
-                      sizes="33vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl">📷</div>
-                  )}
-                  {/* Price overlay on hover */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-white font-heading font-bold text-sm">
-                      {formatPrice(Number(p.precio))}
-                    </span>
-                  </div>
-                  {p.estatus === "pausado" && (
-                    <div className="absolute right-1 top-1 rounded bg-[color:var(--trust-gold)] px-1.5 py-0.5 text-[8px] font-bold text-[color:var(--brand-dark)]">
-                      PAUSADO
-                    </div>
-                  )}
-                </Link>
-              ))}
+                  <X className="w-3.5 h-3.5" />
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveOrder}
+                  disabled={isSaving}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Guardar
+                </button>
+              </div>
             </div>
+          )}
+
+          {localProducts.length > 0 ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={localProducts.map((p) => p.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {localProducts.map((p) => (
+                    isEditing ? (
+                      <SortableProductCard key={p.id} p={p} isEditing={true} />
+                    ) : (
+                      <Link
+                        key={p.id}
+                        href={`/${p.categoria}/${p.slug}`}
+                        className="block" // Wrapped Link so layout matches
+                      >
+                        <SortableProductCard p={p} isEditing={false} />
+                      </Link>
+                    )
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className="py-12 text-center">
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">

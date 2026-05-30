@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileHeader } from "./profile-header";
 import { ProfileTabs } from "./profile-tabs";
 import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";
-import { Menu } from "lucide-react";
+import { Menu, Pencil } from "lucide-react";
+import Link from "next/link";
 
 export const metadata = { title: "Mi perfil — VICINO" };
 
@@ -24,9 +25,10 @@ export default async function PerfilPage() {
   // Get user's products
   const { data: products } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count")
+    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   // Get reviews received
@@ -77,8 +79,18 @@ export default async function PerfilPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
-      {/* Mobile drawer trigger */}
-      <div className="md:hidden flex justify-end -mb-2">
+      {/* Mobile drawer trigger & Edit button */}
+      <div className="md:hidden flex justify-end gap-2 -mb-2">
+        {profile?.es_vendedor && (
+          <Link
+            href="?edit=products"
+            scroll={false}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+            aria-label="Editar productos"
+          >
+            <Pencil className="w-4 h-4" />
+          </Link>
+        )}
         <AccountMenuDrawer
           userName={profile?.nombre}
           userAvatar={profile?.foto}
