@@ -23,13 +23,24 @@ export default async function PerfilPage() {
     .single();
 
   // Get user's products
-  const { data: products } = await supabase
+  let { data: products, error: productsError } = await supabase
     .from("products_services")
     .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
+
+  // Fallback si la migración de sort_order aún no se ha aplicado en la BD
+  if (productsError && productsError.code === "42703") {
+    const fallback = await supabase
+      .from("products_services")
+      .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count")
+      .eq("creador_id", user.id)
+      .neq("estatus", "eliminado")
+      .order("created_at", { ascending: false });
+    products = fallback.data;
+  }
 
   // Get reviews received
   const { data: reviewsAsSeller } = await supabase
@@ -80,7 +91,7 @@ export default async function PerfilPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       {/* Mobile drawer trigger & Edit button */}
-      <div className="md:hidden flex justify-end gap-2 -mb-2">
+      <div className="md:hidden flex justify-end gap-2 mb-4">
         {profile?.es_vendedor && (
           <Link
             href="?edit=products"
