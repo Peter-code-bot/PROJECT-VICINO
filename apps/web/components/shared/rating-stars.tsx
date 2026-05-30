@@ -23,8 +23,8 @@ export function RatingStars({
   const starSize = STAR_SIZE_MAP[size];
 
   return (
-    <div className={cn("flex items-center gap-1", className)}>
-      <div className="flex gap-0.5">
+    <div className={cn("flex items-center gap-1 shrink-0 min-w-0", className)}>
+      <div className="flex gap-0.5 shrink-0">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
@@ -39,7 +39,7 @@ export function RatingStars({
         ))}
       </div>
       {rating > 0 && (
-        <span className="text-xs text-muted-foreground font-medium">
+        <span className="text-xs text-muted-foreground font-medium whitespace-nowrap tabular-nums">
           {rating.toFixed(1)}
           {count !== undefined && (
             <span className="text-muted-foreground/60"> ({count})</span>
