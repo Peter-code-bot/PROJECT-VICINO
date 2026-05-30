@@ -34,7 +34,7 @@ export default async function SearchPage({ searchParams }: Props) {
     .from("products_services")
     .select(
       `
-      id, titulo, precio, imagen_principal, categoria, slug,
+      id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
       profiles!inner(nombre, trust_level, average_rating, reviews_count)
     `,
       { count: "exact" }
@@ -218,6 +218,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 }}
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
+                precioNegociable={product.precio_negociable ?? false}
               />
             );
           })}

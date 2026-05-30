@@ -32,6 +32,7 @@ export interface ProductInitialValues {
   delivery_radius_km?: number | null;
   tipo_entrega: string;
   estado?: string | null;
+  precio_negociable: boolean;
   allow_appointments: boolean;
   appointment_start_time?: string | null;
   appointment_end_time?: string | null;
@@ -74,6 +75,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     address: initialValues?.ubicacion ?? "",
     radius: initialValues?.delivery_radius_km ?? 5,
   });
+  const [precioNegociable, setPrecioNegociable] = useState(initialValues?.precio_negociable ?? false);
   const [allowAppointments, setAllowAppointments] = useState(initialValues?.allow_appointments ?? false);
   const [apptStart, setApptStart] = useState(initialValues?.appointment_start_time ?? "09:00");
   const [apptEnd, setApptEnd] = useState(initialValues?.appointment_end_time ?? "18:00");
@@ -522,6 +524,33 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               className="w-full rounded-xl border border-border/50 bg-card pl-8 pr-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
             />
           </div>
+        </div>
+
+        {/* Precio negociable */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Precio negociable</p>
+              <p className="text-xs text-muted-foreground mt-0.5">El comprador puede proponer otro precio</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPrecioNegociable(!precioNegociable)}
+              className={`relative h-6 w-11 rounded-full transition-colors ${
+                precioNegociable
+                  ? "bg-[color:var(--brand)] shadow-[var(--shadow-glow)]"
+                  : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
+              }`}
+              aria-pressed={precioNegociable}
+            >
+              <span
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  precioNegociable ? "translate-x-5" : ""
+                }`}
+              />
+            </button>
+          </div>
+          <input type="hidden" name="precio_negociable" value={precioNegociable ? "true" : "false"} />
         </div>
 
         {/* Categoria — combobox con búsqueda */}

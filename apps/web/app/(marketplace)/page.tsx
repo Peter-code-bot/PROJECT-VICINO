@@ -111,6 +111,7 @@ export default async function HomePage({ searchParams }: Props) {
       categoria,
       slug,
       created_at,
+      precio_negociable,
       profiles!inner(nombre, trust_level, average_rating, reviews_count)
     `
     )
@@ -166,6 +167,7 @@ export default async function HomePage({ searchParams }: Props) {
           categoria,
           slug,
           created_at,
+          precio_negociable,
           profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count)
         `)
         .eq("estatus", "disponible")

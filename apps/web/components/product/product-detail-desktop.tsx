@@ -12,6 +12,7 @@ import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
 import { ListingStatusBanner } from "./listing-status-banner";
 import { MetaRow } from "./meta-row";
+import { NegociablePill } from "./negociable-pill";
 import { PaymentChips } from "./payment-chips";
 import { PreviewBanner } from "./preview-banner";
 import { ProductGallery } from "./product-gallery";
@@ -120,11 +121,14 @@ export function ProductDetailDesktop({
                 />
               ) : null}
             </div>
-            <PriceDisplay
-              amount={Number(product.precio ?? 0)}
-              size="lg"
-              className="mt-3 text-4xl"
-            />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <PriceDisplay
+                amount={Number(product.precio ?? 0)}
+                size="lg"
+                className="text-4xl"
+              />
+              {product.precio_negociable && <NegociablePill />}
+            </div>
           </StaggerItem>
 
           <StaggerItem idx={2}>

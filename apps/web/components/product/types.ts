@@ -6,6 +6,7 @@ export interface ProductDetailProduct {
   titulo: string;
   descripcion: string | null;
   precio: number | string | null;
+  precio_negociable: boolean | null;
   categoria: string;
   tipo: string | null;
   estado: string | null;

@@ -9,6 +9,7 @@ import { DescriptionBlock } from "./description-block";
 import { GalleryTopBar } from "./gallery-top-bar";
 import { ListingStatusBanner } from "./listing-status-banner";
 import { MetaRow } from "./meta-row";
+import { NegociablePill } from "./negociable-pill";
 import { PaymentChips } from "./payment-chips";
 import { PreviewBanner } from "./preview-banner";
 import { ProductGalleryCarousel } from "./product-gallery-carousel";
@@ -106,11 +107,14 @@ export function ProductDetailMobile({
             <h1 className="font-display text-[26px] font-semibold leading-tight text-fg">
               {product.titulo}
             </h1>
-            <PriceDisplay
-              amount={Number(product.precio ?? 0)}
-              size="lg"
-              className="text-3xl"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <PriceDisplay
+                amount={Number(product.precio ?? 0)}
+                size="lg"
+                className="text-3xl"
+              />
+              {product.precio_negociable && <NegociablePill />}
+            </div>
           </div>
         </StaggerItem>
 

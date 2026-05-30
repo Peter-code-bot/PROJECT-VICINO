@@ -11,6 +11,7 @@ interface CarouselProduct {
   imagen_principal: string | null;
   categoria: string;
   slug: string | null;
+  precio_negociable?: boolean | null;
   profiles:
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }[]
@@ -44,6 +45,7 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
                 }}
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
+                precioNegociable={p.precio_negociable ?? false}
               />
             </div>
           );

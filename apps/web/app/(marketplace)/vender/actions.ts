@@ -209,6 +209,7 @@ export async function createProduct(formData: FormData) {
   const deliveryRadius = formData.get("delivery_radius_km") ? Number(formData.get("delivery_radius_km")) : 5;
 
   const allowAppointments = formData.get("allow_appointments") === "true";
+  const precioNegociable = formData.get("precio_negociable") === "true";
   const appointmentStartTime = (formData.get("appointment_start_time") as string) || "09:00";
   const appointmentEndTime = (formData.get("appointment_end_time") as string) || "18:00";
   const appointmentDurationMinutes = formData.get("appointment_duration_minutes") ? Number(formData.get("appointment_duration_minutes")) : 60;
@@ -254,6 +255,7 @@ export async function createProduct(formData: FormData) {
       imagen_principal: imagenPrincipal,
       galeria_imagenes: galeriaImagenes.length > 0 ? galeriaImagenes : [],
       delivery_radius_km: deliveryRadius,
+      precio_negociable: precioNegociable,
       allow_appointments: allowAppointments,
       appointment_start_time: allowAppointments ? appointmentStartTime : null,
       appointment_end_time: allowAppointments ? appointmentEndTime : null,
@@ -349,6 +351,9 @@ export async function updateProductFull(
   const allowAppointments = formData.has("allow_appointments")
     ? formData.get("allow_appointments") === "true"
     : null;
+  const precioNegociable = formData.has("precio_negociable")
+    ? formData.get("precio_negociable") === "true"
+    : null;
   const apptStart = formData.get("appointment_start_time");
   const apptEnd = formData.get("appointment_end_time");
   const apptDurationRaw = formData.get("appointment_duration_minutes");
@@ -428,6 +433,9 @@ export async function updateProductFull(
 
   if (deliveryRadius !== null && !Number.isNaN(deliveryRadius)) {
     updateObj.delivery_radius_km = deliveryRadius;
+  }
+  if (precioNegociable !== null) {
+    updateObj.precio_negociable = precioNegociable;
   }
   if (allowAppointments !== null) {
     updateObj.allow_appointments = allowAppointments;

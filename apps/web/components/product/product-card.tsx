@@ -8,6 +8,7 @@ import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
+import { NegociablePill } from "@/components/product/negociable-pill";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -113,15 +114,7 @@ export function ProductCard({
         {/* Negociable badge — top-left, brand tone */}
         {precioNegociable && (
           <div className="absolute top-2 left-2">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                "bg-brand-tint-strong text-brand-hi",
-                "shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-              )}
-            >
-              Negociable
-            </span>
+            <NegociablePill />
           </div>
         )}
 
