@@ -52,20 +52,20 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 min-w-0">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+              "flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors",
               tab === t.key
                 ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
                 : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
             )}
           >
-            {t.label}
-            <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
+            <span className="truncate">{t.label}</span>
+            <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5 shrink-0">
               {t.count}
             </span>
           </button>
