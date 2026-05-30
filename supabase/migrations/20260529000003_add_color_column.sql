@@ -1,0 +1,34 @@
+-- MP#08 #3 Parte 3a -- add nullable color TEXT column to products_services
+-- Scope: DB only. Form input, action coercion (empty string to null), and the
+-- dynamic COLOR slot in SpecRow (Pattern B: column appears only when color has
+-- a value) are Parte 3b.
+--
+-- Que hace este archivo:
+--   ALTER TABLE products_services ADD COLUMN color TEXT.
+--   Nullable, sin DEFAULT, sin CHECK. Existing rows quedan NULL = "sin color
+--   especificado". Zero backfill: NULL es el estado natural "unset".
+--
+-- D0 firmado: color es TEXT libre (no enum, no tabla de colores). Si en el
+-- futuro hace falta facet de busqueda por color, normalizamos en item aparte.
+--
+-- Hallazgo institucional: existe una columna color TEXT en la tabla aparte
+-- product_variants (20260320000005), pero NO esta cableada y NO es nuestra
+-- columna. Esto crea la columna nueva directamente en products_services.
+--
+-- RLS: cero impacto. Las policies de products_services en 20260320000004
+-- (lineas 85-100: "Anyone can view available", "Sellers can create/update/
+-- delete own") son row-level (referencian estatus y creador_id, nunca
+-- columnas), por lo que ADD COLUMN no requiere policy nueva.
+--
+-- IF NOT EXISTS: idempotente. Safe to re-run en local/test DBs.
+--
+-- Verificacion ejecutada (PASO 3 VERIFY en Supabase Studio):
+--   - 3.a column metadata: color | text | YES | NULL
+--   - 3.b distribucion: sin_color = total (todas las filas existentes NULL).
+--     Nota: el total reportado fue 242 (los 241 seed mas 1 producto de
+--     prueba creado durante validacion visual de #2 Parte 2b). Lo
+--     relevante es sin_color == total = 242: ninguna fila tiene color
+--     porque el form no lo expone aun (eso es Parte 3b).
+
+ALTER TABLE public.products_services
+  ADD COLUMN IF NOT EXISTS color TEXT;
