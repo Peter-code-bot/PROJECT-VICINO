@@ -174,7 +174,7 @@ export function ProductDetailDesktop({
                     Ver como visitante
                   </Link>
                   <Link
-                    href={`/mis-productos/${product.id}/editar`}
+                    href={`/vender/${product.id}/editar`}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
                   >
                     <Edit3 className="h-5 w-5" />

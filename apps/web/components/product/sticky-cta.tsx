@@ -39,7 +39,7 @@ export function StickyCta({
           Ver como visitante
         </Link>
         <Link
-          href={`/mis-productos/${productId}/editar`}
+          href={`/vender/${productId}/editar`}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
         >
           <Edit3 className="h-4 w-4" />

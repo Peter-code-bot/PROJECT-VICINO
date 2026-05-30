@@ -19,6 +19,23 @@ import { fileToDataURL } from "@/lib/crop-image";
 import type { CropArea } from "@/lib/crop-image";
 import type { CropResult } from "@/components/product/product-media-cropper";
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 type Mode = "create" | "edit";
 
 export interface ProductInitialValues {
@@ -51,12 +68,82 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXT_RE.test(url.split("?")[0] ?? "");
 }
 
-type ExistingMedia = { kind: "existing"; url: string; isVideo: boolean };
-type PendingMedia = { kind: "pending"; file: File; preview: string; isVideo: boolean; videoCropArea?: CropArea };
+type ExistingMedia = { id: string; kind: "existing"; url: string; isVideo: boolean };
+type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean; videoCropArea?: CropArea };
 type MediaItem = ExistingMedia | PendingMedia;
 
 /** Item queued for cropping before being added to media[] */
 type CropQueueItem = { file: File; src: string; isVideo: boolean };
+
+function SortableMediaItem({
+  item,
+  index,
+  onRemove,
+}: {
+  item: MediaItem;
+  index: number;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  const previewSrc = item.kind === "pending" ? item.preview : item.url;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative w-20 h-20 rounded-xl overflow-hidden border group select-none touch-none bg-background",
+        isDragging ? "border-primary/50 shadow-lg scale-105" : "border-border/50",
+      )}
+    >
+      {item.isVideo ? (
+        <video src={previewSrc} className="w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <Image src={previewSrc} alt={`Preview ${index + 1}`} fill className="object-cover pointer-events-none" />
+      )}
+      <button
+        type="button"
+        onPointerDown={(e) => {
+          // Evita que el drag and drop se inicie al presionar el botón de eliminar
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-100 transition-opacity z-20 hover:bg-black/80 shadow-sm backdrop-blur-md cursor-pointer"
+      >
+        <X className="w-3.5 h-3.5 text-white" />
+      </button>
+      {index === 0 && (
+        <span className="absolute bottom-1 left-1 rounded bg-[color:var(--brand)] px-1.5 py-0.5 text-[9px] font-medium text-white z-10 pointer-events-none">
+          Portada
+        </span>
+      )}
+      {item.isVideo && (
+        <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white px-1.5 py-0.5 rounded font-medium z-10 pointer-events-none backdrop-blur-md">
+          Video
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function ProductForm({ mode = "create", initialValues }: ProductFormProps) {
   const submittingRef = useRef(false);
@@ -86,6 +173,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   );
   const [media, setMedia] = useState<MediaItem[]>(
     (initialValues?.galeria_imagenes ?? []).map((url) => ({
+      id: url,
       kind: "existing" as const,
       url,
       isVideo: isVideoUrl(url),
@@ -105,6 +193,29 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   const [cropIndex, setCropIndex] = useState(0);
   const cropperOpen = cropQueue.length > 0 && cropIndex < cropQueue.length;
   const currentCropItem = cropperOpen ? cropQueue[cropIndex]! : null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: any) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setMedia((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -137,13 +248,14 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     if (result.type === "image") {
       const preview = URL.createObjectURL(result.blob);
       const file = new File([result.blob], `cropped-${Date.now()}.jpg`, { type: "image/jpeg" });
-      setMedia((prev) => [...prev, { kind: "pending", file, preview, isVideo: false }]);
+      setMedia((prev) => [...prev, { id: preview, kind: "pending", file, preview, isVideo: false }]);
     } else {
       // Video: keep the original file, store crop area for thumbnail generation
       const preview = URL.createObjectURL(result.file);
       setMedia((prev) => [
         ...prev,
         {
+          id: preview,
           kind: "pending",
           file: result.file,
           preview,
@@ -709,49 +821,40 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       {/* Media Upload */}
       <div className="space-y-3 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Fotos y videos <span className="text-muted-foreground font-normal">(máx. 5, primera será la portada)</span>
+          Fotos y videos <span className="text-muted-foreground font-normal">(máx. 5, arrastra para ordenar)</span>
         </label>
-        <div className="flex gap-2 flex-wrap">
-          {media.map((item, i) => {
-            const previewSrc = item.kind === "pending" ? item.preview : item.url;
-            return (
-              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50 group">
-                {item.isVideo ? (
-                  <video src={previewSrc} className="w-full h-full object-cover" />
-                ) : (
-                  <Image src={previewSrc} alt={`Preview ${i + 1}`} fill className="object-cover" />
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeMedia(i)}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-3 h-3 text-white" />
-                </button>
-                {i === 0 && (
-                  <span className="absolute bottom-0.5 left-0.5 rounded bg-[color:var(--brand)] px-1 text-[9px] font-medium text-white">
-                    Portada
-                  </span>
-                )}
-                {item.isVideo && (
-                  <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/70 text-white px-1 rounded font-medium">
-                    Video
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          {media.length < 5 && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-2 flex-wrap">
+            <SortableContext 
+              items={media.map(m => m.id)}
+              strategy={rectSortingStrategy}
             >
-              <ImagePlus className="w-5 h-5" />
-              <span className="text-[10px] mt-0.5">Agregar</span>
-            </button>
-          )}
-        </div>
+              {media.map((item, i) => (
+                <SortableMediaItem
+                  key={item.id}
+                  item={item}
+                  index={i}
+                  onRemove={() => removeMedia(i)}
+                />
+              ))}
+            </SortableContext>
+            
+            {media.length < 5 && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              >
+                <ImagePlus className="w-5 h-5" />
+                <span className="text-[10px] mt-0.5">Agregar</span>
+              </button>
+            )}
+          </div>
+        </DndContext>
         <input
           ref={fileInputRef}
           type="file"

@@ -96,7 +96,7 @@ export function GalleryTopBar({
                 <>
                   <DropdownMenuItem asChild>
                     <Link
-                      href={`/mis-productos/${productId}/editar`}
+                      href={`/vender/${productId}/editar`}
                       className="flex w-full items-center gap-2"
                     >
                       <Edit3 className="h-4 w-4" />
