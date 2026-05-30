@@ -49,6 +49,7 @@ export interface ProductInitialValues {
   delivery_radius_km?: number | null;
   tipo_entrega: string;
   estado?: string | null;
+  color?: string | null;
   precio_negociable: boolean;
   allow_appointments: boolean;
   appointment_start_time?: string | null;
@@ -154,6 +155,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   );
   const [selectedCategory, setSelectedCategory] = useState(initialValues?.categoria ?? "");
   const [estado, setEstado] = useState<string>(initialValues?.estado ?? "");
+  const [color, setColor] = useState<string>(initialValues?.color ?? "");
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [locationData, setLocationData] = useState({
@@ -774,6 +776,25 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
             <option value="aceptable">Aceptable (marcas visibles, funcional)</option>
             <option value="para_piezas">Para piezas (no funciona o partes faltantes)</option>
           </select>
+        </div>
+      )}
+
+      {/* Color (solo productos) */}
+      {tipoSeleccionado === "producto" && (
+        <div className="space-y-2 pt-2">
+          <label htmlFor="color" className="text-sm font-medium text-foreground/80">
+            Color <span className="text-muted-foreground font-normal">(opcional)</span>
+          </label>
+          <input
+            type="text"
+            id="color"
+            name="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            maxLength={40}
+            placeholder="Ej: Rojo, Negro, Azul marino"
+            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
         </div>
       )}
 

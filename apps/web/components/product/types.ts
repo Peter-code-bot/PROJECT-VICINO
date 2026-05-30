@@ -10,6 +10,7 @@ export interface ProductDetailProduct {
   categoria: string;
   tipo: string | null;
   estado: string | null;
+  color: string | null;
   estatus: string | null;
   ubicacion: string | null;
   tipo_entrega: string | null;

@@ -134,6 +134,7 @@ export function ProductDetailDesktop({
           <StaggerItem idx={2}>
             <SpecRow
               estado={product.estado}
+              color={product.color}
               deliveryLabel={deliveryLabel}
               createdAt={product.created_at}
               tipo={product.tipo}

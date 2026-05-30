@@ -30,6 +30,7 @@ export const createProductSchema = z.object({
   ubicacion: z.string().optional(),
   tipo_entrega: z.enum(deliveryValues).default("punto_encuentro"),
   estado: z.enum(PRODUCT_CONDITION_VALUES).optional().nullable(),
+  color: z.string().trim().max(40).optional().nullable(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

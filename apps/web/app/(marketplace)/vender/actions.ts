@@ -188,6 +188,7 @@ export async function createProduct(formData: FormData) {
 
   // Validate
   const estadoRaw = (formData.get("estado") as string) || "";
+  const colorRaw = (formData.get("color") as string) || "";
   const raw = {
     titulo: formData.get("titulo") as string,
     descripcion: formData.get("descripcion") as string,
@@ -197,6 +198,7 @@ export async function createProduct(formData: FormData) {
     ubicacion: (formData.get("ubicacion") as string) || undefined,
     tipo_entrega: (formData.get("tipo_entrega") as string) || "pickup",
     estado: estadoRaw === "" ? null : estadoRaw,
+    color: colorRaw.trim() === "" ? null : colorRaw,
   };
 
   const result = createProductSchema.safeParse(raw);
@@ -251,6 +253,10 @@ export async function createProduct(formData: FormData) {
       // Physical condition only applies to productos; servicios stay null.
       ...(result.data.tipo === "producto" && result.data.estado
         ? { estado: result.data.estado }
+        : {}),
+      // Color free-text, only relevant for productos; servicios stay null.
+      ...(result.data.tipo === "producto" && result.data.color
+        ? { color: result.data.color }
         : {}),
       imagen_principal: imagenPrincipal,
       galeria_imagenes: galeriaImagenes.length > 0 ? galeriaImagenes : [],
@@ -321,6 +327,7 @@ export async function updateProductFull(
   const ubicacion = formData.get("ubicacion");
   const tipoEntrega = formData.get("tipo_entrega");
   const estadoField = formData.get("estado");
+  const colorField = formData.get("color");
   if (typeof titulo === "string" && titulo.length > 0) raw.titulo = titulo;
   if (typeof descripcion === "string" && descripcion.length > 0) raw.descripcion = descripcion;
   if (precio !== null && precio !== "") raw.precio = Number(precio);
@@ -332,6 +339,12 @@ export async function updateProductFull(
   // and rely on the DB CHECK constraint as the last line of defense.
   if (typeof estadoField === "string" && estadoField.length > 0) {
     raw.estado = estadoField;
+  }
+  // color is also only rendered for productos in the form. Tri-state: if
+  // the field is present we send the trimmed value (empty -> null via
+  // validator). If absent (servicio path), do not touch the column.
+  if (typeof colorField === "string") {
+    raw.color = colorField.trim() === "" ? null : colorField;
   }
 
   const parsed = updateProductSchema.safeParse(raw);
@@ -429,6 +442,13 @@ export async function updateProductFull(
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
   if (parsed.data.estado !== undefined && parsed.data.estado !== null) {
     updateObj.estado = parsed.data.estado;
+  }
+  // color allows null on update (the seller can clear the field) so the
+  // COLOR slot in SpecRow disappears. The form only sends `color` when the
+  // input is rendered (productos); for servicios the field is absent and
+  // parsed.data.color stays undefined here, leaving the DB value untouched.
+  if (parsed.data.color !== undefined) {
+    updateObj.color = parsed.data.color;
   }
 
   if (deliveryRadius !== null && !Number.isNaN(deliveryRadius)) {
