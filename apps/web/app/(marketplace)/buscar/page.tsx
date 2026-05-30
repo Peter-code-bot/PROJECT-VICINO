@@ -67,7 +67,35 @@ export default async function SearchPage({ searchParams }: Props) {
     query = query.or(orQuery);
   }
   if (params.category) {
-    query = query.eq("categoria", params.category);
+    // MP#08 #5b: el filtro de categoria lee del pivote product_categories
+    // (1 fila por producto hoy; multi-categoria es scope futuro #5c) en vez
+    // de la columna categoria TEXT denormalizada. La columna TEXT sigue
+    // intacta para el render path (URLs, breadcrumbs, badges, carrusel del
+    // home) y su drop es MP#08 #4. El validator enum (commit 4036993)
+    // garantiza que un categoria que llega del form/dropdown es un slug
+    // canonico; el maybeSingle + branch de cero resultados defiende del
+    // caso de URL manipulada con slug inexistente.
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("slug", params.category)
+      .maybeSingle();
+
+    if (cat) {
+      const { data: pivotRows } = await supabase
+        .from("product_categories")
+        .select("product_id")
+        .eq("categoria_id", cat.id);
+
+      const ids = (pivotRows ?? []).map((r) => r.product_id);
+      if (ids.length > 0) {
+        query = query.in("id", ids);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    } else {
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    }
   }
   if (params.tipo === "producto" || params.tipo === "servicio") {
     query = query.eq("tipo", params.tipo);
