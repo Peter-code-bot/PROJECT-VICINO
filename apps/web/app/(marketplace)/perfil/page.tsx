@@ -39,7 +39,8 @@ export default async function PerfilPage() {
       .eq("creador_id", user.id)
       .neq("estatus", "eliminado")
       .order("created_at", { ascending: false });
-    products = fallback.data;
+      
+    products = fallback.data ? fallback.data.map(p => ({ ...p, sort_order: 0 })) : null;
   }
 
   // Get reviews received
