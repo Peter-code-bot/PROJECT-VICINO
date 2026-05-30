@@ -94,7 +94,9 @@ export default async function SellerOverviewPage() {
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Mes Actual</span>
           </div>
           <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{monthCount}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-emerald)] truncate">{formatPrice(monthTotal)} en ventas</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-emerald)] truncate">
+            {formatPrice(monthTotal)}<span className="hidden sm:inline"> en ventas</span>
+          </p>
         </div>
 
         <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
@@ -105,7 +107,9 @@ export default async function SellerOverviewPage() {
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Inventario</span>
           </div>
           <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--brand-hi)] truncate">Publicaciones activas</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--brand-hi)] truncate">
+            Publicaciones<span className="hidden sm:inline"> activas</span>
+          </p>
         </div>
 
         <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
@@ -114,7 +118,7 @@ export default async function SellerOverviewPage() {
               <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] shrink-0">
                 <Star className="h-5 w-5" />
               </div>
-              <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Reputación</span>
+              <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate hidden sm:inline">Reputación</span>
             </div>
             <RatingStars
               rating={Number(profile?.average_rating ?? 0)}
@@ -125,7 +129,9 @@ export default async function SellerOverviewPage() {
           <p className="text-2xl sm:text-3xl font-heading font-bold mb-1 tabular-nums">
             {Number(profile?.average_rating ?? 0).toFixed(1)}
           </p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-gold)] truncate">Aprobación de clientes</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-gold)] truncate">
+            Aprobación<span className="hidden sm:inline"> de clientes</span>
+          </p>
         </div>
 
         <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
@@ -136,7 +142,9 @@ export default async function SellerOverviewPage() {
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Histórico</span>
           </div>
           <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--fg-muted)] truncate">Ventas totales en Vicino</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--fg-muted)] truncate">
+            Ventas totales<span className="hidden sm:inline"> en Vicino</span>
+          </p>
         </div>
       </div>
 

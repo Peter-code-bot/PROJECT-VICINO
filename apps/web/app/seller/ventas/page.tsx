@@ -79,9 +79,9 @@ export default async function VentasPage() {
                     {status.label}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-[color:var(--fg-muted)]">
-                  <span>Comprador: {buyer?.nombre ?? "Usuario"}</span>
-                  <span>{formatDate(s.created_at)}</span>
+                <div className="flex items-center justify-between gap-2 text-xs text-[color:var(--fg-muted)] min-w-0">
+                  <span className="truncate min-w-0">Comprador: {buyer?.nombre ?? "Usuario"}</span>
+                  <span className="shrink-0">{formatDate(s.created_at)}</span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-sm">

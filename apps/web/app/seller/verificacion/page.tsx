@@ -27,10 +27,10 @@ export default async function VerificacionPage() {
     .maybeSingle();
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div>
+    <div className="space-y-6 max-w-lg min-w-0">
+      <div className="min-w-0">
         <SellerBackButton />
-        <h1 className="text-xl font-bold">Verificación</h1>
+        <h1 className="text-xl font-bold truncate">Verificación</h1>
       </div>
       <p className="text-sm text-muted-foreground">
         Sube tus documentos para verificar tu identidad y subir de nivel de

@@ -82,10 +82,10 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 : r.products_services;
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{reviewer?.nombre ?? "Usuario"}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-sm truncate min-w-0">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   {r.respuesta ? (
@@ -118,10 +118,10 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 : r.products_services;
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm truncate min-w-0">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   <div className="pt-2 border-t border-[color:var(--border)]">
@@ -146,11 +146,11 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 flex items-center justify-between gap-3 overflow-hidden min-w-0">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{product?.titulo ?? "Producto"}</p>
-                    <p className="text-xs text-[color:var(--fg-muted)]">Comprador: {buyer?.nombre ?? "Usuario"}</p>
+                    <p className="text-xs text-[color:var(--fg-muted)] truncate">Comprador: {buyer?.nombre ?? "Usuario"}</p>
                   </div>
                   <Link
                     href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${product?.id ?? ""}`}
-                    className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
+                    className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline shrink-0 whitespace-nowrap"
                   >
                     Evaluar →
                   </Link>
