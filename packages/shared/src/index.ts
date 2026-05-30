@@ -20,3 +20,4 @@ export * from "./utils/slugify";
 
 // Types
 export * from "./types/media";
+export * from "./types/category";

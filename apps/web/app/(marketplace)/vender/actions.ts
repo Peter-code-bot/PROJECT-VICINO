@@ -10,6 +10,99 @@ import { cleanupRemovedMedia } from "@/lib/media/cleanup";
 import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
 import type { MediaAssetInsert } from "@vicino/shared";
 
+// Best-effort dual-write helper for the product_categories pivot during
+// MP#08 #1 Parte 1b coexistence. The form sends categoria as a TEXT slug,
+// so the helper looks up the categoria_id via categories.slug and then
+// INSERTs the pivot row. Failures (RLS, network, supabase outage, orphan
+// slug) are captured to Sentry and the caller is NOT aborted because
+// products_services.categoria TEXT is the canonical render+search source
+// during coexistence.
+//
+// Caveat: 4 legacy products store categoria in display-format (e.g.
+// "Electronica", "Servicios") instead of slug ("electronica", "servicios"),
+// so the slug lookup misses with no match. The helper logs the miss to
+// Sentry and skips the INSERT instead of failing — same flow as a real RLS
+// or supabase error. This is the documented finding from Parte 1a backfill.
+async function syncProductCategoriesForProduct(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  args: {
+    productId: string;
+    categoriaSlug: string;
+    mode: "create" | "update";
+  },
+): Promise<void> {
+  const { productId, categoriaSlug, mode } = args;
+
+  if (mode === "update") {
+    const { error: deleteErr } = await supabase
+      .from("product_categories")
+      .delete()
+      .eq("product_id", productId);
+    if (deleteErr) {
+      Sentry.captureException(deleteErr, {
+        tags: { action: "syncProductCategories", step: "delete" },
+        contexts: {
+          product: { id: productId },
+          supabase: { code: deleteErr.code },
+        },
+      });
+      return;
+    }
+  }
+
+  if (!categoriaSlug) return;
+
+  const { data: category, error: lookupErr } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", categoriaSlug)
+    .maybeSingle();
+
+  if (lookupErr) {
+    Sentry.captureException(lookupErr, {
+      tags: { action: "syncProductCategories", step: "category_slug_lookup" },
+      contexts: {
+        product: { id: productId },
+        category: { slug: categoriaSlug },
+        supabase: { code: lookupErr.code },
+      },
+    });
+    return;
+  }
+
+  if (!category) {
+    // Orphan slug: covers the 4 legacy display-format rows ("Electronica",
+    // "Servicios") and any future slug drift. Logged for visibility, not
+    // treated as an error since the underlying products_services row is
+    // already valid via categoria TEXT.
+    Sentry.captureException(
+      new Error(`product_categories sync miss: no categories.slug = "${categoriaSlug}"`),
+      {
+        tags: { action: "syncProductCategories", step: "category_slug_lookup_miss" },
+        contexts: {
+          product: { id: productId },
+          category: { slug: categoriaSlug },
+        },
+      },
+    );
+    return;
+  }
+
+  const { error: insertErr } = await supabase
+    .from("product_categories")
+    .insert({ product_id: productId, categoria_id: category.id });
+  if (insertErr) {
+    Sentry.captureException(insertErr, {
+      tags: { action: "syncProductCategories", step: "insert", mode },
+      contexts: {
+        product: { id: productId },
+        category: { id: category.id, slug: categoriaSlug },
+        supabase: { code: insertErr.code },
+      },
+    });
+  }
+}
+
 // Best-effort dual-write helper: inserts gallery URLs into media_assets
 // alongside galeria_imagenes during MP#07 #7-5b coexistence. A failure here
 // (RLS, network, supabase outage) does NOT abort the caller: galeria_imagenes
@@ -183,6 +276,15 @@ export async function createProduct(formData: FormData) {
     productId: data.id,
     ownerType: result.data.tipo === "servicio" ? "servicio" : "producto",
     galeria: galeriaImagenes,
+    mode: "create",
+  });
+
+  // MP#08 #1 Parte 1b dual-write to product_categories (best-effort; same
+  // failure mode as media_assets — categoria TEXT is already saved and is
+  // the canonical render+search source during coexistence).
+  await syncProductCategoriesForProduct(supabase, {
+    productId: data.id,
+    categoriaSlug: result.data.categoria,
     mode: "create",
   });
 
@@ -367,7 +469,7 @@ export async function updateProductFull(
     .eq("id", id)
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
-    .select("id, tipo")
+    .select("id, tipo, categoria")
     .maybeSingle();
 
   if (updateErr) {
@@ -393,6 +495,19 @@ export async function updateProductFull(
     productId: id,
     ownerType: updated.tipo === "servicio" ? "servicio" : "producto",
     galeria: galeriaImagenes,
+    mode: "update",
+  });
+
+  // MP#08 #1 Parte 1b sync product_categories to mirror the new categoria
+  // (DELETE all pivot rows for this product, INSERT the resolved one). If
+  // the form did not change categoria, parsed.data.categoria may be
+  // undefined; in that case we still run the sync with the existing TEXT
+  // value (read from the UPDATE RETURNING) to keep the pivot consistent
+  // with categoria TEXT. Best-effort: failures go to Sentry without
+  // aborting the user flow.
+  await syncProductCategoriesForProduct(supabase, {
+    productId: id,
+    categoriaSlug: parsed.data.categoria ?? updated.categoria,
     mode: "update",
   });
 
