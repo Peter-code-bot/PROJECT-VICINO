@@ -85,30 +85,30 @@ export default async function SellerOverviewPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger min-w-0">
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger min-w-0">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
           <div className="flex items-center gap-3 mb-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] shrink-0">
               <Handshake className="h-5 w-5" />
             </div>
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Mes Actual</span>
           </div>
-          <p className="text-3xl font-heading font-bold mb-1">{monthCount}</p>
-          <p className="text-sm font-medium text-[color:var(--trust-emerald)]">{formatPrice(monthTotal)} en ventas</p>
+          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{monthCount}</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-emerald)] truncate">{formatPrice(monthTotal)} en ventas</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
           <div className="flex items-center gap-3 mb-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shrink-0">
               <Package className="h-5 w-5" />
             </div>
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Inventario</span>
           </div>
-          <p className="text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
-          <p className="text-sm font-medium text-[color:var(--brand-hi)]">Publicaciones activas</p>
+          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--brand-hi)] truncate">Publicaciones activas</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
           <div className="flex items-center justify-between gap-2 mb-3 min-w-0">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] shrink-0">
@@ -122,21 +122,21 @@ export default async function SellerOverviewPage() {
               size="sm"
             />
           </div>
-          <p className="text-3xl font-heading font-bold mb-1 tabular-nums">
+          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1 tabular-nums">
             {Number(profile?.average_rating ?? 0).toFixed(1)}
           </p>
-          <p className="text-sm font-medium text-[color:var(--trust-gold)]">Aprobación de clientes</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-gold)] truncate">Aprobación de clientes</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
           <div className="flex items-center gap-3 mb-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg-muted)] shrink-0">
               <TrendingUp className="h-5 w-5" />
             </div>
             <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Histórico</span>
           </div>
-          <p className="text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
-          <p className="text-sm font-medium text-[color:var(--fg-muted)]">Ventas totales en Vicino</p>
+          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
+          <p className="text-xs sm:text-sm font-medium text-[color:var(--fg-muted)] truncate">Ventas totales en Vicino</p>
         </div>
       </div>
 
