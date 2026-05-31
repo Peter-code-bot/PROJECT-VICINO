@@ -74,7 +74,14 @@ export function ProductCard({
 
   return (
     <Link
-      href={`/${categoria}/${slug}`}
+      // MP#08 #4 Fase 1B: href deriva el segmento de categoria de la primary
+      // del pivote (categories ya viene normalized primary-first desde el
+      // caller post-5c-4). Fallback al prop categoria TEXT si categories
+      // esta vacio (caller no migrado o edge sin pivote). Cuando 1C dropee
+      // el writer espejo este fallback se vuelve solo defense in depth.
+      // Keystone: este cambio cubre 4 surfaces (buscar, favoritos, home
+      // Recientes + per-cat carousels) sin tocar a los callers.
+      href={`/${categories[0]?.slug ?? categoria}/${slug}`}
       id={`product-${slug}`}
       className={cn(
         "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",

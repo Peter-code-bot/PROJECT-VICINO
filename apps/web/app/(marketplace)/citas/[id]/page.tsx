@@ -9,6 +9,7 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
+import { primaryCategorySlug } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { CancelAppointmentButton } from "@/components/appointments/cancel-appointment-button";
@@ -40,12 +41,15 @@ export default async function CitaDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/citas/${id}`);
 
+  // MP#08 #4 Fase 1B: SELECT del producto incluye product_categories embed
+  // (solo slug) para derivar el href via primaryCategorySlug. nombre no
+  // necesario porque citas no muestra label de categoria.
   const { data: cita } = await supabase
     .from("appointments")
     .select(`
       id, appointment_date, appointment_start, appointment_end,
       status, notes, buyer_id, seller_id, created_at,
-      products_services(id, titulo, imagen_principal, precio, categoria, slug, ubicacion),
+      products_services(id, titulo, imagen_principal, precio, categoria, slug, ubicacion, product_categories(is_primary, categories(slug))),
       buyer:profiles!buyer_id(id, nombre, foto),
       seller:profiles!seller_id(id, nombre, foto)
     `)
@@ -102,7 +106,7 @@ export default async function CitaDetailPage({ params }: PageProps) {
         {/* Producto — clickeable a su detalle */}
         {product ? (
           <Link
-            href={`/${product.categoria}/${product.slug}`}
+            href={`/${primaryCategorySlug((product as { product_categories?: unknown }).product_categories) ?? product.categoria}/${product.slug}`}
             className="flex items-center gap-3 p-4 hover:bg-muted/40 transition-colors border-b border-border"
           >
             <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden shrink-0 flex items-center justify-center">

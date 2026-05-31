@@ -6,7 +6,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
-import { formatPrice, formatDate } from "@vicino/shared";
+import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
 import { Grid3X3, Star, GripVertical, Check, X, Loader2 } from "lucide-react";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -261,7 +261,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                     ) : (
                       <Link
                         key={p.id}
-                        href={`/${p.categoria}/${p.slug}`}
+                        href={`/${primaryCategorySlug(p.product_categories) ?? p.categoria}/${p.slug}`}
                         className="block" // Wrapped Link so layout matches
                       >
                         <SortableProductCard p={p} isEditing={false} />

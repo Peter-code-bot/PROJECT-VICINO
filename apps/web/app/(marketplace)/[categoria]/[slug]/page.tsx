@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronRight } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
-import { primaryCategoryFull } from "@vicino/shared";
+import { primaryCategoryFull, primaryCategorySlug } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
 import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
@@ -17,25 +17,43 @@ interface Props {
   params: Promise<{ categoria: string; slug: string }>;
 }
 
+// MP#08 #4 Fase 1B (D-B Opcion beta): canonical link derivado de la primary
+// del pivote para que las URLs viejas con [categoria] != primary actual sean
+// dedupeadas por Google (mismo patron de SITE_URL que report-webhook).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
 
+  // MP#08 #4 Fase 1B: SELECT expandido con product_categories embed (solo
+  // slug) para construir canonical + og:url. titulo + descripcion + imagen
+  // siguen iguales que pre-1B. Si el pivote esta vacio, fallback a
+  // categoria TEXT vivo (Option a D1B-C) -- el detail page principal ya
+  // loggea Sentry sobre ese edge si dispara.
   const { data: product } = await supabase
     .from("products_services")
-    .select("titulo, descripcion, imagen_principal, precio")
+    .select("titulo, descripcion, imagen_principal, precio, slug, categoria, product_categories(is_primary, categories(slug))")
     .eq("slug", slug)
     .single();
 
   if (!product) return { title: "Producto no encontrado" };
 
+  const primarySlugMeta = primaryCategorySlug(
+    (product as { product_categories?: unknown }).product_categories,
+  );
+  const canonicalPath = `/${primarySlugMeta ?? product.categoria}/${product.slug}`;
+  const canonical = `${SITE_URL}${canonicalPath}`;
+
   return {
     title: product.titulo,
     description: product.descripcion?.slice(0, 160),
+    alternates: { canonical },
     openGraph: {
       title: `${product.titulo} — VICINO`,
       description: product.descripcion?.slice(0, 160),
       images: product.imagen_principal ? [product.imagen_principal] : [],
+      url: canonical,
     },
   };
 }
@@ -169,15 +187,13 @@ export default async function ProductDetailPage({ params }: Props) {
         </Link>
         <ChevronRight className="w-4 h-4" />
         <Link
-          href={`/buscar?category=${product.categoria}`}
+          // MP#08 #4 Fase 1B: href deriva del mismo source que el label
+          // (primaryCat.slug, derivado arriba) -- cierra el estado mixto
+          // label-del-pivote/href-del-TEXT de 1A. Fallback TEXT activo
+          // mientras 1C no corra. label + href = misma fuente.
+          href={`/buscar?category=${primaryCat?.slug ?? product.categoria}`}
           className="hover:text-primary transition-colors capitalize"
         >
-          {/* MP#08 #4 Fase 1A: nombre legible viene de la primary del pivote
-              (categoryName derivado arriba). Fallback al pretty-print de
-              categoria TEXT mientras la columna existe; el href sigue usando
-              categoria TEXT por ahora -- Fase 1B migra los hrefs.
-              replaceAll (no replace) por defensa contra slugs futuros con >1
-              guion (hoy 0 en 35 slugs, mismo motivo que meta-row /-/g). */}
           {categoryName ?? product.categoria.replaceAll("-", " ")}
         </Link>
         <ChevronRight className="w-4 h-4" />

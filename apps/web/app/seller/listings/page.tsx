@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, formatDate } from "@vicino/shared";
+import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
 import { ListingActions } from "./listing-actions";
 
 export const metadata = { title: "Mis publicaciones" };
@@ -13,9 +13,12 @@ export default async function ListingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // MP#08 #4 Fase 1B: SELECT incluye product_categories embed (solo slug)
+  // para derivar el segmento de href via primaryCategorySlug. Sin nombre
+  // porque este listing no muestra label de categoria (solo el href).
   const { data: products } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, estatus, categoria, slug, ventas_count, vistas_count, created_at")
+    .select("id, titulo, precio, estatus, categoria, slug, ventas_count, vistas_count, created_at, product_categories(is_primary, categories(slug))")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("created_at", { ascending: false });
@@ -54,7 +57,7 @@ export default async function ListingsPage() {
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <Link
-                    href={`/${p.categoria}/${p.slug}`}
+                    href={`/${primaryCategorySlug((p as { product_categories?: unknown }).product_categories) ?? p.categoria}/${p.slug}`}
                     className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate min-w-0"
                   >
                     {p.titulo}

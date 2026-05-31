@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatPrice, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
+import { formatDate, formatPrice, primaryCategorySlug, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { ReportRowActions } from "../report-row-actions";
 
 export const metadata = { title: "Admin — Productos reportados" };
@@ -25,12 +25,15 @@ export default async function ListingsModerationPage() {
     .order("created_at", { ascending: false });
 
   const targetIds = (reports ?? []).map((r) => r.target_id);
+  // MP#08 #4 Fase 1B: SELECT incluye product_categories embed (solo slug)
+  // para derivar el href via primaryCategorySlug. nombre no necesario aqui.
   const { data: listings } = targetIds.length > 0
     ? await supabase
         .from("products_services")
         .select(`
           id, titulo, precio, slug, categoria, is_hidden, estatus, imagen_principal,
-          creador:profiles!creador_id(nombre, user_id)
+          creador:profiles!creador_id(nombre, user_id),
+          product_categories(is_primary, categories(slug))
         `)
         .in("id", targetIds)
     : { data: [] };
@@ -78,7 +81,7 @@ export default async function ListingsModerationPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium truncate">{listing.titulo}</span>
                       <Link
-                        href={`/${listing.categoria}/${listing.slug}`}
+                        href={`/${primaryCategorySlug((listing as { product_categories?: unknown }).product_categories) ?? listing.categoria}/${listing.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-foreground"

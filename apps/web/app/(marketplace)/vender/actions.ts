@@ -345,7 +345,11 @@ export async function createProduct(formData: FormData) {
     mode: "create",
   });
 
-  redirect(`/${data.categoria}/${data.slug}`);
+  // MP#08 #4 Fase 1B: redirect usa la local `primaryCategoria` (derivada del
+  // input validado por zod en L252), NO `data.categoria` (TEXT espejo del
+  // INSERT RETURNING). Cuando 1C deje de escribir el espejo, `data.categoria`
+  // sera stale o null; `primaryCategoria` es el slug correcto in-memory.
+  redirect(`/${primaryCategoria}/${data.slug}`);
 }
 
 export async function updateProductFull(

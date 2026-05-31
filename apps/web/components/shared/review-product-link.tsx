@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
+import { primaryCategorySlug } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
 interface ReviewProductLinkProps {
@@ -11,6 +12,12 @@ interface ReviewProductLinkProps {
         categoria: string;
         slug: string;
         imagen_principal: string | null;
+        // MP#08 #4 Fase 1B: embed opcional. Si el caller ya lo trae lo usamos
+        // para derivar la primary del pivote; si no, fallback al categoria
+        // TEXT. TODO 1B-bis: expandir los 4 SELECTs de reviews para incluir
+        // el embed (perfil/page.tsx + vendedor/[id]/page.tsx + dos en cada
+        // caso). Quedo fuera de scope 1B porque requiere SELECTs nuevos.
+        product_categories?: unknown;
       }
     | null;
   className?: string;
@@ -24,9 +31,10 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
       </span>
     );
   }
+  const hrefSlug = primaryCategorySlug(product.product_categories) ?? product.categoria;
   return (
     <Link
-      href={`/${product.categoria}/${product.slug}`}
+      href={`/${hrefSlug}/${product.slug}`}
       className={cn(
         "flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group min-w-0 max-w-full",
         className,
