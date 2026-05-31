@@ -246,9 +246,12 @@ export async function createProduct(formData: FormData) {
     return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  // D8: categoria TEXT en products_services es espejo de la primary actual.
-  // El validator ya garantiza exactly 1 primary, asi que primaryCategoria
-  // nunca sera null aqui (la guard es defensa contra refactor futuro).
+  // MP#08 #4 Fase 1C (D1C-A Camino X): ultima escritura del espejo categoria
+  // TEXT. La columna sigue NOT NULL en el DDL (20260320000004) y no la
+  // dropeamos hasta Fase 2, asi que CREATE la sigue enviando una vez (queda
+  // "viva pero congelada" -- el UPDATE ya no la actualiza, ver L504+). La
+  // primary canonical en runtime es el pivote product_categories vivo, no
+  // este TEXT. primaryCategoria tambien alimenta el redirect (L348).
   const primaryCategoria = primarySlug(result.data.categories);
   if (!primaryCategoria) {
     return { error: "No se pudo determinar la categoría principal" };
@@ -501,16 +504,12 @@ export async function updateProductFull(
   if (parsed.data.titulo !== undefined) updateObj.titulo = parsed.data.titulo;
   if (parsed.data.descripcion !== undefined) updateObj.descripcion = parsed.data.descripcion;
   if (parsed.data.precio !== undefined) updateObj.precio = parsed.data.precio;
-  // D8: categoria TEXT espejo de la primary actual. Si el form mando
-  // categories presente, derivamos la primary y la escribimos al TEXT. Si
-  // categories esta ausente (no se toco en este update) NO tocamos el TEXT
-  // -- preserva el espejo previo. El validator garantiza exactly 1 primary
-  // cuando categories esta presente, asi que primarySlug nunca retorna null
-  // en esa rama.
-  if (parsed.data.categories !== undefined) {
-    const p = primarySlug(parsed.data.categories);
-    if (p) updateObj.categoria = p;
-  }
+  // MP#08 #4 Fase 1C: writer-stop del espejo TEXT. El UPDATE ya no escribe
+  // categoria TEXT -- la columna queda congelada al valor del INSERT (Camino
+  // X, D1C-A). Si el seller cambia la primary, products_services.categoria
+  // queda stale a proposito; la primary canonical es el pivote actualizado
+  // por syncProductCategoriesForProduct (L606+). La columna se DROPea en
+  // Fase 2. Bloque updateObj.categoria removido aqui.
   if (parsed.data.ubicacion !== undefined) updateObj.ubicacion = parsed.data.ubicacion;
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
   if (parsed.data.estado !== undefined && parsed.data.estado !== null) {

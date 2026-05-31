@@ -43,49 +43,63 @@ BEGIN
     -- 1. INSERTAR PRODUCTOS Y SERVICIOS (Tuyos)
     ---------------------------------------------------------
     INSERT INTO products_services (id, creador_id, titulo, descripcion, precio, tipo, categoria, categoria_id, imagen_principal, galeria_imagenes, estatus)
-    VALUES 
+    VALUES
     (
-        prod1_id, my_user_id, 
-        'Mantenimiento Preventivo de PC', 
-        'Servicio completo de limpieza, cambio de pasta térmica y optimización de sistema operativo para computadoras de escritorio y laptops.', 
-        500.00, 'servicio', 'Servicios', cat_servicios, 
-        'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80', 
-        ARRAY['https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'], 
+        prod1_id, my_user_id,
+        'Mantenimiento Preventivo de PC',
+        'Servicio completo de limpieza, cambio de pasta térmica y optimización de sistema operativo para computadoras de escritorio y laptops.',
+        500.00, 'servicio', 'servicios', cat_servicios,
+        'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80',
+        ARRAY['https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
         'disponible'
     ),
     (
-        prod2_id, my_user_id, 
-        'Laptop Dell XPS 15 (Seminueva)', 
-        'Laptop Dell XPS 15 en excelente estado. Procesador Intel Core i7, 16GB RAM, 512GB SSD. Ideal para trabajo y diseño.', 
-        15000.00, 'producto', 'Electrónica', cat_electronicos, 
-        'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=800&q=80', 
-        ARRAY['https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=800&q=80'], 
+        prod2_id, my_user_id,
+        'Laptop Dell XPS 15 (Seminueva)',
+        'Laptop Dell XPS 15 en excelente estado. Procesador Intel Core i7, 16GB RAM, 512GB SSD. Ideal para trabajo y diseño.',
+        15000.00, 'producto', 'tecnologia', cat_electronicos,
+        'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=800&q=80',
+        ARRAY['https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=800&q=80'],
         'disponible'
     ),
     (
-        prod3_id, my_user_id, 
-        'Monitor UltraWide LG 29"', 
-        'Monitor LG de 29 pulgadas, formato UltraWide. Perfecto para productividad y gaming casual. Incluye cable HDMI.', 
-        3500.00, 'producto', 'Electrónica', cat_electronicos, 
-        'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80', 
-        ARRAY['https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80'], 
+        prod3_id, my_user_id,
+        'Monitor UltraWide LG 29"',
+        'Monitor LG de 29 pulgadas, formato UltraWide. Perfecto para productividad y gaming casual. Incluye cable HDMI.',
+        3500.00, 'producto', 'tecnologia', cat_electronicos,
+        'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80',
+        ARRAY['https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80'],
         'disponible'
     );
+
+    -- MP#08 #4 Fase 1C: pivot product_categories (is_primary=true) para cada
+    -- producto. ON CONFLICT por si el script se corre dos veces.
+    INSERT INTO product_categories (product_id, categoria_id, is_primary)
+    VALUES
+        (prod1_id, cat_servicios,    TRUE),
+        (prod2_id, cat_electronicos, TRUE),
+        (prod3_id, cat_electronicos, TRUE)
+    ON CONFLICT (product_id, categoria_id) DO NOTHING;
 
     ---------------------------------------------------------
     -- 2. INSERTAR PRODUCTO DE OTRO USUARIO (Para simular compras)
     ---------------------------------------------------------
     INSERT INTO products_services (id, creador_id, titulo, descripcion, precio, tipo, categoria, categoria_id, imagen_principal, galeria_imagenes, estatus)
-    VALUES 
+    VALUES
     (
-        prod_other_id, other_user_id, 
-        'Teclado Mecánico Keychron K2', 
-        'Teclado mecánico inalámbrico, switches red. Casi nuevo.', 
-        1200.00, 'producto', 'Electrónica', cat_electronicos, 
-        'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=800&q=80', 
-        ARRAY['https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=800&q=80'], 
+        prod_other_id, other_user_id,
+        'Teclado Mecánico Keychron K2',
+        'Teclado mecánico inalámbrico, switches red. Casi nuevo.',
+        1200.00, 'producto', 'tecnologia', cat_electronicos,
+        'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=800&q=80',
+        ARRAY['https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=800&q=80'],
         'disponible'
     );
+
+    -- MP#08 #4 Fase 1C: pivot del producto del otro usuario.
+    INSERT INTO product_categories (product_id, categoria_id, is_primary)
+    VALUES (prod_other_id, cat_electronicos, TRUE)
+    ON CONFLICT (product_id, categoria_id) DO NOTHING;
 
     ---------------------------------------------------------
     -- 3. SIMULAR ~10 VENTAS COMPLETADAS (Tú eres el vendedor)

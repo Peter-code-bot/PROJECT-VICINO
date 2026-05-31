@@ -502,6 +502,22 @@ FROM _seed_products sp
 JOIN _seed_vendors sv ON sv.email = sp.vendor_email;
 
 -- =============================================================================
+-- 6.c. MP#08 #4 Fase 1C: pivot product_categories backfill
+-- Tras escribir los ~240 productos al TEXT, llenamos el pivote con is_primary
+-- =true joineando por slug canonico (las categorias del _seed_products son
+-- todas slugs validos en `categories`). NOT EXISTS por idempotencia si el
+-- seed se reaplica.
+-- =============================================================================
+INSERT INTO product_categories (product_id, categoria_id, is_primary)
+SELECT ps.id, c.id, TRUE
+FROM products_services ps
+JOIN categories c ON c.slug = ps.categoria
+WHERE NOT EXISTS (
+  SELECT 1 FROM product_categories pc WHERE pc.product_id = ps.id
+)
+ON CONFLICT (product_id, categoria_id) DO NOTHING;
+
+-- =============================================================================
 -- 7. SALE CONFIRMATIONS (~120)
 -- =============================================================================
 -- 7a. ~100 ventas entre vendedores fake y compradores fake

@@ -728,10 +728,30 @@ ALTER TABLE sale_confirmations ENABLE TRIGGER USER;
 ALTER TABLE products_services ENABLE TRIGGER USER;
 ALTER TABLE profiles ENABLE TRIGGER USER;
 
+-- =============================================================================
+-- 6. MP#08 #4 Fase 1C: pivot product_categories backfill
+-- Los INSERTs anteriores solo escriben products_services.categoria (TEXT) +
+-- categoria_id (FK legacy single-cat). Post-1C necesitamos que cada seed
+-- tambien aparezca en product_categories con is_primary=true para que los
+-- readers (1A) y rutas (1B) tengan fuente real. Slugs de los seeds ya son
+-- canonicos (comida, ropa, tecnologia, hogar, salud, belleza, educacion,
+-- transporte, eventos, mascotas, servicios-profesionales, otros).
+-- =============================================================================
+INSERT INTO product_categories (product_id, categoria_id, is_primary)
+SELECT ps.id, c.id, TRUE
+FROM products_services ps
+JOIN categories c ON c.slug = ps.categoria
+WHERE NOT EXISTS (
+  SELECT 1 FROM product_categories pc WHERE pc.product_id = ps.id
+)
+ON CONFLICT (product_id, categoria_id) DO NOTHING;
+
 -- Verificar conteos
 SELECT 'profiles' AS tabla, COUNT(*) AS total FROM profiles WHERE email LIKE '%@demo.vicino.mx'
 UNION ALL
 SELECT 'products_services', COUNT(*) FROM products_services
+UNION ALL
+SELECT 'product_categories', COUNT(*) FROM product_categories
 UNION ALL
 SELECT 'sale_confirmations', COUNT(*) FROM sale_confirmations
 UNION ALL
