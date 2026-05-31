@@ -60,3 +60,31 @@ export function normalizeCardCategories(
     ...valid.filter((v) => !v.is_primary),
   ];
 }
+
+// MP#08 #4 Fase 1A: helpers que extraen la primary del pivote para readers
+// de render y route. Reusan normalizeCardCategories (sort primary-first ya
+// resuelto) y retornan null cuando no hay primary (pivote vacio o solo
+// secondaries, edge cases que cada caller maneja con fallback graceful).
+//
+// Separacion intencional (D-A firmado):
+//   - primaryCategorySlug: para builders de href que solo necesitan el slug
+//     (URL `/[slug]/[product-slug]`).
+//   - primaryCategoryFull: para readers de display que necesitan ademas el
+//     nombre legible (breadcrumb, MetaRow, label de carrusel).
+// Ambos derivan del mismo array ordenado; usar el especifico clarifica
+// intencion en el call site.
+
+export function primaryCategorySlug(embed: unknown): string | null {
+  const sorted = normalizeCardCategories(embed);
+  // sorted[0] es la primary cuando existe (primary-first guarantee).
+  // Si no hay primary (pivote vacio o solo secondaries) retornamos null.
+  return sorted[0]?.is_primary ? sorted[0].slug : null;
+}
+
+export function primaryCategoryFull(
+  embed: unknown,
+): { slug: string; nombre: string } | null {
+  const sorted = normalizeCardCategories(embed);
+  if (!sorted[0]?.is_primary) return null;
+  return { slug: sorted[0].slug, nombre: sorted[0].nombre };
+}

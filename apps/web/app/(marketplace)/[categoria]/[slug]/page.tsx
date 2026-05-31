@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronRight } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { primaryCategoryFull } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
 import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
@@ -42,6 +44,11 @@ export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
+  // MP#08 #4 Fase 1A: incluimos product_categories embed para que el
+  // breadcrumb derive el nombre legible de la PRIMARY del pivote (no del
+  // pretty-print de categoria TEXT). categoria TEXT sigue en el SELECT (`*`)
+  // y el render lo usa como fallback si por algun edge case el pivote
+  // estuviera vacio (logueado a Sentry abajo).
   const { data: product } = await supabase
     .from("products_services")
     .select(
@@ -50,7 +57,8 @@ export default async function ProductDetailPage({ params }: Props) {
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
         average_rating, reviews_count, total_sales
-      )
+      ),
+      product_categories(is_primary, categories(slug, nombre))
     `
     )
     .eq("slug", slug)
@@ -120,6 +128,27 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const isOwner = user?.id === product.creador_id;
 
+  // MP#08 #4 Fase 1A: derive primary del pivote para breadcrumb + MetaRow.
+  // Si el pivote esta vacio (edge improbable post-29ccefe pero defensivo
+  // para drift futuro), categoryName queda null y MetaRow + breadcrumb caen
+  // al fallback de categoria TEXT. Loggeamos a Sentry para observar drift.
+  const primaryCat = primaryCategoryFull(
+    (product as { product_categories?: unknown }).product_categories,
+  );
+  if (!primaryCat) {
+    Sentry.captureMessage(
+      `product detail pivot fallback: product ${product.id} (slug ${product.slug}) sin primary en product_categories, render usa categoria TEXT legacy`,
+      {
+        level: "warning",
+        tags: { action: "productDetailPage", step: "pivot_primary_fallback" },
+        contexts: {
+          product: { id: product.id, slug: product.slug, categoria: product.categoria },
+        },
+      },
+    );
+  }
+  const categoryName = primaryCat?.nombre ?? null;
+
   const data: ProductDetailData = {
     product: product as unknown as ProductDetailData["product"],
     seller: seller as unknown as ProductDetailData["seller"],
@@ -129,6 +158,7 @@ export default async function ProductDetailPage({ params }: Props) {
     user: user ? { id: user.id } : null,
     isOwner,
     deliveryLabel,
+    categoryName,
   };
 
   return (
@@ -142,7 +172,13 @@ export default async function ProductDetailPage({ params }: Props) {
           href={`/buscar?category=${product.categoria}`}
           className="hover:text-primary transition-colors capitalize"
         >
-          {product.categoria.replace("-", " ")}
+          {/* MP#08 #4 Fase 1A: nombre legible viene de la primary del pivote
+              (categoryName derivado arriba). Fallback al pretty-print de
+              categoria TEXT mientras la columna existe; el href sigue usando
+              categoria TEXT por ahora -- Fase 1B migra los hrefs.
+              replaceAll (no replace) por defensa contra slugs futuros con >1
+              guion (hoy 0 en 35 slugs, mismo motivo que meta-row /-/g). */}
+          {categoryName ?? product.categoria.replaceAll("-", " ")}
         </Link>
         <ChevronRight className="w-4 h-4" />
         <span className="text-foreground truncate max-wxs">

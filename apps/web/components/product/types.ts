@@ -89,4 +89,10 @@ export interface ProductDetailData {
   user: ProductDetailUser | null;
   isOwner: boolean;
   deliveryLabel: string;
+  // MP#08 #4 Fase 1A: nombre display de la primary derivado en el page
+  // parent (via primaryCategoryFull del pivote). Null si no hay primary
+  // (edge pivote vacio, ya logueado a Sentry en el page). Pasa por
+  // ProductDetailMobile/Desktop a MetaRow que renderea con fallback al
+  // pretty-print de categoria TEXT cuando esto es null.
+  categoryName: string | null;
 }

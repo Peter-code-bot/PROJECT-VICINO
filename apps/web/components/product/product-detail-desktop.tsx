@@ -51,6 +51,7 @@ export function ProductDetailDesktop({
   isFavorite,
   isOwner,
   deliveryLabel,
+  categoryName,
 }: ProductDetailDesktopProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -101,6 +102,7 @@ export function ProductDetailDesktop({
           <StaggerItem idx={0}>
             <MetaRow
               categoria={product.categoria}
+              categoryName={categoryName}
               ubicacion={product.ubicacion}
               sellerLat={seller.ubicacion_lat ?? null}
               sellerLng={seller.ubicacion_lng ?? null}

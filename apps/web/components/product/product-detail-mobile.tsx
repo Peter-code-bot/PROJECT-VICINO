@@ -49,6 +49,7 @@ export function ProductDetailMobile({
   isFavorite,
   isOwner,
   deliveryLabel,
+  categoryName,
 }: ProductDetailMobileProps) {
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
@@ -96,6 +97,7 @@ export function ProductDetailMobile({
         <StaggerItem idx={0}>
           <MetaRow
             categoria={product.categoria}
+            categoryName={categoryName}
             ubicacion={product.ubicacion}
             sellerLat={seller.ubicacion_lat ?? null}
             sellerLng={seller.ubicacion_lng ?? null}

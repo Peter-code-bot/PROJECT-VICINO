@@ -4,6 +4,12 @@ import { useEffect, useState, type ReactNode } from "react";
 
 interface MetaRowProps {
   categoria: string;
+  // MP#08 #4 Fase 1A: nombre display de la primary del pivote, derivado en
+  // el caller via primaryCategoryFull. Cuando llega, lo usamos directo (es
+  // display-ready). Cuando no llega (call sites no migrados aun, edge sin
+  // pivote), fallback al pretty-print de `categoria` TEXT (legacy path,
+  // sobrevive hasta que #4 Fase 2 dropee la columna).
+  categoryName?: string | null;
   ubicacion: string | null;
   sellerLat?: number | null;
   sellerLng?: number | null;
@@ -79,6 +85,7 @@ function shortUbicacion(ubicacion: string | null): string | null {
 
 export function MetaRow({
   categoria,
+  categoryName,
   ubicacion,
   sellerLat,
   sellerLng,
@@ -144,7 +151,10 @@ export function MetaRow({
     items.push("Cerca de ti");
   }
   if (ubic) items.push(ubic);
-  items.push(capitalizeFirst(categoria.replace(/-/g, " ")));
+  // MP#08 #4 Fase 1A: categoryName de pivote si llega, fallback al pretty
+  // print del slug TEXT legacy. Cuando la columna se dropee (Fase 2), todos
+  // los callers ya envian categoryName y este fallback queda inalcanzable.
+  items.push(categoryName ?? capitalizeFirst(categoria.replace(/-/g, " ")));
 
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-fg-muted">

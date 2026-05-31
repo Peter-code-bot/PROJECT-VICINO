@@ -5,7 +5,7 @@ import { ProductCarousel } from "@/components/home/product-carousel";
 import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
 import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
-import { CATEGORIES, TrustLevel } from "@vicino/shared";
+import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
 import { HomeTabs } from "@/components/home/home-tabs";
 import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
@@ -122,9 +122,17 @@ export default async function HomePage({ searchParams }: Props) {
 
   const all = products ?? [];
 
+  // MP#08 #4 Fase 1A: agrupamos por la PRIMARY del pivote en vez de por
+  // categoria TEXT. El embed product_categories ya viene en el SELECT (5c-4).
+  // Fallback al TEXT preserva agrupacion para edge cases sin pivote (Fase 1A
+  // graceful; el writer-stop es 1C). Productos sin primary NI TEXT caen a
+  // "sin-categoria" y NO desaparecen del grouping (filter de carousels los
+  // descartara despues si <3 productos comparten ese bucket).
   const byCategory = all.reduce<Record<string, typeof all>>((acc, p) => {
-    if (!p.categoria) return acc;
-    (acc[p.categoria] ??= []).push(p);
+    const key = primaryCategorySlug((p as { product_categories?: unknown }).product_categories)
+      ?? p.categoria
+      ?? "sin-categoria";
+    (acc[key] ??= []).push(p);
     return acc;
   }, {});
 
@@ -169,7 +177,8 @@ export default async function HomePage({ searchParams }: Props) {
           slug,
           created_at,
           precio_negociable,
-          profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count)
+          profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count),
+          product_categories(is_primary, categories(slug, nombre))
         `)
         .eq("estatus", "disponible")
         .in("creador_id", storeIds)
@@ -477,7 +486,14 @@ export default async function HomePage({ searchParams }: Props) {
                       store={post.profiles.nombre}
                       letter={post.profiles.nombre.charAt(0).toUpperCase()}
                       tier={(post.profiles.trust_level as TrustLevel) ?? "nuevo"}
-                      cat={CATEGORIES.find((c) => c.slug === post.categoria)?.name ?? "Otro"}
+                      cat={
+                        // MP#08 #4 Fase 1A: nombre de la primary del pivote.
+                        // Fallback al lookup legacy de CATEGORIES por slug TEXT
+                        // (sigue vivo hasta Fase 1C/2). "Otro" si nada existe.
+                        primaryCategoryFull(post.product_categories)?.nombre
+                        ?? CATEGORIES.find((c) => c.slug === post.categoria)?.name
+                        ?? "Otro"
+                      }
                       when={when}
                       title={post.titulo}
                       price={post.precio}
