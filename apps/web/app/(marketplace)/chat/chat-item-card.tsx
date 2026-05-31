@@ -54,7 +54,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
       }
       setMenuOpen(true);
       setConfirming(false);
-    }, 600);
+    }, 1500);
   }, []);
 
   const handlePointerMove = useCallback(
