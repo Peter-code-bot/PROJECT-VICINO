@@ -30,11 +30,17 @@ export default async function SearchPage({ searchParams }: Props) {
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
 
+  // MP#08 #5c-3: incluimos created_at + ventas_count en el SELECT para que
+  // el sortFn de la rama category pueda aplicar los 4 criterios de orden
+  // (price_asc/desc, most_sold, default created_at desc) DENTRO de cada
+  // tier (primary sorted + secondary sorted, concat). En la rama
+  // no-category Postgres usa estas columnas via .order() como siempre.
   let query = supabase
     .from("products_services")
     .select(
       `
       id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
+      created_at, ventas_count,
       profiles!inner(nombre, trust_level, average_rating, reviews_count)
     `,
       { count: "exact" }
@@ -66,15 +72,25 @@ export default async function SearchPage({ searchParams }: Props) {
 
     query = query.or(orQuery);
   }
+  // MP#08 #5c-3: cuando hay filtro de categoria, el orden de los resultados
+  // se decide por el ranking primary > secondary del pivote (no por el
+  // sort de Postgres). orderedIds se llena en la rama if-category con la
+  // concatenacion de primary IDs primero + secondary IDs despues, y mas
+  // abajo el SELECT principal lo aplica via .in() + particion + sort JS.
+  // primaryIds se expone aqui (no solo dentro del if cat) porque la rama
+  // de SELECT/sort de abajo lo necesita para particionar el conjunto de
+  // productos en tiers antes de aplicar el sort user-seleccionado.
+  let orderedIds: string[] | null = null;
+  let primaryIds: string[] = [];
+
   if (params.category) {
-    // MP#08 #5b: el filtro de categoria lee del pivote product_categories
-    // (1 fila por producto hoy; multi-categoria es scope futuro #5c) en vez
-    // de la columna categoria TEXT denormalizada. La columna TEXT sigue
-    // intacta para el render path (URLs, breadcrumbs, badges, carrusel del
-    // home) y su drop es MP#08 #4. El validator enum (commit 4036993)
-    // garantiza que un categoria que llega del form/dropdown es un slug
-    // canonico; el maybeSingle + branch de cero resultados defiende del
-    // caso de URL manipulada con slug inexistente.
+    // MP#08 #5c-3 (sobre el read switch 5b 52c477a): dos queries paralelas
+    // al pivote, una con is_primary=true y otra con is_primary=false. La
+    // concatenacion primary-first define el ranking final. Approach A del
+    // Plan Mode #5c D6: 2 round-trips paralelos en lugar de 1 con embed
+    // ordering (PostgREST tiene quirks documentados ordenando por columna
+    // de join). El validator enum (4036993) garantiza que un slug del form
+    // es canonico; el maybeSingle defiende del caso de URL manipulada.
     const { data: cat } = await supabase
       .from("categories")
       .select("id")
@@ -82,18 +98,37 @@ export default async function SearchPage({ searchParams }: Props) {
       .maybeSingle();
 
     if (cat) {
-      const { data: pivotRows } = await supabase
-        .from("product_categories")
-        .select("product_id")
-        .eq("categoria_id", cat.id);
+      const [primariesRes, secondariesRes] = await Promise.all([
+        supabase
+          .from("product_categories")
+          .select("product_id")
+          .eq("categoria_id", cat.id)
+          .eq("is_primary", true),
+        supabase
+          .from("product_categories")
+          .select("product_id")
+          .eq("categoria_id", cat.id)
+          .eq("is_primary", false),
+      ]);
 
-      const ids = (pivotRows ?? []).map((r) => r.product_id);
-      if (ids.length > 0) {
-        query = query.in("id", ids);
+      primaryIds = (primariesRes.data ?? []).map((r) => r.product_id);
+      const secondaryIds = (secondariesRes.data ?? []).map((r) => r.product_id);
+
+      // Defensive dedupe: composite PK (product_id, categoria_id) garantiza
+      // que un producto solo aparece UNA vez para una categoria dada, y
+      // is_primary es una columna no parte del PK, por lo que un product_id
+      // esta en a lo sumo UNA de las 2 listas (true XOR false). El Set es
+      // belt-and-suspenders contra un schema drift futuro (DROP del PK,
+      // RPC que duplique) y sin coste perceptible a 1..3 categorias.
+      orderedIds = Array.from(new Set([...primaryIds, ...secondaryIds]));
+
+      if (orderedIds.length > 0) {
+        query = query.in("id", orderedIds);
       } else {
         query = query.eq("id", "00000000-0000-0000-0000-000000000000");
       }
     } else {
+      orderedIds = [];
       query = query.eq("id", "00000000-0000-0000-0000-000000000000");
     }
   }
@@ -107,24 +142,77 @@ export default async function SearchPage({ searchParams }: Props) {
     query = query.lte("precio", Number(params.price_max));
   }
 
-  switch (params.sort) {
-    case "price_asc":
-      query = query.order("precio", { ascending: true });
-      break;
-    case "price_desc":
-      query = query.order("precio", { ascending: false });
-      break;
-    case "most_sold":
-      query = query.order("ventas_count", { ascending: false });
-      break;
-    default:
-      query = query.order("created_at", { ascending: false });
-  }
+  // MP#08 #5c-3: el sort de Postgres y el .range() solo aplican cuando NO
+  // hay filtro de categoria. Cuando hay categoria, el orden lo decide
+  // primero el tier (primary > secondary) y dentro de cada tier se aplica
+  // el sort user-seleccionado (price_asc/desc, most_sold, default
+  // created_at desc) via sortFn. Tier ordering prevalece sobre sort.
+  //
+  // Tipos: derivamos ProductsData del retorno inferido de supabase-js
+  // (.select(...) preserva el shape de columnas seleccionadas) para no
+  // romper el binding tipado al ProductCard mas abajo.
+  type ProductsData = Awaited<ReturnType<typeof query.range>>["data"];
+  type ProductRow = NonNullable<ProductsData>[number];
+  let products: ProductsData = null;
+  let totalCount: number | null = null;
 
-  const { data: products, count: totalCount } = await query.range(
-    offset,
-    offset + PAGE_SIZE - 1
-  );
+  // Helper sortFn: comparador segun el sort param. Mismas keys que el
+  // .order() de la rama no-category, asi un slug sin category y un slug
+  // con category producen ordenes equivalentes DENTRO de cada tier para
+  // el mismo sort. Devuelve siempre una funcion (default = created_at desc).
+  const sortFn = (sort?: string) => (a: ProductRow, b: ProductRow): number => {
+    switch (sort) {
+      case "price_asc":
+        return Number(a.precio) - Number(b.precio);
+      case "price_desc":
+        return Number(b.precio) - Number(a.precio);
+      case "most_sold":
+        return Number(b.ventas_count ?? 0) - Number(a.ventas_count ?? 0);
+      default:
+        // created_at desc: el mas reciente primero.
+        return a.created_at < b.created_at ? 1 : -1;
+    }
+  };
+
+  if (orderedIds === null) {
+    switch (params.sort) {
+      case "price_asc":
+        query = query.order("precio", { ascending: true });
+        break;
+      case "price_desc":
+        query = query.order("precio", { ascending: false });
+        break;
+      case "most_sold":
+        query = query.order("ventas_count", { ascending: false });
+        break;
+      default:
+        query = query.order("created_at", { ascending: false });
+    }
+
+    const res = await query.range(offset, offset + PAGE_SIZE - 1);
+    products = res.data;
+    totalCount = res.count ?? null;
+  } else {
+    // Rama category: traemos TODO lo que matchea (q, tipo, price) dentro
+    // del .in(orderedIds), particionamos en 2 tiers via Set(primaryIds),
+    // ordenamos cada tier con sortFn(params.sort), concatenamos y
+    // paginamos en JS. Trade-off: para categorias muy grandes (>500
+    // productos post-filtros) el payload server crece; hoy max ~57.
+    const res = await query;
+    const allProducts: ProductRow[] = res.data ?? [];
+
+    const primarySet = new Set(primaryIds);
+    const primaryGroup = allProducts.filter((p) => primarySet.has(p.id));
+    const secondaryGroup = allProducts.filter((p) => !primarySet.has(p.id));
+
+    const sorter = sortFn(params.sort);
+    primaryGroup.sort(sorter);
+    secondaryGroup.sort(sorter);
+
+    const fullRanking = [...primaryGroup, ...secondaryGroup];
+    totalCount = fullRanking.length;
+    products = fullRanking.slice(offset, offset + PAGE_SIZE);
+  }
 
   const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE);
   const categoryName = params.category
