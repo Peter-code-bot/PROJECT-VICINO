@@ -189,7 +189,8 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback: navegadores sin overflow:clip */
+  overflow-x: clip;   /* iOS Safari / modernos: contención fiable del ancho */
   max-width: 100vw;
 }
 
@@ -198,7 +199,8 @@ body {
   color: var(--fg);
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   line-height: 1.6;
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback: navegadores sin overflow:clip */
+  overflow-x: clip;   /* iOS Safari / modernos: contención fiable del ancho */
   max-width: 100vw;
 }
 

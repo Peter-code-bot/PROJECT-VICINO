@@ -27,7 +27,7 @@ export function AnalyticsCharts({
       <div className="space-y-3">
         <h2 className="text-sm font-medium">Ventas por día (últimos 30 días)</h2>
         {dailyData.length > 0 ? (
-          <div className="h-64">
+          <div className="h-64 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyData}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -62,7 +62,7 @@ export function AnalyticsCharts({
       <div className="space-y-3">
         <h2 className="text-sm font-medium">Productos más vendidos</h2>
         {topProducts.length > 0 ? (
-          <div className="h-64">
+          <div className="h-64 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topProducts} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />

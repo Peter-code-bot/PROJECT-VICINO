@@ -87,7 +87,7 @@ export default async function SellerLayout({
         </aside>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 min-h-[calc(100vh-14rem)] bg-transparent md:bg-card md:rounded-3xl md:border md:border-border/40 md:shadow-[0_8px_30px_rgb(26,26,46,0.04)] md:p-8 lg:p-10">
+        <main className="flex-1 min-w-0 overflow-x-clip min-h-[calc(100vh-14rem)] bg-transparent md:bg-card md:rounded-3xl md:border md:border-border/40 md:shadow-[0_8px_30px_rgb(26,26,46,0.04)] md:p-8 lg:p-10">
           {children}
         </main>
       </div>
