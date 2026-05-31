@@ -27,9 +27,9 @@ import {
  * Tapping the + icon is the only way to reach it.
  */
 const PAGES = ["/", "/buscar", "/chat", "/perfil"];
-const SWIPE_THRESHOLD_OFFSET = 90; // px — minimum drag distance to commit
-const SWIPE_THRESHOLD_VELOCITY = 500; // px/sec — fast flick commits at lower offset
-const EDGE_GUARD_PX = 40; // px from each screen edge reserved for OS gestures
+const SWIPE_THRESHOLD_OFFSET = 50; // px — minimum drag distance to commit
+const SWIPE_THRESHOLD_VELOCITY = 300; // px/sec — fast flick commits at lower offset
+const EDGE_GUARD_PX = 20; // px from each screen edge reserved for OS gestures
 
 const SWIPE_IGNORE_SELECTOR =
   "[data-no-page-swipe], .overflow-x-auto, .overflow-x-scroll";
