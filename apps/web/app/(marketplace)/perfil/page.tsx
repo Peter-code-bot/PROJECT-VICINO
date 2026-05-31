@@ -22,10 +22,15 @@ export default async function PerfilPage() {
     .eq("id", user.id)
     .single();
 
-  // Get user's products
+  // Get user's products.
+  // MP#08 #5c-4: SELECT expandido con product_categories embed para que la
+  // data fluya al tipo ProfileTabsProps.products. Render visual de badges en
+  // SortableProductCard esta DIFERIDO a 5c-4-bis: ese componente es
+  // image-only (overlay con precio hover + badge PAUSADO existente) y
+  // requiere diseno de overlay propio para no colisionar.
   let { data: products, error: productsError } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order")
+    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("sort_order", { ascending: true })
@@ -35,11 +40,11 @@ export default async function PerfilPage() {
   if (productsError && productsError.code === "42703") {
     const fallback = await supabase
       .from("products_services")
-      .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count")
+      .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
       .eq("creador_id", user.id)
       .neq("estatus", "eliminado")
       .order("created_at", { ascending: false });
-      
+
     products = fallback.data ? fallback.data.map(p => ({ ...p, sort_order: 0 })) : null;
   }
 

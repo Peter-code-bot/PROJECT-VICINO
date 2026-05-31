@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/product/product-card";
+import { normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +23,8 @@ export default async function FavoritosPage() {
       producto_id,
       products_services!inner(
         id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
-        profiles!inner(nombre, trust_level, average_rating, reviews_count)
+        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+        product_categories(is_primary, categories(slug, nombre))
       )
     `
     )
@@ -59,6 +61,9 @@ export default async function FavoritosPage() {
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
                 precioNegociable={product.precio_negociable ?? false}
+                categories={normalizeCardCategories(
+                  (product as { product_categories?: unknown }).product_categories,
+                )}
               />
             );
           })}

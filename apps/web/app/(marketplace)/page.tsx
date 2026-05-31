@@ -112,7 +112,8 @@ export default async function HomePage({ searchParams }: Props) {
       slug,
       created_at,
       precio_negociable,
-      profiles!inner(nombre, trust_level, average_rating, reviews_count)
+      profiles!inner(nombre, trust_level, average_rating, reviews_count),
+      product_categories(is_primary, categories(slug, nombre))
     `
     )
     .eq("estatus", "disponible")

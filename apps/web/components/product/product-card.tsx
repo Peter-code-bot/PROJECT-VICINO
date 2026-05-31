@@ -9,7 +9,8 @@ import { PriceDisplay } from "@/components/shared/price-display";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { NegociablePill } from "@/components/product/negociable-pill";
-import type { TrustLevel } from "@vicino/shared";
+import { CategoryBadge } from "@/components/product/category-badge";
+import type { ProductCardCategory, TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,10 @@ interface ProductCardProps {
   reviewsCount: number;
   isFavorite?: boolean;
   precioNegociable?: boolean;
+  // MP#08 #5c-4: array opcional normalizado primary-first via
+  // normalizeCardCategories(product.product_categories) en el caller.
+  // Default [] mantiene la card identica para callers no migrados.
+  categories?: ProductCardCategory[];
 }
 
 export function ProductCard({
@@ -42,6 +47,7 @@ export function ProductCard({
   reviewsCount,
   isFavorite: initialFavorite = false,
   precioNegociable,
+  categories = [],
 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
 
@@ -145,6 +151,21 @@ export function ProductCard({
         <h3 className="line-clamp-2 font-heading text-[14px] font-semibold leading-snug text-fg transition-colors duration-200 group-hover:text-brand-hi">
           {titulo}
         </h3>
+
+        {/* MP#08 #5c-4: badge row — primary categoria + "+N" si hay secundarias.
+            Cero render si categories esta vacio (default callers no migrados).
+            Layout Option B (D4): content row debajo del titulo, sin colision
+            con overlays (price/Negociable/favorite siguen en sus esquinas). */}
+        {categories.length > 0 && categories[0] && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <CategoryBadge name={categories[0].nombre} isPrimary />
+            {categories.length > 1 && (
+              <span className="text-[10px] font-semibold text-fg-muted">
+                +{categories.length - 1}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Seller row: trust dot inline + name + badge */}
         <div className="flex items-center gap-1.5">

@@ -2,6 +2,7 @@
 
 import useEmblaCarousel from "embla-carousel-react";
 import { ProductCard } from "@/components/product/product-card";
+import { normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 
 interface CarouselProduct {
@@ -16,6 +17,10 @@ interface CarouselProduct {
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }[]
     | null;
+  // MP#08 #5c-4: embed opcional product_categories(is_primary, categories(slug,
+  // nombre)). El callsite hidrata desde (marketplace)/page.tsx; el carousel
+  // pasa la data por normalizeCardCategories antes de cablear a ProductCard.
+  product_categories?: unknown;
 }
 
 interface ProductCarouselProps {
@@ -46,6 +51,7 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
                 precioNegociable={p.precio_negociable ?? false}
+                categories={normalizeCardCategories(p.product_categories)}
               />
             </div>
           );

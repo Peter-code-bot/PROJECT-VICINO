@@ -44,9 +44,14 @@ export default async function VendedorPage({ params }: Props) {
   // surface the real email — pass empty string to satisfy the type.
   const publicProfile = { ...profile, email: "" };
 
+  // MP#08 #5c-4: SELECT expandido con product_categories embed para que la
+  // data fluya al tipo ProfileTabsProps.products. Render visual de badges en
+  // SortableProductCard esta DIFERIDO a 5c-4-bis: ese componente es image-only
+  // y requiere diseno de overlay propio (colision con badge PAUSADO + precio
+  // hover). Misma decision que perfil/page.tsx.
   const { data: products } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count")
+    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
     .eq("creador_id", id)
     .eq("estatus", "disponible")
     .order("created_at", { ascending: false });

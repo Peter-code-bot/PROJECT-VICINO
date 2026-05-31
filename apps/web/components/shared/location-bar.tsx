@@ -42,6 +42,16 @@ export function LocationBar() {
           </div>
 
           {products.length > 0 ? (
+            // MP#08 #5c-4-bis (pendiente): nearby_products RPC (SECURITY DEFINER,
+            // supabase/migrations/20260515000001_fuzz_nearby_products.sql) NO
+            // retorna product_categories. Para que esta superficie ("Cerca de ti")
+            // muestre los mismos badges que /buscar, /favoritos y home, hay que:
+            //   1. CREATE OR REPLACE FUNCTION nearby_products con LATERAL JOIN
+            //      a product_categories + categories agregando los slugs+nombres
+            //      (JSON o columnas planas para hasta 3 cats).
+            //   2. Extender NearbyProduct type en lib/geo/actions.ts.
+            //   3. Mapear product_categories aqui y pasarlo al ProductCarousel.
+            // Diferido para no mezclar schema work (migration) con render-only.
             <ProductCarousel
               products={products.map((p) => ({
                 id: p.id,

@@ -89,6 +89,11 @@ function SortableProductCard({ p, isEditing }: { p: any; isEditing: boolean }) {
 // -----------------------------------------
 
 interface ProfileTabsProps {
+  // MP#08 #5c-4: product_categories embed opcional (unknown) que llega de
+  // perfil/page.tsx y vendedor/[id]/page.tsx. Tipo `unknown` espeja la
+  // imprecision de supabase-js para nested embeds; el consumo eventual
+  // (5c-4-bis cuando se diseñe el overlay sobre SortableProductCard) pasara
+  // por normalizeCardCategories. Render visual diferido a 5c-4-bis.
   products: Array<{
     id: string;
     titulo: string;
@@ -98,6 +103,7 @@ interface ProfileTabsProps {
     slug: string;
     estatus: string;
     ventas_count: number;
+    product_categories?: unknown;
   }>;
   reviewsAsSeller: Array<{
     id: string;

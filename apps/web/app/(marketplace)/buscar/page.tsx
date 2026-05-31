@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
-import { CATEGORIES } from "@vicino/shared";
+import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
 
@@ -41,7 +41,8 @@ export default async function SearchPage({ searchParams }: Props) {
       `
       id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
       created_at, ventas_count,
-      profiles!inner(nombre, trust_level, average_rating, reviews_count)
+      profiles!inner(nombre, trust_level, average_rating, reviews_count),
+      product_categories(is_primary, categories(slug, nombre))
     `,
       { count: "exact" }
     )
@@ -335,6 +336,9 @@ export default async function SearchPage({ searchParams }: Props) {
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
                 precioNegociable={product.precio_negociable ?? false}
+                categories={normalizeCardCategories(
+                  (product as { product_categories?: unknown }).product_categories,
+                )}
               />
             );
           })}

@@ -21,3 +21,15 @@ export type ProductCategoryInsert = Pick<
   ProductCategory,
   "product_id" | "categoria_id" | "is_primary"
 >;
+
+// MP#08 #5c-4: presentation-contract shape consumed by ProductCard badges
+// and other card-like surfaces. Derived from the PostgREST embed
+// `product_categories(is_primary, categories(slug, nombre))` via the
+// normalizeCardCategories helper in utils/category.ts. Kept SEPARATE from
+// the storage-aligned ProductCategory type to avoid polluting the base
+// pivot interface with display-only fields (slug, nombre).
+export interface ProductCardCategory {
+  slug: string;
+  nombre: string;
+  is_primary: boolean;
+}
