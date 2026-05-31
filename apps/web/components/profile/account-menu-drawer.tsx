@@ -105,8 +105,8 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userI
               <Section label="Soporte">
                 <Item href="/terminos" icon={FileText} label="Términos y condiciones" onClose={() => setOpen(false)} />
                 <Item href="/privacidad" icon={Shield} label="Política de privacidad" onClose={() => setOpen(false)} />
-                <Item href="/proximamente" icon={HelpCircle} label="Centro de ayuda" onClose={() => setOpen(false)} />
-                <Item href="/proximamente" icon={Info} label="Acerca de VICINO" onClose={() => setOpen(false)} />
+                <Item href="/centro-de-ayuda" icon={HelpCircle} label="Centro de ayuda" onClose={() => setOpen(false)} />
+                <Item href="/acerca-de" icon={Info} label="Acerca de VICINO" onClose={() => setOpen(false)} />
               </Section>
             </div>
 
