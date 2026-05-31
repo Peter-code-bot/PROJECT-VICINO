@@ -26,9 +26,13 @@ DECLARE
     random_price DECIMAL(10,2);
     random_qty INT;
     
-    -- Categorías (asumiendo que los slugs existen o se insertan como texto)
-    cat_servicios UUID := (SELECT id FROM categories WHERE slug = 'servicios' LIMIT 1);
-    cat_electronicos UUID := (SELECT id FROM categories WHERE slug = 'tecnologia' OR slug = 'electronica' LIMIT 1);
+    -- Categorías (MP#08 #4 Fase 1C): post-29ccefe los slugs 'servicios' y
+    -- 'electronica' NO existen en categories. La migration 20260529000004
+    -- remapea los 4 huerfanos historicos (Mantenimiento PC + 3 electronicos)
+    -- a 'tecnologia' ("closest real category for monitor/laptop/keyboard/PC
+    -- repair"). El seed replica ese mapeo para no reintroducir huerfanos.
+    cat_servicios UUID := (SELECT id FROM categories WHERE slug = 'tecnologia' LIMIT 1);
+    cat_electronicos UUID := (SELECT id FROM categories WHERE slug = 'tecnologia' LIMIT 1);
 BEGIN
     -- Validaciones
     IF my_user_id IS NULL THEN
@@ -48,7 +52,7 @@ BEGIN
         prod1_id, my_user_id,
         'Mantenimiento Preventivo de PC',
         'Servicio completo de limpieza, cambio de pasta térmica y optimización de sistema operativo para computadoras de escritorio y laptops.',
-        500.00, 'servicio', 'servicios', cat_servicios,
+        500.00, 'servicio', 'tecnologia', cat_servicios,
         'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80',
         ARRAY['https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
         'disponible'
