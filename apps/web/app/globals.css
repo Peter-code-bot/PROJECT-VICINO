@@ -192,6 +192,11 @@ html {
   overflow-x: hidden; /* fallback: navegadores sin overflow:clip */
   overflow-x: clip;   /* iOS Safari / modernos: contención fiable del ancho */
   max-width: 100vw;
+  /* Reserva el ancho de la barra de scroll en TODAS las pantallas (scrolleen o
+     no) para que el ancho del contenido y del encabezado sea idéntico entre
+     pestañas. En Windows la barra ocupa espacio físico; sin esto, las páginas
+     con scroll se ven más angostas que las cortas (p. ej. Verificación). */
+  scrollbar-gutter: stable;
 }
 
 body {
