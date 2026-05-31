@@ -10,28 +10,27 @@ import { cleanupRemovedMedia } from "@/lib/media/cleanup";
 import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
 import type { MediaAssetInsert } from "@vicino/shared";
 
-// Best-effort dual-write helper for the product_categories pivot during
-// MP#08 #1 Parte 1b coexistence. The form sends categoria as a TEXT slug,
-// so the helper looks up the categoria_id via categories.slug and then
-// INSERTs the pivot row. Failures (RLS, network, supabase outage, orphan
-// slug) are captured to Sentry and the caller is NOT aborted because
-// products_services.categoria TEXT is the canonical render+search source
-// during coexistence.
+// Best-effort dual-write helper for the product_categories pivot.
 //
-// Caveat: 4 legacy products store categoria in display-format (e.g.
-// "Electronica", "Servicios") instead of slug ("electronica", "servicios"),
-// so the slug lookup misses with no match. The helper logs the miss to
-// Sentry and skips the INSERT instead of failing — same flow as a real RLS
-// or supabase error. This is the documented finding from Parte 1a backfill.
+// MP#08 #5c-2: now writes N rows (1..3) with an explicit is_primary flag
+// per row. The previous single-row signature shipped in 1b (d95f1a5) is
+// replaced; the helper deletes all rows for the product and re-inserts
+// the new set in two phases (primary first, then secondaries) so the
+// partial unique index from 5c-1 validates against an empty state first.
+//
+// Failures (RLS, network, supabase outage, orphan slug) are captured to
+// Sentry and the caller is NOT aborted because products_services.categoria
+// TEXT (mirror of the primary slug, updated by the caller) is still the
+// canonical render source during coexistence (drop is #4 future).
 async function syncProductCategoriesForProduct(
   supabase: Awaited<ReturnType<typeof createClient>>,
   args: {
     productId: string;
-    categoriaSlug: string;
+    categories: ReadonlyArray<{ slug: string; is_primary: boolean }>;
     mode: "create" | "update";
   },
 ): Promise<void> {
-  const { productId, categoriaSlug, mode } = args;
+  const { productId, categories, mode } = args;
 
   if (mode === "update") {
     const { error: deleteErr } = await supabase
@@ -50,58 +49,85 @@ async function syncProductCategoriesForProduct(
     }
   }
 
-  if (!categoriaSlug) return;
+  if (categories.length === 0) return;
 
-  const { data: category, error: lookupErr } = await supabase
+  // Batch lookup: 1 query resolves N slugs to ids. Normalized to lowercase
+  // (mirror of the 1b fc846a3 mitigation) even though the zod validator
+  // already rejects non-canonical slugs.
+  const slugsLower = categories.map((c) => c.slug.toLowerCase());
+  const { data: catRows, error: lookupErr } = await supabase
     .from("categories")
-    .select("id")
-    .eq("slug", categoriaSlug.toLowerCase())
-    .maybeSingle();
+    .select("id, slug")
+    .in("slug", slugsLower);
 
   if (lookupErr) {
     Sentry.captureException(lookupErr, {
       tags: { action: "syncProductCategories", step: "category_slug_lookup" },
       contexts: {
         product: { id: productId },
-        category: { slug: categoriaSlug },
+        category: { slugs: slugsLower.join(",") },
         supabase: { code: lookupErr.code },
       },
     });
     return;
   }
 
-  if (!category) {
-    // Orphan slug: covers the 4 legacy display-format rows ("Electronica",
-    // "Servicios") and any future slug drift. Logged for visibility, not
-    // treated as an error since the underlying products_services row is
-    // already valid via categoria TEXT.
+  const slugToId = new Map<string, string>(
+    (catRows ?? []).map((r) => [r.slug as string, r.id as string]),
+  );
+
+  // Detect orphan slugs (validator would have caught them at parse time,
+  // so this is defense in depth for alternative write paths).
+  const orphans = slugsLower.filter((s) => !slugToId.has(s));
+  if (orphans.length > 0) {
     Sentry.captureMessage(
-      `product_categories sync miss: no categories.slug = "${categoriaSlug}"`,
+      `product_categories sync miss: ${orphans.length} slug(s) not in categories: ${orphans.join(",")}`,
       {
         level: "warning",
         tags: { action: "syncProductCategories", step: "category_slug_lookup_miss" },
-        contexts: {
-          product: { id: productId },
-          category: { slug: categoriaSlug },
-        },
+        contexts: { product: { id: productId } },
       },
     );
-    return;
   }
+
+  // Order matters: insert the primary first so the partial unique index
+  // (5c-1 idx_product_categories_one_primary WHERE is_primary = true)
+  // validates against an empty state. Then the secondaries (is_primary=false)
+  // do not touch the partial index.
+  const rows = categories
+    .map((c) => {
+      const id = slugToId.get(c.slug.toLowerCase());
+      return id
+        ? { product_id: productId, categoria_id: id, is_primary: c.is_primary }
+        : null;
+    })
+    .filter((r): r is { product_id: string; categoria_id: string; is_primary: boolean } => r !== null)
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+
+  if (rows.length === 0) return;
 
   const { error: insertErr } = await supabase
     .from("product_categories")
-    .insert({ product_id: productId, categoria_id: category.id });
+    .insert(rows);
   if (insertErr) {
     Sentry.captureException(insertErr, {
       tags: { action: "syncProductCategories", step: "insert", mode },
       contexts: {
         product: { id: productId },
-        category: { id: category.id, slug: categoriaSlug },
+        category: { count: rows.length },
         supabase: { code: insertErr.code },
       },
     });
   }
+}
+
+// Helper to extract the primary slug from a categories array. The zod
+// validator guarantees exactly one primary exists when the array is non-
+// empty, so this returns the slug or null (for safety, never throws).
+function primarySlug(
+  categories: ReadonlyArray<{ slug: string; is_primary: boolean }>,
+): string | null {
+  return categories.find((c) => c.is_primary)?.slug ?? null;
 }
 
 // Best-effort dual-write helper: inserts gallery URLs into media_assets
@@ -190,12 +216,25 @@ export async function createProduct(formData: FormData) {
   // Validate
   const estadoRaw = (formData.get("estado") as string) || "";
   const colorRaw = (formData.get("color") as string) || "";
+
+  // MP#08 #5c-2: categories llega como JSON.stringify de Array<{slug, is_primary}>
+  // (mirror del patron de galeria_imagenes). El zod valida shape + max 3 +
+  // exactly-1-primary + no duplicados. JSON.parse failures degradan a array
+  // vacio para que el validator devuelva un error claro en vez de crashear.
+  const categoriesRaw = formData.get("categories") as string | null;
+  let categoriesParsed: unknown = [];
+  try {
+    if (categoriesRaw) categoriesParsed = JSON.parse(categoriesRaw);
+  } catch {
+    categoriesParsed = [];
+  }
+
   const raw = {
     titulo: formData.get("titulo") as string,
     descripcion: formData.get("descripcion") as string,
     precio: Number(formData.get("precio")),
     tipo: formData.get("tipo") as string,
-    categoria: formData.get("categoria") as string,
+    categories: categoriesParsed,
     ubicacion: (formData.get("ubicacion") as string) || undefined,
     tipo_entrega: (formData.get("tipo_entrega") as string) || "pickup",
     estado: estadoRaw === "" ? null : estadoRaw,
@@ -205,6 +244,14 @@ export async function createProduct(formData: FormData) {
   const result = createProductSchema.safeParse(raw);
   if (!result.success) {
     return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
+  }
+
+  // D8: categoria TEXT en products_services es espejo de la primary actual.
+  // El validator ya garantiza exactly 1 primary, asi que primaryCategoria
+  // nunca sera null aqui (la guard es defensa contra refactor futuro).
+  const primaryCategoria = primarySlug(result.data.categories);
+  if (!primaryCategoria) {
+    return { error: "No se pudo determinar la categoría principal" };
   }
 
   const ubicLat = formData.get("ubicacion_lat") ? Number(formData.get("ubicacion_lat")) : null;
@@ -247,7 +294,7 @@ export async function createProduct(formData: FormData) {
       descripcion: result.data.descripcion,
       precio: result.data.precio,
       tipo: result.data.tipo,
-      categoria: result.data.categoria,
+      categoria: primaryCategoria,
       ubicacion: result.data.ubicacion ?? null,
       tipo_entrega: result.data.tipo_entrega,
       estatus: "disponible",
@@ -288,12 +335,13 @@ export async function createProduct(formData: FormData) {
     mode: "create",
   });
 
-  // MP#08 #1 Parte 1b dual-write to product_categories (best-effort; same
-  // failure mode as media_assets — categoria TEXT is already saved and is
-  // the canonical render+search source during coexistence).
+  // MP#08 #5c-2 dual-write to product_categories: N rows (1..3) with the
+  // is_primary flag. Best-effort; categoria TEXT is already saved as a
+  // mirror of the primary slug and is the canonical URL source during
+  // coexistence (categoria TEXT drop is #4 future).
   await syncProductCategoriesForProduct(supabase, {
     productId: data.id,
-    categoriaSlug: result.data.categoria,
+    categories: result.data.categories,
     mode: "create",
   });
 
@@ -324,7 +372,7 @@ export async function updateProductFull(
   const titulo = formData.get("titulo");
   const descripcion = formData.get("descripcion");
   const precio = formData.get("precio");
-  const categoria = formData.get("categoria");
+  const categoriesRaw = formData.get("categories");
   const ubicacion = formData.get("ubicacion");
   const tipoEntrega = formData.get("tipo_entrega");
   const estadoField = formData.get("estado");
@@ -332,7 +380,18 @@ export async function updateProductFull(
   if (typeof titulo === "string" && titulo.length > 0) raw.titulo = titulo;
   if (typeof descripcion === "string" && descripcion.length > 0) raw.descripcion = descripcion;
   if (precio !== null && precio !== "") raw.precio = Number(precio);
-  if (typeof categoria === "string" && categoria.length > 0) raw.categoria = categoria;
+  // MP#08 #5c-2: categories llega como JSON string. Solo se valida cuando
+  // viene presente (tri-state coherente con el resto de updateProductFull:
+  // ausente == no tocar, presente == reemplazar). El zod .partial() hereda
+  // el shape array + min(1) + max(3) + refines; si el JSON es invalido o
+  // viola los refines el validator regresa el error sin tocar la DB.
+  if (typeof categoriesRaw === "string" && categoriesRaw.length > 0) {
+    try {
+      raw.categories = JSON.parse(categoriesRaw);
+    } catch {
+      raw.categories = [];
+    }
+  }
   if (typeof ubicacion === "string" && ubicacion.length > 0) raw.ubicacion = ubicacion;
   if (typeof tipoEntrega === "string" && tipoEntrega.length > 0) raw.tipo_entrega = tipoEntrega;
   // estado is only present in the form when tipoSeleccionado === "producto";
@@ -438,7 +497,16 @@ export async function updateProductFull(
   if (parsed.data.titulo !== undefined) updateObj.titulo = parsed.data.titulo;
   if (parsed.data.descripcion !== undefined) updateObj.descripcion = parsed.data.descripcion;
   if (parsed.data.precio !== undefined) updateObj.precio = parsed.data.precio;
-  if (parsed.data.categoria !== undefined) updateObj.categoria = parsed.data.categoria;
+  // D8: categoria TEXT espejo de la primary actual. Si el form mando
+  // categories presente, derivamos la primary y la escribimos al TEXT. Si
+  // categories esta ausente (no se toco en este update) NO tocamos el TEXT
+  // -- preserva el espejo previo. El validator garantiza exactly 1 primary
+  // cuando categories esta presente, asi que primarySlug nunca retorna null
+  // en esa rama.
+  if (parsed.data.categories !== undefined) {
+    const p = primarySlug(parsed.data.categories);
+    if (p) updateObj.categoria = p;
+  }
   if (parsed.data.ubicacion !== undefined) updateObj.ubicacion = parsed.data.ubicacion;
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
   if (parsed.data.estado !== undefined && parsed.data.estado !== null) {
@@ -527,18 +595,19 @@ export async function updateProductFull(
     mode: "update",
   });
 
-  // MP#08 #1 Parte 1b sync product_categories to mirror the new categoria
-  // (DELETE all pivot rows for this product, INSERT the resolved one). If
-  // the form did not change categoria, parsed.data.categoria may be
-  // undefined; in that case we still run the sync with the existing TEXT
-  // value (read from the UPDATE RETURNING) to keep the pivot consistent
-  // with categoria TEXT. Best-effort: failures go to Sentry without
-  // aborting the user flow.
-  await syncProductCategoriesForProduct(supabase, {
-    productId: id,
-    categoriaSlug: parsed.data.categoria ?? updated.categoria,
-    mode: "update",
-  });
+  // MP#08 #5c-2 sync product_categories to mirror the new categories array
+  // (DELETE all pivot rows for this product, INSERT the new N rows). Only
+  // runs if the form sent categories (tri-state preserve when absent). If
+  // categories was absent, the pivot stays as-is (consistent with the
+  // categoria TEXT mirror, which we also didn't touch above). Best-effort:
+  // failures go to Sentry without aborting the user flow.
+  if (parsed.data.categories !== undefined) {
+    await syncProductCategoriesForProduct(supabase, {
+      productId: id,
+      categories: parsed.data.categories,
+      mode: "update",
+    });
+  }
 
   if (removedUrls.length > 0) {
     await cleanupRemovedMedia(supabase, removedUrls);

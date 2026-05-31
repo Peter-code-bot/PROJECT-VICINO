@@ -12,7 +12,7 @@ const ProductMediaCropper = dynamic(
 );
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateVideoThumbnail, generateCroppedVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
@@ -38,13 +38,22 @@ import { CSS } from '@dnd-kit/utilities';
 
 type Mode = "create" | "edit";
 
+export interface CategorySelection {
+  slug: string;
+  is_primary: boolean;
+}
+
 export interface ProductInitialValues {
   id: string;
   titulo: string;
   descripcion: string;
   precio: number;
   tipo: "producto" | "servicio";
-  categoria: string;
+  // MP#08 #5c-2: editar page lee el pivote y envia el array de 1..3 categorias
+  // con la primary marcada. Para productos pre-5c-1 sin filas en el pivote
+  // (caso borde improbable post-29ccefe), editar/page.tsx hace fallback a
+  // [{slug: product.categoria, is_primary: true}] desde el TEXT.
+  categories: CategorySelection[];
   ubicacion?: string | null;
   delivery_radius_km?: number | null;
   tipo_entrega: string;
@@ -153,7 +162,12 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   const [tipoSeleccionado, setTipoSeleccionado] = useState<"producto" | "servicio">(
     initialValues?.tipo ?? "producto",
   );
-  const [selectedCategory, setSelectedCategory] = useState(initialValues?.categoria ?? "");
+  // MP#08 #5c-2: state multi-select (max 3, exactly 1 primary). El validator
+  // del servidor enforza la regla via zod; aqui mantenemos las invariantes
+  // como UX (bloqueo de submit + ocultar opciones invalidas del dropdown).
+  const [categories, setCategories] = useState<CategorySelection[]>(
+    initialValues?.categories ?? [],
+  );
   const [estado, setEstado] = useState<string>(initialValues?.estado ?? "");
   const [color, setColor] = useState<string>(initialValues?.color ?? "");
   const [categorySearch, setCategorySearch] = useState("");
@@ -393,6 +407,17 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
 
   async function handleSubmit(formData: FormData) {
     if (submittingRef.current) return;
+    // MP#08 #5c-2: validacion cliente del array de categorias. El zod del
+    // servidor enforza la misma regla; este check ahorra un round-trip y
+    // muestra el error en linea sin tocar la red.
+    if (categories.length === 0) {
+      setError("Selecciona al menos una categoría");
+      return;
+    }
+    if (categories.filter((c) => c.is_primary).length !== 1) {
+      setError("Marca exactamente una categoría como principal");
+      return;
+    }
     submittingRef.current = true;
     setError("");
     setLoading(true);
@@ -667,23 +692,95 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           <input type="hidden" name="precio_negociable" value={precioNegociable ? "true" : "false"} />
         </div>
 
-        {/* Categoria — combobox con búsqueda */}
+        {/* Categorias — multi-select hasta 3, una marcada como principal (MP#08 #5c-2) */}
         <div className="space-y-2 relative">
-          <label className="text-sm font-medium text-foreground/80">Categoría</label>
-          <input type="hidden" name="categoria" value={selectedCategory} required />
-          <button
-            type="button"
-            onClick={() => setCategoryOpen(!categoryOpen)}
-            className={cn(
-              "w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all hover:border-primary/30",
-              categoryOpen && "border-primary/50 ring-2 ring-primary/20",
-              !selectedCategory && "text-muted-foreground/50"
-            )}
-          >
-            {selectedCategory ? CATEGORIES.find(c => c.slug === selectedCategory)?.name : "Selecciona una categoría"}
-            <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", categoryOpen && "rotate-180")} />
-          </button>
-          {categoryOpen && (
+          <div className="flex items-baseline justify-between gap-2">
+            <label className="text-sm font-medium text-foreground/80">
+              Categorías <span className="text-muted-foreground/70 font-normal">(hasta 3, 1 principal)</span>
+            </label>
+            <span className="text-xs text-muted-foreground/70">{categories.length}/3</span>
+          </div>
+          <input
+            type="hidden"
+            name="categories"
+            value={JSON.stringify(categories)}
+            required
+          />
+
+          {/* Chips de las categorias seleccionadas */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => {
+                const meta = CATEGORIES.find((c) => c.slug === cat.slug);
+                if (!meta) return null;
+                return (
+                  <div
+                    key={cat.slug}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full pl-2 pr-1 py-1 text-sm shadow-[inset_0_0_0_1px_var(--border)]",
+                      cat.is_primary
+                        ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] font-semibold"
+                        : "bg-[color:var(--card-2)] text-foreground/90",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      aria-label={cat.is_primary ? `${meta.name} es la principal` : `Marcar ${meta.name} como principal`}
+                      aria-pressed={cat.is_primary}
+                      onClick={() =>
+                        setCategories((prev) =>
+                          prev.map((c) => ({ ...c, is_primary: c.slug === cat.slug }))
+                        )
+                      }
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--brand-tint)]"
+                    >
+                      <Star
+                        className={cn("h-4 w-4", cat.is_primary ? "fill-current" : "")}
+                        strokeWidth={2}
+                      />
+                    </button>
+                    <span className="px-1">{meta.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${meta.name}`}
+                      onClick={() =>
+                        setCategories((prev) => {
+                          const removed = prev.find((c) => c.slug === cat.slug);
+                          const next = prev.filter((c) => c.slug !== cat.slug);
+                          // Si quitamos la primary y quedan otras, la primera pasa a primary.
+                          if (removed?.is_primary && next.length > 0 && next[0]) {
+                            next[0] = { ...next[0], is_primary: true };
+                          }
+                          return next;
+                        })
+                      }
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--danger-tint,rgba(255,59,48,0.15))]"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Combobox para agregar (deshabilitado al llegar a 3) */}
+          {categories.length < 3 && (
+            <button
+              type="button"
+              onClick={() => setCategoryOpen(!categoryOpen)}
+              className={cn(
+                "w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all hover:border-primary/30",
+                categoryOpen && "border-primary/50 ring-2 ring-primary/20",
+                "text-muted-foreground/80"
+              )}
+            >
+              {categories.length === 0 ? "Selecciona una categoría" : "Agregar otra categoría"}
+              <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", categoryOpen && "rotate-180")} />
+            </button>
+          )}
+
+          {categoryOpen && categories.length < 3 && (
             <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-xl border border-border/50 bg-card shadow-lg max-h-64 overflow-hidden">
               <div className="p-2 border-b border-border/30">
                 <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
@@ -701,7 +798,12 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               <div className="overflow-y-auto max-h-48 p-1">
                 {["producto", "servicio", "otro"].map((type) => {
                   const label = type === "producto" ? "Productos" : type === "servicio" ? "Servicios" : "Otros";
-                  const cats = CATEGORIES.filter(c => c.type === type && !c.hidden_in_form && c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+                  const cats = CATEGORIES.filter((c) =>
+                    c.type === type
+                    && !c.hidden_in_form
+                    && !categories.some((sel) => sel.slug === c.slug)
+                    && c.name.toLowerCase().includes(categorySearch.toLowerCase())
+                  );
                   if (cats.length === 0) return null;
                   return (
                     <div key={type}>
@@ -710,11 +812,16 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                         <button
                           key={cat.slug}
                           type="button"
-                          onClick={() => { setSelectedCategory(cat.slug); setCategoryOpen(false); setCategorySearch(""); }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
-                            selectedCategory === cat.slug ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] font-semibold" : "hover:bg-[color:var(--bg-elev-2)]"
-                          )}
+                          onClick={() => {
+                            setCategories((prev) => {
+                              // La primera categoria seleccionada se marca como principal.
+                              const isFirst = prev.length === 0;
+                              return [...prev, { slug: cat.slug, is_primary: isFirst }];
+                            });
+                            setCategoryOpen(false);
+                            setCategorySearch("");
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors hover:bg-[color:var(--bg-elev-2)]"
                         >
                           {cat.name}
                         </button>

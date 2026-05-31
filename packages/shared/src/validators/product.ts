@@ -1,17 +1,22 @@
 import { z } from "zod";
 import { CATEGORIES, type CategorySlug } from "../constants/categories";
 
-// Type predicate refine: cumple dos objetivos a la vez.
-//   (1) Runtime: rechaza cualquier categoria que no sea uno de los 35 slugs
-//       canonicos de CATEGORIES (25 visibles + 10 subcategorias de mayoreo
-//       marcadas hidden_in_form). El form pinta solo las 25 visibles, pero
-//       el predicate acepta los 35 para no romper rutas alternativas de
-//       escritura (admin, RPC, futuro flujo de mayoreo).
+// Type predicate refine sobre cada slug del array: cumple dos objetivos a la vez.
+//   (1) Runtime: rechaza cualquier slug que no sea uno de los 35 canonicos
+//       de CATEGORIES (25 visibles + 10 subcategorias de mayoreo marcadas
+//       hidden_in_form). El form pinta solo las 25 visibles, pero el predicate
+//       acepta los 35 para no romper rutas alternativas (admin, RPC, futuro
+//       flujo de mayoreo).
 //   (2) Type level: el predicate `(v): v is CategorySlug` propaga el literal
-//       union a `z.infer<typeof createProductSchema>["categoria"]`. Zod v3
-//       `z.enum` con array dinamico ensancharia a `string` (los docs piden
-//       valores inline con `as const`); el refine preserva la union literal
-//       sin duplicar la lista de slugs.
+//       union a `z.infer<typeof createProductSchema>["categories"][number]["slug"]`.
+//       Zod v3 `z.enum` con array dinamico ensancharia a `string` (los docs
+//       piden valores inline con `as const`); el refine preserva la union
+//       literal sin duplicar la lista.
+//
+// Multi-categoria (MP#08 #5c-2): el campo `categories` es un array de
+// {slug, is_primary} con min(1), max(3) y exactly-1-primary enforzado por
+// refine. El trigger BEFORE INSERT en DB (5c-1) actua como defense in depth
+// para rutas que no pasan por este validator (admin, RPC futuro).
 
 export const DELIVERY_OPTIONS = [
   { value: "punto_encuentro", label: "Punto de encuentro seguro", for: ["producto", "servicio"] },
@@ -39,10 +44,26 @@ export const createProductSchema = z.object({
   descripcion: z.string().min(10, "Mínimo 10 caracteres").max(5000),
   precio: z.number().positive("El precio debe ser mayor a 0").max(99999999),
   tipo: z.enum(["producto", "servicio"]),
-  categoria: z.string().refine(
-    (v): v is CategorySlug => CATEGORIES.some((c) => c.slug === v),
-    { message: "Selecciona una categoría válida" },
-  ),
+  categories: z
+    .array(
+      z.object({
+        slug: z.string().refine(
+          (v): v is CategorySlug => CATEGORIES.some((c) => c.slug === v),
+          { message: "Categoría no válida" },
+        ),
+        is_primary: z.boolean(),
+      }),
+    )
+    .min(1, "Selecciona al menos una categoría")
+    .max(3, "Máximo 3 categorías por producto")
+    .refine(
+      (arr) => arr.filter((c) => c.is_primary).length === 1,
+      { message: "Debe haber exactamente una categoría principal" },
+    )
+    .refine(
+      (arr) => new Set(arr.map((c) => c.slug)).size === arr.length,
+      { message: "No puedes repetir la misma categoría" },
+    ),
   ubicacion: z.string().optional(),
   tipo_entrega: z.enum(deliveryValues).default("punto_encuentro"),
   estado: z.enum(PRODUCT_CONDITION_VALUES).optional().nullable(),
