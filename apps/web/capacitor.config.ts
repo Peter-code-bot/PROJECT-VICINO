@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
     // url: 'http://localhost:3000',
   },
   android: {
-    backgroundColor: '#0D0D1A',
+    backgroundColor: '#0A0F0E',
     allowMixedContent: false,
     // Recommended by capacitor-best-practices skill
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development',
@@ -31,7 +31,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: false,
       launchShowDuration: 3000,
-      backgroundColor: '#0D0D1A',
+      backgroundColor: '#0A0F0E',
       showSpinner: true,
       spinnerColor: '#EDE0D4',
       splashFullScreen: true,
@@ -41,7 +41,7 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#0D0D1A',
+      backgroundColor: '#0A0F0E',
       overlaysWebView: false,
     },
     Keyboard: {

@@ -25,3 +25,6 @@ project(':capacitor-splash-screen').projectDir = new File('../../../node_modules
 
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/status-bar/android')
+
+include ':sentry-capacitor'
+project(':sentry-capacitor').projectDir = new File('../../../node_modules/.pnpm/@sentry+capacitor@4.0.0_@capacitor+core@8.3.0_@sentry+react@10.43.0_react@19.2.4_/node_modules/@sentry/capacitor/android')
