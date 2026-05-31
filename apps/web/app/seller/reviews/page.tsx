@@ -48,7 +48,7 @@ export default async function ReviewsPage() {
   const pending = completedSales?.filter((s) => !reviewedSaleIds.has(s.id)) ?? [];
 
   return (
-    <div className="space-y-4 min-w-0">
+    <div className="space-y-6 min-w-0">
       <h1 className="text-xl font-bold truncate">Reseñas</h1>
       <ReviewTabs
         received={received ?? []}

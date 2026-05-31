@@ -20,7 +20,7 @@ export default async function CuponesPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="space-y-4 min-w-0">
+    <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between gap-3 min-w-0">
         <h1 className="text-xl font-bold truncate">Cupones</h1>
         <Link

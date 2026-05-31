@@ -78,9 +78,9 @@ export default async function SellerOverviewPage() {
     : 100;
 
   return (
-    <div className="space-y-8 animate-fade-in-up min-w-0">
+    <div className="space-y-6 animate-fade-in-up min-w-0">
       <div className="min-w-0">
-        <h1 className="text-2xl font-heading font-bold mb-1 truncate">Mi Tienda</h1>
+        <h1 className="text-xl font-bold mb-1 truncate">Mi Tienda</h1>
         <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
       </div>
 

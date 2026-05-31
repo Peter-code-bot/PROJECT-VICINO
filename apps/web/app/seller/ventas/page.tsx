@@ -58,7 +58,7 @@ export default async function VentasPage() {
   };
 
   return (
-    <div className="space-y-4 min-w-0">
+    <div className="space-y-6 min-w-0">
       <h1 className="text-xl font-bold truncate">Mis ventas</h1>
 
       {sales && sales.length > 0 ? (

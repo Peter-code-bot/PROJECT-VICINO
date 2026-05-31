@@ -36,7 +36,7 @@ export default async function SellerLayout({
     profile?.nombre_negocio ?? profile?.nombre ?? "Mi Tienda Local";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-8 md:py-10 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 min-w-0">
         <div className="flex items-center gap-3 md:gap-4 min-w-0">
