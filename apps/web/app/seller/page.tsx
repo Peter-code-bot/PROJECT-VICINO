@@ -120,9 +120,9 @@ export default async function SellerOverviewPage() {
               <Star className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Reputacin</span>
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Reputación</span>
               <p className="text-xs font-medium text-[color:var(--trust-gold)] truncate">
-                Aprobacin<span className="hidden sm:inline"> de clientes</span>
+                Aprobación<span className="hidden sm:inline"> de clientes</span>
               </p>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default async function SellerOverviewPage() {
               <TrendingUp className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Histrico</span>
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Histórico</span>
               <p className="text-xs font-medium text-[color:var(--fg-muted)] truncate">
                 Ventas totales<span className="hidden sm:inline"> en Vicino</span>
               </p>
