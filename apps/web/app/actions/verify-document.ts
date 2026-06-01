@@ -81,7 +81,7 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
       response_format: { type: "json_object" },
     });
 
-    const responseText = response.choices[0].message.content || "{}";
+    const responseText = response.choices[0]?.message?.content || "{}";
     const analysis = JSON.parse(responseText);
 
     let finalStatus = "pending";
