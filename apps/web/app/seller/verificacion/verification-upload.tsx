@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Upload, CheckCircle, Clock, XCircle, Bot } from "lucide-react";
+import { Upload, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
 import { verifyDocument } from "@/app/actions/verify-document";
 
 interface VerificationUploadProps {
@@ -64,6 +64,29 @@ export function VerificationUpload({
     ine_front: sellerVerification?.ine_front_url ?? verification?.id_front_url,
     ine_back: sellerVerification?.ine_back_url ?? verification?.id_back_url,
   };
+
+  const [previews, setPreviews] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    async function loadPreviews() {
+      const p: Record<string, string | null> = {};
+      for (const [key, path] of Object.entries(existingDocs)) {
+        if (path) {
+          // Extraemos path limpio en caso de que venga sucio
+          const cleanPath = path.includes("verification-documents/") 
+            ? path.split("verification-documents/")[1].split("?")[0]
+            : path;
+            
+          const { data } = await supabase.storage.from("verification-documents").createSignedUrl(cleanPath, 60 * 60);
+          if (data) {
+            p[key] = data.signedUrl;
+          }
+        }
+      }
+      setPreviews(prev => ({ ...prev, ...p }));
+    }
+    loadPreviews();
+  }, [existingDocs.selfie, existingDocs.ine_front, existingDocs.ine_back]);
 
   const status = sellerVerification?.status ?? "none";
 
@@ -140,6 +163,36 @@ export function VerificationUpload({
       setIsAnalyzing(false);
     }
 
+    setPreviews(prev => ({ ...prev, [key]: URL.createObjectURL(file) }));
+    setUploading(null);
+    router.refresh();
+  }
+
+  async function handleDelete(key: string) {
+    const path = existingDocs[key];
+    if (!path) return;
+
+    setError("");
+    setUploading(key); // Reusamos el estado de uploading para bloquear el UI
+
+    // Borramos físicamente del storage
+    const cleanPath = path.includes("verification-documents/") 
+      ? path.split("verification-documents/")[1].split("?")[0]
+      : path;
+      
+    await supabase.storage.from("verification-documents").remove([cleanPath]);
+
+    // Borramos de la DB
+    const updates: Record<string, null> = {};
+    if (key === "selfie") updates.selfie_url = null;
+    if (key === "ine_front") updates.ine_front_url = null;
+    if (key === "ine_back") updates.ine_back_url = null;
+
+    if (sellerVerification) {
+      await supabase.from("seller_verification").update(updates).eq("user_id", userId);
+    }
+
+    setPreviews(prev => ({ ...prev, [key]: null }));
     setUploading(null);
     router.refresh();
   }
@@ -212,36 +265,59 @@ export function VerificationUpload({
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {getDocsConfig().map(({ key, label, accept }) => (
-          <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium text-xs sm:text-sm">{label}</p>
+          <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 overflow-hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm">{label}</p>
                 {existingDocs[key] ? (
-                  <p className="text-[10px] sm:text-xs text-[color:var(--trust-emerald)]">Subido</p>
+                  <p className="text-xs text-[color:var(--trust-emerald)]">Subido correctamente</p>
                 ) : (
-                  <p className="text-[10px] sm:text-xs text-[color:var(--danger)]">Requerido</p>
+                  <p className="text-xs text-[color:var(--danger)]">Documento requerido</p>
                 )}
               </div>
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  id={`file-upload-${key}`}
-                  accept={accept}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUpload(key, file);
-                  }}
-                  disabled={uploading !== null || isAnalyzing}
-                />
-                <span className="inline-flex items-center gap-1.5 shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-[10px] sm:text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
-                  <Upload className="h-3 w-3 shrink-0" />
-                  {uploading === key ? "Subiendo..." : existingDocs[key] ? "Reemplazar" : "Subir"}
-                </span>
-              </label>
+              <div className="flex items-center gap-2 shrink-0">
+                {existingDocs[key] && (
+                  <button
+                    onClick={() => handleDelete(key)}
+                    disabled={uploading !== null || isAnalyzing}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    title="Eliminar imagen"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    id={`file-upload-${key}`}
+                    accept={accept}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(key, file);
+                    }}
+                    disabled={uploading !== null || isAnalyzing}
+                  />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
+                    <Upload className="h-4 w-4 shrink-0" />
+                    {uploading === key ? "Procesando..." : existingDocs[key] ? "Reemplazar" : "Subir archivo"}
+                  </span>
+                </label>
+              </div>
             </div>
+
+            {previews[key] && (
+              <div className="mt-4 w-full h-40 rounded-lg overflow-hidden border border-[color:var(--border)] relative bg-[color:var(--bg-elev-1)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={previews[key]!} 
+                  alt={`Preview ${label}`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
