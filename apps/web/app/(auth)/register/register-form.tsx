@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { signUp } from "../actions";
+import { signInWithGoogle } from "@/lib/auth/native-oauth";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function RegisterForm() {
@@ -14,7 +14,6 @@ export function RegisterForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,13 +52,8 @@ export function RegisterForm() {
 
   async function handleGoogleSignup() {
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) setError(error.message);
+    const result = await signInWithGoogle();
+    if (result.error) setError(result.error);
   }
 
   return (
