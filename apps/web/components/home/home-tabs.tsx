@@ -8,7 +8,7 @@ export interface HomeTabsProps {
 
 export function HomeTabs({ active }: HomeTabsProps) {
   return (
-    <div className="sticky top-[80px] z-[9] bg-[var(--bg)]/95 backdrop-blur-xl pt-3 pb-4 px-4 border-b border-[var(--border)]/50">
+    <div className="pt-4 pb-2 px-4">
       <div className="flex items-center p-1 bg-[var(--card-2)] border border-[var(--border)] rounded-full w-full max-w-sm mx-auto shadow-sm">
         <Link
           href="/"
