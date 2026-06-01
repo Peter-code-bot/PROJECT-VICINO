@@ -74,13 +74,29 @@ export default async function VerificationsPage() {
               <div key={v.id} className="rounded-lg border p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-sm">{profile?.nombre ?? "Usuario"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{profile?.nombre ?? "Usuario"}</p>
+                      <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                        {v.document_type || "INE"}
+                      </span>
+                      {v.university_name && (
+                        <span className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium">
+                          {v.university_name}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">{profile?.email}</p>
                   </div>
                   <span className="text-xs bg-amber-50 text-amber-600 dark:bg-amber-950/50 px-2 py-0.5 rounded-full">
                     Pendiente
                   </span>
                 </div>
+
+                {v.ai_analysis_raw && (v.ai_analysis_raw as any).motivo_rechazo_o_duda && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
+                    <span className="font-bold">🤖 Gemini dice:</span> {(v.ai_analysis_raw as any).motivo_rechazo_o_duda}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-2">
                   {v.selfieUrl && (

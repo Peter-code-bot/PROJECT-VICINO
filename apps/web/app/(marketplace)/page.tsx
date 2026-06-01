@@ -90,6 +90,7 @@ export default async function HomePage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
 
   let viewerIsVendedor = false;
+  let viewerUniversity: string | null = null;
   if (user) {
     const { data: viewerProfile } = await supabase
       .from("profiles")
@@ -97,6 +98,53 @@ export default async function HomePage({ searchParams }: Props) {
       .eq("id", user.id)
       .single();
     viewerIsVendedor = viewerProfile?.es_vendedor ?? false;
+
+    // Obtener si es universitario verificado
+    const { data: viewerVerification } = await supabase
+      .from("seller_verification")
+      .select("university_name")
+      .eq("user_id", user.id)
+      .eq("status", "approved")
+      .eq("document_type", "Credencial Universitaria")
+      .maybeSingle();
+    
+    if (viewerVerification?.university_name) {
+      viewerUniversity = viewerVerification.university_name;
+    }
+  }
+
+  let universityProducts: any[] = [];
+  if (viewerUniversity) {
+    const { data: uniSellers } = await supabase
+      .from("seller_verification")
+      .select("user_id")
+      .eq("university_name", viewerUniversity)
+      .eq("status", "approved");
+
+    const sellerIds = uniSellers?.map(s => s.user_id) || [];
+    
+    if (sellerIds.length > 0) {
+      const { data: uProducts } = await supabase
+        .from("products_services")
+        .select(`
+          id,
+          titulo,
+          precio,
+          imagen_principal,
+          categoria,
+          slug,
+          created_at,
+          precio_negociable,
+          profiles!inner(nombre, trust_level, average_rating, reviews_count),
+          product_categories(is_primary, categories(slug, nombre))
+        `)
+        .eq("estatus", "disponible")
+        .in("creador_id", sellerIds)
+        .order("created_at", { ascending: false })
+        .limit(20);
+        
+      universityProducts = uProducts ?? [];
+    }
   }
 
   // Fetch "Para ti" data
@@ -284,6 +332,25 @@ export default async function HomePage({ searchParams }: Props) {
           <Suspense fallback={null}>
             <RankingsHomeStripSection />
           </Suspense>
+
+          {/* ─── TU UNIVERSIDAD (Exclusivo) ───────────────────────── */}
+          {viewerUniversity && universityProducts.length > 0 && (
+            <section className="px-4 pb-4 mt-4">
+              <div className="max-w-7xl mx-auto bg-indigo-50 dark:bg-indigo-950/30 rounded-[var(--r-xl)] border border-indigo-100 dark:border-indigo-900/50 p-4">
+                <div className="mb-3">
+                  <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5" /> Comunidad Universitaria
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-between">
+                    <h2 className="font-heading text-xl font-bold text-indigo-900 dark:text-indigo-100">
+                      Lo mejor en {viewerUniversity}
+                    </h2>
+                  </div>
+                </div>
+                <ProductCarousel products={universityProducts} />
+              </div>
+            </section>
+          )}
 
           {/* ─── CERCA DE TI (geo island) ───────────────────────── */}
           <section className="px-4 pb-6 mt-2">
