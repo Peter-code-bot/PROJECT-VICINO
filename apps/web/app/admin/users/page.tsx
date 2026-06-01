@@ -93,7 +93,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         {users?.map((u) => {
           const roles = roleMap.get(u.id) ?? [];
           return (
-            <div key={u.id} className="rounded-lg border p-4 flex items-center gap-4">
+            <div key={u.id} className="rounded-lg border p-4 flex items-center gap-4 w-full">
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{u.nombre || "Sin nombre"}</span>

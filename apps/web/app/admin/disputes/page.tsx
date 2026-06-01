@@ -35,7 +35,7 @@ export default async function DisputesPage() {
               : null;
 
             return (
-              <div key={d.id} className="rounded-lg border p-4 space-y-3">
+              <div key={d.id} className="rounded-lg border p-4 space-y-3 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <span className="font-medium text-sm flex-1 min-w-0 break-words">{d.motivo}</span>
                   <span className="text-xs text-muted-foreground shrink-0">{formatDate(d.created_at)}</span>

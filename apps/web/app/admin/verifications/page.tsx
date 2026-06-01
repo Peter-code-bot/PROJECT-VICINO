@@ -73,7 +73,7 @@ export default async function VerificationsPage() {
           {verificationsWithUrls.map((v) => {
             const profile = Array.isArray(v.profiles) ? v.profiles[0] : v.profiles;
             return (
-              <div key={v.id} className="rounded-lg border p-4 space-y-3">
+              <div key={v.id} className="rounded-lg border p-4 space-y-3 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">

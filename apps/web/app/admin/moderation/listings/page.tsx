@@ -62,7 +62,7 @@ export default async function ListingsModerationPage() {
             const creador = listing && (Array.isArray(listing.creador) ? listing.creador[0] : listing.creador);
             const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
             return (
-              <div key={rep.id} className="rounded-lg border p-4 space-y-2">
+              <div key={rep.id} className="rounded-lg border p-4 space-y-2 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <span className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
                     Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
