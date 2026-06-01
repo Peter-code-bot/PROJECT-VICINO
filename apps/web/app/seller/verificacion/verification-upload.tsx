@@ -73,9 +73,10 @@ export function VerificationUpload({
       for (const [key, path] of Object.entries(existingDocs)) {
         if (path) {
           // Extraemos path limpio en caso de que venga sucio
-          const cleanPath = path.includes("verification-documents/") 
-            ? path.split("verification-documents/")[1].split("?")[0]
-            : path;
+          const parts = path.split("verification-documents/");
+          const cleanPath = (parts.length > 1 && parts[1]
+            ? parts[1].split("?")[0]
+            : path) as string;
             
           const { data } = await supabase.storage.from("verification-documents").createSignedUrl(cleanPath, 60 * 60);
           if (data) {
@@ -176,9 +177,10 @@ export function VerificationUpload({
     setUploading(key); // Reusamos el estado de uploading para bloquear el UI
 
     // Borramos físicamente del storage
-    const cleanPath = path.includes("verification-documents/") 
-      ? path.split("verification-documents/")[1].split("?")[0]
-      : path;
+    const parts = path.split("verification-documents/");
+    const cleanPath = (parts.length > 1 && parts[1]
+      ? parts[1].split("?")[0]
+      : path) as string;
       
     await supabase.storage.from("verification-documents").remove([cleanPath]);
 
