@@ -200,3 +200,17 @@ un duplicado redundante.
 La página de detalle vive en `/[categoria]/[slug]` y el `slug` NO se regenera al editar (queda invariante para no romper enlaces compartidos ni SEO). Si el vendedor cambia la categoría en el formulario de editar, la URL canónica del producto pasa de `/<categoria_vieja>/<slug>` a `/<categoria_nueva>/<slug>`. La ruta vieja deja de resolver (404). Enlaces compartidos por WhatsApp, email o redes sociales antes del cambio se rompen.
 
 Tradeoff aceptado para MVP del feature Editar publicación (decisión D6, plan firmado 2026-05-26). Si las métricas de uso muestran que el cambio de categoría es frecuente, agregar un handler de fallback en `app/(marketplace)/[categoria]/[slug]/page.tsx` que busque por slug solo y haga 308 a la categoría actual.
+
+---
+
+## OpenSpec (Spec-Driven Development)
+
+VICINO adoptó OpenSpec como herramienta de SDD para features no triviales. Reglas, stack y workflow viven en `openspec/project.md`. Este archivo (`CLAUDE.md`) sigue siendo la fuente que Claude Code carga siempre; `openspec/project.md` es para el ciclo `/opsx:*`. **Cuando contradigan, gana `CLAUDE.md`.**
+
+Workflow nominal:
+- `/opsx:explore <idea>` — investigación read-only en Plan Mode.
+- `/opsx:propose <slug>` — crea `openspec/changes/<slug>/` con `proposal.md` + `design.md` + `tasks.md` + delta specs. Firma humana antes de `apply`.
+- `/opsx:apply <slug>` — ejecuta `tasks.md`, escribe código real. **Invoca el CODEX Adversarial Review Loop al final** (no lo sustituye).
+- `/opsx:archive <slug>` — mergea deltas a `openspec/specs/`, mueve change a `openspec/changes/archive/YYYY-MM-DD-<slug>/`.
+
+Skip OpenSpec para bug fixes <50 LOC, hot-fixes, cambios solo de copy/i18n/CSS tokens, o tooling/CI cleanup — esos van con mega-prompt directo + GATE 0.
