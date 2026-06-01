@@ -41,7 +41,7 @@ export default async function ListingsModerationPage() {
   const listingById = new Map((listings ?? []).map((l) => [l.id, l]));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col flex-1 h-full">
       <Link
         href="/admin/moderation"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -51,7 +51,7 @@ export default async function ListingsModerationPage() {
       <h1 className="text-xl font-bold">Productos reportados</h1>
 
       {!reports || reports.length === 0 ? (
-        <div className="text-center py-12 space-y-2">
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-12 space-y-2">
           <p className="text-4xl">✅</p>
           <p className="font-medium">Sin productos reportados pendientes</p>
         </div>

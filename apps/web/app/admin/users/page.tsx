@@ -61,7 +61,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col flex-1 h-full">
       <h1 className="text-xl font-bold">Usuarios</h1>
 
       <form className="flex gap-2">
@@ -123,7 +123,9 @@ export default async function AdminUsersPage({ searchParams }: Props) {
           );
         })}
         {(!users || users.length === 0) && (
-          <p className="text-sm text-muted-foreground text-center py-8">Sin resultados</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+            <p className="text-sm text-muted-foreground">Sin resultados</p>
+          </div>
         )}
       </div>
 

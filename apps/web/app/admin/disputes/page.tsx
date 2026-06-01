@@ -21,7 +21,7 @@ export default async function DisputesPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col flex-1 h-full">
       <h1 className="text-xl font-bold">Disputas</h1>
 
       {disputes && disputes.length > 0 ? (
@@ -54,7 +54,7 @@ export default async function DisputesPage() {
           })}
         </div>
       ) : (
-        <div className="text-center py-12 space-y-2">
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-12 space-y-2">
           <p className="text-4xl">✅</p>
           <p className="font-medium">Sin disputas abiertas</p>
         </div>

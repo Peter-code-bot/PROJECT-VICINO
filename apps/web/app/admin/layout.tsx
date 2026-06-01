@@ -26,7 +26,7 @@ export default async function AdminLayout({
   if (!adminRole) redirect("/");
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in-up">
+    <div className="flex-1 flex flex-col w-full mx-auto px-4 py-8 animate-fade-in-up">
       <div className="flex items-center gap-4 mb-10">
         <Link 
           href="/" 
@@ -49,11 +49,11 @@ export default async function AdminLayout({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+      <div className="flex-1 flex flex-col md:flex-row gap-8 lg:gap-12">
         <aside className="w-full md:w-56 lg:w-64 shrink-0">
           <AdminSidebar />
         </aside>
-        <main className="flex-1 min-w-0 bg-card rounded-3xl border border-border/40 shadow-sm p-6 lg:p-8">
+        <main className="flex-1 flex flex-col min-w-0 bg-card rounded-3xl border border-border/40 shadow-sm p-6 lg:p-8">
           {children}
         </main>
       </div>
