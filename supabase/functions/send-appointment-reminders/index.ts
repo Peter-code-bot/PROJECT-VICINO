@@ -1,6 +1,26 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  // Defense in depth (mirror recompute-rankings/index.ts:25-39): pg_cron drives
+  // this every 30 minutes from supabase/migrations/20260531000001_pg_cron_schedules.sql,
+  // but reject any request without the shared CRON_SECRET bearer to block
+  // direct public invocation.
+  const expected = Deno.env.get("CRON_SECRET");
+  if (!expected) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "CRON_SECRET not configured" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const auth = req.headers.get("authorization") ?? "";
+  if (auth !== `Bearer ${expected}`) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
