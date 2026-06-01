@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { VerificationActions } from "./verification-actions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,6 +44,7 @@ async function signOrNull(
 
 export default async function VerificationsPage() {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const { data: verifications } = await supabase
     .from("seller_verification")
@@ -54,9 +56,9 @@ export default async function VerificationsPage() {
   const verificationsWithUrls = await Promise.all(
     (verifications ?? []).map(async (v) => {
       const [selfieUrl, ineFrontUrl, ineBackUrl] = await Promise.all([
-        signOrNull(supabase, v.selfie_url),
-        signOrNull(supabase, v.ine_front_url),
-        signOrNull(supabase, v.ine_back_url),
+        signOrNull(adminSupabase, v.selfie_url),
+        signOrNull(adminSupabase, v.ine_front_url),
+        signOrNull(adminSupabase, v.ine_back_url),
       ]);
       return { ...v, selfieUrl, ineFrontUrl, ineBackUrl };
     })
