@@ -63,11 +63,11 @@ export default async function ListingsModerationPage() {
             const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
             return (
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
                     Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/10 text-warning">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/10 text-warning shrink-0 text-center">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
                   </span>
                 </div>
@@ -89,10 +89,10 @@ export default async function ListingsModerationPage() {
                         <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>{formatPrice(Number(listing.precio))}</span>
-                      <span>·</span>
-                      <span>Vendedor: {creador?.nombre ?? "?"}</span>
+                      <span className="hidden sm:inline">·</span>
+                      <span className="truncate flex-1 min-w-0">Vendedor: {creador?.nombre ?? "?"}</span>
                     </div>
                     <div className="flex gap-2">
                       <span

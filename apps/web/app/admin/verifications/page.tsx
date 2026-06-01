@@ -72,22 +72,22 @@ export default async function VerificationsPage() {
             const profile = Array.isArray(v.profiles) ? v.profiles[0] : v.profiles;
             return (
               <div key={v.id} className="rounded-lg border p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{profile?.nombre ?? "Usuario"}</p>
-                      <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-sm truncate">{profile?.nombre ?? "Usuario"}</p>
+                      <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium shrink-0">
                         {v.document_type || "INE"}
                       </span>
                       {v.university_name && (
-                        <span className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium">
+                        <span className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium shrink-0">
                           {v.university_name}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
                   </div>
-                  <span className="text-xs bg-amber-50 text-amber-600 dark:bg-amber-950/50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-amber-50 text-amber-600 dark:bg-amber-950/50 px-2 py-0.5 rounded-full shrink-0">
                     Pendiente
                   </span>
                 </div>
@@ -98,11 +98,11 @@ export default async function VerificationsPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {v.selfieUrl && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Selfie</p>
-                      <a href={v.selfieUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                      <a href={v.selfieUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
                         Ver imagen →
                       </a>
                     </div>
@@ -110,7 +110,7 @@ export default async function VerificationsPage() {
                   {v.ineFrontUrl && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">INE frente</p>
-                      <a href={v.ineFrontUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                      <a href={v.ineFrontUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
                         Ver imagen →
                       </a>
                     </div>
@@ -118,23 +118,23 @@ export default async function VerificationsPage() {
                   {v.ineBackUrl && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">INE reverso</p>
-                      <a href={v.ineBackUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                      <a href={v.ineBackUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
                         Ver imagen →
                       </a>
                     </div>
                   )}
                   {v.selfie_url && !v.selfieUrl && (
-                    <p className="text-xs text-red-500 col-span-3">
+                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
                       Selfie: no se pudo generar URL firmada
                     </p>
                   )}
                   {v.ine_front_url && !v.ineFrontUrl && (
-                    <p className="text-xs text-red-500 col-span-3">
+                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
                       INE frente: no se pudo generar URL firmada
                     </p>
                   )}
                   {v.ine_back_url && !v.ineBackUrl && (
-                    <p className="text-xs text-red-500 col-span-3">
+                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
                       INE reverso: no se pudo generar URL firmada
                     </p>
                   )}
