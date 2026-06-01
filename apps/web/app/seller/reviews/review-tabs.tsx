@@ -18,8 +18,8 @@ interface ReviewTabsProps {
     created_at: string;
     profiles: { nombre: string } | { nombre: string }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   given: Array<{
@@ -29,8 +29,8 @@ interface ReviewTabsProps {
     created_at: string;
     profiles: { nombre: string } | { nombre: string }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   pending: Array<{

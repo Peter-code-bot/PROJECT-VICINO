@@ -51,7 +51,7 @@ export default async function PerfilPage() {
   // Get reviews received
   const { data: reviewsAsSeller } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
     .eq("reviewed_id", user.id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
@@ -65,7 +65,7 @@ export default async function PerfilPage() {
 
   const { data: reviewsAsBuyer } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal)")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
     .eq("reviewed_id", user.id)
     .eq("review_type", "seller_to_buyer")
     .eq("visible", true)

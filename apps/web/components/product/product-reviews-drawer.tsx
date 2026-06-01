@@ -20,6 +20,7 @@ interface ReviewedProduct {
   categoria: string;
   slug: string;
   imagen_principal: string | null;
+  product_categories?: unknown;
 }
 
 export interface DrawerReview {

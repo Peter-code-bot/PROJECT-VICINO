@@ -99,7 +99,7 @@ export default async function ProductDetailPage({ params }: Props) {
       `
       id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha, reviewer_id,
       profiles!reviewer_id(nombre, foto, trust_level),
-      products_services!product_id(id, titulo, categoria, slug, imagen_principal)
+      products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))
     `
     )
     .eq("reviewed_id", product.creador_id)

@@ -114,8 +114,8 @@ interface ProfileTabsProps {
     reviewer_id?: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   reviewsAsBuyer: Array<{
@@ -127,8 +127,8 @@ interface ProfileTabsProps {
     reviewer_id?: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null }[]
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   isVendedor: boolean;

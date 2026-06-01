@@ -12,11 +12,13 @@ interface ReviewProductLinkProps {
         categoria: string;
         slug: string;
         imagen_principal: string | null;
-        // MP#08 #4 Fase 1B: embed opcional. Si el caller ya lo trae lo usamos
-        // para derivar la primary del pivote; si no, fallback al categoria
-        // TEXT. TODO 1B-bis: expandir los 4 SELECTs de reviews para incluir
-        // el embed (perfil/page.tsx + vendedor/[id]/page.tsx + dos en cada
-        // caso). Quedo fuera de scope 1B porque requiere SELECTs nuevos.
+        // MP#08 #9 cerrado: los 4 callers (perfil/page.tsx,
+        // vendedor/[id]/page.tsx, seller/reviews/page.tsx,
+        // [categoria]/[slug]/page.tsx) ya traen el embed en sus 7 SELECTs de
+        // reviews. El fallback `?? product.categoria` (L34) se queda como red
+        // hasta el DROP de Fase 2 (consistencia 1A/1B); cuando la columna
+        // categoria TEXT desaparezca, el fallback queda inalcanzable y se
+        // quita en la misma migracion.
         product_categories?: unknown;
       }
     | null;
