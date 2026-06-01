@@ -52,30 +52,28 @@ export default async function ListingsPage() {
           {products.map((p) => (
             <div
               key={p.id}
-              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-col md:flex-row md:items-center gap-3 md:gap-4 overflow-hidden min-w-0"
+              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
             >
-              <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex flex-col min-w-0 space-y-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Link
                     href={`/${primaryCategorySlug((p as { product_categories?: unknown }).product_categories) ?? p.categoria}/${p.slug}`}
-                    className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate min-w-0"
+                    className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate"
                   >
                     {p.titulo}
                   </Link>
-                  <span
-                    className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}
-                  >
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
+                  <span className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}>
                     {p.estatus}
                   </span>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--fg-muted)]">
-                  <span>{formatPrice(Number(p.precio))}</span>
-                  <span>{p.ventas_count} ventas</span>
-                  <span>{p.vistas_count} vistas</span>
-                  <span>{formatDate(p.created_at)}</span>
+                  <span className="shrink-0 font-medium text-[color:var(--trust-emerald)]">{formatPrice(Number(p.precio))}</span>
+                  <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
               </div>
-              <ListingActions id={p.id} estatus={p.estatus} />
+              <div className="shrink-0 pl-2">
+                <ListingActions id={p.id} estatus={p.estatus} />
+              </div>
             </div>
           ))}
         </div>

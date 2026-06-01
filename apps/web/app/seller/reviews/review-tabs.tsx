@@ -85,7 +85,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   {r.respuesta ? (
@@ -121,7 +121,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{formatDate(r.created_at)}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   <div className="pt-2 border-t border-[color:var(--border)]">

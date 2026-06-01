@@ -70,32 +70,34 @@ export default async function VentasPage() {
             const canReview = s.status === "completed" && !reviewedIds.has(s.id);
 
             return (
-              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-3 sm:p-4 space-y-2 overflow-hidden min-w-0">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <span className="font-medium text-sm truncate min-w-0">
-                    {product?.titulo ?? "Producto"}
-                  </span>
+              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0">
+                <div className="flex flex-col min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-sm truncate">
+                      {buyer?.nombre ?? "Usuario"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
+                    <span className="shrink-0">{new Date(s.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    <span className="truncate max-w-[120px] sm:max-w-[200px]">{product?.titulo ?? "Producto"}</span>
+                    {canReview && (
+                      <Link
+                        href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${(product as { id?: string })?.id ?? ""}`}
+                        className="text-[color:var(--brand-hi)] hover:underline shrink-0"
+                      >
+                        Evaluar '
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end shrink-0 pl-2 space-y-1">
                   <span className={`shrink-0 ${status.color}`}>
                     {status.label}
                   </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-[color:var(--fg-muted)] min-w-0">
-                  <span className="truncate min-w-0">Comprador: {buyer?.nombre ?? "Usuario"}</span>
-                  <span className="shrink-0">{formatDate(s.created_at)}</span>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-sm">
                     {formatPrice(Number(s.precio_acordado))}
                     {s.cantidad > 1 && ` x${s.cantidad}`}
                   </span>
-                  {canReview && (
-                    <Link
-                      href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${(product as { id?: string })?.id ?? ""}`}
-                      className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
-                    >
-                      Evaluar comprador →
-                    </Link>
-                  )}
                 </div>
               </div>
             );

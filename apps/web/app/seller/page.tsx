@@ -82,69 +82,75 @@ export default async function SellerOverviewPage() {
       <div className="min-w-0">
         <h1 className="text-xl font-bold mb-1 truncate">Mi Tienda</h1>
         <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
-      </div>
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger min-w-0">
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
-          <div className="flex items-center gap-3 mb-3 min-w-0">
+      </div>      {/* Stats list */}
+      <div className="flex flex-col space-y-3 stagger min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] shrink-0">
               <Handshake className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Mes Actual</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Mes Actual</span>
+              <p className="text-xs font-medium text-[color:var(--trust-emerald)] truncate">
+                {formatPrice(monthTotal)}<span className="hidden sm:inline"> en ventas</span>
+              </p>
+            </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{monthCount}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-emerald)] truncate">
-            {formatPrice(monthTotal)}<span className="hidden sm:inline"> en ventas</span>
-          </p>
+          <p className="text-2xl font-heading font-bold shrink-0 pl-4">{monthCount}</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
-          <div className="flex items-center gap-3 mb-3 min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shrink-0">
               <Package className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Inventario</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Inventario</span>
+              <p className="text-xs font-medium text-[color:var(--brand-hi)] truncate">
+                Publicaciones<span className="hidden sm:inline"> activas</span>
+              </p>
+            </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{activeListings ?? 0}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--brand-hi)] truncate">
-            Publicaciones<span className="hidden sm:inline"> activas</span>
-          </p>
+          <p className="text-2xl font-heading font-bold shrink-0 pl-4">{activeListings ?? 0}</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-3 min-w-0">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] shrink-0">
-                <Star className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate hidden sm:inline">Reputación</span>
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] shrink-0">
+              <Star className="h-5 w-5" />
             </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Reputacin</span>
+              <p className="text-xs font-medium text-[color:var(--trust-gold)] truncate">
+                Aprobacin<span className="hidden sm:inline"> de clientes</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end shrink-0 pl-4">
+            <p className="text-2xl font-heading font-bold tabular-nums">
+              {Number(profile?.average_rating ?? 0).toFixed(1)}
+            </p>
             <RatingStars
               rating={Number(profile?.average_rating ?? 0)}
               count={Number(profile?.reviews_count ?? 0)}
               size="sm"
             />
           </div>
-          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1 tabular-nums">
-            {Number(profile?.average_rating ?? 0).toFixed(1)}
-          </p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--trust-gold)] truncate">
-            Aprobación<span className="hidden sm:inline"> de clientes</span>
-          </p>
         </div>
 
-        <div className="relative overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 sm:p-5 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
-          <div className="flex items-center gap-3 mb-3 min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg-muted)] shrink-0">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-[color:var(--fg-muted)] truncate">Histórico</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[color:var(--fg-muted)]">Histrico</span>
+              <p className="text-xs font-medium text-[color:var(--fg-muted)] truncate">
+                Ventas totales<span className="hidden sm:inline"> en Vicino</span>
+              </p>
+            </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-heading font-bold mb-1">{profile?.total_sales ?? 0}</p>
-          <p className="text-xs sm:text-sm font-medium text-[color:var(--fg-muted)] truncate">
-            Ventas totales<span className="hidden sm:inline"> en Vicino</span>
-          </p>
+          <p className="text-2xl font-heading font-bold shrink-0 pl-4">{profile?.total_sales ?? 0}</p>
         </div>
       </div>
 
