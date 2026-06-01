@@ -39,7 +39,7 @@ export async function verifyDocument(
   const mimeType = fileData.type || "image/jpeg";
 
   // 3. Call Gemini
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
 
   let prompt = "";
   if (documentType === "Credencial Universitaria") {
