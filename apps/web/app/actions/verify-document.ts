@@ -1,6 +1,6 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
 
 export async function verifyDocument(
@@ -8,13 +8,13 @@ export async function verifyDocument(
   documentType: "INE" | "Credencial Universitaria",
   universityName?: string
 ) {
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn("GEMINI_API_KEY no está configurada. Pasando a revisión manual por defecto.");
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn("OPENAI_API_KEY no está configurada. Pasando a revisión manual por defecto.");
     return { success: true, status: "pending", fallback: true };
   }
 
-  // 1. Initialize Gemini
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  // 1. Initialize OpenAI
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   
   // 2. Fetch the image from Supabase Storage
   const supabase = await createClient();
@@ -38,8 +38,8 @@ export async function verifyDocument(
   const base64Data = Buffer.from(arrayBuffer).toString("base64");
   const mimeType = fileData.type || "image/jpeg";
 
-  // 3. Call Gemini
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
+  // 3. Call OpenAI
+  const imageUrl = `data:${mimeType};base64,${base64Data}`;
 
   let prompt = "";
   if (documentType === "Credencial Universitaria") {
@@ -67,20 +67,22 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
   }
 
   try {
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType,
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
         },
-      },
-    ]);
+      ],
+      response_format: { type: "json_object" },
+    });
 
-    const responseText = result.response.text();
-    const cleanJson = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    const analysis = JSON.parse(cleanJson);
+    const responseText = response.choices[0].message.content || "{}";
+    const analysis = JSON.parse(responseText);
 
     let finalStatus = "pending";
     
@@ -109,7 +111,7 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
 
     return { success: true, status: finalStatus, analysis };
   } catch (error: any) {
-    console.error("Gemini Verification Error:", error);
+    console.error("OpenAI Verification Error:", error);
     return { success: false, error: error.message || "Error al analizar la credencial." };
   }
 }
