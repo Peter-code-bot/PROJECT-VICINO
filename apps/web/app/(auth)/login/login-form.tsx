@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { signInWithPassword } from "../actions";
+import { signInWithGoogle } from "@/lib/auth/native-oauth";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function LoginForm() {
@@ -13,7 +13,6 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,13 +42,8 @@ export function LoginForm() {
 
   async function handleGoogleLogin() {
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) setError("Error al conectar con Google. Intenta de nuevo.");
+    const result = await signInWithGoogle();
+    if (result.error) setError(result.error);
   }
 
   return (
