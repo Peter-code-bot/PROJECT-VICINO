@@ -148,7 +148,7 @@ async function RankingsContent({
         currentPeriod={currentPeriod}
       />
 
-      <h2 className="mt-8 mb-4 px-4 text-center font-display text-2xl font-bold text-foreground">
+      <h2 className="mt-8 mb-6 px-4 text-center font-display text-2xl font-bold text-foreground">
         {selectedCategoryName}
       </h2>
 

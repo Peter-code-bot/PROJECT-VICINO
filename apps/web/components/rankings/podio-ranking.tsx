@@ -16,7 +16,7 @@ export function PodioRanking({ top3 }: PodioRankingProps) {
   const third = top3[2] ?? null;
 
   return (
-    <div className="grid grid-cols-3 items-end gap-3 px-4 pt-6">
+    <div className="grid grid-cols-3 items-end gap-3 px-4 pt-12">
       <div className="flex justify-center">
         {second ? <PodioSlot seller={second} position={2} /> : <div />}
       </div>
