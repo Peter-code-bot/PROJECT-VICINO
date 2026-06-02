@@ -5,6 +5,7 @@ import { Heart } from "lucide-react";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { cn } from "@/lib/utils";
+import { hapticLight } from "@/lib/haptics";
 
 interface FavoriteButtonProps {
   productId: string;
@@ -56,6 +57,7 @@ export function FavoriteButton({
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    void hapticLight();
     void mutate(productId);
   }
 

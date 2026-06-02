@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
 import { signInWithGoogle } from "@/lib/auth/native-oauth";
+import { hapticLight } from "@/lib/haptics";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function LoginForm() {
@@ -41,6 +42,7 @@ export function LoginForm() {
   }
 
   async function handleGoogleLogin() {
+    void hapticLight();
     setError("");
     const result = await signInWithGoogle();
     if (result.error) setError(result.error);

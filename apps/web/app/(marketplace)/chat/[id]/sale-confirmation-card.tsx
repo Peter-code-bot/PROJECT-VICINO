@@ -5,6 +5,7 @@ import { Check, X, Clock, CheckCheck, Handshake, ShieldCheck, Star, MessageSquar
 import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
 import { cn } from "@/lib/utils";
+import { hapticMedium } from "@/lib/haptics";
 
 export type ConfirmationStatus = "pendiente" | "esperando" | "completado" | "rechazado";
 
@@ -200,6 +201,7 @@ export function SaleConfirmationCard({
   const otherStepState = rejected && sc.rejected_by === otherRole ? "rejected" : (otherConfirmed ? "done" : "pending");
 
   async function handleConfirm() {
+    void hapticMedium();
     setLoading(true);
     setError("");
     const result = await confirmSale(sc.id);

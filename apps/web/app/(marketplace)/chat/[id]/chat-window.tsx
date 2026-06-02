@@ -6,6 +6,7 @@ import { formatRelativeTime } from "@vicino/shared";
 import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions";
+import { hapticMedium } from "@/lib/haptics";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
@@ -290,6 +291,7 @@ export function ChatWindow({
     e.preventDefault();
     if (!input.trim()) return;
 
+    void hapticMedium();
     const text = input.trim();
     setInput("");
     setSendError("");

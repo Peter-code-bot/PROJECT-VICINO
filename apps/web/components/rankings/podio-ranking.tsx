@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { HapticLink } from "@/components/shared/haptic-link";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
@@ -42,7 +42,7 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
   const name = seller.display_name ?? "Vendedor";
 
   return (
-    <Link
+    <HapticLink
       href={`/vendedor/${seller.seller_id}`}
       className={cn(
         "flex flex-col items-center text-center min-w-0 max-w-[8.5rem] group active:scale-95 transition-transform",
@@ -112,6 +112,6 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
         {scoreText}
       </p>
 
-    </Link>
+    </HapticLink>
   );
 }

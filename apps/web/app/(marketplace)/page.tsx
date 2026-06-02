@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { HapticLink } from "@/components/shared/haptic-link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
 import { LocationBar } from "@/components/shared/location-bar";
@@ -304,7 +305,7 @@ export default async function HomePage({ searchParams }: Props) {
                   const isFeatured = i === 0;
 
                   return (
-                    <Link
+                    <HapticLink
                       key={cat.id}
                       href={`/buscar?category=${cat.slug}`}
                       id={`cat-${cat.slug}`}
@@ -326,7 +327,7 @@ export default async function HomePage({ searchParams }: Props) {
                       <span className="text-[11px] font-medium text-[color:var(--fg-muted)] transition-colors group-hover:text-[color:var(--fg)]">
                         {cat.name}
                       </span>
-                    </Link>
+                    </HapticLink>
                   );
                 })}
               </div>

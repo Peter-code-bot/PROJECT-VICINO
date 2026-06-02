@@ -12,6 +12,7 @@ const ProductMediaCropper = dynamic(
 );
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
+import { hapticMedium } from "@/lib/haptics";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateVideoThumbnail, generateCroppedVideoThumbnail } from "@/lib/video-thumbnail";
@@ -414,6 +415,8 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       setError("Selecciona al menos una categoría");
       return;
     }
+    // A4 sub-fase 4.1: haptic Medium en commit de alto stake.
+    void hapticMedium();
     if (categories.filter((c) => c.is_primary).length !== 1) {
       setError("Marca exactamente una categoría como principal");
       return;

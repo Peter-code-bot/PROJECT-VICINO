@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Search, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatUnread } from "@/components/layout/chat-unread-provider";
+import { hapticLight } from "@/lib/haptics";
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
@@ -48,6 +49,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
                 aria-label={label}
                 aria-current={isActive ? "page" : undefined}
                 id={`nav-${label.toLowerCase()}`}
+                onClick={() => void hapticLight()}
                 className={cn(
                   "relative inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors duration-150",
                   isVender
