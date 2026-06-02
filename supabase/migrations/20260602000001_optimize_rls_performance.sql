@@ -668,15 +668,10 @@ ALTER POLICY "Owner upload chat media" ON storage.objects
     AND (storage.foldername(name))[1] = (select auth.uid())::text
   );
 
-ALTER POLICY "Admin read verification docs" ON storage.objects
-  TO authenticated
-  USING (
-    bucket_id = 'verification-documents'
-    AND EXISTS (
-      SELECT 1 FROM public.user_roles
-       WHERE user_id = (select auth.uid()) AND role IN ('admin', 'moderator')
-    )
-  );
+-- REMOVED 2026-06-02: "Admin read verification docs" does not exist in production.
+-- The migration 20260429000001_admin_verification_docs_read.sql was never applied
+-- (schema_migrations ledger desynchronized — see memory reference_supabase_project).
+-- TODO follow-up: decide if we re-create this policy or document it as deferred.
 
 COMMIT;
 
