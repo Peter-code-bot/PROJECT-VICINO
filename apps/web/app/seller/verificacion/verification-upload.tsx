@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Upload, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
+import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
 import { verifyDocument } from "@/app/actions/verify-document";
 
 interface VerificationUploadProps {
@@ -236,22 +236,39 @@ export function VerificationUpload({
         </div>
       )}
 
-      <div className="space-y-4 rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Tipo de documento</label>
-          <select 
-            value={docType}
-            onChange={(e) => setDocType(e.target.value as any)}
+      <div className="space-y-4">
+        <p className="text-sm font-medium">Tipo de documento</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setDocType("INE")}
             disabled={uploading !== null || isAnalyzing}
-            className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elev-1)] px-3 py-2 text-sm"
+            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
+              docType === "INE"
+                ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
+                : "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
+            } disabled:opacity-50`}
           >
-            <option value="INE">INE Oficial</option>
-            <option value="Credencial Universitaria">Credencial Universitaria</option>
-          </select>
+            <span className="text-3xl">🪪</span>
+            <span className="text-sm font-semibold">INE Oficial</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDocType("Credencial Universitaria")}
+            disabled={uploading !== null || isAnalyzing}
+            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
+              docType === "Credencial Universitaria"
+                ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
+                : "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
+            } disabled:opacity-50`}
+          >
+            <span className="text-3xl">🎓</span>
+            <span className="text-sm font-semibold">Credencial Universitaria</span>
+          </button>
         </div>
 
         {docType === "Credencial Universitaria" && (
-          <div>
+          <div className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
             <label className="block text-sm font-medium mb-2">Selecciona tu Universidad</label>
             <select 
               value={university}
@@ -273,7 +290,9 @@ export function VerificationUpload({
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">{label}</p>
-                {existingDocs[key] ? (
+                {uploading === key ? (
+                  <p className="text-xs text-indigo-400 animate-pulse">Procesando...</p>
+                ) : existingDocs[key] ? (
                   <p className="text-xs text-[color:var(--trust-emerald)]">Subido correctamente</p>
                 ) : (
                   <p className="text-xs text-[color:var(--danger)]">Documento requerido</p>
@@ -284,12 +303,13 @@ export function VerificationUpload({
                   <button
                     onClick={() => handleDelete(key)}
                     disabled={uploading !== null || isAnalyzing}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                    title="Eliminar imagen"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                    title="Eliminar"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
+                {/* Botón Galería */}
                 <label className="cursor-pointer">
                   <input
                     type="file"
@@ -302,9 +322,26 @@ export function VerificationUpload({
                     }}
                     disabled={uploading !== null || isAnalyzing}
                   />
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--r-pill)] border border-[color:var(--border)] text-xs font-medium hover:bg-[color:var(--bg-elev-2)] transition-colors">
-                    <Upload className="h-4 w-4 shrink-0" />
-                    {uploading === key ? "Procesando..." : existingDocs[key] ? "Reemplazar" : "Subir archivo"}
+                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-[color:var(--card-2)] border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] transition-colors cursor-pointer" title="Galería">
+                    <ImagePlus className="h-4 w-4" />
+                  </span>
+                </label>
+                {/* Botón Cámara */}
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    id={`file-camera-${key}`}
+                    accept="image/*"
+                    capture={key === "selfie" ? "user" : "environment"}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(key, file);
+                    }}
+                    disabled={uploading !== null || isAnalyzing}
+                  />
+                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors cursor-pointer" title="Cámara">
+                    <Camera className="h-4 w-4" />
                   </span>
                 </label>
               </div>
