@@ -108,30 +108,10 @@ export function ProfileHeader({
             />
 
             {/* Fila de stats */}
-            <div className="flex w-full text-center">
-
-              {/* Ventas */}
-              <div className="flex-1 flex flex-col items-center gap-1">
-                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
-                  {profile.total_sales}
-                </p>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
-                  Ventas
-                </p>
-              </div>
-
-              {/* Compras */}
-              <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
-                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
-                  {purchaseCount}
-                </p>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
-                  Compras
-                </p>
-              </div>
+            <div className="flex w-full text-center py-1">
 
               {/* Productos */}
-              <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+              <div className="flex-1 flex flex-col items-center gap-1">
                 <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
                   {productCount}
                 </p>
