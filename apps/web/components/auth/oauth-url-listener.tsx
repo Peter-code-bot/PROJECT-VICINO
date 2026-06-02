@@ -68,8 +68,13 @@ export function OAuthUrlListener() {
         router.push("/login?error=auth_callback_failed");
         return;
       }
-      router.push("/");
-      router.refresh();
+      // F2 (optimize-auth-session-hydration): hard navigation to eliminate the
+      // guest-state flash. router.push + router.refresh creates a window where
+      // the cached unauthenticated layout paints before the server revalidation
+      // completes. window.location.replace sends the new session cookie in the
+      // GET / request and the server returns the authenticated layout on first
+      // paint. Destination is hardcoded ("/") — no open redirect risk.
+      window.location.replace("/");
     }
 
     // Cold-launch: app fue iniciada POR el deep link.
