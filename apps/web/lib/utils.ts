@@ -17,3 +17,16 @@ export const UNIVERSITY_COLORS: Record<string, string> = {
   "UVP": "#003366",
   "Otra": "#0ea5e9" // sky-500
 };
+
+export function getContrastYIQ(hexcolor: string): string {
+  // Remove # if present
+  hexcolor = hexcolor.replace("#", "");
+  // Parse r, g, b values
+  const r = parseInt(hexcolor.substring(0, 2), 16);
+  const g = parseInt(hexcolor.substring(2, 4), 16);
+  const b = parseInt(hexcolor.substring(4, 6), 16);
+  // Calculate YIQ contrast ratio
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  // Return black or white depending on the YIQ value
+  return (yiq >= 128) ? "#000000" : "#ffffff";
+}

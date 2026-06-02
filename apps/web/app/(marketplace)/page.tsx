@@ -7,9 +7,8 @@ import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
 import { HomeTabs } from "@/components/home/home-tabs";
-import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
-import { UNIVERSITY_COLORS } from "@/lib/utils";
+import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import {
   UtensilsCrossed,
@@ -338,23 +337,23 @@ export default async function HomePage({ searchParams }: Props) {
           {viewerUniversity && universityProducts.length > 0 && (
             <section className="px-4 pb-4 mt-4">
               <div 
-                className="max-w-7xl mx-auto rounded-[var(--r-xl)] border p-4"
+                className="max-w-7xl mx-auto rounded-[var(--r-xl)] border p-4 shadow-sm"
                 style={{ 
-                  backgroundColor: `${UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9"}15`,
-                  borderColor: `${UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9"}30`
+                  backgroundColor: UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9",
+                  borderColor: UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9"
                 }}
               >
                 <div className="mb-3">
                   <div 
-                    className="text-[10.5px] font-bold uppercase tracking-[0.12em] flex items-center gap-1.5"
-                    style={{ color: UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9" }}
+                    className="text-[10.5px] font-bold uppercase tracking-[0.12em] flex items-center gap-1.5 opacity-90"
+                    style={{ color: getContrastYIQ(UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9") }}
                   >
                     <GraduationCap className="w-3.5 h-3.5" /> Comunidad Universitaria
                   </div>
                   <div className="mt-0.5 flex items-center justify-between">
                     <h2 
                       className="font-heading text-xl font-bold"
-                      style={{ color: UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9" }}
+                      style={{ color: getContrastYIQ(UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9") }}
                     >
                       Lo mejor en {viewerUniversity}
                     </h2>

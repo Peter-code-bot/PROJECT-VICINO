@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
 import { verifyDocument } from "@/app/actions/verify-document";
-import { UNIVERSITY_COLORS } from "@/lib/utils";
+import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 
 interface VerificationUploadProps {
   userId: string;
@@ -263,12 +263,12 @@ export function VerificationUpload({
             }`}
             style={docType === "Credencial Universitaria" ? {
               borderColor: UNIVERSITY_COLORS[university] || "#0ea5e9",
-              backgroundColor: `${UNIVERSITY_COLORS[university] || "#0ea5e9"}1A`,
-              boxShadow: `0 4px 6px -1px ${UNIVERSITY_COLORS[university] || "#0ea5e9"}1A`
+              backgroundColor: UNIVERSITY_COLORS[university] || "#0ea5e9",
+              boxShadow: `0 4px 6px -1px ${UNIVERSITY_COLORS[university] || "#0ea5e9"}66`
             } : undefined}
           >
             <span className="text-3xl">🎓</span>
-            <span className="text-sm font-semibold" style={docType === "Credencial Universitaria" ? { color: UNIVERSITY_COLORS[university] || "#0ea5e9" } : undefined}>Credencial Universitaria</span>
+            <span className="text-sm font-semibold" style={docType === "Credencial Universitaria" ? { color: getContrastYIQ(UNIVERSITY_COLORS[university] || "#0ea5e9") } : undefined}>Credencial Universitaria</span>
           </button>
         </div>
 
