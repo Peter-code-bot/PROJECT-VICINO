@@ -61,6 +61,7 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
@@ -86,6 +87,20 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.googleusercontent.com",
       },
+    ],
+  },
+  experimental: {
+    // A3 sub-fase 3.2: tree-shake barrel exports of the UI libraries we actually
+    // import. Confirmed against apps/web/package.json — only these 6 packages
+    // are direct deps. Next.js will silently skip any package here that isn't
+    // installed, so the list is safe even if a Radix dep is removed later.
+    optimizePackageImports: [
+      "lucide-react",
+      "framer-motion",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dismissable-layer",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-popover",
     ],
   },
 };
