@@ -40,12 +40,13 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
     return {};
   }
 
-  // Web path: byte-identical al codigo previo en login-form.tsx:46-51 y
-  // register-form.tsx:56-61.
+  // Web path: signInWithOAuth con redirectTo al route.ts server-side handler.
+  // Post fix(auth) 404 flash: route.ts vive ahora en /auth/callback-server (el
+  // path /auth/callback es el page.tsx loader que sirve al deep link APK).
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/auth/callback-server`,
     },
   });
   if (error) return { error: "Error al conectar con Google. Intenta de nuevo." };
