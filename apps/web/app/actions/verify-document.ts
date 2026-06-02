@@ -25,6 +25,14 @@ export async function verifyDocument(
   }
   const userId = userResponse.user.id;
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("nombre")
+    .eq("id", userId)
+    .single();
+
+  const userName = profile?.nombre || "Usuario Desconocido";
+
   const { data: fileData, error: fileError } = await supabase.storage
     .from("verification-documents")
     .download(path);
@@ -48,18 +56,20 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
 {
   "es_credencial_valida": boolean, // true si es una credencial de estudiante real, false si es un perro, meme, INE, etc.
   "nombre_universidad": string | null, // el nombre de la universidad que aparece en la credencial
+  "el_nombre_coincide": boolean, // true si el nombre "${userName}" aparece en la credencial
   "vigente": boolean, // true si tiene un sello actual, ciclo escolar actual, o no se ve expirada
   "confianza_porcentaje": number, // 0 a 100 de qué tan seguro estás
   "motivo_rechazo_o_duda": string | null // si confianza < 90 o no es válida, por qué?
 }
 
-Instrucción extra: El usuario dice que esta credencial es de la "${universityName}". Verifica si la credencial realmente pertenece a esa universidad o una de sus variantes.`;
+Instrucción extra: El usuario dice que esta credencial es de la "${universityName}". Verifica si la credencial realmente pertenece a esa universidad o una de sus variantes. Asegúrate de que la credencial pertenezca a "${userName}".`;
   } else {
     // Es un INE
     prompt = `Eres un agente estricto de validación (KYC) para una aplicación en México.
 Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) con la siguiente estructura:
 {
   "es_credencial_valida": boolean, // true si es un INE oficial de México, false si es otra cosa
+  "el_nombre_coincide": boolean, // true si el nombre "${userName}" aparece en el INE
   "vigente": boolean, // true si no está vencida
   "confianza_porcentaje": number, // 0 a 100
   "motivo_rechazo_o_duda": string | null
@@ -87,9 +97,9 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     let finalStatus = "pending";
     
     // Evaluate rules
-    if (analysis.confianza_porcentaje >= 90 && analysis.es_credencial_valida && analysis.vigente) {
+    if (analysis.confianza_porcentaje >= 90 && analysis.es_credencial_valida && analysis.vigente && analysis.el_nombre_coincide) {
       finalStatus = "approved";
-    } else if (!analysis.es_credencial_valida) {
+    } else if (!analysis.es_credencial_valida || !analysis.el_nombre_coincide) {
       finalStatus = "rejected";
     }
 
