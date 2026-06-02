@@ -1,11 +1,18 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
+});
+
+// A3 sub-fase 3.7: bundle analyzer solo activo con ANALYZE=true env.
+// Builds normales (Vercel, dev) NO se afectan — pasa-through cuando enabled=false.
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
 });
 
 // Content-Security-Policy
@@ -108,7 +115,9 @@ const nextConfig: NextConfig = {
 // Sentry wraps PWA's transformed config (Sentry outermost). tunnelRoute keeps
 // ingest requests same-origin so CSP/ad-blockers don't drop them; the
 // middleware matcher excludes /sentry-tunnel so it stays a pass-through.
-export default withSentryConfig(withPWA(nextConfig), {
+// A3 sub-fase 3.7: bundleAnalyzer en medio (entre Sentry y PWA) — solo
+// intercepta build stats cuando ANALYZE=true; con enabled=false es identity.
+export default withSentryConfig(withBundleAnalyzer(withPWA(nextConfig)), {
   org: "vicino-5r",
   project: "vicino-web",
   authToken: process.env.SENTRY_AUTH_TOKEN,
