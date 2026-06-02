@@ -42,7 +42,6 @@ export function UserAvatar({ src, name, size = "md", className }: UserAvatarProp
           height={PX[size]}
           onError={() => setErrored(true)}
           className="w-full h-full object-cover"
-          unoptimized
         />
       ) : (
         <span>{initial}</span>
