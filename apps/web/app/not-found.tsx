@@ -1,28 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-
-function DebugUrl() {
-  const [info, setInfo] = useState<{ href: string; pathname: string } | null>(null);
-
-  useEffect(() => {
-    setInfo({
-      href: window.location.href,
-      pathname: window.location.pathname,
-    });
-  }, []);
-
-  if (!info) return null;
-
-  return (
-    <div className="mt-6 rounded-md bg-black/90 px-4 py-3 text-left max-w-sm mx-auto">
-      <p className="text-xs font-mono text-yellow-400 font-bold mb-1">DEBUG 404 URL:</p>
-      <p className="text-xs font-mono text-white break-all">{info.href}</p>
-      <p className="text-xs font-mono text-gray-400 mt-1">pathname: {info.pathname}</p>
-    </div>
-  );
-}
 
 export default function NotFound() {
   return (
@@ -39,7 +15,6 @@ export default function NotFound() {
         >
           Volver al inicio
         </Link>
-        <DebugUrl />
       </div>
     </div>
   );
