@@ -22,7 +22,18 @@ export function CapacitorInit() {
       });
 
       // --- Deep links ---
+      // OAuth callback URLs (vicino://auth/callback*) are owned EXCLUSIVELY by
+      // OAuthUrlListener (components/auth/oauth-url-listener.tsx). It calls
+      // exchangeCodeForSession and then window.location.replace("/"). Without
+      // the guard below, this listener races OAuthUrlListener and navigates the
+      // WebView to "/callback" first, stripping the ?code= query string. The
+      // /callback page (apps/web/app/callback/page.tsx) covers the landing by
+      // forwarding to /auth/callback, but the result is a non-deterministic
+      // multi-hop navigation that defeats F2's window.location.replace("/").
+      const OAUTH_CALLBACK_PREFIX = "vicino://auth/callback";
+
       App.addListener("appUrlOpen", ({ url }) => {
+        if (url.startsWith(OAUTH_CALLBACK_PREFIX)) return;
         try {
           const u = new URL(url);
           // vicino:// scheme or https links
@@ -35,7 +46,7 @@ export function CapacitorInit() {
 
       // Check cold-start deep link
       const launchUrl = await App.getLaunchUrl();
-      if (launchUrl?.url) {
+      if (launchUrl?.url && !launchUrl.url.startsWith(OAUTH_CALLBACK_PREFIX)) {
         try {
           const u = new URL(launchUrl.url);
           const path = u.pathname || u.host || "";
