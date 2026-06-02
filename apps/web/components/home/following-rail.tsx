@@ -38,6 +38,9 @@ export function FollowingRail({ stores }: FollowingRailProps) {
             href={`/vendedor/${store.id}`}
             className="flex flex-col items-center gap-1.5 snap-start shrink-0"
             style={{ width: "60px" }}
+            // A3 sub-fase 3.6: carousel de tiendas seguidas (N items). El Link
+            // "Gestionar" arriba (linea ~26) mantiene prefetch default.
+            prefetch={false}
           >
             <div
               className={cn(

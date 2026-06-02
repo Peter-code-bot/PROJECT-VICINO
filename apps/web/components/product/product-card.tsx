@@ -87,6 +87,10 @@ export function ProductCard({
       // Recientes + per-cat carousels) sin tocar a los callers.
       href={`/${categories[0]?.slug ?? categoria}/${slug}`}
       id={`product-${slug}`}
+      // A3 sub-fase 3.6: card en grids/carousels (ProductCarousel, /buscar,
+      // /favoritos). En un grid de 50 cards, prefetch default lanza 50 GETs
+      // de /producto/[id]. Hover/tap igual prefetchea on-demand.
+      prefetch={false}
       className={cn(
         "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",
         "shadow-[inset_0_0_0_1px_var(--border)]",

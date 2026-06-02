@@ -309,6 +309,10 @@ export default async function HomePage({ searchParams }: Props) {
                       href={`/buscar?category=${cat.slug}`}
                       id={`cat-${cat.slug}`}
                       className="group flex min-w-[72px] flex-col items-center gap-1.5 text-center"
+                      // A3 sub-fase 3.6: 12+ categorias en el carousel scrolleable
+                      // del home; solo 1 se clickea por sesion. Prefetch default
+                      // lanzaria 12 GETs a /buscar?category=X.
+                      prefetch={false}
                     >
                       <div
                         className={

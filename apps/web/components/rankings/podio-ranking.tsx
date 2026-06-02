@@ -48,6 +48,9 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
         "flex flex-col items-center text-center min-w-0 max-w-[8.5rem] group active:scale-95 transition-transform",
         isFirst && "-mt-6",
       )}
+      // A3 sub-fase 3.6: slot del podio en /rankings + strip home. Top 3 +
+      // ranking-list por debajo, prefetch default lanza 13+ GETs a /vendedor/*.
+      prefetch={false}
     >
       <div className="relative z-10 flex flex-col items-center">
         {/* Crown Image */}

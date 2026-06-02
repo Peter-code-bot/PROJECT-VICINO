@@ -26,9 +26,11 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
   const scoreText = Math.round(seller.composite_score).toLocaleString("es-MX");
 
   return (
-    <Link 
+    <Link
       href={`/vendedor/${seller.seller_id}`}
       className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 active:scale-[0.98] transition-all hover:border-primary/50"
+      // A3 sub-fase 3.6: fila de lista en /rankings (10-20 vendedores).
+      prefetch={false}
     >
       <span className="w-6 text-sm tabular-nums text-muted-foreground">
         #{seller.rank}

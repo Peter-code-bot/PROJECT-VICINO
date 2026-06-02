@@ -57,7 +57,10 @@ export function StorePost({
     <article className="flex flex-col mb-4 bg-[var(--card)] sm:rounded-2xl sm:border border-[var(--border)] overflow-hidden">
       {/* 1. Header de tienda */}
       <header className="flex items-center px-4 py-3 gap-3">
-        <Link href={`/vendedor/${storeId}`} className="shrink-0">
+        {/* A3 sub-fase 3.6: card en feed siguiendo (lista vertical de N posts).
+            Prefetch default lanzaria 5 GETs por card (3 a vendedor + 2 a producto + chat).
+            Hover/tap igual prefetchea on-demand. Aplica a los 5 Links del card. */}
+        <Link href={`/vendedor/${storeId}`} className="shrink-0" prefetch={false}>
           <div className="w-10 h-10 rounded-[12px] bg-[var(--brand-tint)] flex items-center justify-center font-bold text-[var(--brand-hi)] text-lg">
             {letter}
           </div>
@@ -67,6 +70,7 @@ export function StorePost({
             <Link
               href={`/vendedor/${storeId}`}
               className="font-medium text-[var(--fg)] truncate hover:underline"
+              prefetch={false}
             >
               {store}
             </Link>
@@ -101,7 +105,11 @@ export function StorePost({
       )}
 
       {/* 3. Imagen del producto */}
-      <Link href={`/producto/${id}`} className="block relative aspect-[4/3] bg-[var(--bg-elev-2)] overflow-hidden">
+      <Link
+        href={`/producto/${id}`}
+        className="block relative aspect-[4/3] bg-[var(--bg-elev-2)] overflow-hidden"
+        prefetch={false}
+      >
         {imgUrl ? (
           <Image
             src={imgUrl}
@@ -130,7 +138,7 @@ export function StorePost({
 
       {/* 4. Body */}
       <div className="px-4 pt-3 pb-2">
-        <Link href={`/producto/${id}`} className="block">
+        <Link href={`/producto/${id}`} className="block" prefetch={false}>
           <h3 className="font-display text-[15.5px] leading-snug font-medium text-[var(--fg)] mb-1.5 line-clamp-2">
             {title}
           </h3>
@@ -150,6 +158,7 @@ export function StorePost({
           <Link
             href={`/chat/nuevo?product=${id}`}
             className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium text-[var(--fg-muted)] hover:bg-[var(--bg-elev-2)] hover:text-[var(--fg)] transition-colors"
+            prefetch={false}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />
             Mensaje
@@ -158,6 +167,7 @@ export function StorePost({
         <Link
           href={`/producto/${id}`}
           className="flex items-center justify-center h-9 px-4 rounded-full bg-[var(--brand-tint)] text-[var(--brand-hi)] text-[13.5px] font-medium hover:bg-[var(--brand-tint-strong)] transition-colors"
+          prefetch={false}
         >
           Ver producto
           <ArrowRight className="w-4 h-4 ml-1.5" />
