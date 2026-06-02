@@ -55,7 +55,6 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
             src={`/images/rankings/crown-${position}.png`} 
             alt={`Corona lugar ${position}`}
             className="w-full h-full object-contain drop-shadow-2xl"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
         </div>
 
