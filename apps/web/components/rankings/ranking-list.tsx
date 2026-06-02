@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ConfiableBadge } from "./confiable-badge";
+
 import type { RankedSeller } from "@/lib/rankings/types";
 
 interface RankingListProps {
@@ -36,11 +36,7 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
       <UserAvatar src={seller.foto} name={name} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">{name}</p>
-        {seller.is_confiable ? (
-          <div className="mt-1">
-            <ConfiableBadge />
-          </div>
-        ) : null}
+
       </div>
       <span className="font-display text-base tabular-nums text-foreground">
         {scoreText}

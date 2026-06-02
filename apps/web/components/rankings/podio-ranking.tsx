@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ConfiableBadge } from "./confiable-badge";
+import { Crown, Sparkles } from "lucide-react";
 import type { RankedSeller } from "@/lib/rankings/types";
 
 interface PodioRankingProps {
@@ -48,16 +48,31 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
         isFirst && "-mt-6",
       )}
     >
-      <UserAvatar
-        src={seller.foto}
-        name={name}
-        size={isFirst ? "xl" : "lg"}
-        className={cn(
-          isFirst
-            ? "ring-2 ring-gold shadow-[0_0_60px_-12px_rgba(212,168,83,0.4)]"
-            : "ring-2 ring-border-strong",
+      <div className="relative">
+        <UserAvatar
+          src={seller.foto}
+          name={name}
+          size={isFirst ? "xl" : "lg"}
+          className={cn(
+            isFirst
+              ? "ring-2 ring-gold shadow-[0_0_60px_-12px_rgba(212,168,83,0.4)]"
+              : "ring-2 ring-border-strong",
+          )}
+        />
+        {position === 1 && (
+          <>
+            <Crown className="absolute -top-4 -right-3 h-8 w-8 text-gold rotate-12 drop-shadow-md" strokeWidth={2.5} />
+            <Sparkles className="absolute -left-2 top-0 h-5 w-5 text-gold animate-pulse opacity-80" />
+            <Sparkles className="absolute -bottom-2 -right-1 h-4 w-4 text-gold animate-pulse delay-150 opacity-80" />
+          </>
         )}
-      />
+        {position === 2 && (
+          <Crown className="absolute -top-3 -right-2 h-6 w-6 text-slate-300 rotate-12 drop-shadow-sm" strokeWidth={2.5} />
+        )}
+        {position === 3 && (
+          <Crown className="absolute -top-3 -right-2 h-6 w-6 text-orange-500 rotate-12 drop-shadow-sm" strokeWidth={2.5} />
+        )}
+      </div>
       <div
         className={cn(
           "mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full font-display text-sm font-semibold tabular-nums",
@@ -85,11 +100,7 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
       >
         {scoreText}
       </p>
-      {seller.is_confiable ? (
-        <div className="mt-1.5">
-          <ConfiableBadge />
-        </div>
-      ) : null}
+
     </Link>
   );
 }

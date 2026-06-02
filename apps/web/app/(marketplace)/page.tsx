@@ -356,7 +356,7 @@ export default async function HomePage({ searchParams }: Props) {
                       className="font-heading text-xl font-bold"
                       style={{ color: getContrastYIQ(UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9") }}
                     >
-                      Lo mejor en {viewerUniversity}
+                      Lo mejor en tu universidad
                     </h2>
                   </div>
                 </div>
