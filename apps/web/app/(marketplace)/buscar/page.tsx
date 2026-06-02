@@ -316,7 +316,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
       {products && products.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {products.map((product) => {
+          {products.map((product, index) => {
             const profile = Array.isArray(product.profiles)
               ? product.profiles[0]
               : product.profiles;
@@ -339,6 +339,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 categories={normalizeCardCategories(
                   (product as { product_categories?: unknown }).product_categories,
                 )}
+                priority={index === 0}
               />
             );
           })}

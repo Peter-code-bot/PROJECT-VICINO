@@ -33,6 +33,9 @@ interface ProductCardProps {
   // normalizeCardCategories(product.product_categories) en el caller.
   // Default [] mantiene la card identica para callers no migrados.
   categories?: ProductCardCategory[];
+  // A3 sub-fase 3.3: solo true para la PRIMERA card de una grid/carousel
+  // above-fold (LCP candidate). Default false manda lazy load.
+  priority?: boolean;
 }
 
 export function ProductCard({
@@ -48,6 +51,7 @@ export function ProductCard({
   isFavorite: initialFavorite = false,
   precioNegociable,
   categories = [],
+  priority = false,
 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
 
@@ -97,6 +101,7 @@ export function ProductCard({
             fill
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            priority={priority}
           />
         ) : (
           <div className="flex h-full items-center justify-center">

@@ -29,6 +29,9 @@ export interface StorePostProps {
   imgUrl?: string;
   imgLabel: string;
   heart?: boolean;
+  // A3 sub-fase 3.3: solo true para el PRIMER StorePost del feed siguiendo
+  // (LCP candidate). Default false manda lazy load.
+  priority?: boolean;
 }
 
 export function StorePost({
@@ -48,6 +51,7 @@ export function StorePost({
   imgUrl,
   imgLabel,
   heart = false,
+  priority = false,
 }: StorePostProps) {
   return (
     <article className="flex flex-col mb-4 bg-[var(--card)] sm:rounded-2xl sm:border border-[var(--border)] overflow-hidden">
@@ -99,7 +103,14 @@ export function StorePost({
       {/* 3. Imagen del producto */}
       <Link href={`/producto/${id}`} className="block relative aspect-[4/3] bg-[var(--bg-elev-2)] overflow-hidden">
         {imgUrl ? (
-          <Image src={imgUrl} alt={title} fill className="object-cover" />
+          <Image
+            src={imgUrl}
+            alt={title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 512px"
+            priority={priority}
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-[var(--fg-muted)] text-sm font-medium">
             {imgLabel}

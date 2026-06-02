@@ -552,12 +552,12 @@ export default async function HomePage({ searchParams }: Props) {
               <FollowingRail stores={followedStoresData} />
               
               <div className="px-2 sm:px-4 space-y-4">
-                {followingPosts.map((post) => {
+                {followingPosts.map((post, index) => {
                   const now = new Date();
                   const created = new Date(post.created_at);
                   const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
                   const when = diffHours < 1 ? "hace poco" : diffHours < 24 ? `hace ${diffHours} h` : `hace ${Math.floor(diffHours/24)} d`;
-                  
+
                   return (
                     <StorePost
                       key={post.id}
@@ -582,6 +582,7 @@ export default async function HomePage({ searchParams }: Props) {
                       count={post.profiles.reviews_count ?? 0}
                       imgUrl={post.imagen_principal}
                       imgLabel={post.titulo}
+                      priority={index === 0}
                     />
                   );
                 })}

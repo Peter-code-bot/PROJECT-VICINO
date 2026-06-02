@@ -25,15 +25,19 @@ interface CarouselProduct {
 
 interface ProductCarouselProps {
   products: CarouselProduct[];
+  // A3 sub-fase 3.3: cuando true, marca la PRIMERA card del carousel como
+  // priority (LCP). Solo el caller que sabe que es el carousel above-fold
+  // debe pasarlo (ej. home /parati "Recientes"). Default false.
+  priorityFirstItem?: boolean;
 }
 
-export function ProductCarousel({ products }: ProductCarouselProps) {
+export function ProductCarousel({ products, priorityFirstItem = false }: ProductCarouselProps) {
   const [emblaRef] = useEmblaCarousel({ align: "start", dragFree: true });
 
   return (
     <div className="overflow-hidden -mx-4 px-4" ref={emblaRef} data-no-page-swipe>
       <div className="flex gap-3">
-        {products.map((p) => {
+        {products.map((p, index) => {
           const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
           return (
             <div key={p.id} className="shrink-0 w-40 sm:w-48">
@@ -52,6 +56,7 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
                 precioNegociable={p.precio_negociable ?? false}
                 categories={normalizeCardCategories(p.product_categories)}
+                priority={priorityFirstItem && index === 0}
               />
             </div>
           );
