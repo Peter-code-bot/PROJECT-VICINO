@@ -195,6 +195,10 @@ function RankingsHomeStrip({
       href={{ pathname: "/rankings", query: { category: category.id } }}
       aria-label={`Ver ranking completo de ${categoryLabel} en ${monthLabel}`}
       className="group block px-4 pb-6"
+      // A3 CODEX fix: strip en el home dentro de Suspense — prefetch default
+      // dispara GET a /rankings poco despues del hydrate. Disciplina coherente
+      // con 3.6 (cards en grids/feeds = prefetch=false; nav fija = default).
+      prefetch={false}
     >
       <div
         className={cn(

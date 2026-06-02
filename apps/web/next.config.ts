@@ -105,7 +105,6 @@ const nextConfig: NextConfig = {
       "lucide-react",
       "framer-motion",
       "@radix-ui/react-dialog",
-      "@radix-ui/react-dismissable-layer",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
     ],

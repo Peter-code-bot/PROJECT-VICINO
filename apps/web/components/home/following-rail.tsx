@@ -53,7 +53,16 @@ export function FollowingRail({ stores }: FollowingRailProps) {
               <div className="w-[56px] h-[56px] rounded-[18px] bg-[var(--bg)] p-[2px]">
                 <div className="w-full h-full rounded-[16px] bg-[var(--bg-elev-2)] overflow-hidden flex items-center justify-center font-bold text-[var(--fg-muted)] text-xl relative">
                   {store.imgUrl ? (
-                    <Image src={store.imgUrl} alt={store.name} fill className="object-cover" />
+                    // A3 CODEX fix: store avatar 56x56 fijo en el carousel.
+                    // Sin sizes, Next genera srcset asumiendo 100vw y serve un
+                    // variant gigante para un slot de 56px.
+                    <Image
+                      src={store.imgUrl}
+                      alt={store.name}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
                   ) : (
                     store.letter
                   )}
