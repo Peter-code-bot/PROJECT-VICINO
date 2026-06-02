@@ -56,20 +56,20 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
 {
   "es_credencial_valida": boolean, // true si es una credencial de estudiante real, false si es un perro, meme, INE, etc.
   "nombre_universidad": string | null, // el nombre de la universidad que aparece en la credencial
-  "el_nombre_coincide": boolean, // true si el nombre "${userName}" aparece en la credencial
+  "el_nombre_coincide": boolean, // true si al menos un nombre o un apellido de "${userName}" coincide con lo que aparece en la credencial. No exijas coincidencia exacta completa: basta con que la mayoría del nombre registrado (un nombre + un apellido, o ambos apellidos) se encuentren visibles en el documento. Solo marca false si no hay NINGUNA relación entre ambos nombres.
   "vigente": boolean, // true si tiene un sello actual, ciclo escolar actual, o no se ve expirada
   "confianza_porcentaje": number, // 0 a 100 de qué tan seguro estás
   "motivo_rechazo_o_duda": string | null // si confianza < 90 o no es válida, por qué?
 }
 
-Instrucción extra: El usuario dice que esta credencial es de la "${universityName}". Verifica si la credencial realmente pertenece a esa universidad o una de sus variantes. Asegúrate de que la credencial pertenezca a "${userName}".`;
+Instrucción extra: El usuario dice que esta credencial es de la "${universityName}". Verifica si la credencial realmente pertenece a esa universidad o una de sus variantes. Verifica que la credencial pertenezca razonablemente a "${userName}". Acepta variaciones como nombres incompletos, un solo apellido, o nombre sin segundo nombre. Solo rechaza si el nombre en el documento NO tiene ninguna relación con el nombre registrado.`;
   } else {
     // Es un INE
     prompt = `Eres un agente estricto de validación (KYC) para una aplicación en México.
 Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) con la siguiente estructura:
 {
   "es_credencial_valida": boolean, // true si es un INE oficial de México, false si es otra cosa
-  "el_nombre_coincide": boolean, // true si el nombre "${userName}" aparece en el INE
+  "el_nombre_coincide": boolean, // true si al menos un nombre o un apellido de "${userName}" coincide con lo que aparece en el INE. No exijas coincidencia exacta completa: basta con que la mayoría del nombre registrado (un nombre + un apellido, o ambos apellidos) se encuentren visibles en el documento. Solo marca false si no hay NINGUNA relación entre ambos nombres.
   "vigente": boolean, // true si no está vencida
   "confianza_porcentaje": number, // 0 a 100
   "motivo_rechazo_o_duda": string | null
