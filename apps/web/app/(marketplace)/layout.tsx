@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { ConditionalFooter } from "@/components/layout/conditional-footer";
 import { Sidebar } from "@/components/layout/sidebar";
 import { PageSwipeWrapper } from "@/components/layout/page-swipe-wrapper";
+import { PullToRefreshWrapper } from "@/components/layout/pull-to-refresh-wrapper";
 import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { NotificationUnreadProvider } from "@/components/layout/notification-unread-provider";
 import { createClient } from "@/lib/supabase/server";
@@ -77,7 +78,9 @@ export default async function MarketplaceLayout({
               <Header />
             </div>
             <main className="flex-1 pb-20 md:pb-0">
-              <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
+              <PullToRefreshWrapper>
+                <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
+              </PullToRefreshWrapper>
             </main>
             <div className="hidden md:block">
               <ConditionalFooter isVendedor={isVendedor} />
