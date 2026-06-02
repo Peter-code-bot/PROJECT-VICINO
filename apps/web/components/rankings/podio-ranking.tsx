@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { Crown, Sparkles } from "lucide-react";
+
 import type { RankedSeller } from "@/lib/rankings/types";
 
 interface PodioRankingProps {
@@ -48,40 +48,45 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
         isFirst && "-mt-6",
       )}
     >
-      <div className="relative">
-        <UserAvatar
-          src={seller.foto}
-          name={name}
-          size={isFirst ? "xl" : "lg"}
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Crown Image */}
+        <div className={cn("absolute z-20 pointer-events-none", isFirst ? "-top-10 w-[4.5rem] h-[4.5rem]" : "-top-7 w-14 h-14")}>
+          <img 
+            src={`/images/rankings/crown-${position}.webp`} 
+            alt={`Corona lugar ${position}`}
+            className="w-full h-full object-contain drop-shadow-2xl"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        </div>
+
+        {/* Ring and Avatar */}
+        <div 
           className={cn(
-            isFirst
-              ? "ring-2 ring-gold shadow-[0_0_60px_-12px_rgba(212,168,83,0.4)]"
-              : "ring-2 ring-border-strong",
+            "relative rounded-full p-[5px] z-10",
+            position === 1 && "bg-gradient-to-br from-[#FFF5C3] via-[#D4AF37] to-[#8A5A19] shadow-[0_10px_20px_rgba(212,168,83,0.3),inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-4px_6px_rgba(0,0,0,0.4)]",
+            position === 2 && "bg-gradient-to-br from-[#FFFFFF] via-[#B0B5B9] to-[#5F6368] shadow-[0_10px_20px_rgba(176,181,185,0.2),inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-4px_6px_rgba(0,0,0,0.4)]",
+            position === 3 && "bg-gradient-to-br from-[#FFD3A3] via-[#CD7F32] to-[#734A12] shadow-[0_10px_20px_rgba(205,127,50,0.2),inset_0_2px_4px_rgba(255,255,255,0.5),inset_0_-4px_6px_rgba(0,0,0,0.4)]"
           )}
-        />
-        {position === 1 && (
-          <>
-            <Crown className="absolute -top-4 -right-3 h-8 w-8 text-gold rotate-12 drop-shadow-md" strokeWidth={2.5} />
-            <Sparkles className="absolute -left-2 top-0 h-5 w-5 text-gold animate-pulse opacity-80" />
-            <Sparkles className="absolute -bottom-2 -right-1 h-4 w-4 text-gold animate-pulse delay-150 opacity-80" />
-          </>
-        )}
-        {position === 2 && (
-          <Crown className="absolute -top-3 -right-2 h-6 w-6 text-slate-300 rotate-12 drop-shadow-sm" strokeWidth={2.5} />
-        )}
-        {position === 3 && (
-          <Crown className="absolute -top-3 -right-2 h-6 w-6 text-orange-500 rotate-12 drop-shadow-sm" strokeWidth={2.5} />
-        )}
-      </div>
-      <div
-        className={cn(
-          "mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full font-display text-sm font-semibold tabular-nums",
-          isFirst
-            ? "bg-gold/20 text-gold"
-            : "bg-muted text-muted-foreground border border-border",
-        )}
-      >
-        {position}
+        >
+          <div className="rounded-full bg-[color:var(--bg)] p-0.5">
+            <UserAvatar
+              src={seller.foto}
+              name={name}
+              size={isFirst ? "xl" : "lg"}
+              className="border-2 border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Position Badge overlaying bottom of ring */}
+        <div
+          className={cn(
+            "absolute z-30 -bottom-3 flex items-center justify-center rounded-full font-display font-bold tabular-nums shadow-[0_4px_10px_rgba(0,0,0,0.5)] border-2 border-[color:var(--bg)] bg-white text-black",
+            isFirst ? "h-8 w-8 text-base" : "h-7 w-7 text-sm"
+          )}
+        >
+          {position}
+        </div>
       </div>
       <p
         className={cn(
