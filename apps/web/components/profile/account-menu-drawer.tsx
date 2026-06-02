@@ -54,7 +54,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userI
                 className="flex items-center gap-3 px-5 py-4 hover:bg-muted transition-colors border-b border-border">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
                   {userAvatar ? (
-                    <img src={userAvatar} alt="" className="w-full h-full object-cover" />
+                    <img src={userAvatar} alt={userName || "Avatar de usuario"} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-lg font-semibold">{userName[0]?.toUpperCase()}</span>
                   )}

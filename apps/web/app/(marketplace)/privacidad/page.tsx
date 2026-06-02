@@ -4,8 +4,8 @@ export default function PrivacidadPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1 className="text-3xl font-heading font-bold mb-1">Aviso de Privacidad Integral</h1>
-      <p className="text-sm text-muted-foreground mb-1">Última actualización: 29 de abril de 2026</p>
-      <p className="text-sm text-muted-foreground mb-8">Versión 2.0 — Conforme al artículo 16 de la LFPDPPP y artículos 26 y 27 de su Reglamento</p>
+      <p className="text-sm text-muted-foreground mb-1">Última actualización: 1 de junio de 2026</p>
+      <p className="text-sm text-muted-foreground mb-8">Versión 2.1 — Conforme al artículo 16 de la LFPDPPP y artículos 26 y 27 de su Reglamento</p>
 
       <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none space-y-6">
         {/* 1 */}
@@ -47,7 +47,7 @@ export default function PrivacidadPage() {
           <h2 className="text-lg font-heading font-bold">4. Datos personales que recopilamos</h2>
 
           <h3 className="text-base font-semibold mt-4">4.1. Datos de identificación y contacto</h3>
-          <p>Nombre completo, correo electrónico, fotografía de perfil, número de teléfono celular (opcional), ubicación aproximada (ciudad, colonia o zona — <strong>nunca</strong> dirección exacta sin autorización expresa del Usuario), nombre de usuario y contraseña cifrada.</p>
+          <p>Nombre completo, correo electrónico, fotografías (de perfil, portadas o para publicaciones), número de teléfono celular (opcional), ubicación aproximada (ciudad, colonia o zona — <strong>nunca</strong> dirección exacta sin autorización expresa del Usuario), ID universitario o credencial de estudiante (si opta por unirse a una comunidad universitaria), nombre de usuario y contraseña cifrada.</p>
 
           <h3 className="text-base font-semibold mt-4">4.2. Datos personales sensibles (verificación voluntaria de identidad)</h3>
           <p>Cuando el Usuario decide acceder a niveles superiores del sistema de confianza de VICINO, podrá proporcionar de forma <strong>voluntaria y bajo consentimiento expreso</strong>:</p>
@@ -60,7 +60,7 @@ export default function PrivacidadPage() {
           </p>
 
           <h3 className="text-base font-semibold mt-4">4.3. Datos de actividad y uso</h3>
-          <p>Historial de publicaciones (productos ofertados, descripciones, fotografías cargadas), transacciones marcadas como confirmadas mutuamente entre Usuarios, calificaciones y reseñas emitidas y recibidas, contenido de mensajes intercambiados con otros Usuarios a través del chat de la Plataforma, productos guardados como favoritos, denuncias o reportes presentados, y métricas de uso (frecuencia de inicio de sesión, tiempo de permanencia, secciones visitadas).</p>
+          <p>Historial de publicaciones (productos ofertados, descripciones, fotografías cargadas), transacciones marcadas como confirmadas mutuamente entre Usuarios, calificaciones y reseñas emitidas y recibidas, contenido de mensajes intercambiados con otros Usuarios a través del chat de la Plataforma, productos guardados como favoritos, interacciones con otros perfiles (como tiendas seguidas o comunidades a las que se une), denuncias o reportes presentados, reportes de errores (crash logs) y métricas de uso (frecuencia de inicio de sesión, tiempo de permanencia, secciones visitadas).</p>
 
           <h3 className="text-base font-semibold mt-4">4.4. Datos técnicos y de identificación digital</h3>
           <p>Dirección IP, identificador de dispositivo, tipo y versión de navegador, sistema operativo, tipo de dispositivo, fecha y hora de acceso, idioma del navegador, y cookies estrictamente necesarias para la operación de la sesión.</p>
@@ -80,7 +80,8 @@ export default function PrivacidadPage() {
             <li>Permitir la publicación, búsqueda y visualización de productos y servicios entre Usuarios.</li>
             <li>Facilitar la comunicación entre compradores y vendedores mediante el chat interno.</li>
             <li>Operar el sistema de <strong>confirmación mutua de transacciones</strong>.</li>
-            <li>Calcular, mantener y mostrar los <strong>niveles de confianza, reputación y reseñas</strong> de los Usuarios (sistema de cinco niveles).</li>
+            <li>Calcular, mantener y mostrar los <strong>niveles de confianza, reputación, reseñas y rankings hiperlocales</strong> de los vendedores.</li>
+            <li>Gestionar el acceso y segmentación de usuarios en las <strong>comunidades universitarias</strong> mediante la validación de su ID o correo institucional.</li>
             <li>Moderar contenido publicado, prevenir fraudes, abusos y actividades ilícitas.</li>
             <li>Atender denuncias, disputas y solicitudes de soporte.</li>
             <li>Enviar notificaciones operativas (transaccionales) sobre la cuenta o las publicaciones del Usuario.</li>
@@ -352,6 +353,9 @@ export default function PrivacidadPage() {
 
         {/* Cierre */}
         <hr className="border-border/40 my-6" />
+        <p className="text-xs text-muted-foreground italic mb-2">
+          <strong>Aviso para Usuarios Internacionales:</strong> Si accedes a la Plataforma desde fuera de los Estados Unidos Mexicanos (por ejemplo, desde la Unión Europea, sujeto al GDPR, o California, sujeto a CCPA), al utilizar nuestros servicios consientes expresa e inequívocamente que tus datos personales sean transferidos y tratados en México conforme a la LFPDPPP y a lo descrito en este documento.
+        </p>
         <p className="text-xs text-muted-foreground italic">
           Este Aviso de Privacidad se rige e interpreta conforme a las leyes de los Estados Unidos Mexicanos. Para cualquier controversia, las partes se someten a la jurisdicción de los tribunales competentes en la ciudad de Puebla de Zaragoza, Puebla, renunciando a cualquier otro fuero que pudiera corresponderles por razón de su domicilio presente o futuro.
         </p>
