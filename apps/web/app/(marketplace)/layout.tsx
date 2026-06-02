@@ -24,17 +24,19 @@ export default async function MarketplaceLayout({
   let unreadChatMessages = 0;
 
   if (user) {
-    // F3 (optimize-auth-session-hydration): the 5 DB queries below all depend
-    // on user.id but are independent of each other. Parallelize via Promise.all
-    // to cut the layout's per-request time from ~250-750ms sequential to the
-    // slowest single query (~50-150ms).
+    // F3 + fault-isolation (optimize-auth-session-hydration): the 5 DB queries
+    // below all depend on user.id but are independent of each other. Run them
+    // concurrently via Promise.allSettled — Promise.all would reject the whole
+    // batch on a single query failure and crash the layout. allSettled
+    // preserves the pre-F3 behavior where a failed/slow query just reduced to
+    // the empty default (?? null / ?? 0) without taking the page down.
     const [
       profileResult,
       rolesResult,
       notifResult,
       buyerChatsResult,
       sellerChatsResult,
-    ] = await Promise.all([
+    ] = await Promise.allSettled([
       supabase
         .from("profiles")
         .select("nombre, foto, es_vendedor")
@@ -61,18 +63,28 @@ export default async function MarketplaceLayout({
         .eq("vendedor_id", user.id),
     ]);
 
-    profile = profileResult.data;
-    isAdmin = (rolesResult.data?.length ?? 0) > 0;
-    unreadNotifications = notifResult.count ?? 0;
-    unreadChatMessages =
-      (buyerChatsResult.data?.reduce(
-        (sum, c) => sum + (c.no_leidos_comprador ?? 0),
-        0,
-      ) ?? 0) +
-      (sellerChatsResult.data?.reduce(
-        (sum, c) => sum + (c.no_leidos_vendedor ?? 0),
-        0,
-      ) ?? 0);
+    profile =
+      profileResult.status === "fulfilled" ? profileResult.value.data : null;
+    isAdmin =
+      rolesResult.status === "fulfilled" &&
+      (rolesResult.value.data?.length ?? 0) > 0;
+    unreadNotifications =
+      notifResult.status === "fulfilled" ? notifResult.value.count ?? 0 : 0;
+    const buyerCount =
+      buyerChatsResult.status === "fulfilled"
+        ? buyerChatsResult.value.data?.reduce(
+            (sum, c) => sum + (c.no_leidos_comprador ?? 0),
+            0,
+          ) ?? 0
+        : 0;
+    const sellerCount =
+      sellerChatsResult.status === "fulfilled"
+        ? sellerChatsResult.value.data?.reduce(
+            (sum, c) => sum + (c.no_leidos_vendedor ?? 0),
+            0,
+          ) ?? 0
+        : 0;
+    unreadChatMessages = buyerCount + sellerCount;
   }
 
   const isVendedor = profile?.es_vendedor ?? false;
