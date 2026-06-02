@@ -52,7 +52,7 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
         {/* Crown Image */}
         <div className={cn("absolute z-20 pointer-events-none", isFirst ? "-top-10 w-[4.5rem] h-[4.5rem]" : "-top-7 w-14 h-14")}>
           <img 
-            src={`/images/rankings/crown-${position}.webp`} 
+            src={`/images/rankings/crown-${position}.png`} 
             alt={`Corona lugar ${position}`}
             className="w-full h-full object-contain drop-shadow-2xl"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
