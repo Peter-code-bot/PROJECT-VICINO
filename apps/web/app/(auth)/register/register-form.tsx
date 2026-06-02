@@ -110,6 +110,18 @@ export function RegisterForm() {
         />
       </div>
 
+      <p className="text-xs text-muted-foreground/80 mt-4 leading-relaxed">
+        Al hacer clic en "Crear cuenta" o continuar con Google, aceptas nuestros{" "}
+        <Link href="/terminos" className="text-primary hover:underline" target="_blank">
+          Términos y Condiciones
+        </Link>{" "}
+        y nuestra{" "}
+        <Link href="/privacidad" className="text-primary hover:underline" target="_blank">
+          Política de Privacidad
+        </Link>
+        .
+      </p>
+
       <button
         type="submit"
         disabled={loading}
