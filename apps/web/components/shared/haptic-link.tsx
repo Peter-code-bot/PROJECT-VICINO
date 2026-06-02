@@ -28,9 +28,13 @@ export function HapticLink({
   ...rest
 }: HapticLinkProps) {
   function handleClick(e: MouseEvent<HTMLAnchorElement>) {
+    // codex follow-up L1: ejecutar onClick del caller PRIMERO. Si el caller
+    // hace preventDefault, asumimos que el click se cancelo y NO disparamos
+    // el haptic (no debe sonar para un tap cancelado).
+    onClick?.(e);
+    if (e.defaultPrevented) return;
     if (haptic === "medium") void hapticMedium();
     else void hapticLight();
-    onClick?.(e);
   }
   return (
     <Link {...rest} onClick={handleClick}>

@@ -415,12 +415,13 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       setError("Selecciona al menos una categoría");
       return;
     }
-    // A4 sub-fase 4.1: haptic Medium en commit de alto stake.
-    void hapticMedium();
     if (categories.filter((c) => c.is_primary).length !== 1) {
       setError("Marca exactamente una categoría como principal");
       return;
     }
+    // A4 sub-fase 4.1 (codex follow-up): haptic Medium DESPUES de validar
+    // ambos checks (count + primary). Asi no suena en envio fallido.
+    void hapticMedium();
     submittingRef.current = true;
     setError("");
     setLoading(true);

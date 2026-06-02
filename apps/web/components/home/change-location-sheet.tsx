@@ -172,6 +172,17 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
   useBodyScrollLock(open);
 
+  // A4 sub-fase 4.2 (codex follow-up): Escape listener para el smart back
+  // button del APK (dispatch sintetico cuando data-modal-open="true").
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   // Reset state al abrir
   useEffect(() => {
     if (!open) return;
@@ -303,7 +314,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             aria-hidden
           />
-          <div className="pointer-events-none fixed inset-0 z-50 flex items-end">
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-end" data-modal-open="true">
             <motion.div
               key="sheet"
               role="dialog"

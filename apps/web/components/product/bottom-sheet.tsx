@@ -80,7 +80,7 @@ export function BottomSheet({
   const enter = ENTER_BY_SIDE[side];
 
   return (
-    <div className="fixed inset-0" style={{ zIndex }}>
+    <div className="fixed inset-0" style={{ zIndex }} data-modal-open="true">
       <button
         type="button"
         aria-label="Cerrar"

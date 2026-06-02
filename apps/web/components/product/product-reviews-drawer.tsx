@@ -92,7 +92,7 @@ export function ProductReviewsDrawer({
       : "absolute right-0 top-0 bottom-0 w-[92vw] max-w-md bg-background border-l border-border flex flex-col animate-slide-in-right";
 
   return (
-    <div className={overlayWrapperClass}>
+    <div className={overlayWrapperClass} data-modal-open="true">
       <div
         className="absolute inset-0 bg-black/60"
         onClick={onClose}

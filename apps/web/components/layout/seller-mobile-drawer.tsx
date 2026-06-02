@@ -28,6 +28,17 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
 
   useBodyScrollLock(open);
 
+  // A4 sub-fase 4.2 (codex follow-up): Escape listener para el smart back
+  // button del APK (dispatch sintetico cuando data-modal-open="true").
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
   return (
     <>
       {/* Hamburger trigger — mobile only */}
@@ -41,7 +52,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
 
       {/* Drawer + backdrop */}
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden" data-modal-open="true">
           <div
             className="absolute inset-0 animate-fade-in bg-black/60"
             onClick={() => setOpen(false)}

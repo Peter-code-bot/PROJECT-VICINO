@@ -210,6 +210,7 @@ export function SaleConfirmationCard({
   }
 
   async function handleCancel() {
+    void hapticMedium();
     setLoading(true);
     setError("");
     const result = await cancelSale(sc.id);

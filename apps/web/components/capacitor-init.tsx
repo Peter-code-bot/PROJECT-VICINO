@@ -49,51 +49,60 @@ export function CapacitorInit() {
       if (state.cancelled) return;
 
       const handleBackButton = async ({ canGoBack }: { canGoBack: boolean }) => {
-        // (1) Radix modal abierto? Dispatch Escape sintetico, Radix cierra
-        // automaticamente. NO triggers el backButton evento nativo (es JS
-        // keydown, distinto layer), asi que no hay loop.
-        const radixOpen = document.querySelector(
-          '[data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="alertdialog"]',
-        );
-        if (radixOpen) {
-          document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-          return;
-        }
+        // A4 sub-fase 4.2 (codex follow-up H4): try/catch boundary. Capacitor
+        // invoca el listener con .catch() floateado — un reject (ej. import
+        // de sonner falla por red) burbujearia como unhandledRejection sin
+        // este wrapper. Fail-silent: el back button no debe crashear la app.
+        try {
+          // (1) Radix modal abierto? Dispatch Escape sintetico, Radix cierra
+          // automaticamente. NO triggers el backButton evento nativo (es JS
+          // keydown, distinto layer), asi que no hay loop.
+          const radixOpen = document.querySelector(
+            '[data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="alertdialog"]',
+          );
+          if (radixOpen) {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+            return;
+          }
 
-        // (2) Custom modal abierto? Convencion data-modal-open="true".
-        // El modal debe tener su propio listener de keydown Escape que
-        // llame su setOpen(false).
-        const customOpen = document.querySelector('[data-modal-open="true"]');
-        if (customOpen) {
-          document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-          return;
-        }
+          // (2) Custom modal abierto? Convencion data-modal-open="true".
+          // El modal debe tener su propio listener de keydown Escape que
+          // llame su setOpen(false).
+          const customOpen = document.querySelector('[data-modal-open="true"]');
+          if (customOpen) {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+            return;
+          }
 
-        // (3) Tab "siguiendo" del home? Volver a "parati" via history.back
-        // (el user llego a /?feed=following clickeando el Link de HomeTabs
-        // desde /, asi que history.back lo lleva a /).
-        const url = new URL(window.location.href);
-        if (url.pathname === "/" && url.searchParams.get("feed") === "following") {
-          window.history.back();
-          return;
-        }
+          // (3) Tab "siguiendo" del home? Volver a "parati" via history.back
+          // (el user llego a /?feed=following clickeando el Link de HomeTabs
+          // desde /, asi que history.back lo lleva a /).
+          const url = new URL(window.location.href);
+          if (url.pathname === "/" && url.searchParams.get("feed") === "following") {
+            window.history.back();
+            return;
+          }
 
-        // (4) Hay history? Back normal.
-        if (canGoBack) {
-          window.history.back();
-          return;
-        }
+          // (4) Hay history? Back normal.
+          if (canGoBack) {
+            window.history.back();
+            return;
+          }
 
-        // (5) Root + double-tap-exit. Primer tap: toast + arranca grace
-        // window. Segundo tap dentro de TOAST_GRACE_MS: App.exitApp.
-        const now = Date.now();
-        if (now - lastBackPress < TOAST_GRACE_MS) {
-          await App.exitApp();
-          return;
+          // (5) Root + double-tap-exit. Primer tap: toast + arranca grace
+          // window. Segundo tap dentro de TOAST_GRACE_MS: App.exitApp.
+          const now = Date.now();
+          if (now - lastBackPress < TOAST_GRACE_MS) {
+            await App.exitApp();
+            return;
+          }
+          lastBackPress = now;
+          const { toast } = await import("sonner");
+          toast("Presiona de nuevo para salir", { duration: TOAST_GRACE_MS });
+        } catch (err) {
+          // eslint-disable-next-line no-console -- back button handler debe loguear errores nativos
+          console.error("[capacitor-init] handleBackButton error:", err);
         }
-        lastBackPress = now;
-        const { toast } = await import("sonner");
-        toast("Presiona de nuevo para salir", { duration: TOAST_GRACE_MS });
       };
 
       const backH = await App.addListener("backButton", handleBackButton);
@@ -141,10 +150,12 @@ export function CapacitorInit() {
 
       // --- Splash screen: hide after web loaded ---
       const { SplashScreen } = await import("@capacitor/splash-screen");
+      if (state.cancelled) return;
       setTimeout(() => SplashScreen.hide({ fadeOutDuration: 300 }), 500);
 
       // --- Status bar ---
       const { StatusBar, Style } = await import("@capacitor/status-bar");
+      if (state.cancelled) return;
       StatusBar.setStyle({ style: Style.Dark });
       StatusBar.setBackgroundColor({ color: "#0D0D1A" });
 
