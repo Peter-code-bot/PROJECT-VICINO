@@ -76,6 +76,18 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* A3 sub-fase 3.5: preconnect a Supabase para que el handshake TLS
+            empiece antes de que el cliente supabase-js dispare su primera
+            request (auth getUser, storage signed URL, REST). crossOrigin
+            anonymous es OBLIGATORIO: el TLS connection pool segmenta por el
+            atributo crossorigin, y supabase-js manda requests CORS desde el
+            browser, asi que sin crossOrigin la conexion preconectada NO se
+            reusa. Project ref hardcoded (preconnect no soporta wildcards). */}
+        <link
+          rel="preconnect"
+          href="https://oxxdkwywprkfghhbnoto.supabase.co"
+          crossOrigin="anonymous"
+        />
         <Script src="/theme-init.js" strategy="beforeInteractive" />
       </head>
       <body className="min-h-full flex flex-col font-sans antialiased bg-background text-foreground">
