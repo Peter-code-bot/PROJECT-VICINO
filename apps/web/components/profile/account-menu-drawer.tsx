@@ -29,6 +29,20 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userI
 
   useBodyScrollLock(open);
 
+  // A4 sub-fase 4.2: convencion data-modal-open + Escape listener.
+  // El smart back button del APK dispara un KeyboardEvent("Escape")
+  // sintetico cuando detecta data-modal-open="true". Cualquier futuro
+  // custom drawer (que no use Radix Dialog underneath) debe adoptar este
+  // mismo patron para ser back-button-aware.
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
   return (
     <>
       <div onClick={() => setOpen(true)}>{trigger}</div>
@@ -37,7 +51,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userI
           transform ancestor (Phase 6), which would otherwise constrain
           `position: fixed` to the wrapper instead of the viewport. */}
       {mounted && open && createPortal(
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" data-modal-open="true">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-l border-border flex flex-col animate-slide-in-right">
             {/* Header */}

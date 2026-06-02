@@ -2,37 +2,114 @@
 
 import { useEffect } from "react";
 
+/**
+ * A4 sub-fase 4.2: smart back button + cleanup de los 4 listeners de
+ * Capacitor.
+ *
+ * El back button del WebView consulta un priority order de 5 niveles
+ * (Radix modal -> custom modal -> tab siguiendo -> history -> double-tap-exit)
+ * antes de cualquier navegacion. Los 4 listeners de plugin (backButton,
+ * appUrlOpen, keyboardWillShow, keyboardWillHide) se guardan en un array
+ * de handles y se remueven en el cleanup del useEffect (cierra el follow-up
+ * de A1: listeners no removidos -> acumulacion bajo StrictMode/HMR).
+ *
+ * Convencion para custom modals: setear data-modal-open="true" en el root
+ * del modal cuando abierto + escuchar keydown Escape para cerrarse. Radix
+ * Dialog/DropdownMenu/Popover lo hacen automaticamente (renderean
+ * [data-state="open"] y ya escuchan Escape).
+ */
+
+const TOAST_GRACE_MS = 2000;
+
+// Module-level state para el double-tap-exit. Persiste a traves del lifecycle
+// del componente; se resetea en el cleanup del useEffect para evitar arrastrar
+// estado a un remount.
+let lastBackPress = 0;
+
 export function CapacitorInit() {
   useEffect(() => {
+    // El cleanup debe poder remover handles que resuelven DESPUES de que el
+    // effect ya unmount (StrictMode dev / HMR). cancelled = true desde el
+    // cleanup; cada await checkpoint verifica el flag y si ya esta cancelado,
+    // remueve inmediatamente el handle que acababa de resolver.
+    const state = {
+      handles: [] as Array<{ remove: () => Promise<void> }>,
+      cancelled: false,
+    };
+
     const init = async () => {
       const { Capacitor } = await import("@capacitor/core");
-      if (!Capacitor.isNativePlatform()) return;
+      if (state.cancelled || !Capacitor.isNativePlatform()) return;
 
       // Mark native context for CSS targeting (scrollbar hiding, etc.)
       document.body.classList.add("is-capacitor");
 
-      // --- Back button (Android) ---
+      // --- Smart back button ---
       const { App } = await import("@capacitor/app");
-      App.addListener("backButton", ({ canGoBack }) => {
+      if (state.cancelled) return;
+
+      const handleBackButton = async ({ canGoBack }: { canGoBack: boolean }) => {
+        // (1) Radix modal abierto? Dispatch Escape sintetico, Radix cierra
+        // automaticamente. NO triggers el backButton evento nativo (es JS
+        // keydown, distinto layer), asi que no hay loop.
+        const radixOpen = document.querySelector(
+          '[data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="alertdialog"]',
+        );
+        if (radixOpen) {
+          document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+          return;
+        }
+
+        // (2) Custom modal abierto? Convencion data-modal-open="true".
+        // El modal debe tener su propio listener de keydown Escape que
+        // llame su setOpen(false).
+        const customOpen = document.querySelector('[data-modal-open="true"]');
+        if (customOpen) {
+          document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+          return;
+        }
+
+        // (3) Tab "siguiendo" del home? Volver a "parati" via history.back
+        // (el user llego a /?feed=following clickeando el Link de HomeTabs
+        // desde /, asi que history.back lo lleva a /).
+        const url = new URL(window.location.href);
+        if (url.pathname === "/" && url.searchParams.get("feed") === "following") {
+          window.history.back();
+          return;
+        }
+
+        // (4) Hay history? Back normal.
         if (canGoBack) {
           window.history.back();
-        } else {
-          App.exitApp();
+          return;
         }
-      });
+
+        // (5) Root + double-tap-exit. Primer tap: toast + arranca grace
+        // window. Segundo tap dentro de TOAST_GRACE_MS: App.exitApp.
+        const now = Date.now();
+        if (now - lastBackPress < TOAST_GRACE_MS) {
+          await App.exitApp();
+          return;
+        }
+        lastBackPress = now;
+        const { toast } = await import("sonner");
+        toast("Presiona de nuevo para salir", { duration: TOAST_GRACE_MS });
+      };
+
+      const backH = await App.addListener("backButton", handleBackButton);
+      if (state.cancelled) {
+        void backH.remove();
+        return;
+      }
+      state.handles.push(backH);
 
       // --- Deep links ---
-      // OAuth callback URLs (vicino://auth/callback*) are owned EXCLUSIVELY by
-      // OAuthUrlListener (components/auth/oauth-url-listener.tsx). It calls
-      // exchangeCodeForSession and then window.location.replace("/"). Without
-      // the guard below, this listener races OAuthUrlListener and navigates the
-      // WebView to "/callback" first, stripping the ?code= query string. The
-      // /callback page (apps/web/app/callback/page.tsx) covers the landing by
-      // forwarding to /auth/callback, but the result is a non-deterministic
-      // multi-hop navigation that defeats F2's window.location.replace("/").
+      // OAuth callback URLs (vicino://auth/callback*) son owned EXCLUSIVAMENTE
+      // por OAuthUrlListener. Sin este guard, este listener race-condicionaria
+      // contra OAuthUrlListener y stripearia el ?code= del query string.
       const OAUTH_CALLBACK_PREFIX = "vicino://auth/callback";
 
-      App.addListener("appUrlOpen", ({ url }) => {
+      const urlH = await App.addListener("appUrlOpen", ({ url }) => {
         if (url.startsWith(OAUTH_CALLBACK_PREFIX)) return;
         try {
           const u = new URL(url);
@@ -43,9 +120,15 @@ export function CapacitorInit() {
           }
         } catch {}
       });
+      if (state.cancelled) {
+        void urlH.remove();
+        return;
+      }
+      state.handles.push(urlH);
 
-      // Check cold-start deep link
+      // Cold-start deep link
       const launchUrl = await App.getLaunchUrl();
+      if (state.cancelled) return;
       if (launchUrl?.url && !launchUrl.url.startsWith(OAUTH_CALLBACK_PREFIX)) {
         try {
           const u = new URL(launchUrl.url);
@@ -68,21 +151,43 @@ export function CapacitorInit() {
       // --- Keyboard: set CSS variable for keyboard height ---
       try {
         const { Keyboard } = await import("@capacitor/keyboard");
-        Keyboard.addListener("keyboardWillShow", (info) => {
+        const kbShowH = await Keyboard.addListener("keyboardWillShow", (info) => {
           document.documentElement.style.setProperty(
             "--keyboard-height",
-            `${info.keyboardHeight}px`
+            `${info.keyboardHeight}px`,
           );
           document.body.classList.add("keyboard-open");
         });
-        Keyboard.addListener("keyboardWillHide", () => {
+        if (state.cancelled) {
+          void kbShowH.remove();
+          return;
+        }
+        state.handles.push(kbShowH);
+
+        const kbHideH = await Keyboard.addListener("keyboardWillHide", () => {
           document.documentElement.style.setProperty("--keyboard-height", "0px");
           document.body.classList.remove("keyboard-open");
         });
+        if (state.cancelled) {
+          void kbHideH.remove();
+          return;
+        }
+        state.handles.push(kbHideH);
       } catch {}
     };
 
     init().catch(() => {});
+
+    return () => {
+      state.cancelled = true;
+      // Remove all listeners that already resolved.
+      state.handles.forEach((h) => {
+        void h.remove();
+      });
+      // Reset double-tap grace window — evita que un mount nuevo herede
+      // un lastBackPress stale de la sesion anterior.
+      lastBackPress = 0;
+    };
   }, []);
 
   return null;
