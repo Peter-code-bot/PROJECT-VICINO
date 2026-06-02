@@ -197,6 +197,14 @@ html {
      pestañas. En Windows la barra ocupa espacio físico; sin esto, las páginas
      con scroll se ven más angostas que las cortas (p. ej. Verificación). */
   scrollbar-gutter: stable;
+  /* A4 sub-fase 4.3: contiene el overscroll al boundary de la pagina. En el
+     WebView Android, sin esta regla, el body propaga el overscroll al ancestor
+     y aparece el glow azul parasito en cada lista que no tenga PullToRefresh-
+     Wrapper. `contain` (no `none`) preserva el pull-to-refresh donde aplica
+     porque PTR opera sobre touchstart/move/end events, no sobre overscroll
+     events. Inner scrollers (modales, drawers, listas largas) no se afectan:
+     la propiedad gobierna la propagacion UP, no DOWN. */
+  overscroll-behavior-y: contain;
 }
 
 body {
@@ -204,6 +212,9 @@ body {
   color: var(--fg);
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   line-height: 1.6;
+  /* A4 sub-fase 4.3: mismo razonamiento que en html. Definido en ambos para
+     navegadores que segmentan el overscroll chain entre html y body. */
+  overscroll-behavior-y: contain;
   overflow-x: hidden; /* fallback: navegadores sin overflow:clip */
   overflow-x: clip;   /* iOS Safari / modernos: contención fiable del ancho */
   max-width: 100vw;
