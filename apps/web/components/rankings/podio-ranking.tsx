@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -51,9 +52,12 @@ function PodioSlot({ seller, position }: PodioSlotProps) {
       <div className="relative z-10 flex flex-col items-center">
         {/* Crown Image */}
         <div className={cn("absolute z-20 pointer-events-none", isFirst ? "-top-10 w-[4.5rem] h-[4.5rem]" : "-top-7 w-14 h-14")}>
-          <img 
-            src={`/images/rankings/crown-${position}.png`} 
+          <Image
+            src={`/images/rankings/crown-${position}.webp`}
             alt={`Corona lugar ${position}`}
+            width={isFirst ? 72 : 56}
+            height={isFirst ? 72 : 56}
+            sizes={isFirst ? "72px" : "56px"}
             className="w-full h-full object-contain drop-shadow-2xl"
           />
         </div>
