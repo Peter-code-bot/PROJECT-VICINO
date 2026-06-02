@@ -7,6 +7,7 @@ import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
 import { HomeTabs } from "@/components/home/home-tabs";
+import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
