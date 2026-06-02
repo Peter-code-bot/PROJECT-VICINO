@@ -99,38 +99,89 @@ export function ProfileHeader({
             </>
           )}
 
-          <div className="flex gap-5 text-center flex-wrap justify-center sm:justify-start">
-            <div>
-              <p className="font-heading font-bold text-sm">{profile.total_sales}</p>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Ventas</p>
-            </div>
-            <div>
-              <p className="font-heading font-bold text-sm">{purchaseCount}</p>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Compras</p>
-            </div>
-            <div>
-              <p className="font-heading font-bold text-sm">{productCount}</p>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Productos</p>
-            </div>
-            {profile.es_vendedor && (
-              <div>
-                <p className="font-heading font-bold text-sm">{followersCount}</p>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Seguidores</p>
-              </div>
-            )}
-            <div>
-              <p className="font-heading font-bold text-sm">{followingCount}</p>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Siguiendo</p>
-            </div>
-            {Number(profile.average_rating) > 0 && (
-              <div>
-                <p className="font-heading font-bold text-sm flex items-center gap-0.5">
-                  <Star className="w-3.5 h-3.5 text-gold fill-gold" />
-                  {Number(profile.average_rating).toFixed(1)}
+          {/* Stats — Fila Compacta */}
+          <div className="w-full">
+            {/* Línea superior verde */}
+            <div
+              className="h-px w-full mb-3"
+              style={{ background: 'linear-gradient(to right, transparent, #2E8773, transparent)' }}
+            />
+
+            {/* Fila de stats */}
+            <div className="flex w-full text-center">
+
+              {/* Ventas */}
+              <div className="flex-1 flex flex-col items-center gap-1">
+                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
+                  {profile.total_sales}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Rating</p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                  Ventas
+                </p>
               </div>
-            )}
+
+              {/* Compras */}
+              <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
+                  {purchaseCount}
+                </p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                  Compras
+                </p>
+              </div>
+
+              {/* Productos */}
+              <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
+                  {productCount}
+                </p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                  Productos
+                </p>
+              </div>
+
+              {/* Seguidores — solo si es vendedor */}
+              {profile.es_vendedor && (
+                <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+                  <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
+                    {followersCount}
+                  </p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                    Seguidores
+                  </p>
+                </div>
+              )}
+
+              {/* Siguiendo */}
+              <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+                <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground">
+                  {followingCount}
+                </p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                  Siguiendo
+                </p>
+              </div>
+
+              {/* Rating — solo si tiene calificaciones */}
+              {Number(profile.average_rating) > 0 && (
+                <div className="flex-1 flex flex-col items-center gap-1 border-l border-white/[0.07]">
+                  <p className="font-heading font-bold text-[13px] sm:text-[15px] leading-none text-foreground flex items-center gap-0.5">
+                    <Star className="w-3 h-3 text-gold fill-gold" />
+                    {Number(profile.average_rating).toFixed(1)}
+                  </p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted-foreground leading-none">
+                    Rating
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Línea inferior verde */}
+            <div
+              className="h-px w-full mt-3"
+              style={{ background: 'linear-gradient(to right, transparent, #2E8773, transparent)' }}
+            />
           </div>
         </div>
       </div>
