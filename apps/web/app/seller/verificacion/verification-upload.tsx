@@ -40,6 +40,19 @@ const UNIVERSITIES = [
   "Otra"
 ];
 
+const UNIVERSITY_COLORS: Record<string, string> = {
+  "BUAP": "#003B5C",
+  "UDLAP": "#006F53",
+  "UPAEP": "#E31837",
+  "Tecnológico de Monterrey": "#0033A0",
+  "Universidad Iberoamericana": "#E03C31",
+  "Universidad Anáhuac": "#FF5900",
+  "UVM": "#CE1126",
+  "UMAD": "#003E7E",
+  "UVP": "#003366",
+  "Otra": "#0ea5e9" // sky-500
+};
+
 export function VerificationUpload({
   userId,
   verification,
@@ -256,14 +269,19 @@ export function VerificationUpload({
             type="button"
             onClick={() => setDocType("Credencial Universitaria")}
             disabled={uploading !== null || isAnalyzing}
-            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
-              docType === "Credencial Universitaria"
-                ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
-                : "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
-            } disabled:opacity-50`}
+            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all disabled:opacity-50 ${
+              docType !== "Credencial Universitaria"
+                ? "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
+                : ""
+            }`}
+            style={docType === "Credencial Universitaria" ? {
+              borderColor: UNIVERSITY_COLORS[university] || "#0ea5e9",
+              backgroundColor: `${UNIVERSITY_COLORS[university] || "#0ea5e9"}1A`,
+              boxShadow: `0 4px 6px -1px ${UNIVERSITY_COLORS[university] || "#0ea5e9"}1A`
+            } : undefined}
           >
             <span className="text-3xl">🎓</span>
-            <span className="text-sm font-semibold">Credencial Universitaria</span>
+            <span className="text-sm font-semibold" style={docType === "Credencial Universitaria" ? { color: UNIVERSITY_COLORS[university] || "#0ea5e9" } : undefined}>Credencial Universitaria</span>
           </button>
         </div>
 
