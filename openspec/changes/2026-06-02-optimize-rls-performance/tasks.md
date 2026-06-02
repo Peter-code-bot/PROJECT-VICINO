@@ -79,3 +79,19 @@ If post-run smoke test reveals a regression:
 
 PKCE codes, sessions, user data are NOT affected by any rollback — RLS changes only
 affect access control evaluation, not stored data.
+
+---
+
+## Known follow-ups (separate change, do NOT bundle into A2)
+
+- **`dedup-media-assets-legacy-policies`** — 3 Dashboard-created policies on
+  `public.media_assets` (`Owner insert media`, `Owner update media`, `Owner delete media`)
+  coexist with the canonical migration-defined set (`media insert/update/delete ownership aware`).
+  A2 wrapped them in BLOCK 6 (`auth.uid()` -> `(select auth.uid())`) to close the InitPlan target,
+  but did NOT change semantics. Open a separate change post-A2 to decide DROP vs keep based on
+  whether the ghosts duplicate or weaken the `20260528000001_media_assets_rls_tighten_and_backfill`
+  hardening. Confirmed all 3 are `TO authenticated` with real ownership checks (EXISTS against
+  products_services/chats on update+delete; insert via with_check).
+- **`Admin read verification docs`** — migration `20260429000001_admin_verification_docs_read.sql`
+  was never applied to production. Decide if the admin verification flow needs the policy
+  re-created or document as deferred.

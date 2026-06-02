@@ -1325,3 +1325,63 @@ WHERE schemaname IN ('public', 'storage')
 --   WHERE chat_id = '00000000-0000-0000-0000-000000000000'
 --   ORDER BY created_at DESC
 --   LIMIT 50;
+
+
+-- =============================================================================
+-- BLOCK 6 — WRAP 3 LEGACY DASHBOARD-CREATED POLICIES ON media_assets
+-- =============================================================================
+-- Surfaced by BLOCK 5a verification after BLOCK 3 COMMIT:
+--   Owner insert media, Owner update media, Owner delete media
+-- These 3 policies on public.media_assets were created via Supabase Dashboard
+-- (not in any repo migration) and coexist with the canonical "ownership aware"
+-- set from migration 20260528000001_media_assets_rls_tighten_and_backfill.sql.
+--
+-- Confirmed by Pedro 2026-06-02 against pg_policy:
+--   - All 3 are TO authenticated
+--   - All 3 have strict ownership checks (admin OR producto/servicio creador OR
+--     profile owner OR chat participant OR review reviewer)
+--   - NOT lax, NOT a security hole
+--
+-- This block wraps each auth.uid() in (select auth.uid()) BYTE-FOR-BYTE
+-- preserving the original USING/WITH CHECK. TO clause omitted to preserve
+-- existing TO authenticated (per Postgres ALTER POLICY semantics).
+--
+-- Dedup vs canonical "media ... ownership aware" is a SEPARATE follow-up
+-- (see tasks.md "Known follow-ups" — dedup-media-assets-legacy-policies).
+-- =============================================================================
+BEGIN;
+
+ALTER POLICY "Owner delete media" ON public.media_assets
+  USING (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
+ALTER POLICY "Owner insert media" ON public.media_assets
+  WITH CHECK (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
+ALTER POLICY "Owner update media" ON public.media_assets
+  USING (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
+-- Pre-COMMIT verification (inside this transaction):
+SELECT COUNT(*) AS policies_still_inline_auth_uid
+FROM pg_policies
+WHERE schemaname IN ('public', 'storage')
+  AND (
+    (qual ~* 'auth\.uid\(\)' AND qual !~* '\(\s*select\s+auth\.uid')
+    OR (with_check ~* 'auth\.uid\(\)' AND with_check !~* '\(\s*select\s+auth\.uid')
+  );
+-- Expected: 0 (was 3 before BLOCK 6)
+
+SELECT COUNT(*) AS policies_with_to_authenticated
+FROM pg_policies
+WHERE schemaname IN ('public', 'storage')
+  AND 'authenticated' = ANY(roles);
+-- Expected: 74 (UNCHANGED — TO authenticated preserved by omitting TO in ALTER)
+
+COMMIT;
+-- ^ Persisted. Total optimized: 78 policies (75 from BLOCK 3 + 3 from BLOCK 6).
+-- After this, re-run BLOCK 5a — should return 0 rows.

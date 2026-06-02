@@ -673,6 +673,27 @@ ALTER POLICY "Owner upload chat media" ON storage.objects
 -- (schema_migrations ledger desynchronized — see memory reference_supabase_project).
 -- TODO follow-up: decide if we re-create this policy or document it as deferred.
 
+-- -------------------------------------------------------------------
+-- public.media_assets — 3 legacy Dashboard-created policies
+-- Coexist with the canonical "ownership aware" set (above).
+-- Wrapped here byte-for-byte preserving the original USING/WITH CHECK.
+-- Dedup pending separate follow-up (dedup-media-assets-legacy-policies).
+-- -------------------------------------------------------------------
+ALTER POLICY "Owner delete media" ON public.media_assets
+  USING (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
+ALTER POLICY "Owner insert media" ON public.media_assets
+  WITH CHECK (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
+ALTER POLICY "Owner update media" ON public.media_assets
+  USING (
+    (has_role((select auth.uid()), 'admin'::app_role) OR ((owner_type = ANY (ARRAY['producto'::text, 'servicio'::text])) AND (EXISTS ( SELECT 1 FROM products_services ps WHERE ((ps.id = media_assets.owner_id) AND (ps.creador_id = (select auth.uid())))))) OR ((owner_type = 'profile'::text) AND (owner_id = (select auth.uid()))) OR ((owner_type = 'chat'::text) AND (EXISTS ( SELECT 1 FROM chats c WHERE ((c.id = media_assets.owner_id) AND ((c.comprador_id = (select auth.uid())) OR (c.vendedor_id = (select auth.uid())))))) OR ((owner_type = 'review'::text) AND (EXISTS ( SELECT 1 FROM reviews r WHERE ((r.id = media_assets.owner_id) AND (r.reviewer_id = (select auth.uid())))))))
+  );
+
 COMMIT;
 
 -- =============================================================================
