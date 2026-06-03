@@ -25,7 +25,7 @@ function tooManyRequests(request: NextRequest): NextResponse {
   url.pathname = "/login";
   url.search = "?error=too_many_requests";
   return NextResponse.redirect(url, {
-    status: 303,
+    status: 303 as const,
     headers: { "Cache-Control": "private, no-store" },
   });
 }
