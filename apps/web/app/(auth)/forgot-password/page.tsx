@@ -15,7 +15,15 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=/perfil/editar`;
+    // /auth/callback is the CLIENT loader page (no code exchange happens
+    // there; web hits this path only as an APK-shared legacy and gets a
+    // safety-net redirect to /). /auth/callback-server is the server
+    // route.ts handler that calls exchangeCodeForSession + redirects via
+    // 303 + Cache-Control: private, no-store. Password recovery MUST
+    // land on the server handler so the recovery code is exchanged for
+    // a session; otherwise the user is redirected to / unauthenticated
+    // and the editar-password flow never gets a usable session.
+    const redirectTo = `${window.location.origin}/auth/callback-server?next=/perfil/editar`;
     const result = await requestPasswordReset(email, redirectTo);
 
     if (result.error) {
