@@ -116,8 +116,11 @@ export default async function HomePage({ searchParams }: Props) {
     }
   }
 
-  let universityProducts: any[] = [];
-  if (viewerUniversity) {
+  // F10: IIFE so TypeScript infers universityProducts directly from the
+  // Supabase SELECT result. Single source of truth; if the SELECT shape
+  // changes the consumers fail to compile.
+  const universityProducts = await (async () => {
+    if (!viewerUniversity) return [];
     const { data: uniSellers } = await supabase
       .from("seller_verification")
       .select("user_id")
@@ -125,30 +128,29 @@ export default async function HomePage({ searchParams }: Props) {
       .eq("status", "approved");
 
     const sellerIds = uniSellers?.map(s => s.user_id) || [];
-    
-    if (sellerIds.length > 0) {
-      const { data: uProducts } = await supabase
-        .from("products_services")
-        .select(`
-          id,
-          titulo,
-          precio,
-          imagen_principal,
-          categoria,
-          slug,
-          created_at,
-          precio_negociable,
-          profiles!inner(nombre, trust_level, average_rating, reviews_count),
-          product_categories(is_primary, categories(slug, nombre))
-        `)
-        .eq("estatus", "disponible")
-        .in("creador_id", sellerIds)
-        .order("created_at", { ascending: false })
-        .limit(20);
-        
-      universityProducts = uProducts ?? [];
-    }
-  }
+    if (sellerIds.length === 0) return [];
+
+    const { data: uProducts } = await supabase
+      .from("products_services")
+      .select(`
+        id,
+        titulo,
+        precio,
+        imagen_principal,
+        categoria,
+        slug,
+        created_at,
+        precio_negociable,
+        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+        product_categories(is_primary, categories(slug, nombre))
+      `)
+      .eq("estatus", "disponible")
+      .in("creador_id", sellerIds)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    return uProducts ?? [];
+  })();
 
   // Fetch "Para ti" data
   const { data: products } = await supabase
@@ -204,30 +206,42 @@ export default async function HomePage({ searchParams }: Props) {
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, 15);
 
-  // Fetch "Siguiendo" data
-  let followingPosts: any[] = [];
-  let followedStoresData: FollowedStore[] = [];
-  let noFollows = false;
-  let nearbyStores: any[] = [];
+  // Fetch "Siguiendo" data.
+  // F10: single IIFE that returns the 4 vars so each is inferred from its
+  // actual Supabase SELECT result (no manual any[]). The three exit paths
+  // (not on following / no follows / has follows) each return a consistent
+  // shape; TypeScript unifies and widens to the broadest array type.
+  const { followingPosts, followedStoresData, noFollows, nearbyStores } =
+    await (async () => {
+      if (feed !== "following" || !user) {
+        return {
+          followingPosts: [],
+          followedStoresData: [] as FollowedStore[],
+          noFollows: false,
+          nearbyStores: [],
+        };
+      }
+      const { data: follows } = await supabase
+        .from("store_follows")
+        .select("store_id, profiles!store_id(id, nombre, foto)")
+        .eq("follower_id", user.id);
 
-  if (feed === "following" && user) {
-    const { data: follows } = await supabase
-      .from("store_follows")
-      .select("store_id, profiles!store_id(id, nombre, foto)")
-      .eq("follower_id", user.id);
-      
-    if (!follows || follows.length === 0) {
-      noFollows = true;
-      // Fetch some suggestions
-      const { data: suggestions } = await supabase
-        .from("profiles")
-        .select("id, nombre, foto, trust_level")
-        .eq("es_vendedor", true)
-        .limit(3);
-      nearbyStores = suggestions ?? [];
-    } else {
+      if (!follows || follows.length === 0) {
+        // Fetch some suggestions
+        const { data: suggestions } = await supabase
+          .from("profiles")
+          .select("id, nombre, foto, trust_level")
+          .eq("es_vendedor", true)
+          .limit(3);
+        return {
+          followingPosts: [],
+          followedStoresData: [] as FollowedStore[],
+          noFollows: true,
+          nearbyStores: suggestions ?? [],
+        };
+      }
       const storeIds = follows.map((f) => f.store_id);
-      
+
       const { data: posts } = await supabase
         .from("products_services")
         .select(`
@@ -247,22 +261,43 @@ export default async function HomePage({ searchParams }: Props) {
         .in("creador_id", storeIds)
         .order("created_at", { ascending: false })
         .limit(50);
-        
-      followingPosts = posts ?? [];
-      
-      followedStoresData = follows.map((f: any) => {
-        const store = f.profiles;
+
+      // F10: normalize the `profiles` embed from supabase-js's default
+      // "array embed" shape into a single object so the JSX consumers
+      // (StorePost props at the bottom of this file) can keep accessing
+      // post.profiles.nombre etc. without per-site Array.isArray guards.
+      // The flatMap drops the (rare) row whose joined profile is missing,
+      // which a `posts.map` would have left as a half-built record.
+      const followingPosts = (posts ?? []).flatMap((p) => {
+        const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+        return profile ? [{ ...p, profiles: profile }] : [];
+      });
+
+      // F10: `f` is now inferred from the typed `follows` array (was `f: any`).
+      // The `f.profiles` embed is typed as an array by supabase-js (it doesn't
+      // statically know the FK is single-target) -- narrow via the same
+      // Array.isArray pattern used elsewhere in the codebase. Filter the rare
+      // empty-embed case so the resulting list never has a half-built entry.
+      const followedStoresData: FollowedStore[] = follows.flatMap((f) => {
+        const store = Array.isArray(f.profiles) ? f.profiles[0] : f.profiles;
+        if (!store) return [];
         const hasPosts = followingPosts.some((p) => p.creador_id === store.id);
-        return {
+        return [{
           id: store.id,
           name: store.nombre,
           letter: store.nombre.charAt(0).toUpperCase(),
           imgUrl: store.foto,
           hasRecentPosts: hasPosts,
-        };
+        }];
       });
-    }
-  }
+
+      return {
+        followingPosts,
+        followedStoresData,
+        noFollows: false,
+        nearbyStores: [],
+      };
+    })();
 
   return (
     <div className="w-full min-w-0 min-h-screen">

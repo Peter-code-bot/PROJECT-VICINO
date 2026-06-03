@@ -29,7 +29,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { updateProductsOrder } from "./actions";
 
 // --- Subcomponente SortableProductCard ---
-function SortableProductCard({ p, isEditing }: { p: any; isEditing: boolean }) {
+// F10: p type derived from ProfileTabsProps["products"] element so the
+// shape stays single-sourced with the parent's typed prop (no `any`).
+type SortableProduct = ProfileTabsProps["products"][number];
+
+function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = {
     transform: CSS.Transform.toString(transform),

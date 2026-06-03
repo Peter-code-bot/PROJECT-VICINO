@@ -48,7 +48,17 @@ export default async function SearchPage({ searchParams }: Props) {
     )
     .eq("estatus", "disponible");
 
-  let topUsers: any[] = [];
+  // F10: derive the topUsers element type from the actual SELECT shape so
+  // there's no manual type that could diverge. The reference builder is
+  // never awaited at runtime; typeof reads the inferred result type at
+  // compile time. Same SELECT string is reused below for execution so
+  // the shape is single-sourced.
+  const sellersTypeRef = supabase
+    .from("profiles")
+    .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count");
+  type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
+
+  let topUsers: Seller[] = [];
   if (params.q) {
     const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
