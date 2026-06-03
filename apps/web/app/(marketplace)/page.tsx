@@ -413,7 +413,12 @@ export default async function HomePage({ searchParams }: Props) {
                     </Link>
                   </div>
                 </div>
-                <ProductCarousel products={all.slice(0, 20)} />
+                {/* P5.1: priorityFirstItem activa el priority/fetchPriority=high
+                    en la primera card del carousel Recientes (infra de A3.3).
+                    Es el candidato LCP del feed Para ti -- las cards arriba
+                    (ZoneCard + Categories + RankingsStrip + ...) son texto/SVG.
+                    Cero costo si el LCP termina siendo otro elemento. */}
+                <ProductCarousel products={all.slice(0, 20)} priorityFirstItem />
               </section>
 
               {/* Per-category carousels */}
@@ -441,7 +446,18 @@ export default async function HomePage({ searchParams }: Props) {
               {/* A5.2: flat infinite-scroll section beyond the initial 150.
                   When catalog < 150, initialCursor is null and the
                   component renders nothing. */}
-              <MasProductos initialCursor={masProductosInitialCursor} />
+              {/* P5.2 (F4 follow-up): key={cursor} fuerza unmount+remount cuando
+                  el cursor cambia post-revalidatePath('/'). Sin el key, useInfiniteCursor
+                  toma initialCursor como valor inicial de useState una sola vez
+                  (no se re-init al cambiar prop) -- post-publish del mismo usuario
+                  en la misma sesion, el componente podria mostrar la pagina vieja
+                  del cursor mezclada con productos que ahora estan en la 150 inicial.
+                  El remount blow-aways el buffer y arranca limpio desde el nuevo
+                  cursor. Defensivo, costo cero. */}
+              <MasProductos
+                key={masProductosInitialCursor ?? "empty"}
+                initialCursor={masProductosInitialCursor}
+              />
             </div>
           ) : (
             /* ─── EMPTY STATE ─────────────────────────────── */
