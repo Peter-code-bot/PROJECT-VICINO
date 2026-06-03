@@ -156,3 +156,28 @@ export function isOAuthDeepLink(url: string): boolean {
 ```
 
 Then replace the three `url.startsWith(OAUTH_DEEP_LINK_CALLBACK)` call sites listed above with `isOAuthDeepLink(url)`. The constant itself stays unchanged (it remains the canonical outbound `redirectTo` value passed to `signInWithOAuth`). `apps/web/lib/auth/native-oauth.ts:26` does not need to change (equality, not a matcher).
+
+---
+
+## Known follow-up — login error rendering (deferred 2026-06-03)
+
+**Background**:
+
+Several auth error paths already redirect the user to `/login?error=<code>`:
+
+- `apps/web/app/auth/callback-server/route.ts:40` — `?error=auth_callback_failed` when OAuth code exchange fails on the server
+- `apps/web/components/auth/oauth-url-listener.tsx:56,67` — `?error=...` for OAuth callbacks on the APK that include an explicit Supabase error or fail the client-side exchange
+- `apps/web/proxy.ts` (MED-3 fix landed in this same change set) — `?error=too_many_requests` when the OAuth-callback rate limit fires
+
+But the login page (`apps/web/app/(auth)/login/page.tsx` + `login-form.tsx`) does NOT currently read or render `?error=`. Users land on a clean sign-in screen with no indication that something went wrong, just an unexplained interrupt of whatever flow they were in.
+
+**Decision (2026-06-03)**: defer. The redirects themselves are an improvement over the previous dead ends (plain 429 text, `not-found` after a failed exchange), and the missing render is a UX polish item, not a functional bug. Catching the gap explicitly here so a future "login UX polish" pass picks it up rather than leaving the inconsistency hidden in the code.
+
+**Fix shape when this is implemented**:
+
+1. Convert `login/page.tsx` to read `searchParams.error` (it can stay a server component; `searchParams` is the natural input).
+2. Pass an `initialError` prop into `LoginForm` (currently a client component with internal `useState<string>` for `error`).
+3. In `LoginForm`, seed `useState` from the prop and render the existing error banner without changes.
+4. Maintain a single source of truth for human-readable error messages per code (small dictionary at the top of the form): `too_many_requests`, `auth_callback_failed`, `access_denied`, plus a generic fallback.
+
+Estimated surface: 2 files, ~25 LOC. Belongs to a separate "auth UX polish" change.
