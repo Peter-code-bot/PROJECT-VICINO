@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { HapticLink } from "@/components/shared/haptic-link";
 import { ProductCarousel } from "@/components/home/product-carousel";
+import { MasProductos } from "@/components/home/mas-productos";
 import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
 import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
@@ -171,6 +172,18 @@ export default async function HomePage({ searchParams }: Props) {
     .limit(150);
 
   const all = products ?? [];
+
+  // A5.2: cursor for <MasProductos>. The DESC fetch above puts the
+  // OLDEST of the initial 150 at the end of the array; getMoreFeedProducts
+  // filters strictly `< cursor` so the flat section starts at product
+  // 151 and never overlaps the carousels above. When the catalog is
+  // smaller than the initial 150 (length < 150), there is nothing more
+  // to load -> initialCursor null -> the section renders nothing.
+  const INITIAL_HOME_PAGE_SIZE = 150;
+  const masProductosInitialCursor =
+    all.length === INITIAL_HOME_PAGE_SIZE && all[all.length - 1]
+      ? (all[all.length - 1]!.created_at as string)
+      : null;
 
   // MP#08 #4 Fase 1A: agrupamos por la PRIMARY del pivote en vez de por
   // categoria TEXT. El embed product_categories ya viene en el SELECT (5c-4).
@@ -424,6 +437,11 @@ export default async function HomePage({ searchParams }: Props) {
                   </section>
                 );
               })}
+
+              {/* A5.2: flat infinite-scroll section beyond the initial 150.
+                  When catalog < 150, initialCursor is null and the
+                  component renders nothing. */}
+              <MasProductos initialCursor={masProductosInitialCursor} />
             </div>
           ) : (
             /* ─── EMPTY STATE ─────────────────────────────── */
