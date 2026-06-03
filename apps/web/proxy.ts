@@ -21,7 +21,13 @@ export async function proxy(request: NextRequest) {
   // bypassable (the supabase-js client posts to *.supabase.co directly,
   // never through Next) and would lock legitimate users out after 5 page
   // navigations.
-  if (path === "/auth/callback") {
+  //
+  // Path: /auth/callback-server is the actual server route handler that
+  // runs exchangeCodeForSession. /auth/callback (without -server) is the
+  // client loader page used as an APK safety net (no code exchange there),
+  // so rate-limiting that path achieved nothing. Pre-fix the path was
+  // wrong; PKCE single-use mitigated abuse but the guard was idle.
+  if (path === "/auth/callback-server") {
     const ip = getClientIp(request.headers);
     const { success } = await check(oauthCallbackRateLimit, ip);
     if (!success) return tooManyRequests();

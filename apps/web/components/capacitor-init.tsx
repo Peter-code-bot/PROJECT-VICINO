@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
 
 /**
  * A4 sub-fase 4.2: smart back button + cleanup de los 4 listeners de
@@ -116,10 +117,11 @@ export function CapacitorInit() {
       // OAuth callback URLs (vicino://auth/callback*) son owned EXCLUSIVAMENTE
       // por OAuthUrlListener. Sin este guard, este listener race-condicionaria
       // contra OAuthUrlListener y stripearia el ?code= del query string.
-      const OAUTH_CALLBACK_PREFIX = "vicino://auth/callback";
-
+      // Constante centralizada en lib/auth/deep-link-constants.ts -- usada
+      // aqui como PREFIJO (startsWith) porque la URL delivered incluye
+      // ?code=... despues del path.
       const urlH = await App.addListener("appUrlOpen", ({ url }) => {
-        if (url.startsWith(OAUTH_CALLBACK_PREFIX)) return;
+        if (url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) return;
         try {
           const u = new URL(url);
           // vicino:// scheme or https links
@@ -138,7 +140,7 @@ export function CapacitorInit() {
       // Cold-start deep link
       const launchUrl = await App.getLaunchUrl();
       if (state.cancelled) return;
-      if (launchUrl?.url && !launchUrl.url.startsWith(OAUTH_CALLBACK_PREFIX)) {
+      if (launchUrl?.url && !launchUrl.url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) {
         try {
           const u = new URL(launchUrl.url);
           const path = u.pathname || u.host || "";

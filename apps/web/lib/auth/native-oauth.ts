@@ -11,8 +11,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
-
-const DEEP_LINK_CALLBACK = "vicino://auth/callback";
+import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
 
 export async function signInWithGoogle(): Promise<{ error?: string }> {
   const supabase = createClient();
@@ -24,7 +23,7 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: DEEP_LINK_CALLBACK,
+        redirectTo: OAUTH_DEEP_LINK_CALLBACK,
         skipBrowserRedirect: true,
       },
     });

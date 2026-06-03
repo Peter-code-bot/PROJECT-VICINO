@@ -161,7 +161,7 @@ The specific gaps closed by A2 (canonical references):
 ## Known follow-ups discovered during A2 (not in this spec)
 
 - **`dedup-media-assets-legacy-policies`** — 3 Dashboard-created policies on `public.media_assets` (`Owner insert media`, `Owner update media`, `Owner delete media`) coexist with the canonical migration-defined set (`media insert/update/delete ownership aware`). A2 wrapped them in BLOCK 6 byte-for-byte preserving semantics; DROP vs keep decision deferred to a separate change after verifying snapshot diffs.
-- **`Admin read verification docs`** — migration `20260429000001_admin_verification_docs_read.sql` was never applied to production (schema_migrations ledger desynchronized). Decide if the admin verification flow needs the policy re-created or document as deferred.
+- **`Admin read verification docs`** — RESOLVED 2026-06-03: the orphan migration `20260429000001_admin_verification_docs_read.sql` was removed from the repo. The admin verification flow at `apps/web/app/admin/verifications/page.tsx` uses `createAdminClient()` (Supabase service-role key) which bypasses RLS entirely, so the missing policy never blocked the flow. Defense-in-depth re-creation is intentionally deferred -- if the admin path is ever refactored to a user-context client, re-introduce the policy at that time.
 
 ## Future enforcement options
 

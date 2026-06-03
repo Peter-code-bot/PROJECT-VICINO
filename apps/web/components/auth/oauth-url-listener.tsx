@@ -13,8 +13,7 @@ import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase/client";
-
-const DEEP_LINK_PREFIX = "vicino://auth/callback";
+import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
 
 export function OAuthUrlListener() {
   const router = useRouter();
@@ -33,7 +32,7 @@ export function OAuthUrlListener() {
 
     async function handleUrl(url: string) {
       if (unmounted) return;
-      if (!url.startsWith(DEEP_LINK_PREFIX)) return;
+      if (!url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) return;
       if (processedUrls.has(url)) return; // CODEX C1: ya procesado.
       processedUrls.add(url);
 
