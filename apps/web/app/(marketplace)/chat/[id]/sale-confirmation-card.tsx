@@ -6,6 +6,7 @@ import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import { hapticMedium } from "@/lib/haptics";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 
 export type ConfirmationStatus = "pendiente" | "esperando" | "completado" | "rechazado";
 
@@ -167,9 +168,53 @@ export function SaleConfirmationCard({
   onRate,
   onPropose
 }: SaleConfirmationCardProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const isPending = loading;
+  // A5.4: optimistic overlay separate from the derived status. The
+  // overlay flips the StatusPill within the same render frame as the
+  // tap; the derived status (computed from `sc` props) catches up when
+  // the parent re-renders after revalidatePath. effectiveStatus =
+  // optimisticStatus ?? derivedStatus -- the overlay wins while present
+  // and yields to the authoritative server-truth once cleared.
+  //
+  // Two distinct optimistic targets (handled by two separate
+  // useOptimisticMutation calls -- one per Server Action):
+  //   confirm -> "esperando" (I confirmed, waiting for the other party)
+  //   cancel  -> "rechazado" (sale is dead)
+  //
+  // The wrapper's rollback (returned from onMutate) restores the
+  // previous overlay snapshot on error, so the pill returns to the
+  // derived status with NO orphan state.
+  const [optimisticStatus, setOptimisticStatus] = useState<ConfirmationStatus | null>(null);
+
+  const confirmMutation = useOptimisticMutation(confirmSale, {
+    onMutate: () => {
+      // Haptic in onMutate (consistent with favorite-button), fires
+      // EXACTLY once per user tap. NOT in the rollback function below
+      // -- rollback is a silent state restore, no haptic on revert.
+      void hapticMedium();
+      const previous = optimisticStatus;
+      setOptimisticStatus("esperando");
+      return () => setOptimisticStatus(previous);
+    },
+    onSuccess: () => {
+      // Server succeeded + revalidatePath -> parent will re-render with
+      // updated `sc`, derived status will be authoritative. Clear the
+      // overlay so derivedStatus wins through effectiveStatus.
+      setOptimisticStatus(null);
+    },
+  });
+
+  const cancelMutation = useOptimisticMutation(cancelSale, {
+    onMutate: () => {
+      void hapticMedium();
+      const previous = optimisticStatus;
+      setOptimisticStatus("rechazado");
+      return () => setOptimisticStatus(previous);
+    },
+    onSuccess: () => setOptimisticStatus(null),
+  });
+
+  const isPending = confirmMutation.isPending || cancelMutation.isPending;
+  const error = confirmMutation.error ?? cancelMutation.error ?? "";
 
   const productData = Array.isArray(sc.products_services)
     ? sc.products_services[0]
@@ -181,41 +226,52 @@ export function SaleConfirmationCard({
   const myConfirmed = isBuyer ? sc.buyer_confirmed : sc.seller_confirmed;
   const otherConfirmed = isBuyer ? sc.seller_confirmed : sc.buyer_confirmed;
   const isCompleted = sc.status === "completed";
-  
-  let status: ConfirmationStatus = "pendiente";
+
+  let derivedStatus: ConfirmationStatus = "pendiente";
   if (sc.status === "rejected" || sc.rejected_by) {
-    status = "rechazado";
+    derivedStatus = "rechazado";
   } else if (isCompleted) {
-    status = "completado";
+    derivedStatus = "completado";
   } else if (myConfirmed && !otherConfirmed) {
-    status = "esperando";
+    derivedStatus = "esperando";
   }
 
-  const rejected = status === "rechazado";
-  const done = status === "completado";
+  // A5.4: the overlay wins while non-null; once mutation.onSuccess
+  // clears it, the parent's revalidated `sc` drives derivedStatus and
+  // effectiveStatus collapses back to the authoritative server view.
+  const effectiveStatus: ConfirmationStatus = optimisticStatus ?? derivedStatus;
+
+  const rejected = effectiveStatus === "rechazado";
+  const done = effectiveStatus === "completado";
 
   const myRole = isBuyer ? "comprador" : "vendedor";
   const otherRole = isBuyer ? "vendedor" : "comprador";
 
-  const myStepState = rejected && sc.rejected_by === myRole ? "rejected" : (myConfirmed ? "done" : "pending");
-  const otherStepState = rejected && sc.rejected_by === otherRole ? "rejected" : (otherConfirmed ? "done" : "pending");
+  // Step indicators reflect the OPTIMISTIC view: when the user taps
+  // Confirm, their own step flips to "done" within the same frame
+  // (myConfirmed-OR-optimistic-confirm). Cancel flips to "rejected"
+  // for whichever side triggered it (the current user, since cancel
+  // is the path through this card's CTA).
+  const optimisticMyConfirmed = optimisticStatus === "esperando" ? true : myConfirmed;
+  const optimisticRejectedByMe = optimisticStatus === "rechazado";
 
-  async function handleConfirm() {
-    void hapticMedium();
-    setLoading(true);
-    setError("");
-    const result = await confirmSale(sc.id);
-    if (result?.error) setError(result.error);
-    setLoading(false);
+  const myStepState =
+    (rejected && (sc.rejected_by === myRole || optimisticRejectedByMe))
+      ? "rejected"
+      : (optimisticMyConfirmed ? "done" : "pending");
+  const otherStepState =
+    rejected && sc.rejected_by === otherRole
+      ? "rejected"
+      : otherConfirmed
+        ? "done"
+        : "pending";
+
+  function handleConfirm() {
+    void confirmMutation.mutate(sc.id);
   }
 
-  async function handleCancel() {
-    void hapticMedium();
-    setLoading(true);
-    setError("");
-    const result = await cancelSale(sc.id);
-    if (result?.error) setError(result.error);
-    setLoading(false);
+  function handleCancel() {
+    void cancelMutation.mutate(sc.id);
   }
 
   const otherName = counterpart?.name || "Usuario";
@@ -252,7 +308,7 @@ export function SaleConfirmationCard({
           )}>
             {done ? "Venta confirmada" : rejected ? "Venta rechazada" : "Confirmación de venta"}
           </div>
-          <StatusPill status={status} />
+          <StatusPill status={effectiveStatus} />
         </div>
       </div>
 
@@ -339,7 +395,7 @@ export function SaleConfirmationCard({
       <div className="p-4 pt-2">
         {error && <p className="text-[11px] text-[color:var(--danger)] mb-2 px-1">{error}</p>}
         
-        {status === "pendiente" && (
+        {effectiveStatus === "pendiente" && (
           <div className="flex gap-2">
             <button
               onClick={handleConfirm}
@@ -359,14 +415,14 @@ export function SaleConfirmationCard({
             </button>
           </div>
         )}
-        
-        {status === "esperando" && (
+
+        {effectiveStatus === "esperando" && (
           <div className="h-11 flex items-center justify-center text-xs font-medium text-[color:var(--fg-dim)]">
             Ya confirmaste tu parte. Esperando a <strong className="text-[color:var(--fg)] ml-1">{otherName}</strong>...
           </div>
         )}
-        
-        {status === "completado" && (
+
+        {effectiveStatus === "completado" && (
           <button
             onClick={onRate}
             className="w-full flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--card-2)] text-[color:var(--fg)] text-sm font-semibold border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] transition-all"
@@ -375,8 +431,8 @@ export function SaleConfirmationCard({
             Calificar a {otherName}
           </button>
         )}
-        
-        {status === "rechazado" && (
+
+        {effectiveStatus === "rechazado" && (
           <div className="flex gap-2">
             <button
               onClick={onPropose}
