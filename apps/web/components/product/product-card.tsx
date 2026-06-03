@@ -65,11 +65,26 @@ export function ProductCard({
   // either pick an arbitrary one or skip the transition entirely.
   // Setting the style via the ref keeps the DOM clean until the click
   // moment, then guarantees uniqueness for the navigation that follows.
+  //
+  // CODEX M3 fix: clear the name AFTER the transition has captured the
+  // snapshot. Without the cleanup, an interrupted transition (browser
+  // without support, immediate back navigation, modal that catches the
+  // click) leaves the name on the card permanently -- a future unrelated
+  // transition could see the orphan name and behave inconsistently. The
+  // 500ms delay is generous: the browser captures the snapshot
+  // synchronously inside startViewTransition (called by Next's wrapper),
+  // so by the time this fires the property has already been read.
   const imageWrapperRef = useRef<HTMLDivElement>(null);
   function handleNavigate() {
     const el = imageWrapperRef.current;
     if (!el) return;
     el.style.viewTransitionName = `product-hero-${id}`;
+    setTimeout(() => {
+      // Re-check the ref because the component may unmount during the
+      // navigation that this click triggers.
+      const stillThere = imageWrapperRef.current;
+      if (stillThere) stillThere.style.viewTransitionName = "";
+    }, 500);
   }
 
   const { mutate: toggleFav, isPending } = useOptimisticMutation(

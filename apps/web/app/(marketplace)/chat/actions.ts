@@ -87,6 +87,21 @@ export async function getMessagesBefore(
   } = await supabase.auth.getUser();
   if (!user) return { items: [], nextCursor: null, error: "No autenticado" };
 
+  // CODEX M4 fix: validate the cursor BEFORE issuing the query. The
+  // cursor is a client-supplied string; if it is not a valid ISO
+  // timestamp, Supabase/Postgres rejects the cast with a verbose
+  // message ("invalid input syntax for type timestamp with time zone")
+  // that would leak DB internals to the client. Return a generic
+  // error instead and never touch the DB on a malformed cursor.
+  if (Number.isNaN(Date.parse(cursor))) {
+    return { items: [], nextCursor: null, error: "Cursor invalido" };
+  }
+
+  // CODEX H2 fix: clamp the limit so a hostile direct caller cannot
+  // request a huge page. 50 is generous for the chat load-older case
+  // (the default is 30) without exposing the table to a 10k-row scan.
+  const safeLimit = Math.min(Math.max(1, limit), 50);
+
   // Fetch DESC by created_at + .lt(cursor) to get the immediately-older
   // page. Reverse to ASC for the call-site to prepend without
   // additional sort. nextCursor = the oldest (now first) item's
@@ -99,12 +114,12 @@ export async function getMessagesBefore(
     .eq("chat_id", chatId)
     .lt("created_at", cursor)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(safeLimit);
 
   if (error) return { items: [], nextCursor: null, error: error.message };
 
   const items = (data ?? []).reverse();
-  const nextCursor = items.length === limit ? items[0]!.created_at : null;
+  const nextCursor = items.length === safeLimit ? items[0]!.created_at : null;
   return { items, nextCursor };
 }
 

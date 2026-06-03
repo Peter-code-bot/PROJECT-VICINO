@@ -254,3 +254,37 @@ re-litigated mid-implementation:
   (home tab swap, drawer open, settings → sub-settings) could
   receive the same treatment in a future PR if A5.3 ships clean.
   Cost is per-navigation, not per-app.
+
+- **F9 — Chat Realtime subscribe gap (codex HIGH-1, pre-existing).**
+  Between the SSR `initialMessages` fetch and the moment the Realtime
+  `.subscribe()` callback resolves there is a window (~500–1500 ms on
+  mobile) where INSERTs from the other party are neither in the
+  initial set nor delivered by the channel. Not introduced by A5.1
+  -- the cursor + DESC fix narrows the consequence slightly. Proper
+  fix is a "catch-up on subscribe" pattern: after `status ===
+  "SUBSCRIBED"`, issue a one-shot `getMessagesAfter(chatId,
+  newestCreatedAt)` and merge-deduplicate. Out of A5 scope.
+
+- **F10 — ESLint `any` cleanup in marketplace surfaces.** The branch
+  ESLint pass surfaces pre-existing `no-explicit-any` errors in
+  `apps/web/app/(marketplace)/page.tsx` (lines 119, 208, 211, 253
+  -- byCategory iteration casts) and `sale-confirmation-card.tsx:80`
+  (`icon: any` on the local `MetaCell` component). Not introduced by
+  A5, build script does not run ESLint so CI stays green, but a
+  cleanup PR should type-narrow these.
+
+- **F11 — Same-`created_at` boundary tiebreaker for cursors.** Both
+  `getMessagesBefore` and `getMoreFeedProducts` use `.lt(created_at)`
+  without a secondary `id` tiebreaker. Under bulk seed scripts that
+  insert with identical microsecond timestamps a boundary product
+  can be silently skipped. Real Supabase `now()` makes natural
+  collisions extremely unlikely. Defer until a seeded environment
+  demonstrates the gap.
+
+- **F12 — `view-transition-name` reverse-navigation continuity.**
+  Forward animation (card -> detail) works via the just-in-time
+  + cleanup pattern. The reverse (detail -> home via back button)
+  has no shared element because the original card's name is gone by
+  the time the user returns. Persisting "which card was clicked"
+  across navigation (sessionStorage keyed by product id, or a URL
+  hash) would enable the reverse animation. Out of A5 scope.

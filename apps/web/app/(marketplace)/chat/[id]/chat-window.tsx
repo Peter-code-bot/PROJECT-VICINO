@@ -116,6 +116,21 @@ export function ChatWindow({
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const pendingScrollSnapshotRef = useRef<{ height: number; top: number } | null>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  // CODEX H1 fix: isPrependingRef discriminates the source of a
+  // messages.length increment for the useLayoutEffect below.
+  //   true  -> the change came from cursor load-older (prepend path);
+  //            apply the scroll-position adjustment from the snapshot.
+  //   false -> the change came from a Realtime INSERT / optimistic send
+  //            (append path); skip the adjustment, let auto-scroll-to-
+  //            bottom take over.
+  // Without this, a Realtime INSERT arriving WHILE a loadOlder is
+  // in-flight would change messages.length first, the useLayoutEffect
+  // would consume the snapshot meant for the (still-pending) prepend,
+  // and once the prepend resolves a second useLayoutEffect run would
+  // find no snapshot and skip the adjustment -- the user would see a
+  // jump. The flag is set synchronously around loadOlder() so it is
+  // open exactly across the window where the prepend commits.
+  const isPrependingRef = useRef(false);
   const supabase = createClient();
 
   // FIFO map of optimistic temp ids per texto for the current user.
@@ -340,19 +355,24 @@ export function ChatWindow({
 
   // A5.1: scroll preservation on prepend. Runs synchronously BEFORE
   // paint (useLayoutEffect, NOT useEffect) so the user does NOT see a
-  // one-frame jump when older messages prepend. The snapshot is captured
-  // by the IntersectionObserver effect immediately before calling
-  // loadOlder() so it is guaranteed to be present when the prepend
-  // commits. Skip when no snapshot is pending (i.e. this commit was a
-  // bottom append, not a prepend).
+  // one-frame jump when older messages prepend.
+  //
+  // CODEX H1 fix: gate on isPrependingRef. Without the gate, a Realtime
+  // INSERT arriving during an in-flight loadOlder would increment
+  // messages.length first, consume the snapshot (calculating a delta
+  // against the wrong scrollHeight), and corrupt the subsequent prepend
+  // commit. With the gate, the snapshot is consumed ONLY when the change
+  // is a prepend, never when it is a bottom append.
   useLayoutEffect(() => {
+    if (!isPrependingRef.current) return;
+    isPrependingRef.current = false;
     const snap = pendingScrollSnapshotRef.current;
+    pendingScrollSnapshotRef.current = null;
     if (!snap) return;
     const container = scrollContainerRef.current;
     if (!container) return;
     const delta = container.scrollHeight - snap.height;
     container.scrollTop = snap.top + delta;
-    pendingScrollSnapshotRef.current = null;
   }, [messages.length]);
 
   // A5.1: gated auto-scroll-to-bottom. Only fires when the LAST message
@@ -367,12 +387,31 @@ export function ChatWindow({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // CODEX ts-M1 + H1 fix: ref-mirror of isLoadingOlder so the
+  // IntersectionObserver callback can read the latest value without
+  // forcing the effect (and the observer) to re-arm on every toggle.
+  // Declared BEFORE the observer effect so the closure capture is
+  // legal under TypeScript's temporal-dead-zone semantics for const.
+  const isLoadingOlderRef = useRef(false);
+  useEffect(() => {
+    isLoadingOlderRef.current = isLoadingOlder;
+  }, [isLoadingOlder]);
+
   // A5.1: IntersectionObserver on the top sentinel triggers loadOlder.
   // CRITICAL: snapshot {scrollHeight, scrollTop} BEFORE awaiting the
-  // action so the useLayoutEffect above can compute the correct delta
-  // when the prepend renders. The hook's inFlightRef collapses rapid
-  // re-entries, but we additionally gate on isLoadingOlder + hasOlder
-  // to avoid arming the observer at all when there is no work to do.
+  // action and flip isPrependingRef = true so the useLayoutEffect above
+  // can compute the correct delta and discriminate this commit from a
+  // Realtime INSERT append.
+  //
+  // CODEX ts-M1 fix: isLoadingOlder is read from the ref above, NOT a
+  // dep of the effect. Previously the effect re-armed on every load
+  // start/finish, and if the sentinel was still visible at the moment
+  // of re-arm, the new observer fired immediately. The hook's
+  // inFlightRef collapsed the duplicate loadMore, but the snapshot was
+  // still being written each time. With isLoadingOlder out of the deps
+  // the observer is set up once per hasOlder transition and the
+  // inflight check runs only inside the callback against the latest
+  // ref value.
   useEffect(() => {
     if (!hasOlder) return;
     const sentinel = topSentinelRef.current;
@@ -382,18 +421,27 @@ export function ChatWindow({
       (entries) => {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
-        if (isLoadingOlder) return;
+        if (isLoadingOlderRef.current) return;
+        // CODEX H1 fix: set the prepend flag SYNCHRONOUSLY around the
+        // loadOlder call so the useLayoutEffect can distinguish this
+        // commit from a concurrent Realtime INSERT append.
+        isPrependingRef.current = true;
         pendingScrollSnapshotRef.current = {
           height: container.scrollHeight,
           top: container.scrollTop,
         };
-        void loadOlder();
+        void loadOlder().catch(() => {
+          // Reset the flag if loadOlder rejects so a subsequent
+          // unrelated append does not consume the stale snapshot.
+          isPrependingRef.current = false;
+          pendingScrollSnapshotRef.current = null;
+        });
       },
       { root: container, threshold: 0.1 },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasOlder, isLoadingOlder, loadOlder]);
+  }, [hasOlder, loadOlder]);
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();

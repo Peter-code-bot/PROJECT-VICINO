@@ -43,6 +43,18 @@ export async function getMoreFeedProducts(
   nextCursor: string | null;
   error?: string;
 }> {
+  // CODEX M4 fix: validate the cursor ISO timestamp before the query
+  // to avoid leaking a verbose Postgres cast error to the client when a
+  // hostile / buggy caller passes a malformed cursor.
+  if (Number.isNaN(Date.parse(cursor))) {
+    return { items: [], nextCursor: null, error: "Cursor invalido" };
+  }
+
+  // CODEX H2 fix: clamp limit. The default is 30; cap at 50 so a
+  // direct caller cannot request thousands of rows with joined
+  // profiles + product_categories embeds.
+  const safeLimit = Math.min(Math.max(1, limit), 50);
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -64,7 +76,7 @@ export async function getMoreFeedProducts(
     .eq("estatus", "disponible")
     .lt("created_at", cursor)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(safeLimit);
 
   if (error) return { items: [], nextCursor: null, error: error.message };
 
@@ -83,6 +95,6 @@ export async function getMoreFeedProducts(
 
   // DESC order: the last (and oldest) item is the next cursor boundary.
   const nextCursor =
-    items.length === limit ? items[items.length - 1]!.created_at : null;
+    items.length === safeLimit ? items[items.length - 1]!.created_at : null;
   return { items, nextCursor };
 }

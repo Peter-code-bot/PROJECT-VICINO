@@ -193,12 +193,20 @@ export function SaleConfirmationCard({
       void hapticMedium();
       const previous = optimisticStatus;
       setOptimisticStatus("esperando");
-      return () => setOptimisticStatus(previous);
+      // CODEX M2 fix: functional updater so we only revert the value
+      // WE wrote. If a concurrent cancel mutation has overwritten the
+      // overlay after our onMutate but before our rollback, we leave
+      // its newer value in place rather than restoring a stale snapshot.
+      return () => setOptimisticStatus((curr) => (curr === "esperando" ? previous : curr));
     },
     onSuccess: () => {
       // Server succeeded + revalidatePath -> parent will re-render with
       // updated `sc`, derived status will be authoritative. Clear the
-      // overlay so derivedStatus wins through effectiveStatus.
+      // overlay so derivedStatus wins through effectiveStatus. For
+      // confirm specifically this is correct because the card stays
+      // mounted and transitions to "esperando" (one party confirmed,
+      // other pending) -- derivedStatus will agree after Realtime UPDATE
+      // flips buyer_confirmed/seller_confirmed.
       setOptimisticStatus(null);
     },
   });
@@ -208,9 +216,27 @@ export function SaleConfirmationCard({
       void hapticMedium();
       const previous = optimisticStatus;
       setOptimisticStatus("rechazado");
-      return () => setOptimisticStatus(previous);
+      // CODEX M2 fix: same functional-updater pattern as confirm above.
+      return () => setOptimisticStatus((curr) => (curr === "rechazado" ? previous : curr));
     },
-    onSuccess: () => setOptimisticStatus(null),
+    // CODEX M1 fix: DO NOT clear the overlay on success.
+    //
+    // cancelSale writes status="cancelled" + cancelled_by on the DB row.
+    // The SSR query in chat/[id]/page.tsx filters .in("status", ["pending_confirmation",
+    // "completed"]) and the Realtime UPDATE handler in chat-window.tsx
+    // removes any row whose new status is NOT in that visible list.
+    // The card therefore UNMOUNTS via parent state cleanup on success;
+    // it never re-renders with sc.status === "cancelled" reaching the
+    // derivedStatus computation (the derivedStatus "rechazado" branch is
+    // effectively unreachable from real server data).
+    //
+    // If we cleared the overlay here, effectiveStatus would briefly
+    // collapse to derivedStatus = "pendiente" -- the user would see the
+    // pill flip back to Pendiente during the gap between this onSuccess
+    // and Realtime delivering the UPDATE that removes the card. With
+    // the clear omitted, the overlay holds "rechazado" until unmount,
+    // which is both visually consistent and harmless (the overlay state
+    // is dropped with the component).
   });
 
   const isPending = confirmMutation.isPending || cancelMutation.isPending;
