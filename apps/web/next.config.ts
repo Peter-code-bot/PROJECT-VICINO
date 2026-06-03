@@ -108,6 +108,15 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
     ],
+    // A5.3: opt into the React 19 View Transition wrapper for App Router
+    // navigations. With this flag set, Next wraps client navigations in
+    // `document.startViewTransition` when the browser supports it. Pair
+    // with `view-transition-name` styles on the shared element (product
+    // card image -> detail hero) for the card-to-detail animation.
+    // Kill-switch (Constraint C3 of openspec/changes/2026-06-03-instant-ux):
+    // if the flag breaks build or SSR on the current toolchain it must be
+    // reverted immediately rather than shipped behind a workaround.
+    viewTransition: true,
   },
 };
 

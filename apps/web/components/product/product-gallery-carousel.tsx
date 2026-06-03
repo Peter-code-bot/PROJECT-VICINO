@@ -11,9 +11,23 @@ interface ProductGalleryCarouselProps {
   // Reserved for future "preserve order" handling. Mobile carousel does not
   // honor colSpan/rowSpan but the prop is accepted so callers stay stable.
   savedSizes?: Array<{ colSpan: number; rowSpan: number }> | null;
+  /**
+   * A5.3: product id used to derive the view-transition-name on the
+   * FIRST (or single) image. Pairs with the product-card image which
+   * sets the same name just-in-time on click. Browser snapshots both,
+   * detects the named pair, and animates the rectangle from card
+   * position to hero position.
+   *
+   * For multi-image carousels: the name is applied only to slide 0
+   * (the slide visible on landing) -- if the user swipes past it
+   * before navigating back, the reverse animation will degrade
+   * cleanly (no name match -> default fade). Out of scope for A5.3.
+   */
+  productId?: string;
 }
 
-export function ProductGalleryCarousel({ images, title }: ProductGalleryCarouselProps) {
+export function ProductGalleryCarousel({ images, title, productId }: ProductGalleryCarouselProps) {
+  const heroTransitionName = productId ? `product-hero-${productId}` : undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -57,7 +71,10 @@ export function ProductGalleryCarousel({ images, title }: ProductGalleryCarousel
   const single = images.length === 1 ? images[0] : null;
   if (single) {
     return (
-      <div className="relative aspect-square w-full overflow-hidden bg-card-2">
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-card-2"
+        style={heroTransitionName ? { viewTransitionName: heroTransitionName } : undefined}
+      >
         <Image
           src={single}
           alt={title}
@@ -89,6 +106,14 @@ export function ProductGalleryCarousel({ images, title }: ProductGalleryCarousel
             }}
             data-idx={idx}
             className="relative h-full w-full shrink-0 snap-center bg-card-2"
+            style={
+              // A5.3: only slide 0 receives the view-transition-name.
+              // Slide 0 is what the user sees on landing -- the
+              // shared-element pair with the card image above.
+              idx === 0 && heroTransitionName
+                ? { viewTransitionName: heroTransitionName }
+                : undefined
+            }
             role="group"
             aria-roledescription="diapositiva"
             aria-label={`Imagen ${idx + 1} de ${images.length}`}

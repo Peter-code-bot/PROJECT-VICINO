@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
@@ -55,6 +55,23 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
 
+  // A5.3: just-in-time view-transition-name. Applied imperatively on the
+  // image wrapper at the moment of click so only the CLICKED card
+  // participates in the transition. This is important because the same
+  // product can appear in two carousels on the home (Recientes AND its
+  // per-category carousel). If the name were declared statically on
+  // every card, two cards on the same page would share the same
+  // view-transition-name during the snapshot and the browser would
+  // either pick an arbitrary one or skip the transition entirely.
+  // Setting the style via the ref keeps the DOM clean until the click
+  // moment, then guarantees uniqueness for the navigation that follows.
+  const imageWrapperRef = useRef<HTMLDivElement>(null);
+  function handleNavigate() {
+    const el = imageWrapperRef.current;
+    if (!el) return;
+    el.style.viewTransitionName = `product-hero-${id}`;
+  }
+
   const { mutate: toggleFav, isPending } = useOptimisticMutation(
     toggleFavorite,
     {
@@ -91,13 +108,14 @@ export function ProductCard({
       // /favoritos). En un grid de 50 cards, prefetch default lanza 50 GETs
       // de /producto/[id]. Hover/tap igual prefetchea on-demand.
       prefetch={false}
+      onClick={handleNavigate}
       className={cn(
         "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",
         "shadow-[inset_0_0_0_1px_var(--border)]",
         "hover:-translate-y-0.5 hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
       )}
     >
-      <div className="relative aspect-square overflow-hidden bg-bg-elev-2">
+      <div ref={imageWrapperRef} className="relative aspect-square overflow-hidden bg-bg-elev-2">
         {imagen ? (
           <Image
             src={imagen}

@@ -84,6 +84,7 @@ export function ProductDetailMobile({
           images={images}
           title={product.titulo}
           savedSizes={product.gallery_sizes}
+          productId={product.id}
         />
         <GalleryTopBar
           productId={product.id}
