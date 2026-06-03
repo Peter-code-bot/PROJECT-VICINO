@@ -50,6 +50,64 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
   return { chatId: chatId as string };
 }
 
+/**
+ * A5.1: cursor-based load-older for chat history.
+ *
+ * Returns messages strictly OLDER than `cursor` (ISO timestamp of the
+ * currently-oldest message in view), ordered ASC for prepend at the
+ * top of the existing list. `nextCursor` is the created_at of the
+ * OLDEST returned item if the page was full; null otherwise (signals
+ * "no more pages" to use-infinite-cursor.hasMore).
+ *
+ * RLS enforced: the SSR initial 50 in app/(marketplace)/chat/[id]/page.tsx
+ * uses the same Supabase client and the same chats/messages policies.
+ * If a user is not a participant of `chatId`, the SELECT returns 0 rows.
+ */
+export async function getMessagesBefore(
+  chatId: string,
+  cursor: string,
+  limit: number = 30,
+): Promise<{
+  items: Array<{
+    id: string;
+    chat_id: string;
+    autor_id: string;
+    texto: string;
+    attachments: unknown;
+    created_at: string;
+    leido_por_comprador: boolean;
+    leido_por_vendedor: boolean;
+  }>;
+  nextCursor: string | null;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { items: [], nextCursor: null, error: "No autenticado" };
+
+  // Fetch DESC by created_at + .lt(cursor) to get the immediately-older
+  // page. Reverse to ASC for the call-site to prepend without
+  // additional sort. nextCursor = the oldest (now first) item's
+  // created_at if the page filled; null otherwise.
+  const { data, error } = await supabase
+    .from("messages")
+    .select(
+      "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor",
+    )
+    .eq("chat_id", chatId)
+    .lt("created_at", cursor)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) return { items: [], nextCursor: null, error: error.message };
+
+  const items = (data ?? []).reverse();
+  const nextCursor = items.length === limit ? items[0]!.created_at : null;
+  return { items, nextCursor };
+}
+
 export async function sendMessage(chatId: string, texto: string) {
   if (!texto || typeof texto !== "string") return { error: "Mensaje inválido" };
   // Strip HTML tags without entity-encoding: chat renders as plain text so React handles XSS

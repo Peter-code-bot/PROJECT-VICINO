@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeTime } from "@vicino/shared";
-import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown } from "lucide-react";
+import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sendMessage } from "../actions";
+import { sendMessage, getMessagesBefore } from "../actions";
 import { hapticMedium } from "@/lib/haptics";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
+import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
@@ -20,6 +21,14 @@ import { useRouter } from "next/navigation";
 // network latency on slow connections, longer would start swallowing
 // genuinely separate sends of the same text. Keep tight on purpose.
 const TEMP_RECLAIM_WINDOW_MS = 3000;
+
+// A5.1: initial SSR fetch page size. Must match page.tsx's .limit(50).
+// If the initial fetch returns exactly INITIAL_PAGE_SIZE items, the chat
+// MAY have older messages and the cursor is seeded with the oldest one.
+// If fewer items were returned, the chat is shorter than a page and
+// initialCursor is null (no load-older affordance).
+const INITIAL_PAGE_SIZE = 50;
+const LOAD_OLDER_PAGE_SIZE = 30;
 
 interface Message {
   id: string;
@@ -52,7 +61,36 @@ export function ChatWindow({
   initialMessages,
   initialSaleConfirmations,
 }: ChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  // A5.1: cursor-based load-older via the shared hook. The hook owns
+  // the messages buffer; setItems is exposed for the FIFO temp-id
+  // reclaim (Realtime INSERT echo) and the mark-as-read UPDATE handler
+  // which need general setState semantics. appendLive/removeItem cover
+  // the simple optimistic-send paths.
+  const {
+    items: messages,
+    isLoading: isLoadingOlder,
+    hasMore: hasOlder,
+    error: loadOlderError,
+    loadMore: loadOlder,
+    appendLive: appendMessage,
+    removeItem: removeMessage,
+    setItems: setMessages,
+  } = useInfiniteCursor<Message, string>({
+    action: async ({ cursor, limit }) => {
+      // The hook only invokes the action when cursor !== null (gated by
+      // hasMore). The non-null assertion is safe.
+      const result = await getMessagesBefore(chatId, cursor as string, limit);
+      return { items: result.items as Message[], nextCursor: result.nextCursor, error: result.error };
+    },
+    initialItems: initialMessages,
+    initialCursor:
+      initialMessages.length === INITIAL_PAGE_SIZE && initialMessages[0]
+        ? initialMessages[0].created_at
+        : null,
+    limit: LOAD_OLDER_PAGE_SIZE,
+    prepend: true,
+  });
+
   const [saleConfirmations, setSaleConfirmations] = useState<SaleConfirmation[]>(
     initialSaleConfirmations,
   );
@@ -62,6 +100,22 @@ export function ChatWindow({
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // A5.1: refs for the load-older flow.
+  // scrollContainerRef -- the overflow-y-auto wrapper around the message
+  //   list, owns the scroll position we must preserve across prepend.
+  // topSentinelRef -- a 1px div at the very top of the message list;
+  //   when the IntersectionObserver reports it visible, we snapshot the
+  //   scroll position and fire loadMore.
+  // pendingScrollSnapshotRef -- holds the {scrollHeight, scrollTop}
+  //   captured BEFORE awaiting loadMore; consumed by useLayoutEffect on
+  //   messages.length to restore the visual position after prepend.
+  // lastMessageIdRef -- the id of the LAST message currently rendered.
+  //   Used to discriminate "new message at bottom" (auto-scroll) from
+  //   "older messages prepended at top" (do NOT auto-scroll).
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  const pendingScrollSnapshotRef = useRef<{ height: number; top: number } | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
   const supabase = createClient();
 
   // FIFO map of optimistic temp ids per texto for the current user.
@@ -104,10 +158,12 @@ export function ChatWindow({
           leido_por_comprador: isBuyer,
           leido_por_vendedor: !isBuyer,
         };
-        setMessages((prev) => [...prev, optimisticMsg]);
+        // A5.1: appendLive does NOT consume the cursor (correct: this is
+        // a NEW message arriving at the bottom, not an older-page item).
+        appendMessage(optimisticMsg);
         return () => {
           releaseTempId(text, tempId);
-          setMessages((prev) => prev.filter((m) => m.id !== tempId));
+          removeMessage((m) => m.id === tempId);
         };
       },
       onSuccess: (result, { tempId, text }) => {
@@ -282,10 +338,62 @@ export function ChatWindow({
     };
   }, [chatId, supabase]);
 
-  // Scroll to bottom on new messages
+  // A5.1: scroll preservation on prepend. Runs synchronously BEFORE
+  // paint (useLayoutEffect, NOT useEffect) so the user does NOT see a
+  // one-frame jump when older messages prepend. The snapshot is captured
+  // by the IntersectionObserver effect immediately before calling
+  // loadOlder() so it is guaranteed to be present when the prepend
+  // commits. Skip when no snapshot is pending (i.e. this commit was a
+  // bottom append, not a prepend).
+  useLayoutEffect(() => {
+    const snap = pendingScrollSnapshotRef.current;
+    if (!snap) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const delta = container.scrollHeight - snap.height;
+    container.scrollTop = snap.top + delta;
+    pendingScrollSnapshotRef.current = null;
+  }, [messages.length]);
+
+  // A5.1: gated auto-scroll-to-bottom. Only fires when the LAST message
+  // id changed (a NEW message arrived at the bottom: Realtime INSERT,
+  // optimistic send, temp->real swap). Prepends do not change the last
+  // id, so the user's reading position is preserved by the
+  // useLayoutEffect above without a smooth-scroll override here.
   useEffect(() => {
+    const lastId = messages[messages.length - 1]?.id ?? null;
+    if (lastId === lastMessageIdRef.current) return;
+    lastMessageIdRef.current = lastId;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // A5.1: IntersectionObserver on the top sentinel triggers loadOlder.
+  // CRITICAL: snapshot {scrollHeight, scrollTop} BEFORE awaiting the
+  // action so the useLayoutEffect above can compute the correct delta
+  // when the prepend renders. The hook's inFlightRef collapses rapid
+  // re-entries, but we additionally gate on isLoadingOlder + hasOlder
+  // to avoid arming the observer at all when there is no work to do.
+  useEffect(() => {
+    if (!hasOlder) return;
+    const sentinel = topSentinelRef.current;
+    const container = scrollContainerRef.current;
+    if (!sentinel || !container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        if (isLoadingOlder) return;
+        pendingScrollSnapshotRef.current = {
+          height: container.scrollHeight,
+          top: container.scrollTop,
+        };
+        void loadOlder();
+      },
+      { root: container, threshold: 0.1 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasOlder, isLoadingOlder, loadOlder]);
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -445,7 +553,23 @@ export function ChatWindow({
       })()}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-2">
+        {/* A5.1: top sentinel + load-older indicator. The sentinel is a
+            1px target the IntersectionObserver watches; when the user
+            scrolls up far enough, loadOlder fires and the spinner shows
+            until the next page resolves. When hasOlder becomes false the
+            sentinel still mounts but the observer is not armed. */}
+        {hasOlder && <div ref={topSentinelRef} className="h-px" aria-hidden="true" />}
+        {isLoadingOlder && (
+          <div className="flex justify-center py-2 text-[color:var(--fg-muted)]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+        {loadOlderError && (
+          <p className="px-2 py-1 text-center text-[10px] text-[color:var(--danger)]">
+            {loadOlderError}
+          </p>
+        )}
         {messages.map((msg) => {
           const isOwn = msg.autor_id === currentUserId;
           // Read receipt: check if the OTHER party has read the message

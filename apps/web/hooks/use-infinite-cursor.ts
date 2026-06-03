@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 /**
  * A5.0: cursor-based load-more hook reused by chat history (A5.1),
@@ -22,6 +22,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *    top; exposed for symmetry.
  *  - removeItem(predicate): drop one or more items (optimistic
  *    rollback, temp-id reclaim before real-id swap).
+ *  - setItems(updater): escape hatch for complex cases the three
+ *    imperatives above cannot express cleanly. Used by chat-window
+ *    for the FIFO temp-id -> real-id swap and for Realtime UPDATE
+ *    events (mark-as-read). DOES NOT consume or advance the cursor.
  *
  * Per design.md: SIN useTransition (no rollback concern), SIN
  * AbortController (mountedRef guards setState after unmount; in-flight
@@ -50,6 +54,7 @@ export interface UseInfiniteCursorResult<T> {
   prependLive: (item: T) => void;
   appendLive: (item: T) => void;
   removeItem: (predicate: (item: T) => boolean) => void;
+  setItems: Dispatch<SetStateAction<T[]>>;
 }
 
 const DEFAULT_LIMIT = 30;
@@ -127,5 +132,6 @@ export function useInfiniteCursor<T, C>(
     prependLive,
     appendLive,
     removeItem,
+    setItems,
   };
 }

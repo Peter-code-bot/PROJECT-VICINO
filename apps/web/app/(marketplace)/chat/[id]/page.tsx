@@ -40,13 +40,22 @@ export default async function ChatDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Get initial messages
-  const { data: messages } = await supabase
+  // Get initial messages.
+  // A5.1: fetch the LATEST 50 via DESC then reverse to ASC for render.
+  // Previously this used ASC LIMIT 50 which returned the OLDEST 50 messages
+  // -- correct for short chats, but for chats with more than 50 messages
+  // the user landed on the very first messages of the conversation with no
+  // affordance to reach the recent ones. The cursor for load-older is
+  // initialMessages[0].created_at (the oldest of the latest 50) when the
+  // page filled, so this DESC reverse pattern is what makes A5.1's
+  // getMessagesBefore meaningful.
+  const { data: messagesDesc } = await supabase
     .from("messages")
     .select("id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor")
     .eq("chat_id", chatId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(50);
+  const messages = (messagesDesc ?? []).slice().reverse();
 
   // Get pending sale confirmations for this chat
   const { data: saleConfirmations } = await supabase
