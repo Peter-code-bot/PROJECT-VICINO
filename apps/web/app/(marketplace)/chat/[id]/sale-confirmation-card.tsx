@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Clock, CheckCheck, Handshake, ShieldCheck, Star, MessageSquare, MapPin, Footprints, Wallet, ArrowLeftRight, ChevronDown } from "lucide-react";
+import { Check, X, Clock, CheckCheck, Handshake, ShieldCheck, Star, MessageSquare, MapPin, Footprints, Wallet, ArrowLeftRight, ChevronDown, type LucideIcon } from "lucide-react";
 import { confirmSale, cancelSale } from "../actions";
 import { formatPrice } from "@vicino/shared";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,7 @@ export function StatusPill({ status, label }: { status: ConfirmationStatus, labe
   return null;
 }
 
-function MetaCell({ icon: Icon, label, value, dim = false }: { icon: any, label: string, value: string, dim?: boolean }) {
+function MetaCell({ icon: Icon, label, value, dim = false }: { icon: LucideIcon, label: string, value: string, dim?: boolean }) {
   return (
     <div className={cn("flex items-center gap-2", dim && "opacity-55")}>
       <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]">

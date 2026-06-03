@@ -346,11 +346,50 @@ export function ChatWindow({
           });
         }
       )
-      .subscribe();
+      .subscribe(async (status) => {
+        // F9 catch-up on subscribe: the Realtime channel only delivers
+        // INSERTs that happen AFTER the subscription handshake completes
+        // (~500-1500 ms on mobile). Between the SSR query in page.tsx and
+        // this SUBSCRIBED callback there is a window where an INSERT from
+        // the other participant lands in neither path. Without this fix
+        // the message stays invisible until the next live INSERT (or a
+        // route refresh) pushes the buffer forward. The catch-up issues
+        // a one-shot `.gt(newestKnown)` fetch on the same SELECT shape as
+        // the SSR and merges by id-dedup -- safe against any INSERT that
+        // arrives during the await (the channel handler's existing
+        // `prev.some(m => m.id === newMsg.id)` guard plus the Set-based
+        // dedup here cover both directions).
+        if (status !== "SUBSCRIBED") return;
+        const newestKnown = messages[messages.length - 1]?.created_at;
+        if (!newestKnown) return;
+        const { data: caughtUp } = await supabase
+          .from("messages")
+          .select(
+            "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor",
+          )
+          .eq("chat_id", chatId)
+          .gt("created_at", newestKnown)
+          .order("created_at", { ascending: true });
+        if (!caughtUp || caughtUp.length === 0) return;
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const fresh = (caughtUp as Message[]).filter((m) => !seen.has(m.id));
+          if (fresh.length === 0) return prev;
+          return [...prev, ...fresh];
+        });
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
+    // F9: messages intentionally NOT in the dep list. The catch-up uses
+    // the latest buffer at subscription time (closed-over via state) --
+    // re-running the entire effect on every messages update would tear
+    // down and rebuild the Realtime channel + listeners on each new
+    // message, defeating the whole subscription. The existing channel
+    // handlers already cover post-subscribe live INSERTs; the catch-up
+    // is a one-shot bridge.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, supabase]);
 
   // A5.1: scroll preservation on prepend. Runs synchronously BEFORE
