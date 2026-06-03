@@ -36,7 +36,14 @@ export function PullToRefreshWrapper({ children }: { children: React.ReactNode }
     if (!element) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Only enable pull to refresh if we are exactly at the top of the page
+      // Only enable pull to refresh if we are exactly at the top of the page.
+      // Asymmetric on purpose with the touchmove check below (`scrollY <= 0`):
+      //   touchstart `> 0`  rejects when scrolled DOWN past the top.
+      //   touchmove  `<= 0` accepts at the exact top (0) AND during iOS
+      //                     overscroll rebound (negative scrollY) so PTR
+      //                     stays armed through the rubber-band bounce.
+      // Looks like a typo at first glance; it is not -- the two checks cover
+      // different states and both are intentional.
       if (window.scrollY > 0 || isRefreshing) return;
       startY.current = e.touches[0]?.clientY ?? 0;
       isPulling.current = true;

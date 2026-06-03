@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
@@ -79,6 +79,18 @@ export function ProductCard({
     const el = imageWrapperRef.current;
     if (!el) return;
     el.style.viewTransitionName = `product-hero-${id}`;
+    // F12 (reverse navigation): persist which card was tapped so the
+    // home re-mount after detail->back can re-apply the same transition
+    // name to the matching card. sessionStorage scope is the tab, which
+    // matches the back-button user mental model. Consumed + cleared in
+    // the mount effect below; the cleanup there guarantees we never
+    // leak stale state into an unrelated future navigation.
+    try {
+      sessionStorage.setItem("vicino:return-product", id);
+    } catch {
+      // Storage quota / private mode — degrade silently to forward-only
+      // transition (which is the pre-F12 behavior).
+    }
     setTimeout(() => {
       // Re-check the ref because the component may unmount during the
       // navigation that this click triggers.
@@ -86,6 +98,40 @@ export function ProductCard({
       if (stillThere) stillThere.style.viewTransitionName = "";
     }, 500);
   }
+
+  // F12 (reverse navigation): on mount, if sessionStorage holds this
+  // card's id (meaning the user just navigated detail->home via back),
+  // re-apply the view-transition-name so the browser pairs the home
+  // card image with the exiting detail hero for the reverse animation.
+  // CONSUME + CLEAR on first match -- if the home renders the same id
+  // in two carousels (Recientes + per-category), the first mount wins
+  // and the second sees an empty storage. Only one card participates,
+  // matching the forward navigation's just-in-time uniqueness rule.
+  // The 500 ms cleanup mirrors the forward path: by then the browser
+  // has captured the snapshot and the property is free to clear.
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = sessionStorage.getItem("vicino:return-product");
+    } catch {
+      // No storage available — nothing to consume.
+      return;
+    }
+    if (stored !== id) return;
+    try {
+      sessionStorage.removeItem("vicino:return-product");
+    } catch {
+      // ignore
+    }
+    const el = imageWrapperRef.current;
+    if (!el) return;
+    el.style.viewTransitionName = `product-hero-${id}`;
+    const t = setTimeout(() => {
+      const stillThere = imageWrapperRef.current;
+      if (stillThere) stillThere.style.viewTransitionName = "";
+    }, 500);
+    return () => clearTimeout(t);
+  }, [id]);
 
   const { mutate: toggleFav, isPending } = useOptimisticMutation(
     toggleFavorite,

@@ -532,6 +532,22 @@ Defer until a seeded environment demonstrates the gap; the fix
 is a compound cursor `(created_at, id)` with
 `.or('created_at.lt.{cursor},and(created_at.eq.{cursor},id.lt.{id})')`.
 
+**2026-06-03 evaluation (during minor-cleanups tanda)**: re-evaluated
+and reaffirmed as deferred. Manifestation path requires identical
+`now()` microseconds inside the same transaction — only seed scripts
+hit this in practice (VICINO's seed-v2 + rankings seed UUIDs
+`0000...0001-0005` both qualify, but neither pages through the
+cursor surfaces in production traffic). Human users publishing /
+sending messages do not produce micro-second collisions. The fix is
+not single-line: it changes the cursor shape from `string` to
+`{ created_at: string; id: string }`, which touches the
+`use-infinite-cursor` hook's `C` generic, both Server Actions
+(`getMoreFeedProducts`, `getMessagesBefore`), both call-sites
+(`mas-productos.tsx`, `chat-window.tsx`), and the URL/string
+serialization between client and server. Not justified by the
+current evidence. Keep documented for re-evaluation if telemetry
+ever shows a missed boundary row.
+
 ### F12 — View-transition reverse-navigation continuity
 
 (Renamed F6 for clarity in the Codex follow-up list. Same
