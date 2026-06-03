@@ -369,6 +369,17 @@ export function ChatWindow({
           )
           .eq("chat_id", chatId)
           .gt("created_at", newestKnown)
+          // CODEX MED follow-up to commit d622d9b: exclude own messages
+          // from the catch-up. The current user's own sends are always
+          // covered by (a) sendMutation.onSuccess swapping temp -> real
+          // id and (b) the Realtime channel echo running the FIFO temp
+          // reclaim. If a user's own INSERT lands between the SSR snapshot
+          // and SUBSCRIBED, the catch-up would otherwise append the real
+          // message while the temp-id was still visible -- a transient
+          // duplicate where the temp would be orphaned until next
+          // navigation. Catch-up's sole job is recovering the OTHER
+          // participant's gap messages, so .neq the current user.
+          .neq("autor_id", currentUserId)
           .order("created_at", { ascending: true });
         if (!caughtUp || caughtUp.length === 0) return;
         setMessages((prev) => {
