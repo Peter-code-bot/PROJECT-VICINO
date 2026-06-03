@@ -105,3 +105,54 @@ WHEN `OAuthUrlListener` mounts in a non-native platform (web browser), the syste
 - APK loader: `apps/web/app/auth/callback/page.tsx` — shows spinner during session exchange
 - Supabase redirect URL `vicino://auth/callback` confirmed in allowlist (Pedro, 2026-06-01)
 - No Google Cloud Console changes required (Supabase reuses the existing Web Client ID)
+
+---
+
+## Known follow-up — MED-2 deep-link `startsWith` boundary (deferred 2026-06-03)
+
+**Finding (CODEX Tanda A SEC/AUTH review)**:
+
+The three consumers of the centralized constant `OAUTH_DEEP_LINK_CALLBACK = "vicino://auth/callback"` perform their match via plain `String.prototype.startsWith` with no boundary enforcement:
+
+- `apps/web/components/capacitor-init.tsx:124` (hot-launch deferral guard)
+- `apps/web/components/capacitor-init.tsx:143` (cold-launch deferral guard)
+- `apps/web/components/auth/oauth-url-listener.tsx:35` (OAuth handler gate)
+
+A malicious URL such as `vicino://auth/callbackevil?code=ATTACKER_CODE` matches the prefix and would reach the OAuth handler.
+
+**Vector reachability**:
+
+The Android intent-filter for the `vicino://` scheme (`apps/web/android/app/src/main/AndroidManifest.xml` lines 33-38) declares no `android:host` or `android:pathPattern`, so Android delivers any `vicino://...` URL to the app. An attacker can emit such a URL from another installed Android app, a browser/email link, an NFC tag, or a QR code. The malicious URL reaches `OAuthUrlListener` and triggers `supabase.auth.exchangeCodeForSession(attacker_code)`.
+
+**PKCE mitigation closes the realistic exploit**:
+
+Supabase OAuth uses PKCE. `exchangeCodeForSession` requires the `code_verifier` stored locally during `signInWithOAuth`. An attacker's `code` was not issued for this device's PKCE challenge, so the exchange fails and returns an error — no session is granted. Session steal is not achievable through this path. Code phishing has no extraction mechanism. The only residual concern is DoS spam, which requires malware already installed on the device AND is bounded by Supabase's own auth rate-limit at the server.
+
+**Decision (2026-06-03)**: do NOT implement the boundary check now. PKCE provides the load-bearing defense; the prefix laxity is a theoretical hardening with no exploit available under the current threat model. The cost of touching the OAuth-mobile path (regression risk) exceeds the marginal ROI.
+
+**Re-evaluate the decision if any of the following becomes true**:
+
+- Supabase deprecates PKCE for the Capacitor flow or we migrate to a non-PKCE provider.
+- The `vicino://` intent-filter is widened to additional path prefixes that another integration consumes.
+- A second deep-link consumer outside the OAuth flow is added that does NOT have a PKCE-equivalent backstop.
+- Telemetry shows repeated `exchangeCodeForSession` failures with patterns suggesting an attacker probing the path.
+
+**Fix ready-to-apply if the decision is reversed**:
+
+Add a boundary-aware helper to `apps/web/lib/auth/deep-link-constants.ts`:
+
+```ts
+/**
+ * Boundary-aware matcher for the OAuth deep link. Returns true iff
+ * `url` is exactly `vicino://auth/callback` OR is followed by `?`
+ * (query string) or `/` (path segment). Closes the prefix ambiguity
+ * where `vicino://auth/callbackevil?code=...` would otherwise match.
+ */
+export function isOAuthDeepLink(url: string): boolean {
+  if (!url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) return false;
+  const suffix = url.slice(OAUTH_DEEP_LINK_CALLBACK.length);
+  return suffix === "" || suffix.startsWith("?") || suffix.startsWith("/");
+}
+```
+
+Then replace the three `url.startsWith(OAUTH_DEEP_LINK_CALLBACK)` call sites listed above with `isOAuthDeepLink(url)`. The constant itself stays unchanged (it remains the canonical outbound `redirectTo` value passed to `signInWithOAuth`). `apps/web/lib/auth/native-oauth.ts:26` does not need to change (equality, not a matcher).
