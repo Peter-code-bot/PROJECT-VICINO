@@ -44,6 +44,16 @@ async function signOrNull(
 
 export default async function VerificationsPage() {
   const supabase = await createClient();
+  // SECURITY: adminSupabase (service-role) is LOAD-BEARING for the signed-URL
+  // generation below. The `verification-documents` storage bucket has NO RLS
+  // policy that grants admins access via a user-context client -- the orphan
+  // migration that would have added one was removed 2026-06-03 as confirmed
+  // dead code (admin path uses service-role; see openspec/specs/rls-performance/
+  // spec.md follow-ups). If this code is ever refactored to use `supabase`
+  // (user-context) for the signOrNull calls, you MUST re-introduce the
+  // `Admin read verification docs` policy on storage.objects first, otherwise
+  // signed-URL generation will silently fail (returns { error } -> null URLs
+  // in the UI).
   const adminSupabase = createAdminClient();
 
   const { data: verifications } = await supabase

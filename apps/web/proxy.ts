@@ -12,8 +12,10 @@ function tooManyRequests(): NextResponse {
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // OAuth callback retries get their own permissive tier (20/min IP) so a
-  // legitimate Supabase OAuth retry storm doesn't lock the user out mid-auth.
+  // OAuth and recovery callbacks get their own permissive tier (20/min IP)
+  // so a legitimate Supabase OAuth retry storm doesn't lock the user out
+  // mid-auth. Same tier covers password-recovery email clicks (which now
+  // also land on /auth/callback-server after the forgot-password fix).
   //
   // Password-based auth (signInWithPassword, signUp, resetPasswordForEmail)
   // is throttled inside the server actions in app/(auth)/actions.ts — NOT
