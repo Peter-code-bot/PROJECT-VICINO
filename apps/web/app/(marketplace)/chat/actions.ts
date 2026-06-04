@@ -386,7 +386,13 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     .maybeSingle();
 
   if (error) return { error: error.message };
-  if (cancelled?.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
+  if (!cancelled) {
+    // If we get here without an error, it means the update matched 0 rows.
+    // This could be because the status is no longer pending, or RLS blocked it.
+    return { error: "No se pudo cancelar: la confirmación ya fue modificada o no tienes permiso." };
+  }
+  
+  if (cancelled.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
   return { success: true };
 }
 

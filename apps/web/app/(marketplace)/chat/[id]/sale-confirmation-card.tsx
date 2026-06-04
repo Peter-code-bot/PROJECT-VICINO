@@ -23,8 +23,9 @@ export interface SaleConfirmation {
   initiated_by: string;
   buyer_confirmed: boolean;
   seller_confirmed: boolean;
-  rejected_by?: "comprador" | "vendedor";
-  rejected_at?: string;
+  cancelled_by?: string | null;
+  cancel_reason?: string | null;
+  cancelled_at?: string | null;
   created_at: string;
   products_services: { titulo: string; imagen_principal?: string | null } | { titulo: string; imagen_principal?: string | null }[] | null;
 }
@@ -254,7 +255,7 @@ export function SaleConfirmationCard({
   const isCompleted = sc.status === "completed";
 
   let derivedStatus: ConfirmationStatus = "pendiente";
-  if (sc.status === "rejected" || sc.rejected_by) {
+  if (sc.status === "cancelled" || sc.status === "rejected" || sc.cancelled_by) {
     derivedStatus = "rechazado";
   } else if (isCompleted) {
     derivedStatus = "completado";
@@ -282,11 +283,11 @@ export function SaleConfirmationCard({
   const optimisticRejectedByMe = optimisticStatus === "rechazado";
 
   const myStepState =
-    (rejected && (sc.rejected_by === myRole || optimisticRejectedByMe))
+    (rejected && (sc.cancelled_by === currentUserId || optimisticRejectedByMe))
       ? "rejected"
       : (optimisticMyConfirmed ? "done" : "pending");
   const otherStepState =
-    rejected && sc.rejected_by === otherRole
+    rejected && sc.cancelled_by !== currentUserId && sc.cancelled_by != null
       ? "rejected"
       : otherConfirmed
         ? "done"
