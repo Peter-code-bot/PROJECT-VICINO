@@ -585,7 +585,7 @@ export function ChatWindow({
         
         let scStatus: ConfirmationStatus = "pendiente";
         let scLabel = "";
-        if (primarySc.status === "rejected" || primarySc.rejected_by) {
+        if (primarySc.status === "cancelled" || primarySc.status === "rejected" || primarySc.cancelled_by) {
           scStatus = "rechazado";
           scLabel = "Venta rechazada";
         } else if (primarySc.status === "completed") {
