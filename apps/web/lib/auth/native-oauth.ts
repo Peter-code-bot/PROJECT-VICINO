@@ -51,3 +51,38 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
   if (error) return { error: "Error al conectar con Google. Intenta de nuevo." };
   return {};
 }
+
+// signInWithApple: mismo patrón que signInWithGoogle. Apple devuelve el code via
+// el mismo OAUTH_DEEP_LINK_CALLBACK; el OAuthUrlListener lo procesa indistintamente
+// del provider (exchangeCodeForSession es PKCE-genérico). Email relay
+// `@privaterelay.appleid.com` se trata como email válido (no rechazarlo).
+export async function signInWithApple(): Promise<{ error?: string }> {
+  const supabase = createClient();
+
+  if (Capacitor.isNativePlatform()) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: OAUTH_DEEP_LINK_CALLBACK,
+        skipBrowserRedirect: true,
+      },
+    });
+    if (error) return { error: "Error al conectar con Apple. Intenta de nuevo." };
+    if (!data?.url) return { error: "No se pudo iniciar el flujo de Apple." };
+    try {
+      await Browser.open({ url: data.url, presentationStyle: "popover" });
+    } catch {
+      return { error: "No se pudo abrir el navegador para Apple. Verifica que tengas un navegador compatible." };
+    }
+    return {};
+  }
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "apple",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback-server`,
+    },
+  });
+  if (error) return { error: "Error al conectar con Apple. Intenta de nuevo." };
+  return {};
+}
