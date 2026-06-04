@@ -124,7 +124,13 @@ serve(async (req) => {
         data: {
           url: pushUrl,
           recordId: targetId
-        }
+        },
+        android: {
+          notification: {
+            channel_id: 'default',
+            priority: 'HIGH',
+          },
+        },
       }
     };
 

@@ -23,6 +23,21 @@ export function usePushNotifications() {
           return;
         }
 
+        // Android 8+ descarta toda notificación cuyo channel_id no corresponda
+        // a un canal creado por la app. El id 'default' debe coincidir con el
+        // channel_id que envía la edge function send-push en android.notification.
+        if (Capacitor.getPlatform() === 'android') {
+          await PushNotifications.createChannel({
+            id: 'default',
+            name: 'Notificaciones VICINO',
+            description: 'Mensajes, ofertas y avisos de VICINO',
+            importance: 5,
+            visibility: 1,
+            lights: true,
+            vibration: true,
+          });
+        }
+
         // 2. Registrar el dispositivo con el OS (Android/iOS) para obtener el token
         await PushNotifications.register();
 
