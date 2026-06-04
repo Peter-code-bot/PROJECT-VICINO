@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
     // and it serves a 308 to vicinomarket.com.
     url: 'https://vicinomarket.com',
     cleartext: false,
+    iosScheme: 'https',
     allowNavigation: [
       'vicinomarket.com',
       'www.vicinomarket.com',
@@ -22,16 +23,22 @@ const config: CapacitorConfig = {
     // url: 'http://localhost:3000',
   },
   android: {
-    backgroundColor: '#0A0F0E',
+    backgroundColor: '#0D0D1A',
     allowMixedContent: false,
     // Recommended by capacitor-best-practices skill
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development',
+  },
+  ios: {
+    contentInset: 'never',
+    backgroundColor: '#0D0D1Aff',
+    limitsNavigationsToAppBoundDomains: false,
+    appendUserAgent: 'VICINO-iOS',
   },
   plugins: {
     SplashScreen: {
       launchAutoHide: false,
       launchShowDuration: 3000,
-      backgroundColor: '#0A0F0E',
+      backgroundColor: '#0D0D1A',
       showSpinner: true,
       spinnerColor: '#EDE0D4',
       splashFullScreen: true,
@@ -41,7 +48,7 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#0A0F0E',
+      backgroundColor: '#0D0D1A',
       overlaysWebView: false,
     },
     Keyboard: {
