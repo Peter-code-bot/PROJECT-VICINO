@@ -131,7 +131,7 @@ export function ChatWindow({
   // jump. The flag is set synchronously around loadOlder() so it is
   // open exactly across the window where the prepend commits.
   const isPrependingRef = useRef(false);
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
 
   // FIFO map of optimistic temp ids per texto for the current user.
   // Key is the message texto; value is an array of in-flight tempIds in
@@ -512,7 +512,7 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 px-4 py-3 shadow-[inset_0_-1px_0_0_var(--border)]">
+      <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-[inset_0_-1px_0_0_var(--border)]">
         <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -739,7 +739,7 @@ export function ChatWindow({
       {/* Input */}
       <form
         onSubmit={handleSend}
-        className="flex shrink-0 items-center gap-2 px-4 py-3 shadow-[inset_0_1px_0_0_var(--border)]"
+        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[inset_0_1px_0_0_var(--border)]"
       >
         <input
           type="text"

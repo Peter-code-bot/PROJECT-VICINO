@@ -46,6 +46,13 @@ export function usePushNotifications() {
         // 5. Manejar notificaciones cuando la app está abierta en primer plano (foreground)
         const receivedListener = await PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
           if (!isSubscribed) return;
+          
+          // Si el usuario ya está viendo exactamente esa pantalla (ej. dentro del chat),
+          // no mostramos el toast porque Supabase Realtime ya inserta el mensaje en vivo.
+          if (notification.data && notification.data.url === window.location.pathname) {
+            return;
+          }
+
           // Mostramos un toast nativo-ish con Sonner
           toast(notification.title || "Nueva notificación", {
             description: notification.body || "",
@@ -54,6 +61,7 @@ export function usePushNotifications() {
               onClick: () => {
                 if (notification.data && notification.data.url) {
                   router.push(notification.data.url);
+                  router.refresh();
                 }
               }
             }
@@ -67,6 +75,7 @@ export function usePushNotifications() {
           if (data && data.url) {
             // Navegar directamente a la ruta que viene en el deep link
             router.push(data.url);
+            router.refresh();
           }
         });
 

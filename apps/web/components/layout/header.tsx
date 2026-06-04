@@ -21,7 +21,7 @@ export function Header() {
     <header
       className={cn(
         "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300 border-b border-border",
-        "bg-bg/80 backdrop-blur-xl"
+        "bg-bg/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]"
       )}
     >
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
