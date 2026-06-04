@@ -26,6 +26,10 @@ interface BottomNavProps {
 export function BottomNav({ isVendedor }: BottomNavProps) {
   const pathname = usePathname();
   const unreadChatMessages = useChatUnread();
+
+  const onChatDetail = /^\/chat\/[^/]+/.test(pathname);
+  if (onChatDetail) return null;
+
   const navItems = isVendedor
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== "/vender");
