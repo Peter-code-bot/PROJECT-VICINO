@@ -24,44 +24,72 @@ serve(async (req) => {
   try {
     const payload: WebhookPayload = await req.json();
 
-    // 1. Validar que la tabla sea messages
-    if (payload.table !== "messages" || payload.type !== "INSERT") {
+    const allowedTables = ["messages", "bookings", "sale_confirmations"];
+    if (!allowedTables.includes(payload.table) || payload.type !== "INSERT") {
       return new Response(JSON.stringify({ error: "Unsupported table/event" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
 
-    const message = payload.record;
-    
-    // Si el mensaje es del sistema, ignorar o procesar diferente
-    if (!message.autor_id) {
-        return new Response(JSON.stringify({ ignored: true, reason: "System message" }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    // 2. Obtener el FCM token del destinatario desde Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Buscar el chat para saber quién es el otro participante
-    const { data: chat } = await supabase
-      .from("chats")
-      .select("comprador_id, vendedor_id")
-      .eq("id", message.chat_id)
-      .single();
+    let receiverId: string | null = null;
+    let pushTitle = "Nueva Notificación";
+    let pushBody = "Tienes una nueva actualización en Vicino.";
+    let pushUrl = "/";
+    let targetId = payload.record.id; // Just for logging/response
 
-    if (!chat) {
-        return new Response(JSON.stringify({ error: "Chat not found" }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 404,
-        });
+    if (payload.table === "messages") {
+        const message = payload.record;
+        if (!message.autor_id) {
+            return new Response(JSON.stringify({ ignored: true, reason: "System message" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+        const { data: chat } = await supabase
+          .from("chats")
+          .select("comprador_id, vendedor_id")
+          .eq("id", message.chat_id)
+          .single();
+
+        if (!chat) throw new Error("Chat not found");
+
+        receiverId = message.autor_id === chat.comprador_id ? chat.vendedor_id : chat.comprador_id;
+        pushTitle = "Nuevo mensaje en Vicino";
+        pushBody = message.texto || "Tienes un nuevo mensaje";
+        pushUrl = `/chat/${message.chat_id}`;
+
+    } else if (payload.table === "bookings") {
+        const booking = payload.record;
+        // Asumimos que el comprador hizo la cita y notificamos al vendedor. 
+        // Si el vendedor modificara, esto podría cambiar, pero INSERT es del comprador.
+        receiverId = booking.vendedor_id;
+        pushTitle = "¡Nueva solicitud de cita!";
+        pushBody = "Alguien ha solicitado reservar un servicio contigo.";
+        pushUrl = `/citas`;
+
+    } else if (payload.table === "sale_confirmations") {
+        const sale = payload.record;
+        // Notificamos al que NO inició la confirmación
+        receiverId = sale.initiated_by === sale.buyer_id ? sale.seller_id : sale.buyer_id;
+        pushTitle = "Confirmación de Venta";
+        pushBody = "Un usuario quiere confirmar la venta de un producto.";
+        if (sale.chat_id) {
+            pushUrl = `/chat/${sale.chat_id}`;
+        } else {
+            pushUrl = `/historial`;
+        }
     }
 
-    // El destinatario es el que NO es el autor del mensaje
-    const receiverId = message.autor_id === chat.comprador_id ? chat.vendedor_id : chat.comprador_id;
+    if (!receiverId) {
+        return new Response(JSON.stringify({ error: "Could not determine receiverId" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+        });
+    }
 
     // Obtener el perfil del destinatario
     const { data: profile } = await supabase
@@ -73,36 +101,29 @@ serve(async (req) => {
     if (!profile || !profile.fcm_token) {
         return new Response(JSON.stringify({ ignored: true, reason: "User has no FCM token" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200, // OK pero no se hizo nada
+            status: 200, 
         });
     }
 
     // 3. Enviar Push Notification vía Firebase Cloud Messaging (FCM HTTP v1 API)
-    // Extraemos la cuenta de servicio desde las variables de entorno
     const serviceAccountRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
-    if (!serviceAccountRaw) {
-        throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable");
-    }
+    if (!serviceAccountRaw) throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable");
 
     const serviceAccount = JSON.parse(serviceAccountRaw);
-    
-    // Obtener el access token OAuth2 para FCM
-    // Como estamos en Deno, usaremos un JWT firmado a mano para pedir el access_token a Google
     const token = await getGoogleAccessToken(serviceAccount);
 
-    // Enviar el payload a FCM
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
     
     const fcmPayload = {
       message: {
         token: profile.fcm_token,
         notification: {
-          title: "Nuevo mensaje en Vicino",
-          body: message.texto || "Tienes un nuevo mensaje",
+          title: pushTitle,
+          body: pushBody,
         },
         data: {
-          url: `/chat/${message.chat_id}`, // Deep link
-          chatId: message.chat_id
+          url: pushUrl,
+          recordId: targetId
         }
       }
     };
@@ -122,7 +143,7 @@ serve(async (req) => {
         throw new Error("FCM request failed");
     }
 
-    return new Response(JSON.stringify({ success: true, messageId: message.id }), {
+    return new Response(JSON.stringify({ success: true, targetId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
