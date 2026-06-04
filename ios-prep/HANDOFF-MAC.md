@@ -117,19 +117,42 @@ Si `cap sync ios` pregunta por CocoaPods, ignora (Cap 8 usa SPM por default). Si
 
 ### 4.4 Generar assets (iconos + splash)
 
-Requiere los PNG source que provee Pedro (FASE 6):
-- `apps/web/assets/icon-only.png` ≥ 1024×1024, sin transparencia ni esquinas redondeadas (iOS las máscara).
-- `apps/web/assets/splash.png` ≥ 2732×2732, logo centrado con márgenes amplios, fondo `#0D0D1A`.
+Source PNG entregados por Alejandro (FASE 6 cerrada, todos en `apps/web/assets/`):
+
+| Archivo | Dim | Contenido |
+|---|---|---|
+| `icon-only.png` | 1024×1024 | V flat verde+negra sobre fondo crema. Sin alpha (Apple ITMS-90717). |
+| `splash.png` | 2732×2732 | V flat verde+negra sobre crema. Se usa cuando el device está en **light mode**. |
+| `splash-dark.png` | 2732×2732 | V flat verde+**crema** (pata derecha adaptada para contraste) sobre `#0D0D1A`. Se usa cuando el device está en **dark mode**. |
+
+Decisión de diseño de Alejandro: en el splash dark, la pata derecha es crema en vez de negra porque la negra no contrasta sobre `#0D0D1A`. Brand intencional, no error.
 
 Comando (desde `apps/web/`):
 ```bash
-pnpm add -D @capacitor/assets
-npx capacitor-assets generate --ios --iconBackgroundColor '#0D0D1A' --splashBackgroundColor '#0D0D1A'
+npx @capacitor/assets generate --ios --android
 ```
 
-Genera todos los tamaños del `AppIcon.appiconset` para iOS 26 (1024, 180, 167, 152, 120, 87, 80, 76, 60, 58, 40, 29) + variantes dark/tinted que iOS 18+ pide.
+`@capacitor/assets` v3+ detecta `splash.png` + `splash-dark.png` automáticamente:
+- iOS: genera `AppIcon.appiconset` (1024, 180, 167, 152, 120, 87, 80, 76, 60, 58, 40, 29) + `LaunchScreen-Light.storyboard` + `LaunchScreen-Dark.storyboard`, referenciados en Info.plist según tema.
+- Android: genera mipmap-* (hdpi/xhdpi/xxhdpi/xxxhdpi/anydpi-v26) + `values/styles.xml` (light) + `values-night/styles.xml` (dark).
 
-### 4.5 Verificar el bloque iOS de `capacitor.config.ts` se aplicó
+NO pasarle `--iconBackgroundColor` ni `--splashBackgroundColor` — esos flags fuerzan flatten contra un color y descartan el fondo crema/dark intencional de los source. Sin flags, la herramienta usa los PNG tal cual.
+
+### 4.5 TODO crítico: verificar que iOS NO fuerce light mode
+
+Tras `cap add ios` y `cap sync ios`, abrir `ios/App/App/Info.plist` y confirmar que **NO tiene la clave `UIUserInterfaceStyle = Light`** (forzaría siempre light → el splash dark nunca se mostraría).
+
+- Capacitor por default NO añade esta clave (el iOS deja al usuario decidir su tema).
+- Si por alguna razón aparece (algún plugin o config legacy), quitarla. El plist debería simplemente NO mencionar `UIUserInterfaceStyle` en absoluto.
+
+Verificación rápida en Mac:
+```bash
+plutil -extract UIUserInterfaceStyle xml1 -o - ios/App/App/Info.plist 2>&1
+# esperado: "Could not extract..." → la clave NO existe (correcto).
+# si imprime "Light" → quitar manualmente.
+```
+
+### 4.6 Verificar el bloque iOS de `capacitor.config.ts` se aplicó
 
 Tras `cap sync ios`, abrir `ios/App/App/capacitor.config.json` (regenerado) y confirmar que contiene `ios.contentInset: 'never'`, `ios.backgroundColor: '#0D0D1Aff'`, `ios.appendUserAgent: 'VICINO-iOS'`, `server.iosScheme: 'https'`. Si NO está, algo salió mal en el copy — re-corre `npx cap sync ios`.
 
