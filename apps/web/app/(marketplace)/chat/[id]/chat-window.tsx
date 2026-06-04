@@ -131,7 +131,7 @@ export function ChatWindow({
   // jump. The flag is set synchronously around loadOlder() so it is
   // open exactly across the window where the prepend commits.
   const isPrependingRef = useRef(false);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   // FIFO map of optimistic temp ids per texto for the current user.
   // Key is the message texto; value is an array of in-flight tempIds in

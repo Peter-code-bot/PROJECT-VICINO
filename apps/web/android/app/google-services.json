@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "339433031141",
+    "project_id": "vicino-78cd3",
+    "storage_bucket": "vicino-78cd3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:339433031141:android:15088dd46661e6cd7b5b0c",
+        "android_client_info": {
+          "package_name": "com.vicino.mx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtJ-6gw4Ggusi298QCYCMbyep6PPealNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

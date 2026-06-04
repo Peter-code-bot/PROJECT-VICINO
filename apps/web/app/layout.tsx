@@ -4,6 +4,7 @@ import { Inter, Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { CapacitorInit } from "@/components/capacitor-init";
 import { CapacitorSentryInit } from "@/components/capacitor-sentry-init";
+import { PushNotificationInit } from "@/components/push-notification-init";
 import { OAuthUrlListener } from "@/components/auth/oauth-url-listener";
 import { OfflineDetector } from "@/components/offline-detector";
 import { Toaster } from "sonner";
@@ -100,6 +101,7 @@ export default function RootLayout({
         >
           <CapacitorInit />
           <CapacitorSentryInit />
+          <PushNotificationInit />
           <OAuthUrlListener />
           <OfflineDetector />
           {children}
