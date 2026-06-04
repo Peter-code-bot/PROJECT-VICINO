@@ -1,12 +1,12 @@
 [
   {
-    "_comment": "Android App Links verification for VICINO. Hosted at https://vicinomarket.com/.well-known/assetlinks.json. If the APK is published with Play App Signing (default in Play Console), the SHA256 below MUST be the fingerprint from Play Console > App integrity > App signing key certificate, NOT the local upload keystore. If unsure, declare BOTH (upload + Play app signing) inside sha256_cert_fingerprints. autoVerify=true fails silently when this file is missing, redirects, or has the wrong fingerprint.",
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
       "package_name": "com.vicino.mx",
       "sha256_cert_fingerprints": [
-        "<SHA256_FINGERPRINT>"
+        "<<<GOOGLE_APP_SIGNING_SHA256>>>",
+        "2C:81:C7:8C:89:E1:0A:3B:68:F3:B5:B7:5F:DA:30:C1:E4:CA:F2:EE:5F:42:E8:33:6B:0B:F4:78:21:2A:E0:B3"
       ]
     }
   }
