@@ -24,7 +24,7 @@ serve(async (req) => {
   try {
     const payload: WebhookPayload = await req.json();
 
-    const allowedTables = ["messages", "bookings", "sale_confirmations"];
+    const allowedTables = ["messages", "appointments", "sale_confirmations"];
     if (!allowedTables.includes(payload.table) || payload.type !== "INSERT") {
       return new Response(JSON.stringify({ error: "Unsupported table/event" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,11 +62,11 @@ serve(async (req) => {
         pushBody = message.texto || "Tienes un nuevo mensaje";
         pushUrl = `/chat/${message.chat_id}`;
 
-    } else if (payload.table === "bookings") {
-        const booking = payload.record;
-        // Asumimos que el comprador hizo la cita y notificamos al vendedor. 
-        // Si el vendedor modificara, esto podría cambiar, pero INSERT es del comprador.
-        receiverId = booking.vendedor_id;
+    } else if (payload.table === "appointments") {
+        const appointment = payload.record;
+        // INSERT en appointments lo dispara el comprador desde
+        // appointment-scheduler.tsx → notificar al vendedor (seller_id).
+        receiverId = appointment.seller_id;
         pushTitle = "¡Nueva solicitud de cita!";
         pushBody = "Alguien ha solicitado reservar un servicio contigo.";
         pushUrl = `/citas`;
