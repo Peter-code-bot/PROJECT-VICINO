@@ -8,6 +8,8 @@ import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { NotificationUnreadProvider } from "@/components/layout/notification-unread-provider";
 import { createClient } from "@/lib/supabase/server";
 
+import { MainWrapper } from "@/components/layout/main-wrapper";
+
 export default async function MarketplaceLayout({
   children,
 }: {
@@ -105,11 +107,11 @@ export default async function MarketplaceLayout({
             <div className="md:hidden">
               <Header />
             </div>
-            <main className="flex-1 pb-20 md:pb-0">
+            <MainWrapper>
               <PullToRefreshWrapper>
                 <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
               </PullToRefreshWrapper>
-            </main>
+            </MainWrapper>
             <div className="hidden md:block">
               <ConditionalFooter isVendedor={isVendedor} />
             </div>
