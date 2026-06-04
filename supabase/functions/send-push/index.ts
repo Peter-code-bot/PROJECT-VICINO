@@ -126,9 +126,9 @@ serve(async (req) => {
           recordId: targetId
         },
         android: {
+          priority: 'high',
           notification: {
             channel_id: 'default',
-            priority: 'HIGH',
           },
         },
       }
