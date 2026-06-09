@@ -687,15 +687,15 @@ export function ChatWindow({
                 className={cn(
                   "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
                   isOwn
-                    ? "rounded-br-md bg-[#121212] text-white"
-                    : "rounded-bl-md bg-[#222222] text-white"
+                    ? "rounded-br-md bg-[color:var(--fg)] text-[color:var(--bg)]"
+                    : "rounded-bl-md bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]"
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
                 <div
                   className={cn(
                     "mt-1 flex items-center justify-end gap-1",
-                    isOwn ? "text-white/70" : "text-[color:var(--fg-muted)]"
+                    isOwn ? "opacity-70" : "text-[color:var(--fg-muted)]"
                   )}
                 >
                   <span className="text-[10px]">
