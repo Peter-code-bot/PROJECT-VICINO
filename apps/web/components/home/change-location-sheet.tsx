@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, startTransition } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, LocateFixed, Check, X, Loader2, MapPin } from "lucide-react";
@@ -163,8 +164,13 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const [recents, setRecents] = useState<SavedLocation[]>([]);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRef = useRef(open);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     openRef.current = open;
@@ -300,7 +306,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     );
   }, [commit]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -311,10 +319,10 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 md:left-64 z-[100] bg-black/60 backdrop-blur-sm"
             aria-hidden
           />
-          <div className="pointer-events-none fixed inset-0 z-50 flex items-end" data-modal-open="true">
+          <div className="pointer-events-none fixed inset-0 md:left-64 z-[100] flex items-end" data-modal-open="true">
             <motion.div
               key="sheet"
               role="dialog"
@@ -482,6 +490,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
