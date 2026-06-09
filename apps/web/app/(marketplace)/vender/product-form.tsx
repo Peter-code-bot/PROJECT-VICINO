@@ -479,11 +479,11 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       {isEdit ? (
         <div className="space-y-3 pb-4 border-b border-border/40">
           <label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">Tipo de publicación</label>
-          <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+          <div className="flex items-center gap-3 rounded-2xl product-card-custom p-4">
             {tipoSeleccionado === "producto" ? (
-              <PackageOpen className="h-5 w-5 text-[color:var(--brand-hi)]" />
+              <PackageOpen className="h-5 w-5 text-[color:var(--fg)]" />
             ) : (
-              <Store className="h-5 w-5 text-[color:var(--brand-hi)]" />
+              <Store className="h-5 w-5 text-[color:var(--fg)]" />
             )}
             <div className="flex-1">
               <p className="text-sm font-semibold text-[color:var(--fg)]">
@@ -512,14 +512,14 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               <div className={cn(
                 "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
                 tipoSeleccionado === "producto"
-                  ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                  : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  ? "bg-white text-black"
+                  : "product-card-custom text-[color:var(--fg-muted)] hover:opacity-90"
               )}>
-                <PackageOpen className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "producto" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+                <PackageOpen className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "producto" ? "text-black" : "text-[color:var(--fg-muted)]")} />
                 <span className="text-sm font-semibold">Producto físico</span>
               </div>
               {tipoSeleccionado === "producto" && (
-                <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                <div className="absolute right-3 top-3 text-black">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
               )}
@@ -537,14 +537,14 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               <div className={cn(
                 "flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200",
                 tipoSeleccionado === "servicio"
-                  ? "bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                  : "bg-[color:var(--card)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  ? "bg-white text-black"
+                  : "product-card-custom text-[color:var(--fg-muted)] hover:opacity-90"
               )}>
-                <Store className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "servicio" ? "text-[color:var(--brand-hi)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--brand-hi)]")} />
+                <Store className={cn("mb-2 h-6 w-6 transition-colors", tipoSeleccionado === "servicio" ? "text-black" : "text-[color:var(--fg-muted)]")} />
                 <span className="text-sm font-semibold">Servicio local</span>
               </div>
               {tipoSeleccionado === "servicio" && (
-                <div className="absolute right-3 top-3 text-[color:var(--brand-hi)]">
+                <div className="absolute right-3 top-3 text-black">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
               )}
@@ -555,7 +555,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
 
       {/* Appointment config — services only */}
       {tipoSeleccionado === "servicio" && (
-        <div className="space-y-4 p-4 rounded-2xl border border-border/50 bg-card">
+        <div className="space-y-4 p-4 rounded-2xl product-card-custom">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Permitir agendar citas</p>
@@ -566,14 +566,13 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               onClick={() => setAllowAppointments(!allowAppointments)}
               className={`relative h-6 w-11 rounded-full transition-colors ${
                 allowAppointments
-                  ? "bg-[color:var(--brand)] shadow-[var(--shadow-glow)]"
+                  ? "bg-white"
                   : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
               }`}
-              aria-pressed={allowAppointments}
             >
               <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  allowAppointments ? "translate-x-5" : ""
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+                  allowAppointments ? "translate-x-5 bg-black" : "bg-white"
                 }`}
               />
             </button>
@@ -586,7 +585,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">Mis citas empiezan a las:</label>
                   <select name="appointment_start_time" value={apptStart} onChange={(e) => setApptStart(e.target.value)}
-                    className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground border-0 outline-none appearance-none">
+                    className="w-full product-card-btn rounded-xl px-4 py-3 text-sm border-0 outline-none appearance-none">
                     {Array.from({ length: 48 }, (_, i) => {
                       const h = Math.floor(i / 2);
                       const m = i % 2 === 0 ? "00" : "30";
@@ -600,7 +599,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">Termino de atender a las:</label>
                   <select name="appointment_end_time" value={apptEnd} onChange={(e) => setApptEnd(e.target.value)}
-                    className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground border-0 outline-none appearance-none">
+                    className="w-full product-card-btn rounded-xl px-4 py-3 text-sm border-0 outline-none appearance-none">
                     {Array.from({ length: 48 }, (_, i) => {
                       const h = Math.floor(i / 2);
                       const m = i % 2 === 0 ? "00" : "30";
@@ -615,7 +614,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Cada cita dura:</label>
                 <select name="appointment_duration_minutes" value={apptDuration} onChange={(e) => setApptDuration(e.target.value)}
-                  className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground border-0 outline-none appearance-none">
+                  className="w-full product-card-btn rounded-xl px-4 py-3 text-sm border-0 outline-none appearance-none">
                   <option value="30">30 minutos</option>
                   <option value="45">45 minutos</option>
                   <option value="60">1 hora</option>
@@ -644,7 +643,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
             maxLength={120}
             defaultValue={initialValues?.titulo ?? ""}
             placeholder={tipoSeleccionado === "producto" ? "Ej: iPhone 13 Pro Max - Como nuevo" : "Ej: Clases de regularización de matemáticas"}
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+            className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
           />
         </div>
 
@@ -665,7 +664,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               step="0.01"
               defaultValue={initialValues?.precio ?? ""}
               placeholder="0.00"
-              className="w-full rounded-xl border border-border/50 bg-card pl-8 pr-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
+              className="w-full rounded-xl product-card-btn pl-8 pr-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
             />
           </div>
         </div>
@@ -682,14 +681,13 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               onClick={() => setPrecioNegociable(!precioNegociable)}
               className={`relative h-6 w-11 rounded-full transition-colors ${
                 precioNegociable
-                  ? "bg-[color:var(--brand)] shadow-[var(--shadow-glow)]"
+                  ? "bg-white"
                   : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
               }`}
-              aria-pressed={precioNegociable}
             >
               <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  precioNegociable ? "translate-x-5" : ""
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+                  precioNegociable ? "translate-x-5 bg-black" : "bg-white"
                 }`}
               />
             </button>
@@ -775,8 +773,8 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
               type="button"
               onClick={() => setCategoryOpen(!categoryOpen)}
               className={cn(
-                "w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all hover:border-primary/30",
-                categoryOpen && "border-primary/50 ring-2 ring-primary/20",
+                "w-full flex items-center justify-between rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all hover:opacity-90",
+                categoryOpen && "ring-2 ring-primary/20",
                 "text-muted-foreground/80"
               )}
             >
@@ -854,7 +852,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           rows={5}
           defaultValue={initialValues?.descripcion ?? ""}
           placeholder="Describe los detalles, condición, medidas, o lo que incluye tu servicio..."
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y placeholder:text-muted-foreground/50"
+          className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 resize-y placeholder:text-muted-foreground/50"
         />
       </div>
 
@@ -870,7 +868,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
             required
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 appearance-none"
+            className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 appearance-none"
             style={{
               backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: "no-repeat",
@@ -905,7 +903,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
             onChange={(e) => setColor(e.target.value)}
             maxLength={40}
             placeholder="Ej: Rojo, Negro, Azul marino"
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
           />
         </div>
       )}
@@ -938,7 +936,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           <select
             name="tipo_entrega"
             defaultValue={initialValues?.tipo_entrega ?? "punto_encuentro"}
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 appearance-none"
+            className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 appearance-none"
             style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
           >
             {DELIVERY_OPTIONS
@@ -1011,7 +1009,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       <button
         type="submit"
         disabled={loading || uploading}
-        className="sticky bottom-[var(--bottom-nav-h)] z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
+        className="sticky bottom-[var(--bottom-nav-h)] z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

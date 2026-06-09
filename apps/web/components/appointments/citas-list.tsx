@@ -63,21 +63,26 @@ export function CitasList({ appointments, currentUserId }: Props) {
   return (
     <div>
       {/* Tabs */}
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 mb-4">
+      <div className="flex gap-1 bg-[color:var(--sidebar-bg)] rounded-[var(--r-pill)] p-1 mb-4">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+              "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-[var(--r-pill)]",
               tab === t.key
-                ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
-                : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+                ? "bg-[color:var(--fg)] text-[color:var(--bg)] font-semibold shadow-sm"
+                : "text-[color:var(--fg)] hover:bg-black/5 dark:hover:bg-white/5"
             )}
           >
             {t.label}
             {groups[t.key].length > 0 && (
-              <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5 opacity-60">
+              <span className={cn(
+                "text-[10px] rounded-[var(--r-pill)] px-1.5",
+                tab === t.key
+                  ? "bg-[color:var(--bg)] text-[color:var(--fg)] opacity-90"
+                  : "bg-black/10 dark:bg-white/10 text-[color:var(--fg)] opacity-70"
+              )}>
                 {groups[t.key].length}
               </span>
             )}
@@ -122,7 +127,7 @@ export function CitasList({ appointments, currentUserId }: Props) {
 
             return (
               <li key={a.id}>
-                <Link href={`/citas/${a.id}`} className={cn("block bg-[color:var(--card-2)] border border-[color:var(--border)] rounded-[var(--r-xl)] p-4 hover:bg-[color:var(--bg-elev-2)] transition-colors", a.status === "cancelled" && "opacity-60")}>
+                <Link href={`/citas/${a.id}`} className={cn("block bg-[color:var(--sidebar-bg)] rounded-[var(--r-xl)] p-4 hover:opacity-90 transition-opacity", a.status === "cancelled" && "opacity-60")}>
                   <div className="flex items-start gap-3">
                     <UserAvatar src={other?.foto} name={other?.nombre ?? "?"} size="md" />
                     <div className="flex-1 min-w-0">

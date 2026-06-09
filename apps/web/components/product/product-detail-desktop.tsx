@@ -88,7 +88,7 @@ export function ProductDetailDesktop({
       </div>
 
       <div className="grid grid-cols-1 gap-10 px-4 md:px-0 lg:grid-cols-[1.1fr_1fr]">
-        <div className="overflow-hidden rounded-[var(--r-lg)]">
+        <div className="relative overflow-hidden rounded-[var(--r-lg)]">
           <ProductGallery
             images={images}
             title={product.titulo}
@@ -96,6 +96,7 @@ export function ProductDetailDesktop({
             productId={product.id}
             savedSizes={product.gallery_sizes}
           />
+          {product.precio_negociable && <NegociablePill />}
         </div>
 
         <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
@@ -129,7 +130,6 @@ export function ProductDetailDesktop({
                 size="lg"
                 className="text-4xl"
               />
-              {product.precio_negociable && <NegociablePill />}
             </div>
           </StaggerItem>
 
@@ -178,7 +178,7 @@ export function ProductDetailDesktop({
                   </Link>
                   <Link
                     href={`/vender/${product.id}/editar`}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white transition-transform active:scale-95"
                   >
                     <Edit3 className="h-5 w-5" />
                     Editar producto
@@ -187,7 +187,7 @@ export function ProductDetailDesktop({
               ) : !user ? (
                 <Link
                   href={loginRedirect}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white transition-transform active:scale-95"
                 >
                   <ShoppingBag className="h-5 w-5" />
                   Quiero comprarlo
@@ -196,7 +196,7 @@ export function ProductDetailDesktop({
                 <>
                   <Link
                     href={buyHref}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white transition-transform active:scale-95"
                   >
                     <ShoppingBag className="h-5 w-5" />
                     Quiero comprarlo

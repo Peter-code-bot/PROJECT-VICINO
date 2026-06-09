@@ -102,7 +102,7 @@ export default async function ChatPage({ searchParams }: Props) {
           </h1>
         </div>
         {visibleChats.length > 0 && (
-          <span className="inline-flex items-center rounded-full bg-[color:var(--brand-tint-strong)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--fg)] px-3 py-1 text-xs font-semibold text-[color:var(--bg)]">
             {visibleChats.length} conversaciones
           </span>
         )}
@@ -137,8 +137,8 @@ export default async function ChatPage({ searchParams }: Props) {
           })}
         </div>
       ) : (
-        <div className="rounded-3xl bg-[color:var(--card)] px-4 py-20 text-center shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+        <div className="rounded-3xl product-card-custom px-4 py-20 text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl product-card-btn">
             <span className="translate-y-1 text-4xl">💬</span>
           </div>
           <h2 className="mb-2 font-heading text-xl font-bold text-[color:var(--fg)]">
@@ -149,7 +149,7 @@ export default async function ChatPage({ searchParams }: Props) {
           </p>
           <Link
             href="/buscar"
-            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[color:var(--brand)] px-6 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
+            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[color:var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)]"
           >
             Explorar productos
           </Link>

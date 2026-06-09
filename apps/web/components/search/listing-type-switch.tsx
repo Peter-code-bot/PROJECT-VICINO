@@ -24,7 +24,7 @@ export function ListingTypeSwitch({
       role="tablist"
       aria-label="Filtrar por tipo de publicación"
       className={cn(
-        "inline-flex bg-card border border-border rounded-full p-1",
+        "inline-flex product-card-custom rounded-full p-1",
         className
       )}
     >
@@ -35,8 +35,8 @@ export function ListingTypeSwitch({
         className={cn(
           "px-6 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all",
           value === "producto"
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
+            ? "category-tile-selected shadow-sm"
+            : "product-card-muted hover:text-[color:var(--fg)]"
         )}
       >
         Productos
@@ -48,8 +48,8 @@ export function ListingTypeSwitch({
         className={cn(
           "px-6 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all",
           value === "servicio"
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
+            ? "category-tile-selected shadow-sm"
+            : "product-card-muted hover:text-[color:var(--fg)]"
         )}
       >
         Servicios

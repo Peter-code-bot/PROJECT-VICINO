@@ -308,23 +308,23 @@ export function SaleConfirmationCard({
 
   return (
     <div className={cn(
-      "rounded-[var(--r-xl)] overflow-hidden transition-all duration-300 relative",
+      "dark rounded-[var(--r-xl)] overflow-hidden transition-all duration-300 relative",
       done && "bg-gradient-to-b from-[rgba(45,143,111,0.10)] to-[color:var(--card)] shadow-[inset_0_0_0_1px_rgba(45,143,111,0.32),0_0_40px_rgba(45,143,111,0.15)]",
       rejected && "bg-gradient-to-b from-[rgba(255,59,48,0.08)] to-[color:var(--card)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.28),0_0_40px_rgba(255,59,48,0.10)]",
-      !done && !rejected && "bg-gradient-to-b from-[color:var(--brand-tint)] to-[color:var(--card)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
+      !done && !rejected && "bg-[#121212]"
     )}>
       {/* A. Header del módulo */}
       <div className={cn(
         "flex items-center gap-3 px-4 py-3 shadow-[inset_0_-1px_0_0_currentColor]",
         done && "text-[rgba(45,143,111,0.15)]",
         rejected && "text-[rgba(255,59,48,0.15)]",
-        !done && !rejected && "text-[color:var(--brand-tint-strong)]"
+        !done && !rejected && "text-[color:var(--fg)]"
       )}>
         <div className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] text-white",
-          done && "bg-[color:var(--trust-emerald)]",
-          rejected && "bg-[color:var(--danger)]",
-          !done && !rejected && "bg-[color:var(--brand)]"
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] text-[color:var(--bg)]",
+          done && "bg-[color:var(--trust-emerald)] text-white",
+          rejected && "bg-[color:var(--danger)] text-white",
+          !done && !rejected && "bg-[color:var(--fg)]"
         )}>
           {done ? <CheckCheck className="h-4 w-4" /> : rejected ? <X className="h-4 w-4" /> : <Handshake className="h-4 w-4" />}
         </div>

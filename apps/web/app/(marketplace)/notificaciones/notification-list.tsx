@@ -33,70 +33,70 @@ interface TipoConfig {
 const TIPO_CONFIG: Record<string, TipoConfig> = {
   cita_agendada: {
     icon: CalendarCheck,
-    iconBg: "bg-primary/15",
-    iconColor: "text-primary",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: "Cita",
-    tagBg: "bg-primary/15",
-    tagColor: "text-primary",
+    tagBg: "bg-[color:var(--bg)]",
+    tagColor: "text-[color:var(--fg)]",
     accent: true,
   },
   recordatorio_cita_1d: {
     icon: Calendar,
-    iconBg: "bg-primary/15",
-    iconColor: "text-primary",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: "Recordatorio",
-    tagBg: "bg-primary/15",
-    tagColor: "text-primary",
+    tagBg: "bg-[color:var(--bg)]",
+    tagColor: "text-[color:var(--fg)]",
     accent: true,
   },
   recordatorio_cita_1h: {
     icon: BellRing,
-    iconBg: "bg-primary/15",
-    iconColor: "text-primary",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: "En 1 hora",
-    tagBg: "bg-primary/15",
-    tagColor: "text-primary",
+    tagBg: "bg-[color:var(--bg)]",
+    tagColor: "text-[color:var(--fg)]",
     accent: true,
   },
   message: {
     icon: MessageCircle,
-    iconBg: "bg-muted",
-    iconColor: "text-muted-foreground",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
   sale_confirmation: {
     icon: Handshake,
-    iconBg: "bg-muted",
-    iconColor: "text-muted-foreground",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
   sale_completed: {
     icon: Handshake,
-    iconBg: "bg-emerald-500/15",
-    iconColor: "text-emerald-500",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
   review_reminder: {
     icon: Star,
-    iconBg: "bg-amber-500/15",
-    iconColor: "text-amber-500",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
   trust_upgrade: {
     icon: Award,
-    iconBg: "bg-muted",
-    iconColor: "text-muted-foreground",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
   dispute: {
     icon: AlertTriangle,
-    iconBg: "bg-destructive/15",
-    iconColor: "text-destructive",
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
     tag: null,
     accent: false,
   },
@@ -214,7 +214,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
         <button
           onClick={handleMarkAllRead}
           disabled={isPending}
-          className="text-xs text-primary font-medium hover:underline mb-2 disabled:opacity-50"
+          className="text-xs text-[color:var(--fg)] font-medium hover:underline mb-2 disabled:opacity-50"
         >
           Marcar todo como leído
         </button>
@@ -230,11 +230,10 @@ export function NotificationList({ notifications }: NotificationListProps) {
             key={n.id}
             onClick={() => handleClick(n)}
             className={cn(
-              "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors cursor-pointer border",
+              "w-full text-left flex items-start gap-3 rounded-xl p-4 transition-opacity cursor-pointer border-transparent",
               n.leida
-                ? "bg-transparent hover:bg-muted/50 border-transparent"
-                : "bg-primary/5 dark:bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/15 border-transparent",
-              config.accent && "border-primary/30",
+                ? "bg-[color:var(--sidebar-bg)] opacity-70 hover:opacity-90"
+                : "bg-[color:var(--sidebar-bg)] shadow-sm hover:opacity-90",
             )}
           >
             <div
@@ -261,7 +260,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
                   </span>
                 )}
                 {!n.leida && (
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="No leída" />
+                  <span className="w-2 h-2 rounded-full bg-[color:var(--fg)] shrink-0" aria-label="No leída" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{n.mensaje}</p>

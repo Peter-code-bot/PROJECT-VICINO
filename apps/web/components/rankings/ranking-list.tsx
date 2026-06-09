@@ -28,7 +28,7 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
   return (
     <Link
       href={`/vendedor/${seller.seller_id}`}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 active:scale-[0.98] transition-all hover:border-primary/50"
+      className="group flex items-center gap-3 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-3 active:scale-[0.98] transition-all hover:opacity-90"
       // A3 sub-fase 3.6: fila de lista en /rankings (10-20 vendedores).
       prefetch={false}
     >
@@ -37,7 +37,7 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
       </span>
       <UserAvatar src={seller.foto} name={name} size="sm" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">{name}</p>
+        <p className="truncate text-sm font-medium text-[color:var(--fg)] transition-colors">{name}</p>
 
       </div>
       <span className="font-display text-base tabular-nums text-foreground">

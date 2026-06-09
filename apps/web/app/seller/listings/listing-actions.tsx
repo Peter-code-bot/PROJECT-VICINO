@@ -48,7 +48,7 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
     <div className="flex gap-2 shrink-0">
       <Link
         href={`/vender/${id}/editar`}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border border-border text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground transition-colors sm:text-xs font-medium shrink-0"
+        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-[color:var(--bg)] bg-[color:var(--fg)] hover:opacity-80 transition-opacity sm:text-xs font-medium shrink-0"
         title="Editar"
       >
         <Pencil className="h-4 w-4 shrink-0" />
@@ -56,7 +56,7 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
       <button
         onClick={handleToggle}
         disabled={busy}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border border-brand/40 text-brand bg-transparent hover:bg-brand-tint transition-colors sm:text-xs font-medium disabled:opacity-50 shrink-0"
+        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-[color:var(--bg)] bg-[color:var(--fg)] hover:opacity-80 transition-opacity sm:text-xs font-medium disabled:opacity-50 shrink-0"
         title={isPaused ? "Reanudar" : "Pausar"}
       >
         {isPaused ? <Play className="h-4 w-4 shrink-0" /> : <Pause className="h-4 w-4 shrink-0" />}
@@ -64,7 +64,7 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
       <button
         onClick={handleDelete}
         disabled={busy}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border border-danger/30 text-danger bg-transparent hover:bg-danger/10 transition-colors sm:text-xs font-medium disabled:opacity-50 shrink-0"
+        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-white bg-[color:var(--danger)] hover:opacity-90 transition-opacity sm:text-xs font-medium disabled:opacity-50 shrink-0"
         title="Eliminar"
       >
         <Trash2 className="h-4 w-4 shrink-0" />

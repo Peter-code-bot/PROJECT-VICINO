@@ -86,6 +86,7 @@ export function ProductDetailMobile({
           savedSizes={product.gallery_sizes}
           productId={product.id}
         />
+        {product.precio_negociable && <NegociablePill />}
         <GalleryTopBar
           productId={product.id}
           productTitle={product.titulo}
@@ -116,7 +117,6 @@ export function ProductDetailMobile({
                 size="lg"
                 className="text-3xl"
               />
-              {product.precio_negociable && <NegociablePill />}
             </div>
           </div>
         </StaggerItem>

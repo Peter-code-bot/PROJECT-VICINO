@@ -21,10 +21,8 @@ export function CategoryBadge({ name, isPrimary, className }: CategoryBadgeProps
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-        isPrimary
-          ? "bg-brand-tint-strong text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-          : "bg-card-2 text-fg-muted shadow-[inset_0_0_0_1px_var(--border)]",
+        "inline-flex items-center rounded px-2 py-0.5 text-[9.5px] font-heading font-bold uppercase tracking-[0.6px]",
+        "bg-[#E8D7AE] text-[#5B4A22]",
         className,
       )}
     >

@@ -192,8 +192,8 @@ export function ProfileHeader({
         <div className="flex items-center gap-2 flex-wrap">
           <SellerBadge level={(profile.trust_level as TrustLevel) ?? "nuevo"} showLabel size="md" />
           {profile.is_verified && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--brand-tint-strong)] px-2.5 py-1 text-xs font-medium text-[color:var(--trust-emerald)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
-              <BadgeCheck className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1 rounded bg-[color:var(--trust-emerald)] px-1.5 py-0.5 font-heading font-bold text-[8px] tracking-[1.2px] uppercase text-white shadow-sm">
+              <BadgeCheck className="h-2.5 w-2.5" />
               Verificado
             </span>
           )}
@@ -254,10 +254,10 @@ export function ProfileHeader({
           <Link
             href={`/chat?seller=${profile.id}`}
             className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-90",
               currentUserId && currentUserId !== profile.id && profile.es_vendedor
-                ? "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:bg-[color:var(--bg-elev-2)]"
-                : "bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] hover:bg-[color:var(--brand-dark)]"
+                ? "bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]"
+                : "bg-[color:var(--fg)] text-[color:var(--bg)] shadow-sm"
             )}
           >
             <MessageCircle className="w-4 h-4" />
@@ -274,7 +274,7 @@ export function ProfileHeader({
               targetLabel={profile.nombre_negocio ?? profile.nombre}
               blockableUserId={profile.id}
               ariaLabel="Reportar o bloquear usuario"
-              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)] shrink-0"
+              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--sidebar-bg)] text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)] hover:opacity-90 shrink-0"
             />
           )}
         </div>
@@ -282,7 +282,7 @@ export function ProfileHeader({
         <div className="flex gap-2">
           <Link
             href="/perfil/editar"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--fg)] px-4 py-2.5 text-sm font-semibold text-[color:var(--bg)] shadow-sm transition-all hover:opacity-90"
           >
             <Settings className="w-4 h-4" />
             Editar perfil
@@ -290,7 +290,7 @@ export function ProfileHeader({
           {profile.es_vendedor && (
             <Link
               href="/seller"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--card-2)] px-4 py-2.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-2.5 text-sm font-semibold text-[color:var(--fg)] transition-colors hover:opacity-90"
             >
               <Handshake className="w-4 h-4" />
               Mi tienda

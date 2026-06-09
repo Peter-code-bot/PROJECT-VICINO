@@ -201,9 +201,9 @@ export function VerificationUpload({
 
   const statusIcon =
     status === "approved" ? (
-      <CheckCircle className="h-5 w-5 text-[color:var(--trust-emerald)]" />
+      <CheckCircle className="h-5 w-5 text-[color:var(--fg)]" />
     ) : status === "pending" ? (
-      <Clock className="h-5 w-5 text-amber-400" />
+      <Clock className="h-5 w-5 text-orange-500" />
     ) : status === "rejected" ? (
       <XCircle className="h-5 w-5 text-[color:var(--danger)]" />
     ) : null;
@@ -211,7 +211,7 @@ export function VerificationUpload({
   return (
     <div className="space-y-6">
       {status !== "none" && !isAnalyzing && (
-        <div className="flex items-start sm:items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-2 sm:p-3">
+        <div className="flex items-start sm:items-center gap-2 rounded-[var(--r-lg)] bg-[color:var(--sidebar-bg)] p-2 sm:p-3">
           <div className="shrink-0 mt-0.5 sm:mt-0">{statusIcon}</div>
           <span className="text-xs sm:text-sm font-medium">
             {status === "approved" && "Verificación aprobada automáticamente por IA"}
@@ -246,7 +246,7 @@ export function VerificationUpload({
             className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
               docType === "INE"
                 ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
-                : "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
+                : "border-transparent bg-[color:var(--sidebar-bg)] hover:opacity-80"
             } disabled:opacity-50`}
           >
             <span className="text-3xl">🪪</span>
@@ -258,7 +258,7 @@ export function VerificationUpload({
             disabled={uploading !== null || isAnalyzing}
             className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all disabled:opacity-50 ${
               docType !== "Credencial Universitaria"
-                ? "border-[color:var(--border)] bg-[color:var(--card-2)] hover:border-[color:var(--text-muted)]"
+                ? "border-transparent bg-[color:var(--sidebar-bg)] hover:opacity-80"
                 : ""
             }`}
             style={docType === "Credencial Universitaria" ? {
@@ -273,7 +273,7 @@ export function VerificationUpload({
         </div>
 
         {docType === "Credencial Universitaria" && (
-          <div className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4">
+          <div className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4">
             <label className="block text-sm font-medium mb-2">Selecciona tu Universidad</label>
             <select 
               value={university}
@@ -291,14 +291,14 @@ export function VerificationUpload({
 
       <div className="space-y-4">
         {getDocsConfig().map(({ key, label, accept }) => (
-          <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 overflow-hidden">
+          <div key={key} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 overflow-hidden">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">{label}</p>
                 {uploading === key ? (
                   <p className="text-xs text-indigo-400 animate-pulse">Procesando...</p>
                 ) : existingDocs[key] ? (
-                  <p className="text-xs text-[color:var(--trust-emerald)]">Subido correctamente</p>
+                  <p className="text-xs text-[color:var(--fg)]">Subido correctamente</p>
                 ) : (
                   <p className="text-xs text-[color:var(--danger)]">Documento requerido</p>
                 )}
@@ -308,7 +308,7 @@ export function VerificationUpload({
                   <button
                     onClick={() => handleDelete(key)}
                     disabled={uploading !== null || isAnalyzing}
-                    className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[color:var(--danger)] text-white hover:opacity-80 transition-opacity disabled:opacity-50"
                     title="Eliminar"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -327,7 +327,7 @@ export function VerificationUpload({
                     }}
                     disabled={uploading !== null || isAnalyzing}
                   />
-                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-[color:var(--card-2)] border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] transition-colors cursor-pointer" title="Galería">
+                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-[color:var(--fg)] text-[color:var(--bg)] hover:opacity-80 transition-colors cursor-pointer" title="Galería">
                     <ImagePlus className="h-4 w-4" />
                   </span>
                 </label>
@@ -345,7 +345,7 @@ export function VerificationUpload({
                     }}
                     disabled={uploading !== null || isAnalyzing}
                   />
-                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors cursor-pointer" title="Cámara">
+                  <span className="inline-flex flex-col items-center justify-center h-9 w-9 rounded-full bg-[color:var(--fg)] text-[color:var(--bg)] hover:opacity-80 transition-colors cursor-pointer" title="Cámara">
                     <Camera className="h-4 w-4" />
                   </span>
                 </label>

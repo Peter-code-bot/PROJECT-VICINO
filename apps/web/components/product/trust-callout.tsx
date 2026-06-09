@@ -4,7 +4,7 @@ export function TrustCallout() {
   return (
     <div
       role="note"
-      className="flex items-start gap-3 rounded-[var(--r-lg)] bg-[color:var(--brand-tint)] p-3 text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+      className="flex items-start gap-3 rounded-[var(--r-lg)] product-card-custom p-3 product-card-text"
     >
       <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
       <p className="text-xs leading-relaxed">

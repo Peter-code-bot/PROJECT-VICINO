@@ -603,9 +603,9 @@ export function ChatWindow({
           <div className="mx-3 my-1">
             <button
               onClick={() => setShowSaleDetails(!showSaleDetails)}
-              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left rounded-xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-[color:var(--brand-tint-strong)]"
+              className="dark flex w-full items-center gap-2.5 px-3 py-2.5 text-left rounded-xl bg-[#121212] text-white transition-colors hover:bg-black"
             >
-              <div className="w-7 h-7 rounded-[9px] bg-[color:var(--brand)] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(31,90,78,0.4)]">
+              <div className="w-7 h-7 rounded-[9px] bg-[#222222] text-white flex items-center justify-center shrink-0">
                 <Handshake className="h-3.5 w-3.5" strokeWidth={2.2} />
               </div>
               <div className="flex-1 min-w-0">
@@ -687,8 +687,8 @@ export function ChatWindow({
                 className={cn(
                   "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
                   isOwn
-                    ? "rounded-br-md bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)]"
-                    : "rounded-bl-md bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)]"
+                    ? "rounded-br-md bg-[#121212] text-white"
+                    : "rounded-bl-md bg-[#222222] text-white"
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.texto}</p>

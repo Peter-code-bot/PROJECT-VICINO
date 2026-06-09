@@ -70,16 +70,16 @@ export default async function FavoritosPage() {
         </div>
       ) : (
         <div className="text-center py-20">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center">
-            <Heart className="w-8 h-8 text-red-300" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[color:var(--fg)] flex items-center justify-center">
+            <Heart className="w-8 h-8 text-[color:var(--bg)]" />
           </div>
           <h2 className="font-heading font-bold text-lg mb-2">Sin favoritos</h2>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-[color:var(--fg-muted)] mb-4">
             Guarda productos que te interesen para verlos después
           </p>
           <Link
             href="/buscar"
-            className="inline-flex rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90"
+            className="inline-flex rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
           >
             Explorar productos
           </Link>

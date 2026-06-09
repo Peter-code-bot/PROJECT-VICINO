@@ -23,7 +23,7 @@ export function SellerCardMini({ seller, className }: SellerCardMiniProps) {
     <Link
       href={`/vendedor/${seller.id}`}
       className={cn(
-        "group flex items-center gap-3 rounded-[var(--r-lg)] bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-card-2",
+        "group flex items-center gap-3 rounded-[var(--r-lg)] product-card-custom p-3 transition-colors hover:opacity-90",
         className,
       )}
     >
@@ -70,7 +70,7 @@ export function SellerCardMini({ seller, className }: SellerCardMiniProps) {
         </div>
       </div>
 
-      <span className="ml-auto inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-semibold text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors group-hover:bg-brand-tint">
+      <span className="ml-auto inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-semibold product-card-btn transition-colors hover:opacity-90">
         Ver tienda
       </span>
     </Link>

@@ -12,15 +12,17 @@ interface NegociablePillProps {
  */
 export function NegociablePill({ className }: NegociablePillProps) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-        "bg-brand-tint-strong text-brand-hi",
-        "shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]",
-        className,
-      )}
-    >
-      Negociable
-    </span>
+    <div className={cn("absolute top-0 left-0 w-[92px] h-[92px] overflow-hidden pointer-events-none z-10", className)}>
+      <div
+        className={cn(
+          "absolute top-[14px] -left-[28px] w-[110px] py-1 text-center -rotate-45",
+          "bg-gradient-to-r from-[#2E8773] to-[#3FA68B]",
+          "text-white font-heading text-[8.5px] font-extrabold tracking-[1.2px] uppercase",
+          "shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
+        )}
+      >
+        Negociable
+      </div>
+    </div>
   );
 }

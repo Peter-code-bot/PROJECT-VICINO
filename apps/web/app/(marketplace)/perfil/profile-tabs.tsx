@@ -201,7 +201,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           className={cn(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "products"
-              ? "border-[color:var(--brand)] text-[color:var(--brand-hi)]"
+              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
               : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
@@ -213,7 +213,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           className={cn(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "reviews"
-              ? "border-[color:var(--brand)] text-[color:var(--brand-hi)]"
+              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
               : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
           )}
         >
@@ -227,15 +227,15 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
         <div className="relative">
           {/* Edit Banner */}
           {isEditing && (
-            <div className="mb-4 rounded-xl bg-[color:var(--brand-tint)] border border-[color:var(--brand-tint-strong)] p-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in-up">
-              <span className="text-sm font-semibold text-[color:var(--brand-dark)] dark:text-[color:var(--brand-hi)]">
+            <div className="mb-4 rounded-xl bg-[color:var(--sidebar-bg)] border border-[color:var(--border)] p-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in-up">
+              <span className="text-sm font-semibold text-[color:var(--fg)]">
                 Estás editando tus productos, ordénalos a tu gusto.
               </span>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleCancelEdit}
                   disabled={isSaving}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-50"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-transparent border border-[color:var(--border)] text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)] disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancelar
@@ -243,7 +243,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                 <button
                   onClick={handleSaveOrder}
                   disabled={isSaving}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] disabled:opacity-50"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-[color:var(--fg)] text-[color:var(--bg)] shadow-sm hover:opacity-90 disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   Guardar
@@ -277,14 +277,14 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
             </DndContext>
           ) : (
             <div className="py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl product-card-custom">
                 <span className="text-2xl">📦</span>
               </div>
               <p className="text-sm text-[color:var(--fg-muted)]">Sin productos publicados</p>
               {isVendedor && (
                 <Link
                   href="/vender"
-                  className="mt-3 inline-block text-sm font-semibold text-[color:var(--brand-hi)] hover:text-[color:var(--brand)]"
+                  className="mt-3 inline-block text-sm font-semibold text-[color:var(--fg)] hover:opacity-80"
                 >
                   Publicar mi primer producto →
                 </Link>
@@ -307,7 +307,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
               return (
                 <div
                   key={r.id}
-                  className="space-y-2 rounded-xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]"
+                  className="space-y-2 rounded-xl bg-[color:var(--sidebar-bg)] p-4"
                 >
                   <div className="flex items-center gap-2">
                     <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
@@ -346,8 +346,8 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
             })
           ) : (
             <div className="py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(212,168,83,0.18)] shadow-[inset_0_0_0_1px_rgba(212,168,83,0.30)]">
-                <span className="text-2xl">⭐</span>
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl product-card-custom">
+                <Star className="h-6 w-6 text-[color:var(--fg)]" />
               </div>
               <p className="text-sm text-[color:var(--fg-muted)]">Sin reseñas aún</p>
             </div>

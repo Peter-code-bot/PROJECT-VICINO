@@ -63,13 +63,13 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
         href={`/chat/${chat.id}`}
         className={`relative flex items-center gap-4 overflow-hidden rounded-2xl p-4 pr-12 transition-all duration-300 ${
           chat.unread > 0
-            ? "bg-[color:var(--card)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
-            : "bg-[color:var(--card)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+            ? "bg-[color:var(--sidebar-bg)] shadow-sm"
+            : "bg-[color:var(--sidebar-bg)] hover:opacity-90"
         } ${menuOpen ? "scale-[0.98] opacity-90" : ""}`}
         draggable={false}
       >
         {chat.unread > 0 && (
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[color:var(--brand)]" />
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-white" />
         )}
 
         <div className="relative shrink-0">
@@ -77,10 +77,10 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
             src={chat.otherUser?.foto}
             name={chat.otherUser?.nombre ?? "?"}
             size="lg"
-            className="shadow-[0_0_0_2px_var(--card)]"
+            className="shadow-[0_0_0_2px_#121212]"
           />
           {chat.unread > 0 && (
-            <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--brand)] px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--card)]">
+            <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold leading-none text-black shadow-[0_0_0_2px_#121212]">
               {chat.unread > 99 ? "99+" : chat.unread}
             </span>
           )}
@@ -92,7 +92,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
               className={`truncate text-base transition-colors ${
                 chat.unread > 0
                   ? "font-semibold text-[color:var(--fg)]"
-                  : "font-medium text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)]"
+                  : "font-medium text-[color:var(--fg)] group-hover:opacity-70"
               }`}
             >
               {chat.otherUser?.nombre ?? "Usuario"}

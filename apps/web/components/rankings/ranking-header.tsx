@@ -62,8 +62,8 @@ export function RankingHeader({
         <Popover>
           <PopoverTrigger
             className={cn(
-              "inline-flex items-center gap-2 rounded-pill border border-border bg-muted px-3 py-1.5",
-              "text-xs font-medium text-foreground transition-colors hover:border-border-strong",
+              "inline-flex items-center gap-2 rounded-pill bg-[color:var(--sidebar-bg)] px-3 py-1.5",
+              "text-xs font-medium text-[color:var(--fg)] transition-colors hover:opacity-90",
             )}
           >
             {formatPeriod(currentPeriod)}
@@ -81,8 +81,8 @@ export function RankingHeader({
                       className={cn(
                         "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
                         active
-                          ? "bg-primary/10 text-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ? "bg-[color:var(--fg)] text-[color:var(--bg)]"
+                          : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]",
                       )}
                     >
                       {formatPeriod(p.period)}
@@ -109,8 +109,8 @@ export function RankingHeader({
               className={cn(
                 "shrink-0 rounded-pill px-3 py-1.5 text-xs font-medium transition-colors",
                 active
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-muted text-muted-foreground hover:border-border-strong hover:text-foreground",
+                  ? "bg-[color:var(--fg)] text-[color:var(--bg)]"
+                  : "bg-[color:var(--sidebar-bg)] text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] hover:opacity-90",
               )}
             >
               {cat.nombre}

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 
-import { Bell, Trophy } from "lucide-react";
+import { Bell, Trophy, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNotificationUnread } from "@/components/layout/notification-unread-provider";
 
-export function Header() {
+export function Header({ isAdmin }: { isAdmin?: boolean }) {
   const { count: unreadNotifications } = useNotificationUnread();
   const [scrolled, setScrolled] = useState(false);
 
@@ -42,37 +42,40 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* Admin */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] transition-colors"
+              aria-label="Panel de admin"
+            >
+              <Sparkles className="h-4 w-4 text-[#1A1A2E]" strokeWidth={2.2} />
+            </Link>
+          )}
+
           {/* Rankings */}
           <Link
             href="/rankings"
-            className={cn(
-              "relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-              "bg-card-2 text-fg-muted hover:text-fg",
-              "shadow-[inset_0_0_0_1px_var(--border)]"
-            )}
+            className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] transition-colors"
             aria-label="Rankings"
           >
-            <Trophy className="h-[18px] w-[18px]" strokeWidth={2} />
+            <Trophy className="h-[17px] w-[17px] text-[#1A1A2E]" strokeWidth={2} />
           </Link>
 
           {/* Notifications */}
-        <Link
-          href="/notificaciones"
-          className={cn(
-            "relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-            "bg-card-2 text-fg-muted hover:text-fg",
-            "shadow-[inset_0_0_0_1px_var(--border)]"
-          )}
-          aria-label="Notificaciones"
-        >
-          <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
-          {unreadNotifications > 0 && (
-            <span
-              className="absolute top-[9px] right-[9px] h-[7px] w-[7px] rounded-full bg-brand shadow-[0_0_0_2px_var(--card-2)]"
-              aria-label={`${unreadNotifications} notificaciones sin leer`}
-            />
-          )}
-        </Link>
+          <Link
+            href="/notificaciones"
+            className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] transition-colors"
+            aria-label="Notificaciones"
+          >
+            <Bell className="h-4 w-4 text-[#1A1A2E]" strokeWidth={2} />
+            {unreadNotifications > 0 && (
+              <span
+                className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-bg"
+                aria-label={`${unreadNotifications} notificaciones sin leer`}
+              />
+            )}
+          </Link>
         </div>
       </div>
     </header>

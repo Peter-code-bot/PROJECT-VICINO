@@ -59,7 +59,7 @@ export function ReviewsSummary({
 
   if (!reviews || reviews.length === 0) {
     return (
-      <section className="flex flex-col gap-4 rounded-[var(--r-lg)] bg-card p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+      <section className="flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
         <div className="flex items-center gap-3">
           <span className="font-display text-3xl font-semibold leading-none text-fg-muted">
             -.-
@@ -69,7 +69,7 @@ export function ReviewsSummary({
             <span className="text-xs text-fg-muted">0 reseñas</span>
           </div>
         </div>
-        <div className="rounded-[var(--r-md)] bg-card-2 p-4 text-center">
+        <div className="rounded-[var(--r-md)] p-4 text-center">
           <p className="text-sm font-medium text-fg">Sin reseñas todavía</p>
           <p className="text-xs text-fg-muted mt-1">Este vendedor aún no ha recibido reseñas.</p>
         </div>
@@ -78,7 +78,7 @@ export function ReviewsSummary({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-[var(--r-lg)] bg-card p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+    <section className="flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
       <div className="flex items-center gap-3">
         <span className="font-display text-3xl font-semibold leading-none text-fg">
           {Number(averageRating).toFixed(1)}

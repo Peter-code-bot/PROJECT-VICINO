@@ -162,7 +162,7 @@ export function SearchFilters({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Busca en VICINO..."
-            className="w-full rounded-2xl bg-[color:var(--card-2)] pl-10 pr-4 py-2.5 text-sm text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-colors focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+            className="w-full rounded-2xl product-card-custom pl-10 pr-4 py-2.5 text-sm text-[color:var(--fg)] placeholder:text-[color:var(--fg-dim)] outline-none transition-colors focus:opacity-90"
           />
           {showDropdown && (
             <SearchAutocompleteDropdown
@@ -176,13 +176,12 @@ export function SearchFilters({
             />
           )}
         </div>
-        <Button
-          variant="secondary"
-          size="md"
+        <button
           type="button"
           onClick={handleGeo}
           disabled={geoLoading}
           title="Cerca de mí"
+          className="flex h-[40px] items-center gap-2 rounded-xl product-card-custom px-4 text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50"
         >
           {geoLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-[color:var(--brand-hi)]" />
@@ -190,16 +189,15 @@ export function SearchFilters({
             <Navigation className="h-4 w-4 text-[color:var(--brand-hi)]" />
           )}
           <span className="hidden sm:inline">Cerca</span>
-        </Button>
-        <Button
-          variant="secondary"
-          size="md"
+        </button>
+        <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
+          className="flex h-[40px] items-center gap-2 rounded-xl product-card-custom px-4 text-sm font-medium transition-colors hover:opacity-90"
         >
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filtros</span>
-        </Button>
+        </button>
       </form>
 
       {/* Badge de resultados cercanos activos */}
@@ -222,8 +220,8 @@ export function SearchFilters({
           className={cn(
             "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
             !initialCategory
-              ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-              : "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              ? "category-tile-selected"
+              : "product-card-custom hover:opacity-90"
           )}
         >
           Todos
@@ -242,8 +240,8 @@ export function SearchFilters({
               className={cn(
                 "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                  : "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                  ? "category-tile-selected"
+                  : "product-card-custom hover:opacity-90"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />

@@ -89,7 +89,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   const otherCategories = CATEGORIES.filter((c) => c.type === "otro" && !c.hidden_in_form);
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--bg-elev-1)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--sidebar-bg)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
       {/* Logo */}
       <div className="px-5 py-5 shadow-[inset_0_-1px_0_0_var(--border)]">
         <Link href="/" className="group flex items-center gap-2.5">
@@ -116,7 +116,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
             categoriesOpen
               ? "bg-[color:var(--bg-elev-2)] text-[color:var(--fg)]"
-              : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+              : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
           )}
         >
           <span className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
@@ -144,7 +144,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
@@ -154,7 +154,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg-muted)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]">
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">
                   <Icon className="h-3.5 w-3.5" />
                   {cat.name}
                 </Link>
@@ -184,8 +184,8 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
-                  ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                  : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+                  ? "category-tile-selected"
+                  : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
               )}
             >
               <UserAvatar src={profile?.foto} name={profile?.nombre ?? "?"} size="xs" />
@@ -259,10 +259,10 @@ function NavItem({
       className={cn(
         "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
         active
-          ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+          ? "category-tile-selected font-semibold"
           : highlight
             ? "text-[color:var(--brand-hi)] hover:bg-[color:var(--brand-tint)]"
-            : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+            : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
       )}
     >
       <Icon className="h-5 w-5" />

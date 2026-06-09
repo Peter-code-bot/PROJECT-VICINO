@@ -11,7 +11,7 @@ import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from
 import { HomeTabs } from "@/components/home/home-tabs";
 import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
-import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
+import { UNIVERSITY_COLORS, getContrastYIQ, cn } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import {
   UtensilsCrossed,
@@ -306,9 +306,8 @@ export default async function HomePage({ searchParams }: Props) {
       {feed === "parati" ? (
         <>
           {/* ─── ZONE + SEARCH (app-style hero) ───────────────── */}
-          <section className="px-4 pt-8 pb-4">
-            <div className="max-w-7xl mx-auto space-y-4">
-              <ZoneCard />
+          <section className="px-4 pt-4 pb-4">
+            <div className="max-w-7xl mx-auto space-y-3">
               <h1 className="font-heading text-3xl font-bold leading-[1.1] tracking-tight text-[color:var(--fg)]">
                 Descubre lo mejor{" "}
                 <span className="text-[color:var(--brand-hi)]">cerca de ti</span>
@@ -316,17 +315,16 @@ export default async function HomePage({ searchParams }: Props) {
               <Link
                 href="/buscar"
                 id="home-search"
-                className="flex items-center gap-3 rounded-2xl bg-[color:var(--card-2)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                className="flex items-center gap-3 rounded-2xl product-card-custom px-4 py-3 transition-colors hover:opacity-90"
               >
-                <Search className="h-[17px] w-[17px] text-[color:var(--brand-hi)]" strokeWidth={2} />
-                <span className="flex-1 text-sm text-[color:var(--fg-dim)]">
+                <Search className="h-[17px] w-[17px] product-card-muted" strokeWidth={2} />
+                <span className="flex-1 text-sm product-card-muted">
                   ¿Qué buscas hoy?
                 </span>
-                <span className="h-4 w-px bg-[color:var(--border-strong)]" aria-hidden />
-                <span className="text-xs font-semibold text-[color:var(--fg-muted)]">
-                  Filtros
-                </span>
               </Link>
+              <div>
+                <ZoneCard />
+              </div>
             </div>
           </section>
 
@@ -366,13 +364,16 @@ export default async function HomePage({ searchParams }: Props) {
                       <div
                         className={
                           isFeatured
-                            ? "flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-all duration-200 group-hover:-translate-y-0.5"
-                            : "flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--card)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                            ? "flex h-16 w-16 items-center justify-center rounded-[14px] category-tile-selected transition-all duration-200"
+                            : "flex h-16 w-16 items-center justify-center rounded-[14px] category-tile-unselected transition-all duration-200"
                         }
                       >
-                        <IconComponent className="h-6 w-6" strokeWidth={1.8} />
+                        <IconComponent className="h-[22px] w-[22px]" strokeWidth={1.8} />
                       </div>
-                      <span className="text-[11px] font-medium text-[color:var(--fg-muted)] transition-colors group-hover:text-[color:var(--fg)]">
+                      <span className={cn(
+                        "text-[11px] font-medium transition-colors",
+                        isFeatured ? "text-[color:var(--fg)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--fg)]"
+                      )}>
                         {cat.name}
                       </span>
                     </HapticLink>

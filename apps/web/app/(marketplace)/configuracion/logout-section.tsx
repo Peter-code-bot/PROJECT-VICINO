@@ -49,7 +49,7 @@ export function LogoutSection() {
     <button
       onClick={() => setConfirming(true)}
       aria-label="Cerrar sesión"
-      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--card)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)] transition-colors hover:bg-[rgba(255,59,48,0.06)]"
+      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/10"
     >
       <LogOut className="h-4 w-4" />
       Cerrar sesión

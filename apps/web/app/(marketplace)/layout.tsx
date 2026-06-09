@@ -105,7 +105,7 @@ export default async function MarketplaceLayout({
           />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="md:hidden">
-              <Header />
+              <Header isAdmin={isAdmin} />
             </div>
             <MainWrapper>
               <PullToRefreshWrapper>

@@ -38,17 +38,17 @@ export default async function VentasPage() {
     pending_confirmation: {
       label: "Pendiente",
       color:
-        "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
+        "bg-orange-500 text-white rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     completed: {
       label: "Completada",
       color:
-        "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
+        "bg-[color:var(--fg)] text-[color:var(--bg)] rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     cancelled: {
       label: "Cancelada",
       color:
-        "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
+        "bg-[color:var(--danger)] text-white rounded-[var(--r-pill)] text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-medium",
     },
     expired: {
       label: "Expirada",
@@ -70,7 +70,7 @@ export default async function VentasPage() {
             const canReview = s.status === "completed" && !reviewedIds.has(s.id);
 
             return (
-              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0">
+              <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 hover:opacity-90 transition-opacity flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0">
                 <div className="flex flex-col min-w-0 space-y-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-medium text-sm truncate">
@@ -83,9 +83,9 @@ export default async function VentasPage() {
                     {canReview && (
                       <Link
                         href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${(product as { id?: string })?.id ?? ""}`}
-                        className="text-[color:var(--brand-hi)] hover:underline shrink-0"
+                        className="text-[color:var(--fg)] hover:opacity-80 underline shrink-0 font-medium"
                       >
-                        Evaluar '
+                        Evaluar
                       </Link>
                     )}
                   </div>

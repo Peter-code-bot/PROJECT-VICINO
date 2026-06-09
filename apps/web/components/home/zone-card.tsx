@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, startTransition } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
@@ -40,39 +40,17 @@ export function ZoneCard() {
 
   return (
     <>
-      <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card)] p-3 shadow-[inset_0_0_0_1px_var(--border)]">
-        <span
-          aria-hidden
-          className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]"
-        >
-          <MapPin size={16} strokeWidth={2.2} />
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 product-card-custom transition-colors hover:opacity-90"
+      >
+        <MapPin className="h-[13px] w-[13px] product-card-muted" strokeWidth={2} />
+        <span className="font-heading text-[13px] font-semibold product-card-text whitespace-nowrap">
+          {name ?? (position ? "Cerca de ti" : "Activa ubicación")}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-medium uppercase tracking-widest text-[color:var(--fg-muted)]">
-            Tu zona · 5 km
-          </div>
-          <div className="truncate font-heading text-base font-semibold text-[color:var(--fg)]">
-            {name ?? (position ? "Cerca de ti" : "Activa tu ubicación")}
-          </div>
-          {vendorCount !== null && vendorCount > 0 && (
-            <div className="text-xs text-[color:var(--fg-muted)]">
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--brand-hi)] align-middle" />
-              {vendorCount} cerca
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className={cn(
-            "inline-flex flex-shrink-0 items-center justify-center rounded-full border border-[color:var(--brand-hi)]/60 px-3 py-1",
-            "min-h-[40px] font-heading text-sm font-semibold text-[color:var(--brand-hi)]",
-            "transition-colors hover:bg-[color:var(--brand-tint)] active:bg-[color:var(--brand-tint-strong)]",
-          )}
-        >
-          Cambiar
-        </button>
-      </div>
+        <ChevronDown className="h-3 w-3 product-card-muted" strokeWidth={2} />
+      </button>
 
       <ChangeLocationSheet open={open} onClose={() => setOpen(false)} />
     </>

@@ -58,13 +58,10 @@ export function SellerSidebar() {
             className={cn(
               "group relative flex items-center justify-between overflow-hidden rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-                : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+                ? "bg-[color:var(--fg)] font-semibold text-[color:var(--bg)] shadow-sm"
+                : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
             )}
           >
-            {active && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-md bg-[color:var(--brand)]" />
-            )}
             <div className="flex items-center gap-3">
               <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
               {label}
@@ -79,8 +76,8 @@ export function SellerSidebar() {
           className={cn(
             "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
             pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-              ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
-              : "text-[color:var(--fg-muted)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+              ? "bg-[color:var(--fg)] font-semibold text-[color:var(--bg)] shadow-sm"
+              : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
           )}
         >
           <SELLER_SETTINGS_ITEM.icon className="h-4 w-4" />

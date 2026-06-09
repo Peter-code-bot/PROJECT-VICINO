@@ -52,7 +52,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 min-w-0">
+      <div className="flex gap-1 bg-[color:var(--sidebar-bg)] rounded-[var(--r-pill)] p-1 min-w-0">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -60,7 +60,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
             className={cn(
               "flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors",
               tab === t.key
-                ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
+                ? "bg-[color:var(--fg)] text-[color:var(--bg)] rounded-[var(--r-pill)] font-semibold"
                 : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
             )}
           >
@@ -81,7 +81,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
@@ -117,7 +117,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 ? r.products_services[0]
                 : r.products_services;
               return (
-                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 overflow-hidden min-w-0">
+                <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
@@ -143,14 +143,14 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               const product = Array.isArray(s.products_services) ? s.products_services[0] : s.products_services;
               const buyer = Array.isArray(s.buyer) ? s.buyer[0] : s.buyer;
               return (
-                <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 flex items-center justify-between gap-3 overflow-hidden min-w-0">
+                <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 flex items-center justify-between gap-3 overflow-hidden min-w-0">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{product?.titulo ?? "Producto"}</p>
                     <p className="text-xs text-[color:var(--fg-muted)] truncate">Comprador: {buyer?.nombre ?? "Usuario"}</p>
                   </div>
                   <Link
                     href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${product?.id ?? ""}`}
-                    className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline shrink-0 whitespace-nowrap"
+                    className="text-xs font-medium text-[color:var(--fg)] hover:opacity-80 underline shrink-0 whitespace-nowrap"
                   >
                     Evaluar →
                   </Link>

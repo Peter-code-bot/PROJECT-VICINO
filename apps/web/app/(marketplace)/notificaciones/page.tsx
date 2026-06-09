@@ -36,7 +36,7 @@ export default async function NotificacionesPage() {
             </h1>
           </div>
           {unreadCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-[color:var(--brand-tint-strong)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+            <span className="inline-flex items-center rounded-full bg-[color:var(--fg)] px-3 py-1 text-xs font-semibold text-[color:var(--bg)] shadow-sm">
               {unreadCount} sin leer
             </span>
           )}
@@ -46,8 +46,8 @@ export default async function NotificacionesPage() {
           <NotificationList notifications={notifications} />
         ) : (
           <div className="py-20 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
-              <Bell className="h-7 w-7 text-[color:var(--brand-hi)]" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl product-card-custom">
+              <Bell className="h-7 w-7 text-[color:var(--fg)]" />
             </div>
             <h2 className="mb-2 font-heading text-lg font-bold text-[color:var(--fg)]">
               Sin notificaciones

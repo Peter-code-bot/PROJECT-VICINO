@@ -61,7 +61,7 @@ export function SpecRow({ estado, deliveryLabel, createdAt, color, tipo }: SpecR
 
   return (
     <div
-      className={`grid ${gridClass} gap-2 rounded-[var(--r-lg)] bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)]`}
+      className={`grid ${gridClass} gap-2 rounded-[var(--r-lg)] product-card-custom p-3`}
     >
       {!isService && (
         <SpecCell label="ESTADO" value={formatProductCondition(estado)} />

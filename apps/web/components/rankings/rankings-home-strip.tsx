@@ -202,8 +202,8 @@ function RankingsHomeStrip({
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-[20px] p-4",
-          "bg-[linear-gradient(135deg,rgba(212,168,83,0.14)_0%,rgba(212,168,83,0.03)_50%,rgba(46,135,115,0.10)_100%)]",
+          "relative overflow-hidden rounded-[20px] p-4 product-card-custom",
+          "bg-[linear-gradient(135deg,rgba(212,168,83,0.14)_0%,rgba(212,168,83,0.03)_50%,transparent_100%)]",
           "shadow-[inset_0_0_0_1px_rgba(212,168,83,0.25)]",
           "transition-[transform,box-shadow] duration-200",
           "active:scale-[0.99]",

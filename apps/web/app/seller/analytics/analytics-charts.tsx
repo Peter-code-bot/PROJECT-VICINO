@@ -38,13 +38,14 @@ export function AnalyticsCharts({
                 />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ fontSize: 12 }}
+                  contentStyle={{ fontSize: 12, backgroundColor: 'var(--sidebar-bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   labelFormatter={(v) => `Fecha: ${String(v)}`}
+                  cursor={{ fill: 'var(--bg-elev-2)', opacity: 0.4 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="ventas"
-                  stroke="var(--brand-base)"
+                  stroke="var(--fg)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
                 />
@@ -73,8 +74,11 @@ export function AnalyticsCharts({
                   tick={{ fontSize: 10 }}
                   width={120}
                 />
-                <Tooltip contentStyle={{ fontSize: 12 }} />
-                <Bar dataKey="ventas" fill="var(--brand-base)" radius={[0, 4, 4, 0]} />
+                <Tooltip 
+                  contentStyle={{ fontSize: 12, backgroundColor: 'var(--sidebar-bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                  cursor={{ fill: 'var(--bg-elev-2)', opacity: 0.4 }}
+                />
+                <Bar dataKey="ventas" fill="var(--fg)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

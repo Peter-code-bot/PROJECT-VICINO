@@ -31,6 +31,7 @@
 
   /* Light theme surfaces & text */
   --bg:            #FFF8F0;
+  --sidebar-bg:    #D1D5DB;
   --bg-elev-1:     #FAF6EE;
   --bg-elev-2:     #F4EFE4;
   --card:          #FFFFFF;
@@ -73,7 +74,8 @@
 }
 
 .dark {
-  --bg:            #0A0F0E;
+  --bg:            #050907; /* Color personalizado temporal para pruebas */
+  --sidebar-bg:    #121212;
   --bg-elev-1:     #0E1413;
   --bg-elev-2:     #141A19;
   --card:          #0E1413;
@@ -359,3 +361,75 @@ h1, h2, h3, h4, h5, h6 {
 .stagger > *:nth-child(10) { animation-delay: 540ms; }
 .stagger > *:nth-child(11) { animation-delay: 600ms; }
 .stagger > *:nth-child(12) { animation-delay: 660ms; }
+
+/* ─── CUSTOM THEME CLASSES ───────────────────────────────── */
+.category-tile-selected {
+  background-color: #121212;
+  color: #F4F1EB;
+}
+.dark .category-tile-selected {
+  background-color: #F4F1EB;
+  color: #121212;
+}
+
+.category-tile-unselected {
+  background-color: #F4F1EB;
+  color: #121212;
+}
+.dark .category-tile-unselected {
+  background-color: #121212;
+  color: #F4F1EB;
+}
+
+.product-card-custom {
+  background-color: #F4F1EB;
+}
+.dark .product-card-custom {
+  background-color: #121212;
+}
+
+.product-card-text {
+  color: #1A1A2E;
+}
+.dark .product-card-text {
+  color: #F5F5F5;
+}
+
+.product-card-tab {
+  background-color: #1A1A2E;
+  color: #FFFFFF;
+}
+.dark .product-card-tab {
+  background-color: #FFFFFF;
+  color: #000000;
+}
+
+.product-card-muted {
+  color: rgba(26, 26, 46, 0.6);
+}
+.dark .product-card-muted {
+  color: #8E8E9A;
+}
+
+.product-card-semi {
+  color: rgba(26, 26, 46, 0.7);
+}
+.dark .product-card-semi {
+  color: #A8A8B3;
+}
+
+.product-card-rating-empty {
+  fill: rgba(26, 26, 46, 0.2);
+}
+.dark .product-card-rating-empty {
+  fill: rgba(255, 255, 255, 0.2);
+}
+
+.product-card-btn {
+  background-color: #FFFFFF;
+  color: #1A1A2E;
+}
+.dark .product-card-btn {
+  background-color: #222222;
+  color: #F5F5F5;
+}

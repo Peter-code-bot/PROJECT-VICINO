@@ -84,14 +84,14 @@ export default async function SellerOverviewPage() {
         <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
       </div>      {/* Stats list */}
       <div className="flex flex-col space-y-3 stagger min-w-0">
-        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
               <Handshake className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-[color:var(--fg-muted)]">Mes Actual</span>
-              <p className="text-xs font-medium text-[color:var(--trust-emerald)] truncate">
+              <p className="text-xs font-medium text-[color:var(--fg)] truncate">
                 {formatPrice(monthTotal)}<span className="hidden sm:inline"> en ventas</span>
               </p>
             </div>
@@ -99,14 +99,14 @@ export default async function SellerOverviewPage() {
           <p className="text-2xl font-heading font-bold shrink-0 pl-4">{monthCount}</p>
         </div>
 
-        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
               <Package className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-[color:var(--fg-muted)]">Inventario</span>
-              <p className="text-xs font-medium text-[color:var(--brand-hi)] truncate">
+              <p className="text-xs font-medium text-[color:var(--fg)] truncate">
                 Publicaciones<span className="hidden sm:inline"> activas</span>
               </p>
             </div>
@@ -114,14 +114,14 @@ export default async function SellerOverviewPage() {
           <p className="text-2xl font-heading font-bold shrink-0 pl-4">{activeListings ?? 0}</p>
         </div>
 
-        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-[rgba(212,168,83,0.18)] text-[color:var(--trust-gold)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
               <Star className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-[color:var(--fg-muted)]">Reputación</span>
-              <p className="text-xs font-medium text-[color:var(--trust-gold)] truncate">
+              <p className="text-xs font-medium text-[color:var(--fg)] truncate">
                 Aprobación<span className="hidden sm:inline"> de clientes</span>
               </p>
             </div>
@@ -138,9 +138,9 @@ export default async function SellerOverviewPage() {
           </div>
         </div>
 
-        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-4 group hover:border-[color:var(--brand-tint-strong)] transition-colors min-w-0">
+        <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg-muted)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
               <TrendingUp className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -156,9 +156,9 @@ export default async function SellerOverviewPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trust level progress */}
-        <div className="lg:col-span-2 rounded-[var(--r-xl)] border border-[color:var(--border)] bg-[color:var(--card-2)] p-6">
+        <div className="lg:col-span-2 rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[color:var(--brand-tint)] flex items-center justify-center text-[color:var(--brand-hi)]">
+            <div className="w-10 h-10 rounded-xl bg-[color:var(--fg)] flex items-center justify-center text-[color:var(--bg)]">
               <Award className="w-5 h-5" />
             </div>
             <div>
@@ -167,7 +167,7 @@ export default async function SellerOverviewPage() {
             </div>
           </div>
           
-          <div className="p-5 rounded-[var(--r-xl)] bg-[color:var(--bg-elev-2)] border border-[color:var(--border)] space-y-4">
+          <div className="p-5 rounded-[var(--r-xl)] bg-[color:var(--bg-elev-2)] space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SellerBadge level={trustLevel} size="md" />
@@ -205,29 +205,29 @@ export default async function SellerOverviewPage() {
         <div className="space-y-4">
           <h2 className="font-heading font-semibold text-lg pb-1">Acciones</h2>
           {/* Pending reviews alert */}
-          <div className={`p-4 rounded-3xl border transition-all ${
+          <div className={`p-4 rounded-3xl transition-all ${
             pendingReviews > 0
-              ? "bg-amber-400/10 border-amber-400/30"
-              : "bg-[color:var(--card-2)] border-[color:var(--border)]"
+              ? "bg-orange-500 text-white"
+              : "bg-[color:var(--sidebar-bg)]"
           }`}>
             <div className="flex items-start gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                pendingReviews > 0 ? "bg-amber-400/20" : "bg-[color:var(--bg-elev-2)]"
+                pendingReviews > 0 ? "bg-orange-900" : "bg-[color:var(--bg-elev-2)]"
               }`}>
                 {pendingReviews > 0 ? (
-                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <AlertCircle className="w-4 h-4 text-white" />
                 ) : (
                   <Star className="w-4 h-4 text-[color:var(--fg-muted)]" />
                 )}
               </div>
               <div>
                 <h3 className={`font-semibold text-sm ${
-                  pendingReviews > 0 ? "text-[color:var(--fg)]" : "text-[color:var(--fg)]"
+                  pendingReviews > 0 ? "text-white" : "text-[color:var(--fg)]"
                 }`}>
                   Califica a tus compradores
                 </h3>
                 {pendingReviews > 0 ? (
-                  <p className="text-xs mt-1 text-amber-400">
+                  <p className="text-xs mt-1 text-white">
                     Tienes <strong>{pendingReviews}</strong> ventas completadas sin calificar.
                   </p>
                 ) : (
@@ -236,7 +236,7 @@ export default async function SellerOverviewPage() {
                   </p>
                 )}
                 {pendingReviews > 0 && (
-                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-amber-400 hover:text-amber-400/80 hover:underline mt-2 transition-colors">
+                  <Link href="/seller/reviews" className="inline-flex items-center text-xs font-semibold text-white hover:opacity-80 mt-2 transition-colors">
                     Ir a reseñas →
                   </Link>
                 )}

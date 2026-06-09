@@ -129,7 +129,7 @@ export default function DeliveryMap({
     <div className="space-y-3">
       {/* Search — always visible */}
       <div className="relative">
-        <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-card px-3 py-2.5">
+        <div className="flex items-center gap-2 rounded-xl product-card-btn px-3 py-2.5">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="text"
@@ -155,7 +155,7 @@ export default function DeliveryMap({
 
         {/* Results dropdown */}
         {suggestions.length > 0 && (
-          <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl border bg-card shadow-2xl max-h-60 overflow-y-auto">
+          <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl product-card-custom shadow-2xl max-h-60 overflow-y-auto">
             {suggestions.map((s, i) => (
               <button
                 key={i}
@@ -174,7 +174,7 @@ export default function DeliveryMap({
       {/* Map + slider — only after selecting a location */}
       {showMap && (
         <>
-          <div className="rounded-xl overflow-hidden border border-border/50" style={{ height: 250 }}>
+          <div className="rounded-xl overflow-hidden product-card-custom" style={{ height: 250 }}>
             <MapContainer
               center={position}
               zoom={14}

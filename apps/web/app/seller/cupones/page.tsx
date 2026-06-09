@@ -25,7 +25,7 @@ export default async function CuponesPage() {
         <h1 className="text-xl font-bold truncate">Cupones</h1>
         <Link
           href="/seller/cupones/nuevo"
-          className="rounded-[var(--r-pill)] bg-[color:var(--brand)] px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] transition-colors shrink-0 whitespace-nowrap"
+          className="rounded-[var(--r-pill)] bg-[color:var(--fg)] px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-[color:var(--bg)] hover:opacity-90 transition-colors shrink-0 whitespace-nowrap"
         >
           <span className="hidden sm:inline">Crear cupón</span>
           <span className="sm:hidden">Crear</span>
@@ -35,14 +35,14 @@ export default async function CuponesPage() {
       {coupons && coupons.length > 0 ? (
         <div className="space-y-3">
           {coupons.map((c) => (
-            <div key={c.id} className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-2 min-w-0 overflow-hidden">
+            <div key={c.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 space-y-2 min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-3 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-mono font-bold text-sm bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] px-2 py-0.5 rounded-[var(--r-sm)] truncate min-w-0">
                     {c.codigo}
                   </span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-[var(--r-pill)] font-medium border shrink-0 ${c.activo ? "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border-[color:var(--trust-emerald)]/30" : "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border-[color:var(--border)]"}`}
+                    className={`text-xs px-2 py-0.5 rounded-[var(--r-pill)] font-medium shrink-0 ${c.activo ? "bg-[color:var(--fg)] text-[color:var(--bg)]" : "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)]"}`}
                   >
                     {c.activo ? "Activo" : "Inactivo"}
                   </span>

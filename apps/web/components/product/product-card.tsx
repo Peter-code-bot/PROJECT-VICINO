@@ -160,20 +160,13 @@ export function ProductCard({
       // del pivote (categories ya viene normalized primary-first desde el
       // caller post-5c-4). Fallback al prop categoria TEXT si categories
       // esta vacio (caller no migrado o edge sin pivote). Cuando 1C dropee
-      // el writer espejo este fallback se vuelve solo defense in depth.
-      // Keystone: este cambio cubre 4 surfaces (buscar, favoritos, home
-      // Recientes + per-cat carousels) sin tocar a los callers.
       href={`/${categories[0]?.slug ?? categoria}/${slug}`}
       id={`product-${slug}`}
-      // A3 sub-fase 3.6: card en grids/carousels (ProductCarousel, /buscar,
-      // /favoritos). En un grid de 50 cards, prefetch default lanza 50 GETs
-      // de /producto/[id]. Hover/tap igual prefetchea on-demand.
       prefetch={false}
       onClick={handleNavigate}
       className={cn(
-        "group block w-full min-w-0 overflow-hidden rounded-xl bg-card transition-all duration-300",
-        "shadow-[inset_0_0_0_1px_var(--border)]",
-        "hover:-translate-y-0.5 hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong),var(--shadow-glow)]"
+        "group relative block w-full min-w-0 overflow-hidden rounded-2xl product-card-custom transition-all duration-300",
+        "hover:-translate-y-0.5"
       )}
     >
       <div ref={imageWrapperRef} className="relative aspect-square overflow-hidden bg-bg-elev-2">
@@ -212,12 +205,8 @@ export function ProductCard({
           </div>
         </div>
 
-        {/* Negociable badge — top-left, brand tone */}
-        {precioNegociable && (
-          <div className="absolute top-2 left-2">
-            <NegociablePill />
-          </div>
-        )}
+        {/* Negociable badge — corner ribbon */}
+        {precioNegociable && <NegociablePill />}
 
         {/* Favorite — bottom-right floating */}
         <button
@@ -242,44 +231,55 @@ export function ProductCard({
       </div>
 
       {/* Content */}
-      <div className="space-y-1.5 p-3">
-        <h3 className="line-clamp-2 font-heading text-[14px] font-semibold leading-snug text-fg transition-colors duration-200 group-hover:text-brand-hi">
-          {titulo}
-        </h3>
-
-        {/* MP#08 #5c-4: badge row — primary categoria + "+N" si hay secundarias.
-            Cero render si categories esta vacio (default callers no migrados).
-            Layout Option B (D4): content row debajo del titulo, sin colision
-            con overlays (price/Negociable/favorite siguen en sus esquinas). */}
+      <div className="relative pt-7 px-3.5 pb-3 product-card-text">
+        {/* Tab de categoría flotante */}
         {categories.length > 0 && categories[0] && (
-          <div className="flex items-center gap-1 flex-wrap">
-            <CategoryBadge name={categories[0].nombre} isPrimary />
-            {categories.length > 1 && (
-              <span className="text-[10px] font-semibold text-fg-muted">
-                +{categories.length - 1}
-              </span>
-            )}
+          <div className="absolute top-0 left-3.5 -translate-y-1/2 flex items-center gap-1">
+             <span className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]">
+               {categories[0].nombre}
+             </span>
+             {categories.length > 1 && (
+               <span className="text-[10px] font-semibold product-card-muted">
+                 +{categories.length - 1}
+               </span>
+             )}
           </div>
         )}
 
-        {/* Seller row: trust dot inline + name + badge */}
-        <div className="flex items-center gap-1.5">
-          {vendedor.trust_level !== "nuevo" && (
-            <span
-              className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[color:var(--trust-emerald)]"
-              aria-hidden
-            />
-          )}
-          <span className="truncate text-xs text-fg-muted">
+        {/* Título */}
+        <div className="h-[2.6em] overflow-hidden">
+          <h3 className="line-clamp-2 font-heading font-bold text-[14.5px] leading-[1.3] tracking-[-0.3px] product-card-text">
+            {titulo}
+          </h3>
+        </div>
+
+        {/* Seller row */}
+        <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium product-card-semi">
+          <span className="truncate">
             {vendedor.nombre}
           </span>
           <SellerBadge level={vendedor.trust_level} showLabel={false} size="sm" />
         </div>
 
         {/* Rating */}
-        {rating > 0 && (
-          <RatingStars rating={rating} count={reviewsCount} size="sm" />
-        )}
+        <div className="mt-2 flex items-center gap-1.5">
+          <div className="flex">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <svg key={i} width="10" height="10" viewBox="0 0 24 24"
+                   className={i < Math.floor(rating || 0) ? 'fill-[#D4A853]' : 'product-card-rating-empty'}>
+                <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7l3-7z"/>
+              </svg>
+            ))}
+          </div>
+          {rating > 0 ? (
+            <div className="flex gap-1 items-center">
+               <span className="text-[10.5px] font-semibold product-card-text">{rating}</span>
+               <span className="text-[10.5px] product-card-muted">({reviewsCount})</span>
+            </div>
+          ) : (
+            <span className="text-[10.5px] product-card-muted">Sin reseñas</span>
+          )}
+        </div>
       </div>
     </Link>
   );

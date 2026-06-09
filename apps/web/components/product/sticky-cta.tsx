@@ -40,7 +40,7 @@ export function StickyCta({
         </Link>
         <Link
           href={`/vender/${productId}/editar`}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
         >
           <Edit3 className="h-4 w-4" />
           Editar producto
@@ -56,7 +56,7 @@ export function StickyCta({
       <div className={SHELL} style={{ paddingBottom: SAFE_PAD }}>
         <Link
           href={`/login?redirect=${redirectTarget}`}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
         >
           <ShoppingBag className="h-4 w-4" />
           Quiero comprarlo
@@ -79,7 +79,7 @@ export function StickyCta({
       </Link>
       <Link
         href={`/chat?seller=${sellerId}&product=${productId}&intent=buy`}
-        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-transform active:scale-95"
+        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
       >
         <ShoppingBag className="h-4 w-4" />
         Quiero comprarlo

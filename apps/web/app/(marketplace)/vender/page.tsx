@@ -28,7 +28,7 @@ export default async function VenderPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:py-12 animate-fade-in-up">
       <div className="mb-8 flex items-center gap-3">
-        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-black">
           <PlusCircle className="w-5 h-5" />
         </div>
         <div>
@@ -61,7 +61,7 @@ export default async function VenderPage() {
           </p>
         </div>
       )}
-      <div className="rounded-3xl bg-[color:var(--card)] p-6 shadow-[inset_0_0_0_1px_var(--border)] md:p-8">
+      <div className="rounded-3xl product-card-custom p-6 md:p-8">
         <ProductForm />
       </div>
     </div>

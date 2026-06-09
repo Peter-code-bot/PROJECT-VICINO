@@ -54,7 +54,7 @@ export function StorePost({
   priority = false,
 }: StorePostProps) {
   return (
-    <article className="flex flex-col mb-4 bg-[var(--card)] sm:rounded-2xl sm:border border-[var(--border)] overflow-hidden">
+    <article className="flex flex-col mb-4 product-card-custom sm:rounded-2xl overflow-hidden">
       {/* 1. Header de tienda */}
       <header className="flex items-center px-4 py-3 gap-3">
         {/* A3 sub-fase 3.6: card en feed siguiendo (lista vertical de N posts).
@@ -69,20 +69,20 @@ export function StorePost({
           <div className="flex items-center gap-1.5">
             <Link
               href={`/vendedor/${storeId}`}
-              className="font-medium text-[var(--fg)] truncate hover:underline"
+              className="font-medium product-card-text truncate hover:underline"
               prefetch={false}
             >
               {store}
             </Link>
             <SellerBadge level={tier} showLabel={false} size="sm" />
           </div>
-          <div className="text-[13px] text-[var(--fg-muted)] flex items-center gap-1.5">
+          <div className="text-[13px] product-card-muted flex items-center gap-1.5">
             <span className="truncate">{cat}</span>
             <span>·</span>
             <span>{when}</span>
           </div>
         </div>
-        <button className="text-[var(--fg-muted)] p-2 -mr-2" aria-label="Más opciones">
+        <button className="product-card-muted p-2 -mr-2" aria-label="Más opciones">
           <MoreHorizontal className="w-5 h-5" />
         </button>
       </header>
@@ -139,7 +139,7 @@ export function StorePost({
       {/* 4. Body */}
       <div className="px-4 pt-3 pb-2">
         <Link href={`/producto/${id}`} className="block" prefetch={false}>
-          <h3 className="font-display text-[15.5px] leading-snug font-medium text-[var(--fg)] mb-1.5 line-clamp-2">
+          <h3 className="font-display text-[15.5px] leading-snug font-medium product-card-text mb-1.5 line-clamp-2">
             {title}
           </h3>
         </Link>
@@ -151,13 +151,13 @@ export function StorePost({
       {/* 5. Footer de acciones */}
       <footer className="flex items-center justify-between px-4 pb-4 pt-1">
         <div className="flex gap-2">
-          <button className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium text-[var(--fg-muted)] hover:bg-[var(--bg-elev-2)] hover:text-[var(--fg)] transition-colors">
+          <button className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors">
             <Heart className="w-4 h-4 mr-1.5" />
             Guardar
           </button>
           <Link
             href={`/chat/nuevo?product=${id}`}
-            className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium text-[var(--fg-muted)] hover:bg-[var(--bg-elev-2)] hover:text-[var(--fg)] transition-colors"
+            className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors"
             prefetch={false}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />
@@ -166,7 +166,7 @@ export function StorePost({
         </div>
         <Link
           href={`/producto/${id}`}
-          className="flex items-center justify-center h-9 px-4 rounded-full bg-[var(--brand-tint)] text-[var(--brand-hi)] text-[13.5px] font-medium hover:bg-[var(--brand-tint-strong)] transition-colors"
+          className="flex items-center justify-center h-9 px-4 rounded-full product-card-btn text-[13.5px] font-medium hover:opacity-90 transition-colors"
           prefetch={false}
         >
           Ver producto

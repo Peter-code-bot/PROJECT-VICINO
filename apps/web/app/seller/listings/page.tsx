@@ -25,13 +25,13 @@ export default async function ListingsPage() {
 
   const statusColors: Record<string, string> = {
     disponible:
-      "bg-[color:var(--brand-tint)] text-[color:var(--trust-emerald)] border border-[color:var(--trust-emerald)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
     pausado:
-      "bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+      "bg-orange-500 text-white rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
     borrador:
       "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
     agotado:
-      "bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30 rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
+      "bg-[color:var(--danger)] text-white rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
   };
 
   return (
@@ -40,7 +40,7 @@ export default async function ListingsPage() {
         <h1 className="text-xl font-bold truncate min-w-0">Mis publicaciones</h1>
         <Link
           href="/vender"
-          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--brand)] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-[color:var(--brand-dark)] whitespace-nowrap transition-colors"
+          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--bg-elev-2)] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-[color:var(--fg)] hover:opacity-80 whitespace-nowrap transition-colors"
         >
           <span className="hidden sm:inline">Publicar nuevo</span>
           <span className="sm:hidden">Publicar</span>
@@ -52,7 +52,7 @@ export default async function ListingsPage() {
           {products.map((p) => (
             <div
               key={p.id}
-              className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 hover:shadow-[var(--shadow-sm)] transition-all flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
+              className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 hover:opacity-90 transition-opacity flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
             >
               <div className="flex flex-col min-w-0 space-y-1">
                 <div className="flex items-center gap-2 min-w-0">
@@ -67,7 +67,7 @@ export default async function ListingsPage() {
                   <span className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}>
                     {p.estatus}
                   </span>
-                  <span className="shrink-0 font-medium text-[color:var(--trust-emerald)]">{formatPrice(Number(p.precio))}</span>
+                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(Number(p.precio))}</span>
                   <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
               </div>
