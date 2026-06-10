@@ -9,7 +9,7 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   const isChatDetail = pathname?.startsWith("/chat/") && pathname !== "/chat/";
 
   return (
-    <main className={cn("flex-1 flex flex-col min-h-0", !isChatDetail && "pb-20 md:pb-0")}>
+    <main className={cn("flex-1", !isChatDetail && "pb-20 md:pb-0")}>
       {children}
     </main>
   );

@@ -179,7 +179,7 @@ export function PageSwipeWrapper({ children, isVendedor }: PageSwipeWrapperProps
       style={{ x, clipPath: "inset(0)" }}
       onPointerDown={handlePointerDown}
       onDragEnd={handleDragEnd}
-      className="w-full flex-1 flex flex-col min-h-0"
+      className="h-full w-full"
     >
       {children}
     </motion.div>
