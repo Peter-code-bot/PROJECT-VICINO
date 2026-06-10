@@ -106,7 +106,22 @@ export async function getMessagesBefore(
   // page. Reverse to ASC for the call-site to prepend without
   // additional sort. nextCursor = the oldest (now first) item's
   // created_at if the page filled; null otherwise.
-  const { data, error } = await supabase
+  // Fetch the chat to check soft-delete timestamps for the current user
+  const { data: chat } = await supabase
+    .from("chats")
+    .select("comprador_id, vendedor_id, deleted_at_comprador, deleted_at_vendedor")
+    .eq("id", chatId)
+    .single();
+
+  if (!chat) return { items: [], nextCursor: null, error: "Chat no encontrado" };
+  if (user.id !== chat.comprador_id && user.id !== chat.vendedor_id) {
+    return { items: [], nextCursor: null, error: "No autorizado" };
+  }
+
+  const isBuyer = user.id === chat.comprador_id;
+  const deletedAt = isBuyer ? chat.deleted_at_comprador : chat.deleted_at_vendedor;
+
+  const messagesQuery = supabase
     .from("messages")
     .select(
       "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor",
@@ -115,6 +130,12 @@ export async function getMessagesBefore(
     .lt("created_at", cursor)
     .order("created_at", { ascending: false })
     .limit(safeLimit);
+
+  if (deletedAt) {
+    messagesQuery.gt("created_at", deletedAt);
+  }
+
+  const { data, error } = await messagesQuery;
 
   if (error) return { items: [], nextCursor: null, error: error.message };
 

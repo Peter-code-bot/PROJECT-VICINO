@@ -25,6 +25,7 @@ export default async function ChatDetailPage({ params }: Props) {
     .select(
       `
       id, comprador_id, vendedor_id, ultimo_producto_id,
+      deleted_at_comprador, deleted_at_vendedor,
       comprador:profiles!comprador_id(id, nombre, foto, trust_level),
       vendedor:profiles!vendedor_id(id, nombre, foto, trust_level),
       ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, imagen_principal)
@@ -49,12 +50,21 @@ export default async function ChatDetailPage({ params }: Props) {
   // initialMessages[0].created_at (the oldest of the latest 50) when the
   // page filled, so this DESC reverse pattern is what makes A5.1's
   // getMessagesBefore meaningful.
-  const { data: messagesDesc } = await supabase
+  const isBuyer = user.id === chat.comprador_id;
+  const deletedAt = isBuyer ? chat.deleted_at_comprador : chat.deleted_at_vendedor;
+
+  const messagesQuery = supabase
     .from("messages")
     .select("id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor")
     .eq("chat_id", chatId)
     .order("created_at", { ascending: false })
     .limit(50);
+
+  if (deletedAt) {
+    messagesQuery.gt("created_at", deletedAt);
+  }
+
+  const { data: messagesDesc } = await messagesQuery;
   const messages = (messagesDesc ?? []).slice().reverse();
 
   // Get pending sale confirmations for this chat
@@ -79,7 +89,7 @@ export default async function ChatDetailPage({ params }: Props) {
     p_user_id: user.id,
   });
 
-  const isBuyer = user.id === chat.comprador_id;
+  // `isBuyer` already computed above
   const otherUser = isBuyer
     ? (Array.isArray(chat.vendedor) ? chat.vendedor[0] : chat.vendedor)
     : (Array.isArray(chat.comprador) ? chat.comprador[0] : chat.comprador);
