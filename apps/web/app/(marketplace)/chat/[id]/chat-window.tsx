@@ -739,7 +739,7 @@ export function ChatWindow({
       {/* Input */}
       <form
         onSubmit={handleSend}
-        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3 shadow-[inset_0_1px_0_0_var(--border)]"
+        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 bg-card supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3 shadow-[inset_0_1px_0_0_var(--border)]"
       >
         <input
           type="text"
