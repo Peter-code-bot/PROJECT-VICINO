@@ -118,7 +118,7 @@ export function PullToRefreshWrapper({ children }: { children: React.ReactNode }
   }, [isActiveRoute, isRefreshing, router, pullDistance]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
+    <div ref={containerRef} className="w-full flex-1 flex flex-col min-h-0 relative">
       {isActiveRoute && (
         <motion.div
           style={{
