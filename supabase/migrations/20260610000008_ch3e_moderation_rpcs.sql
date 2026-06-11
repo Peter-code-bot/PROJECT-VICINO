@@ -41,6 +41,14 @@ BEGIN
     RAISE EXCEPTION 'forbidden: solo admin o moderator' USING ERRCODE = '42501';
   END IF;
 
+  -- Suspending a USER/profile is admin-only (matches the app's requireAdmin gate on
+  -- suspendUser/unsuspendUser). Moderators may hide listings/reviews/messages only.
+  -- Without this, a moderator could suspend any user via a direct PostgREST RPC call.
+  IF p_target_type IN ('profile', 'user', 'usuario')
+     AND NOT public.has_role(v_actor, 'admin') THEN
+    RAISE EXCEPTION 'forbidden: suspender usuarios es solo admin' USING ERRCODE = '42501';
+  END IF;
+
   -- Accept both the report.target_type vocabulary (listing/user) and the
   -- table-oriented vocabulary (product/profile) the app uses for suspend/unhide.
   CASE
@@ -75,9 +83,11 @@ AS $$
 DECLARE
   v_actor UUID := auth.uid();
 BEGIN
-  IF v_actor IS NULL
-     OR NOT (public.has_role(v_actor, 'admin') OR public.has_role(v_actor, 'moderator')) THEN
-    RAISE EXCEPTION 'forbidden: solo admin o moderator' USING ERRCODE = '42501';
+  -- Review moderation (hide/approve) is admin-only -- matches the app's requireAdmin
+  -- gate on hideReview/approveReview. (resolve/unhide-listing, which moderators may do,
+  -- go through moderate_set_content_hidden, not this function.)
+  IF v_actor IS NULL OR NOT public.has_role(v_actor, 'admin') THEN
+    RAISE EXCEPTION 'forbidden: solo admin' USING ERRCODE = '42501';
   END IF;
 
   UPDATE public.reviews
@@ -99,7 +109,9 @@ COMMENT ON FUNCTION public.moderate_review(UUID, BOOLEAN, BOOLEAN) IS
   'DEFINER + has_role(admin|moderator) guard. Replaces hideReview/approveReview '
   'direct UPDATE after CH-3 column REVOKE.';
 
--- NOTE (hardening to evaluate): the app gates suspendUser / hideReview / approveReview
--- to admin-only (requireAdmin) while these RPCs allow moderator too. The app gate is
--- the stricter layer; if defense-in-depth requires admin-only at the DB for
--- profile/user hiding, split the guard by target_type.
+-- AUTHZ (enforced -- closes the over-broad-guard privesc): moderate_review is
+-- admin-only; moderate_set_content_hidden allows admin OR moderator for
+-- listing/review/message but is admin-only for profile/user targets. This mirrors the
+-- app's requireAdmin (suspend / review moderation) vs requireAdminOrModerator
+-- (resolve report / unhide listing) gates, so a moderator cannot suspend a user or
+-- moderate a review by calling the RPC directly via PostgREST.

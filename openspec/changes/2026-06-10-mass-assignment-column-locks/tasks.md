@@ -24,6 +24,10 @@
 ## FASE C -- Studio (DONE)
 - [x] CH-3a profiles REVOKE/GRANT; CH-3b products REVOKE/allowlist + increment_product_view;
       CH-3c reviews REVOKE/GRANT; CH-3a-fix 5 stat triggers -> DEFINER; CH-3d sale RPCs + REVOKE
+- [x] CH-3e moderation RPCs (moderate_set_content_hidden, moderate_review) + REVOKE anon
+- [ ] P-CH3e-REAPPLY (Pedro): the LIVE RPCs allow admin OR moderator; CODEX found a moderator can
+      suspend users / moderate reviews via direct RPC. RE-APPLY the narrowed guard from the mirror
+      (moderate_review admin-only; moderate_set_content_hidden admin-only for profile/user targets).
 - [ ] P-reconcile: `pg_get_functiondef` for confirm_sale/cancel_sale/increment_product_view vs mirror;
       confirm the 5 stat triggers have prosecdef=true
 - [ ] P-smoke: direct PATCH of is_verified/vistas_count/sale flags -> 42501; legit flows still work;

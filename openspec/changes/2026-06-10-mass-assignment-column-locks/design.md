@@ -83,9 +83,11 @@ in-body and own the moderation writes, bypassing the user column grant:
 - `moderate_review(p_review_id, p_visible, p_clear_reported)` -- sets `reviews.visible` and
   optionally clears `reportada`.
 The app routes the 6 moderation writes through them AND surfaces the RPC error (the swallowed-
-error bug is fixed). Note: the app gates suspend/review-moderation to admin-only while the RPCs
-allow moderator too -- the app gate is the stricter layer; splitting the DB guard by target_type
-is a possible defense-in-depth follow-up.
+error bug is fixed). AUTHZ: the DB guard matches the app's gates -- `moderate_review` is
+admin-only (requireAdmin: hide/approve review); `moderate_set_content_hidden` is admin-or-moderator
+for listing/review/message but admin-only for profile/user (requireAdmin: suspend user). This
+closes the gap (CODEX CH-3e) where a moderator could suspend a user or moderate a review via a
+direct PostgREST RPC call, bypassing the app's admin-only gate.
 
 ## Faithfulness
 
