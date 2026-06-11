@@ -203,7 +203,7 @@ CREATE OR REPLACE FUNCTION public.manage_user_role(
 )
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
-DECLARE v_caller UUID := auth.uid();
+DECLARE v_caller UUID := auth.uid(); v_admin_count INTEGER;
 BEGIN
   IF v_caller IS NULL OR NOT public.has_role(v_caller, 'admin') THEN
     RAISE EXCEPTION 'forbidden: solo un admin puede gestionar roles' USING ERRCODE = '42501';
@@ -215,13 +215,16 @@ BEGIN
     INSERT INTO public.user_roles (user_id, role) VALUES (p_user_id, p_role)
     ON CONFLICT (user_id, role) DO NOTHING;
   ELSE
-    -- TOCTOU-safe: lock admin rows FOR UPDATE so concurrent remove-admin serialize.
+    -- TOCTOU-safe: lock admin rows with a plain PERFORM ... FOR UPDATE (NO
+    -- aggregate -- "count(*) ... FOR UPDATE" is invalid, SQLSTATE 0A000); then
+    -- count in a separate statement under the lock.
     IF p_role = 'admin'::app_role THEN
       PERFORM 1 FROM public.user_roles WHERE role = 'admin'::app_role FOR UPDATE;
-      IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = p_user_id AND role = 'admin'::app_role)
-         AND (SELECT count(*) FROM public.user_roles WHERE role = 'admin'::app_role) <= 1
-      THEN
-        RAISE EXCEPTION 'no se puede quitar el ultimo admin' USING ERRCODE = '42501';
+      IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = p_user_id AND role = 'admin'::app_role) THEN
+        SELECT count(*) INTO v_admin_count FROM public.user_roles WHERE role = 'admin'::app_role;
+        IF v_admin_count <= 1 THEN
+          RAISE EXCEPTION 'no se puede quitar el ultimo admin' USING ERRCODE = '42501';
+        END IF;
       END IF;
     END IF;
     DELETE FROM public.user_roles WHERE user_id = p_user_id AND role = p_role;

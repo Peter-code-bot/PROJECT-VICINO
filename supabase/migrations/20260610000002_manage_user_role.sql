@@ -48,6 +48,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_caller UUID := auth.uid();
+  v_admin_count INTEGER;
 BEGIN
   -- Authorization: caller must be admin. SECURITY DEFINER bypasses RLS, enforce
   -- explicitly (mirrors approve_verification_atomic / make_admin).
@@ -66,9 +67,10 @@ BEGIN
     ON CONFLICT (user_id, role) DO NOTHING;
   ELSE
     -- remove: protect the last admin so the admin plane can never be emptied.
-    -- TOCTOU-safe: lock ALL admin rows FOR UPDATE first, so concurrent
-    -- 'remove admin' calls serialize. Without the lock, two callers could both
-    -- read count = 2, both pass the <= 1 check, and both DELETE -> zero admins.
+    -- TOCTOU-safe: serialize concurrent 'remove admin' calls by locking the admin
+    -- rows. Use a plain PERFORM ... FOR UPDATE (NO aggregate): "count(*) ... FOR
+    -- UPDATE" is invalid in Postgres (SQLSTATE 0A000). Count in a separate
+    -- statement after the lock is held.
     IF p_role = 'admin'::app_role THEN
       PERFORM 1 FROM public.user_roles
         WHERE role = 'admin'::app_role
@@ -78,12 +80,14 @@ BEGIN
            SELECT 1 FROM public.user_roles
            WHERE user_id = p_user_id AND role = 'admin'::app_role
          )
-         AND (
-           SELECT count(*) FROM public.user_roles WHERE role = 'admin'::app_role
-         ) <= 1
       THEN
-        RAISE EXCEPTION 'no se puede quitar el ultimo admin'
-          USING ERRCODE = '42501';
+        SELECT count(*) INTO v_admin_count
+        FROM public.user_roles WHERE role = 'admin'::app_role;
+
+        IF v_admin_count <= 1 THEN
+          RAISE EXCEPTION 'no se puede quitar el ultimo admin'
+            USING ERRCODE = '42501';
+        END IF;
       END IF;
     END IF;
 

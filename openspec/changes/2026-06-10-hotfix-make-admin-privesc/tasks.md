@@ -58,9 +58,13 @@ The CH-1b write REVOKE broke the two admin Server Actions that wrote user_roles 
 - [x] C-8 - CODEX review (3-lens): STOP_HIGH, 1 CRITICAL fixed in-place -- TOCTOU race in the
   last-admin guard -> `FOR UPDATE` lock on admin rows (migration + studio-script BLOCK 5);
   plus explicit return types + error.message fallback in actions.ts.
-- [ ] C-9 - **Pedro: RE-APPLY the fixed RPC in Studio** (studio-script BLOCK 5, CREATE OR
-  REPLACE) -- the live RPC still has the TOCTOU race; re-run to pick up `FOR UPDATE`. Then the
-  last-admin smoke (S3) + confirm `pg_get_functiondef` matches the migration.
+- [x] C-9 - last-admin guard live = v2 (race-safe). NOTE: the literal CODEX suggestion
+  `count(*) ... FOR UPDATE` is INVALID in Postgres (SQLSTATE 0A000, FOR UPDATE not allowed with
+  aggregates). Live RPC + git mirror both use a plain `PERFORM 1 ... FOR UPDATE` lock followed
+  by a separate `SELECT count(*) INTO v_admin_count`. (git was already PERFORM-based -- no
+  0A000 ever in repo; this commit aligns its structure to the live v2.) Last-admin smoke (S3)
+  green per Pedro. `rg "count\(\*\).*FOR UPDATE"` == 0.
+- [ ] C-10 - Pedro: confirm `pg_get_functiondef('public.manage_user_role')` matches the migration.
 
 ## Closing
 
