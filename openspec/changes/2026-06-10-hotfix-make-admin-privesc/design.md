@@ -104,6 +104,27 @@ assumption holds, `delete_user_data` (running as postgres) bypasses and deletes 
 Either way account deletion completes. Confirm with an account-deletion smoke for a user
 who HAS a role row (moderator) if one exists.
 
+## CH-1c -- role mutations go through an RPC (user_roles is client-read-only)
+
+CH-1b made `public.user_roles` non-writable by `anon` and `authenticated` at the grant
+layer. That also blocked the only legitimate client writers -- the admin Server Actions
+`assignRole` (INSERT) and `removeRole` (DELETE) in `apps/web/app/admin/users/actions.ts`,
+which run with the admin's authenticated session (not service_role), so they hit the REVOKE
+(42501). Verdict B in `docs/security/2026-06-10-user-roles-usage.md`.
+
+Resolution: a single admin-guarded `SECURITY DEFINER` RPC, `manage_user_role(p_user_id,
+p_role, p_action)`, is now the ONLY write path. Invariant going forward:
+
+- **`user_roles` is read-only for all clients.** Reads stay via RLS (`Users can view own
+  roles` for self; `Admin can manage roles` SELECT branch for admins reading all rows --
+  load-bearing for `admin/users/page.tsx:55`, do NOT drop it). All writes (assign/remove,
+  any role) go through `manage_user_role`, which enforces `has_role(auth.uid(),'admin')`
+  in-body and protects the last admin on remove.
+- The app calls `.rpc('manage_user_role', { p_user_id, p_role, p_action })`; the RPC's
+  RAISE message (forbidden / last-admin) is propagated to the admin UI.
+- `make_admin` remains as a separate break-glass tool; `manage_user_role` is the
+  app-facing role manager. Both are admin-gated SECURITY DEFINER with the same grant model.
+
 ## Idempotency
 
 - `make_admin`: `CREATE OR REPLACE FUNCTION` -- safe to re-run.

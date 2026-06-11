@@ -38,10 +38,28 @@
 - [ ] P-5 - confirm an existing admin can still `make_admin` another user
 - [ ] P-6 - (optional) account-deletion smoke for a user WITH a role row (moderator)
 
+## CH-1c -- role management RPC + app migration (closes the CH-1b side effect)
+
+The CH-1b write REVOKE broke the two admin Server Actions that wrote user_roles directly
+(verdict B, docs/security/2026-06-10-user-roles-usage.md). Fix = one admin-guarded RPC.
+
+- [x] C-1 - RPC `manage_user_role(p_user_id, p_role app_role, p_action)` applied in Studio
+  (SECURITY DEFINER + has_role admin guard + last-admin protection + REVOKE anon/PUBLIC +
+  GRANT authenticated). Smokes OK: attacker=forbidden, admin=assign, last-admin=blocked.
+- [x] C-2 - mirror migration `supabase/migrations/20260610000002_manage_user_role.sql` (idempotent)
+- [x] C-3 - migrate call sites (authenticated session, not service-role):
+  - `apps/web/app/admin/users/actions.ts` assignRole -> `.rpc('manage_user_role', {..., p_action:'assign'})`
+  - `apps/web/app/admin/users/actions.ts` removeRole -> `.rpc('manage_user_role', {..., p_action:'remove'})`
+- [x] C-4 - surface RPC error (forbidden / last-admin) in the UI `admin/users/role-actions.tsx`
+  (error state only; no behavior change). Reused assignRoleSchema/removeRoleSchema.
+- [x] C-5 - policy `Admin can manage roles` LEFT INTACT (load-bearing for admin/users/page.tsx:55 reads)
+- [x] C-6 - `rg "from\(['\"]user_roles['\"]\).*(insert|delete|update|upsert)" apps/web` == 0 hits
+- [ ] C-7 - `pnpm build` green (type-check)
+
 ## Closing
 
-- [ ] T-10 - after Pedro's go-ahead: push branch `security/fase0-audit-verification`,
-  open PR to master.
+- [ ] T-10 - after Pedro's go-ahead: push branch `security/fase0-audit-verification`
+  (rebased onto 3f4fffc -> needs `--force-with-lease`), open PR to master.
 - [ ] T-11 - merge + archive: move this change to `openspec/changes/archive/2026-06-10-hotfix-make-admin-privesc/`;
   merge spec delta into `openspec/specs/security/spec.md`.
 

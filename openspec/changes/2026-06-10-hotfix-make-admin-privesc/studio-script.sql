@@ -190,3 +190,70 @@ SELECT count(*) AS admin_rows FROM public.user_roles WHERE role = 'admin'::app_r
 --   SELECT id FROM public.products_services LIMIT 1;            -- has_role via block_aware policy
 --   SELECT public.has_role('<REAL_USER_UUID>'::uuid, 'admin'::app_role);  -- direct
 -- ROLLBACK;
+
+
+-- =============================================================================
+-- BLOCK 5 -- CH-1c: manage_user_role RPC (restores admin role management after the
+-- CH-1b write REVOKE). ALREADY APPLIED 2026-06-10 (Camino 2, COMMIT). Idempotent.
+-- =============================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.manage_user_role(
+  p_user_id UUID, p_role app_role, p_action TEXT
+)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+AS $$
+DECLARE v_caller UUID := auth.uid(); v_admin_count INTEGER;
+BEGIN
+  IF v_caller IS NULL OR NOT public.has_role(v_caller, 'admin') THEN
+    RAISE EXCEPTION 'forbidden: solo un admin puede gestionar roles' USING ERRCODE = '42501';
+  END IF;
+  IF p_action NOT IN ('assign', 'remove') THEN
+    RAISE EXCEPTION 'accion invalida: %', p_action USING ERRCODE = '22023';
+  END IF;
+  IF p_action = 'assign' THEN
+    INSERT INTO public.user_roles (user_id, role) VALUES (p_user_id, p_role)
+    ON CONFLICT (user_id, role) DO NOTHING;
+  ELSE
+    IF p_role = 'admin'::app_role
+       AND EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = p_user_id AND role = 'admin'::app_role)
+    THEN
+      SELECT count(*) INTO v_admin_count FROM public.user_roles WHERE role = 'admin'::app_role;
+      IF v_admin_count <= 1 THEN
+        RAISE EXCEPTION 'no se puede quitar el ultimo admin' USING ERRCODE = '42501';
+      END IF;
+    END IF;
+    DELETE FROM public.user_roles WHERE user_id = p_user_id AND role = p_role;
+  END IF;
+END; $$;
+
+REVOKE ALL     ON FUNCTION public.manage_user_role(UUID, app_role, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.manage_user_role(UUID, app_role, TEXT) FROM anon;
+GRANT  EXECUTE ON FUNCTION public.manage_user_role(UUID, app_role, TEXT) TO authenticated;
+
+COMMIT;
+
+-- ---- CH-1c smokes (run as real sessions; replace uuids) ----
+-- S1 attacker: authenticated NON-admin -> expect 'forbidden: solo un admin ...' (42501)
+-- BEGIN;
+--   SET LOCAL ROLE authenticated;
+--   SET LOCAL request.jwt.claims = '{"sub":"<NON_ADMIN_UUID>","role":"authenticated"}';
+--   SELECT public.manage_user_role('<TARGET_UUID>'::uuid, 'moderator'::app_role, 'assign');
+-- ROLLBACK;
+--
+-- S2 admin assign: authenticated ADMIN -> expect success, row appears
+-- BEGIN;
+--   SET LOCAL ROLE authenticated;
+--   SET LOCAL request.jwt.claims = '{"sub":"<ADMIN_UUID>","role":"authenticated"}';
+--   SELECT public.manage_user_role('<TARGET_UUID>'::uuid, 'moderator'::app_role, 'assign');
+--   SELECT user_id, role FROM public.user_roles WHERE user_id = '<TARGET_UUID>';
+-- ROLLBACK;
+--
+-- S3 last-admin guard: admin removes the only admin -> expect 'no se puede quitar el ultimo admin'
+-- (run in a DB with exactly 1 admin, inside BEGIN/ROLLBACK so nothing persists).
+
+-- 4g. VERIFY grants on the RPC (anon: none; authenticated: EXECUTE)
+SELECT routine_name, grantee, privilege_type
+FROM information_schema.role_routine_grants
+WHERE routine_name = 'manage_user_role' AND grantee IN ('anon', 'authenticated')
+ORDER BY grantee;
