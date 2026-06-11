@@ -329,19 +329,14 @@ export async function confirmSale(saleConfirmationId: string) {
     return { success: true, alreadyConfirmed: true };
   }
 
-  const updates = isBuyer
-    ? { buyer_confirmed: true, buyer_confirmed_at: new Date().toISOString() }
-    : { seller_confirmed: true, seller_confirmed_at: new Date().toISOString() };
+  // Direct UPDATE on sale_confirmations is revoked (#6). The SECURITY DEFINER RPC
+  // derives the actor from auth.uid() and sets ONLY that participant's confirm
+  // flag -- neither side can flip both flags / force status='completed' in one call.
+  const { error: updateError } = await supabase.rpc("confirm_sale", {
+    p_sale_id: parsed.data.sale_confirmation_id,
+  });
 
-  // UPDATE with WHERE narrowed to "my side not yet confirmed"; .select() returns
-  // the mutated rows so we can detect 0-row no-ops from a parallel race.
-  const { data: updatedRows, error: updateError } = await supabase
-    .from("sale_confirmations")
-    .update(updates)
-    .eq("id", parsed.data.sale_confirmation_id)
-    .eq("status", "pending_confirmation");
-
-  if (updateError) return { error: updateError.message };
+  if (updateError) return { error: updateError.message || "Error desconocido" };
 
   // Check if both confirmed now
   const { data: updated } = await supabase
@@ -393,27 +388,20 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  const { data: cancelled, error } = await supabase
-    .from("sale_confirmations")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: user.id,
-      cancel_reason: parsed.data.reason ?? null,
-    })
-    .eq("id", parsed.data.sale_confirmation_id)
-    .eq("status", "pending_confirmation")
-    .select("chat_id")
-    .maybeSingle();
+  // Direct UPDATE on sale_confirmations is revoked (#6). The SECURITY DEFINER RPC
+  // enforces participant-only, sets status='cancelled' + cancel fields, and returns
+  // the chat_id (NULL if the sale was no longer pending -> race / already modified).
+  const { data: chatId, error } = await supabase.rpc("cancel_sale", {
+    p_sale_id: parsed.data.sale_confirmation_id,
+    p_reason: parsed.data.reason ?? null,
+  });
 
-  if (error) return { error: error.message };
-  if (!cancelled) {
-    // If we get here without an error, it means the update matched 0 rows.
-    // This could be because the status is no longer pending, or RLS blocked it.
+  if (error) return { error: error.message || "Error desconocido" };
+  if (!chatId) {
     return { error: "No se pudo cancelar: la confirmación ya fue modificada o no tienes permiso." };
   }
-  
-  if (cancelled.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
+
+  revalidatePath(`/chat/${chatId}`);
   return { success: true };
 }
 

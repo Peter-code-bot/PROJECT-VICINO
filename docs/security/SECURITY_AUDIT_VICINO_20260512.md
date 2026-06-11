@@ -120,7 +120,7 @@
 
 Lo siguiente se buscó y NO se encontró — buena noticia, no requiere acción:
 
-- **Hardcoded secrets** — `git log -S` sobre `SUPABASE_SERVICE_ROLE_KEY`, `sk_live_`, `sk_test_`, `eyJhbGciOi` (JWT): solo matches en (a) `apps/web/lib/supabase/admin.ts` en **master** (no en design — ver §5 colateral), (b) `qa-delete-account.mjs` (script local con env vars, no commiteadas), y (c) `sk_live_abc123xyz` placeholder en docs de skills (`.claude/skills/capacitor-security/SKILL.md` y clones) — no es key real.
+- **Hardcoded secrets** — `git log -S` sobre `SUPABASE_SERVICE_ROLE_KEY`, `sk_live_`, `sk_test_`, `[REDACTED-ROTATED-TOKEN]` (JWT): solo matches en (a) `apps/web/lib/supabase/admin.ts` en **master** (no en design — ver §5 colateral), (b) `qa-delete-account.mjs` (script local con env vars, no commiteadas), y (c) `sk_live_abc123xyz` placeholder en docs de skills (`.claude/skills/capacitor-security/SKILL.md` y clones) — no es key real.
 - **`NEXT_PUBLIC_*` leakage** — Sólo `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`. Todas son apropiadas para exponer.
 - **`dangerouslySetInnerHTML`** — 0 ocurrencias en `app/`, `components/`, `hooks/`, `lib/`.
 - **`.rpc(\`...\`)` template literal** (SQL injection via RPC name interpolation) — 0 ocurrencias.

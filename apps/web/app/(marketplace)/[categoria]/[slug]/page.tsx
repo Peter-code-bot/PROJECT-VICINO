@@ -130,12 +130,9 @@ export default async function ProductDetailPage({ params }: Props) {
     isFavorite = !!fav;
   }
 
-  // Increment view count (fire and forget).
-  supabase
-    .from("products_services")
-    .update({ vistas_count: (product.vistas_count ?? 0) + 1 })
-    .eq("id", product.id)
-    .then();
+  // Increment view count (fire and forget). Direct UPDATE on the vistas_count stat
+  // is revoked (#7); the SECURITY DEFINER RPC owns the write.
+  supabase.rpc("increment_product_view", { p_id: product.id }).then();
 
   const deliveryLabel =
     product.tipo_entrega === "pickup"
