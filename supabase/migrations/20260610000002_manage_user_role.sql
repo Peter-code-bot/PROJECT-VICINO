@@ -25,6 +25,15 @@
 -- DEPENDS ON: app_role enum (admin|moderator|user), public.user_roles, has_role().
 -- The user_roles table-level write REVOKE from CH-1b stays in place; this RPC is
 -- SECURITY DEFINER so it writes as its owner, gated by the in-body admin check.
+--
+-- READ PATH (do NOT drop): this RPC gates WRITES only. Admin role READS over all
+-- rows (apps/web/app/admin/users/page.tsx:55) depend on the CH-1b RLS policy
+-- "Admin can manage roles" (its SELECT branch). Dropping that policy would
+-- silently break the admin user list. Keep it.
+--
+-- CONTINGENT ON: the CH-1 recursion smoke (BLOCK 4e). This RPC's guard calls
+-- has_role(), which reads user_roles under CH-1b FORCE ROW LEVEL SECURITY -- safe
+-- only if the postgres owner role has BYPASSRLS. Confirm before relying on CH-1c.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.manage_user_role(
@@ -38,8 +47,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_caller     UUID := auth.uid();
-  v_admin_count INTEGER;
+  v_caller UUID := auth.uid();
 BEGIN
   -- Authorization: caller must be admin. SECURITY DEFINER bypasses RLS, enforce
   -- explicitly (mirrors approve_verification_atomic / make_admin).
@@ -58,15 +66,22 @@ BEGIN
     ON CONFLICT (user_id, role) DO NOTHING;
   ELSE
     -- remove: protect the last admin so the admin plane can never be emptied.
-    IF p_role = 'admin'::app_role
-       AND EXISTS (
-         SELECT 1 FROM public.user_roles
-         WHERE user_id = p_user_id AND role = 'admin'::app_role
-       )
-    THEN
-      SELECT count(*) INTO v_admin_count
-      FROM public.user_roles WHERE role = 'admin'::app_role;
-      IF v_admin_count <= 1 THEN
+    -- TOCTOU-safe: lock ALL admin rows FOR UPDATE first, so concurrent
+    -- 'remove admin' calls serialize. Without the lock, two callers could both
+    -- read count = 2, both pass the <= 1 check, and both DELETE -> zero admins.
+    IF p_role = 'admin'::app_role THEN
+      PERFORM 1 FROM public.user_roles
+        WHERE role = 'admin'::app_role
+        FOR UPDATE;
+
+      IF EXISTS (
+           SELECT 1 FROM public.user_roles
+           WHERE user_id = p_user_id AND role = 'admin'::app_role
+         )
+         AND (
+           SELECT count(*) FROM public.user_roles WHERE role = 'admin'::app_role
+         ) <= 1
+      THEN
         RAISE EXCEPTION 'no se puede quitar el ultimo admin'
           USING ERRCODE = '42501';
       END IF;

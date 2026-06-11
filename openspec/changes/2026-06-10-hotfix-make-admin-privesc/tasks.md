@@ -54,7 +54,13 @@ The CH-1b write REVOKE broke the two admin Server Actions that wrote user_roles 
   (error state only; no behavior change). Reused assignRoleSchema/removeRoleSchema.
 - [x] C-5 - policy `Admin can manage roles` LEFT INTACT (load-bearing for admin/users/page.tsx:55 reads)
 - [x] C-6 - `rg "from\(['\"]user_roles['\"]\).*(insert|delete|update|upsert)" apps/web` == 0 hits
-- [ ] C-7 - `pnpm build` green (type-check)
+- [x] C-7 - `pnpm build` green (type-check); re-verified after the TOCTOU fix
+- [x] C-8 - CODEX review (3-lens): STOP_HIGH, 1 CRITICAL fixed in-place -- TOCTOU race in the
+  last-admin guard -> `FOR UPDATE` lock on admin rows (migration + studio-script BLOCK 5);
+  plus explicit return types + error.message fallback in actions.ts.
+- [ ] C-9 - **Pedro: RE-APPLY the fixed RPC in Studio** (studio-script BLOCK 5, CREATE OR
+  REPLACE) -- the live RPC still has the TOCTOU race; re-run to pick up `FOR UPDATE`. Then the
+  last-admin smoke (S3) + confirm `pg_get_functiondef` matches the migration.
 
 ## Closing
 
