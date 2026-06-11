@@ -9,8 +9,12 @@
 - [x] 20260610000004_ch3_stats_triggers_security_definer.sql (5 ALTER FUNCTION; idempotent)
 - [x] 20260610000005_ch3_column_locks_and_view_rpc.sql (#5/#7 REVOKE/GRANT + increment_product_view)
 - [x] 20260610000006_ch3_sale_confirmation_rpcs.sql (#6 confirm_sale/cancel_sale + REVOKE)
+- [x] 20260610000008_ch3e_moderation_rpcs.sql (#7 collateral: moderate_set_content_hidden + moderate_review)
 - [x] app: chat/actions.ts confirmSale -> confirm_sale; cancelSale -> cancel_sale (returns chat_id)
 - [x] app: [categoria]/[slug]/page.tsx vistas_count UPDATE -> increment_product_view
+- [x] app: admin/moderation/actions.ts hideReview/approveReview -> moderate_review;
+      resolveReport(hideTarget)/suspendUser/unsuspendUser/unhideListing -> moderate_set_content_hidden;
+      errors surfaced (fixed resolveReport swallowing 42501 as success)
 - [x] errors propagated to UI (error.message || "Error desconocido"); "ya modificada" preserved
 - [x] pnpm build green
 - [x] residual-write grep: only foto/fcm_token (profiles), allowlist (products), respuesta

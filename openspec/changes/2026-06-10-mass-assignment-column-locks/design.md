@@ -61,6 +61,32 @@ The detail page incremented `vistas_count` directly (any viewer). With the allow
 42501s. `increment_product_view(p_id)` SECURITY DEFINER owns the write; granted to
 `anon, authenticated` so anonymous views still count. Fire-and-forget from the page.
 
+## CH-3e -- admin moderation collateral + LESSON
+
+The column REVOKE broke a path the prep dossier did not inventory: admin moderation. The
+moderation Server Actions (`apps/web/app/admin/moderation/actions.ts`) write the privileged
+columns `is_hidden` / `visible` / `reportada` using the ordinary authenticated-role session
+client (`requireAdmin`/`requireAdminOrModerator` both return `createClient()` -- there is NO
+service-role client and no admin column GRANT). After the REVOKE every moderation write 42501'd,
+and `resolveReport`'s hide branch did not check the error -> it returned `success: true` while
+nothing happened.
+
+**LESSON (recorded): the caller-write inventory MUST cover ADMIN/MODERATION routes, not only
+end-user routes.** Three CH-3 collaterals all stem from omitting admin/privileged paths: the 5
+stat triggers (write profiles/products stats), `update_trust_level_from_points` (trust columns),
+and the moderation actions. Future prep dossiers must grep admin/* and trigger functions too.
+
+Fix (same RPC philosophy): two SECURITY DEFINER RPCs that re-check `has_role(admin OR moderator)`
+in-body and own the moderation writes, bypassing the user column grant:
+- `moderate_set_content_hidden(p_target_type, p_target_id, p_hidden)` -- sets `is_hidden` on the
+  right table; accepts both vocabularies (listing/product, user/profile, review, message).
+- `moderate_review(p_review_id, p_visible, p_clear_reported)` -- sets `reviews.visible` and
+  optionally clears `reportada`.
+The app routes the 6 moderation writes through them AND surfaces the RPC error (the swallowed-
+error bug is fixed). Note: the app gates suspend/review-moderation to admin-only while the RPCs
+allow moderator too -- the app gate is the stricter layer; splitting the DB guard by target_type
+is a possible defense-in-depth follow-up.
+
 ## Faithfulness
 
 The RPC bodies are reconstructed from the applied behavior + the app's prior logic. Reconcile

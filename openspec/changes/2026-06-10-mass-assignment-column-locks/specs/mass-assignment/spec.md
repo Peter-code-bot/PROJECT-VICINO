@@ -65,6 +65,25 @@ WHEN the product detail page records a view, it SHALL call `increment_product_vi
 - WHEN any viewer (anon or authenticated) opens a product detail page
 - THEN `increment_product_view` increments the counter
 
+## Requirement R4 -- moderation writes SHALL go through admin/moderator RPCs
+
+WHEN admin moderation hides content or moderates a review (the privileged columns `is_hidden`,
+`visible`, `reportada`), it SHALL call a SECURITY DEFINER RPC that re-checks
+`has_role(admin OR moderator)` server-side; direct UPDATE of those columns by the
+authenticated-role client SHALL be rejected (`42501`). The app SHALL surface the RPC error
+(a permission failure SHALL NOT be reported as success).
+
+### Scenario: moderation still works after the column lock
+- GIVEN an admin/moderator
+- WHEN they hide a listing/review/user/message or approve/hide a review
+- THEN the corresponding RPC (`moderate_set_content_hidden` / `moderate_review`) performs the
+  write and the action reports the real outcome
+
+### Scenario: a swallowed permission error cannot read as success
+- GIVEN a moderation write that fails with 42501
+- WHEN the action returns
+- THEN it returns `{ error }`, never `{ success: true }`
+
 ## Implementation notes
 - Column allowlists derived from the prep dossier (every direct client write inventoried).
 - Stat triggers (check_sale_completion, handle_sale_cancellation, update_profile_trust_level,

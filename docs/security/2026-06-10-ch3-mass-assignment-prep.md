@@ -91,3 +91,12 @@ reviews respuesta) ya tocan SOLO columnas del allowlist -> **cero edits de app**
 - RPCs nuevos: `increment_product_view`, `confirm_sale`, `cancel_sale` (todos SECURITY DEFINER,
   REVOKE anon donde aplique, GRANT authenticated, search_path locked).
 - Gate de BLOQUE A: A4 (privilegios de columna vivos en profiles) + A6 (policies vivas).
+
+## ADDENDUM (post-CODEX) -- omision de rutas ADMIN/MODERACION
+
+Este dossier inventario solo escrituras de USUARIO y omitio las de ADMIN/MODERACION. El CODEX de
+CH-3 detecto que el REVOKE rompio `apps/web/app/admin/moderation/actions.ts` (hideReview,
+approveReview, resolveReport(hideTarget), suspendUser, unsuspendUser, unhideListing), que escriben
+`is_hidden`/`visible`/`reportada` con el cliente de sesion (rol authenticated). Se resolvio en
+CH-3e (RPCs `moderate_set_content_hidden` / `moderate_review`). **Leccion:** todo prep dossier debe
+grepear tambien `apps/web/app/admin/**` y las funciones trigger, no solo las rutas de usuario.

@@ -64,6 +64,12 @@ GRANT  UPDATE (respuesta, respuesta_fecha) ON public.reviews TO authenticated;
 --   confirm_sale(p_sale_id), cancel_sale(p_sale_id, p_reason); then:
 REVOKE UPDATE, DELETE, TRUNCATE ON public.sale_confirmations FROM anon, authenticated;
 
+-- 2f. #7 collateral: admin/moderator moderation RPCs (full bodies in
+--   20260610000008_ch3e_moderation_rpcs.sql): moderate_set_content_hidden(text,uuid,bool)
+--   and moderate_review(uuid,bool,bool); both with has_role(admin|moderator) guard,
+--   REVOKE anon / GRANT authenticated. They own the is_hidden/visible/reportada writes
+--   that admin/moderation/actions.ts can no longer do directly after the REVOKE.
+
 COMMIT;
 
 -- ---- BLOCK 3: VERIFY (read-only) ----

@@ -35,14 +35,23 @@ the app) could mass-assign privileged columns. RLS row-ownership does NOT protec
   that derive the actor from `auth.uid()` and touch only that participant's own flag/cancel;
   `REVOKE UPDATE, DELETE, TRUNCATE ON sale_confirmations FROM anon, authenticated` (SELECT +
   INSERT kept).
+- **CH-3e (#7 admin collateral)** -- the admin moderation feature writes the now-revoked
+  privileged columns (is_hidden / visible / reportada) via the authenticated-role session
+  client. Two SECURITY DEFINER RPCs re-check admin/moderator and own those writes:
+  `moderate_set_content_hidden(text, uuid, bool)` (listing/review/message/user) and
+  `moderate_review(uuid, bool, bool)`; `REVOKE` anon, `GRANT` authenticated.
 
 Migrations: `20260610000004_ch3_stats_triggers_security_definer.sql`,
 `20260610000005_ch3_column_locks_and_view_rpc.sql`,
-`20260610000006_ch3_sale_confirmation_rpcs.sql`.
+`20260610000006_ch3_sale_confirmation_rpcs.sql`,
+`20260610000008_ch3e_moderation_rpcs.sql`.
 
-App edits (3 call sites that wrote revoked columns directly):
+App edits (9 call sites that wrote revoked columns directly):
 `chat/actions.ts` confirmSale -> `confirm_sale`, cancelSale -> `cancel_sale`;
-`[categoria]/[slug]/page.tsx` `vistas_count` UPDATE -> `increment_product_view`.
+`[categoria]/[slug]/page.tsx` `vistas_count` UPDATE -> `increment_product_view`;
+`admin/moderation/actions.ts` hideReview/approveReview -> `moderate_review`, and
+resolveReport(hideTarget)/suspendUser/unsuspendUser/unhideListing -> `moderate_set_content_hidden`
+(with proper error surfacing -- the old resolveReport swallowed permission errors).
 
 ## Scope
 
