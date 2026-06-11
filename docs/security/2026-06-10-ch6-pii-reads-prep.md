@@ -86,3 +86,35 @@ inventaria TODA lectura de profiles (incluido admin, leccion de CH-3) para no ro
   piden solo columnas publicas -> intactas.
 - RPCs nuevas: `get_my_profile()` (auth), `admin_list_users()`/`admin_get_user(uuid)` (guard admin).
 - Gate de BLOQUE A: A4 (privilegios de columna vivos en profiles).
+
+## Pre-write verification: select(*) sweep
+
+Barrido read-only antes de aplicar el REVOKE, para confirmar que la lista de "se rompe = SI" esta
+COMPLETA (incluyendo select("*"), select() vacio y joins embebidos `profiles!xx(...)`).
+
+Metodo + resultado:
+- `select("*")` / `select()` vacio sobre `from("profiles")` (multiline): **1 hit** -> `perfil/page.tsx:21`.
+- joins embebidos `profiles(*)` / `profiles:xx(*)`: **0 hits** (ningun join trae `*` de profiles).
+- `.select(...)` que pida una columna PRIVADA explicita (email/telefono/rfc/coords/fcm_token): **3 hits**
+  -> `admin/users/page.tsx:30` (email), `perfil/editar/page.tsx:19` (email), y **NUEVO**
+  `admin/verifications/page.tsx:61` (join `profiles!user_id(nombre, email, trust_level)`).
+
+### Tabla FINAL de call sites que se rompen con el REVOKE
+
+| file:line | tipo | columnas PII | contexto | accion de migracion |
+|---|---|---|---|---|
+| app/(marketplace)/perfil/page.tsx:21 | `select("*")` | todas (via *) | SELF | RPC `get_my_profile()`; quitar `*` |
+| app/(marketplace)/perfil/editar/page.tsx:19-20 | PII explicita | email | SELF | RPC `get_my_profile()` |
+| app/admin/users/page.tsx:30 | PII explicita | email | ADMIN | RPC admin definer (`admin_list_users`) |
+| **app/admin/verifications/page.tsx:61** | **join embebido con PII** | **email** (`profiles!user_id(nombre, email, trust_level)`) | **ADMIN** | **RPC admin (p.ej. `admin_list_verifications()` que devuelva email del submitter, o admin_get_user por fila); quitar `email` del embed** |
+
+(El resto de lecturas de profiles -- ~20 -- piden solo columnas publicas y NO usan `*` ni embed-* ->
+intactas. Coords y fcm_token: sin cambios, ya analizados arriba.)
+
+## VEREDICTO: B
+
+Se encontro **1 call site adicional** no listado en el dossier original: `admin/verifications/page.tsx:61`
+(join embebido `profiles!user_id(... email ...)`). La lista COMPLETA de breaks es de **4**:
+`perfil/page.tsx`, `perfil/editar/page.tsx`, `admin/users/page.tsx`, `admin/verifications/page.tsx`.
+=> Migrar los 4 (3 self/admin directos + 1 join admin) antes/junto con el REVOKE. No hay otros
+`select("*")` ni joins-con-* sobre profiles.
