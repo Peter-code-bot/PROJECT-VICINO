@@ -5,6 +5,34 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+/**
+ * Guarda el token de push en profiles.fcm_token con reintentos.
+ * La sesion auth puede no estar lista cuando iOS devuelve el token
+ * (race entre el bridge de Capacitor y la cookie de Supabase).
+ */
+async function saveTokenToProfile(tokenValue: string, retries = 3) {
+  const supabase = createClient();
+  for (let i = 0; i < retries; i++) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ fcm_token: tokenValue })
+        .eq("id", session.user.id);
+      if (!error) {
+        console.log("Push token saved to profile successfully");
+        return;
+      }
+      console.error("Error saving push token:", error.message);
+    }
+    // Esperar 1s antes de reintentar (sesion puede no estar lista)
+    if (i < retries - 1) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  console.error("Failed to save push token after retries - no active session");
+}
+
 export function usePushNotifications() {
   const router = useRouter();
 
@@ -16,16 +44,16 @@ export function usePushNotifications() {
 
     const registerPush = async () => {
       try {
-        // 1. Pedir permisos al usuario (mostrará el diálogo nativo)
+        // 1. Pedir permisos al usuario (mostrara el dialogo nativo)
         const permission = await PushNotifications.requestPermissions();
         if (permission.receive !== 'granted') {
           console.log("Permiso de notificaciones push denegado");
           return;
         }
 
-        // Android 8+ descarta toda notificación cuyo channel_id no corresponda
+        // Android 8+ descarta toda notificacion cuyo channel_id no corresponda
         // a un canal creado por la app. El id 'default' debe coincidir con el
-        // channel_id que envía la edge function send-push en android.notification.
+        // channel_id que envia la edge function send-push en android.notification.
         if (Capacitor.getPlatform() === 'android') {
           await PushNotifications.createChannel({
             id: 'default',
@@ -38,38 +66,35 @@ export function usePushNotifications() {
           });
         }
 
-        // 2. Registrar el dispositivo con el OS (Android/iOS) para obtener el token
-        await PushNotifications.register();
+        // 2. Registrar listeners ANTES de register() para evitar race condition.
+        //    iOS puede devolver el token APNs instantaneamente; si el listener
+        //    no existe aun, el evento se pierde y el token nunca se guarda.
 
-        // 3. Obtener el token de FCM o APNs y guardarlo en Supabase
-        const tokenListener = await PushNotifications.addListener('registration', async (token: Token) => {
+        // 2a. Token recibido exitosamente
+        await PushNotifications.addListener('registration', async (token: Token) => {
           if (!isSubscribed) return;
-          console.log('Push registration success, token: ' + token.value);
-          
-          const supabase = createClient();
-          const { data: session } = await supabase.auth.getSession();
-          if (session?.session?.user) {
-            await supabase.from("profiles").update({ fcm_token: token.value }).eq("id", session.session.user.id);
-          }
+          const platform = Capacitor.getPlatform();
+          console.log(`Push token received (${platform}): ${token.value.substring(0, 20)}... (${token.value.length} chars)`);
+          await saveTokenToProfile(token.value);
         });
 
-        // 4. Manejar errores de registro
-        const errorListener = await PushNotifications.addListener('registrationError', (error: any) => {
+        // 2b. Error de registro
+        await PushNotifications.addListener('registrationError', (error: any) => {
           console.error('Error en el registro de push: ' + JSON.stringify(error));
         });
 
-        // 5. Manejar notificaciones cuando la app está abierta en primer plano (foreground)
-        const receivedListener = await PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+        // 2c. Notificacion recibida en primer plano (foreground)
+        await PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
           if (!isSubscribed) return;
           
-          // Si el usuario ya está viendo exactamente esa pantalla (ej. dentro del chat),
+          // Si el usuario ya esta viendo exactamente esa pantalla (ej. dentro del chat),
           // no mostramos el toast porque Supabase Realtime ya inserta el mensaje en vivo.
           if (notification.data && notification.data.url === window.location.pathname) {
             return;
           }
 
           // Mostramos un toast nativo-ish con Sonner
-          toast(notification.title || "Nueva notificación", {
+          toast(notification.title || "Nueva notificacion", {
             description: notification.body || "",
             action: {
               label: "Ver",
@@ -83,8 +108,8 @@ export function usePushNotifications() {
           });
         });
 
-        // 6. Manejar la acción cuando el usuario toca la notificación desde afuera (background)
-        const actionListener = await PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
+        // 2d. Usuario toco la notificacion desde background
+        await PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
           if (!isSubscribed) return;
           const data = notification.notification.data;
           if (data && data.url) {
@@ -93,6 +118,10 @@ export function usePushNotifications() {
             router.refresh();
           }
         });
+
+        // 3. Registrar el dispositivo con el OS (Android/iOS) para obtener el token.
+        //    DEBE ir DESPUES de los listeners para que el evento no se pierda.
+        await PushNotifications.register();
 
       } catch (err) {
         console.error("Fallo al inicializar PushNotifications", err);
@@ -103,8 +132,9 @@ export function usePushNotifications() {
 
     return () => {
       isSubscribed = false;
-      // Remover todos los listeners al desmontar para evitar acumulación
+      // Remover todos los listeners al desmontar para evitar acumulacion
       PushNotifications.removeAllListeners().catch(() => {});
     };
   }, [router]);
 }
+
