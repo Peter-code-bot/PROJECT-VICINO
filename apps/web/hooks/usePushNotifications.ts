@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from "@capacitor/push-notifications";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -65,26 +66,30 @@ export function usePushNotifications() {
           });
         }
 
-        // 2. Registrar listeners ANTES de register() para evitar race condition.
+        // En iOS, el plugin oficial se queda con el APNs, y el plugin de comunidad de FCM a veces falla por SPM/timing.
+        // HACK DE PLAN C: El AppDelegate nativo nos envía el token FCM por un evento de Deep Link interno.
+        await App.addListener('appUrlOpen', async (data) => {
+          if (data.url.includes('fcm-token/')) {
+            const nativeFcmToken = data.url.split('fcm-token/')[1];
+            console.log(`Push token received via native bridge (ios): ${nativeFcmToken.substring(0, 20)}... (${nativeFcmToken.length} chars)`);
+            await saveTokenToProfile(nativeFcmToken);
+          }
+        });
+
+        // 2. Registrar listeners ANTES de register()
         await PushNotifications.addListener('registration', async (token: Token) => {
           if (!isSubscribed) return;
           const platform = Capacitor.getPlatform();
-          let finalToken = token.value;
           
           if (platform === 'ios') {
-            try {
-              // En iOS, el token de PushNotifications es APNs nativo.
-              // Usamos FCM.getToken() para obtener el Firebase Registration Token que requiere nuestro backend.
-              const fcmTokenResponse = await FCM.getToken();
-              finalToken = fcmTokenResponse.token;
-            } catch (err) {
-              console.error("Error obteniendo token FCM en iOS", err);
-              return;
-            }
+            // Ignoramos el token APNs aquí en iOS. Esperamos a que llegue por appUrlOpen desde el AppDelegate.
+            console.log("APNs token received. Esperando token FCM del native bridge...");
+            return;
           }
           
-          console.log(`Push token received (${platform}): ${finalToken.substring(0, 20)}... (${finalToken.length} chars)`);
-          await saveTokenToProfile(finalToken);
+          // En Android sí llega directo
+          console.log(`Push token received (${platform}): ${token.value.substring(0, 20)}... (${token.value.length} chars)`);
+          await saveTokenToProfile(token.value);
         });
 
         // 2b. Error de registro
