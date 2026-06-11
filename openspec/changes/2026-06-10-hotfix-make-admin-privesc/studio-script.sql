@@ -169,6 +169,17 @@ SELECT policyname, cmd, roles, qual, with_check
 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_roles'
 ORDER BY policyname;
 
+-- 4e-pre. EVIDENCE for the FORCE RLS safety assumption: postgres SHOULD be true.
+--   If postgres.rolbypassrls = false, FORCE RLS on user_roles WILL recurse -- drop it.
+--   Save this output to the decision log so the assumption is evidence-backed.
+SELECT rolname, rolbypassrls
+FROM pg_roles
+WHERE rolname IN ('postgres', 'authenticated', 'anon', 'authenticator', 'service_role')
+ORDER BY rolname;
+
+-- 4f. Bootstrap admin must exist (>= 1) or the admin plane is locked out.
+SELECT count(*) AS admin_rows FROM public.user_roles WHERE role = 'admin'::app_role;
+
 -- 4e. CRITICAL recursion smoke -- run as a real authenticated session (replace uuid).
 --   MUST return without "infinite recursion detected in policy for relation
 --   user_roles". If it recurses, the owner role lacks BYPASSRLS and FORCE RLS is

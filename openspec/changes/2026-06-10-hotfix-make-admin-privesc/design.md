@@ -33,12 +33,14 @@ still inserts `(someone, admin)` with `ON CONFLICT DO NOTHING`. No app code call
 
 ### Bootstrap (chicken-and-egg)
 
-The guard requires an existing admin to mint admins. The first admin is seeded once by
-running, as `postgres` in Studio (which bypasses the guard since auth.uid() is NULL but
-the function runs... -- see note), a direct `INSERT INTO public.user_roles (user_id, role)
-VALUES ('<pedro_uuid>', 'admin')`. Direct INSERT as postgres is the reliable bootstrap
-(make_admin's own guard would reject a NULL auth.uid()). This is a one-time manual step
-and is assumed already done in production.
+The guard requires an existing admin to mint admins. The first admin is seeded ONCE by a
+direct `INSERT INTO public.user_roles (user_id, role) VALUES ('<pedro_uuid>', 'admin')`
+run as `postgres` in Studio. This does NOT go through `make_admin`: the RPC cannot
+bootstrap the very first admin because its guard rejects a NULL `auth.uid()` (the Studio
+SQL editor session has no `auth.uid()`). Once at least one admin row exists, that admin can
+promote others via `make_admin`. One-time manual step, assumed already done in production --
+confirm with `SELECT count(*) FROM public.user_roles WHERE role = 'admin'::app_role` (must
+be >= 1, else the admin plane is locked out).
 
 ## CH-1b -- user_roles lockdown
 

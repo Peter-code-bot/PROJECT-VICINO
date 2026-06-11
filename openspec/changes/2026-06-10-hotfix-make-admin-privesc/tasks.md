@@ -20,7 +20,10 @@
   (idempotent: CREATE OR REPLACE / DROP POLICY IF EXISTS / REVOKE-GRANT / FORCE RLS)
 - [x] T-07 - explicit `git add` of the change dir + the migration; ASCII commit:
   `fix(security): P0 privesc -- make_admin guard + user_roles lockdown (#1)`
-- [x] T-08 - CODEX adversarial review loop (internal); HIGH findings -> STOP, report to Pedro
+- [x] T-08 - CODEX adversarial review (4-lens workflow + synthesis): verdict STOP_HIGH --
+  1 CRITICAL (FORCE RLS recursion unverified live), 4 IMPORTANT. Fixed in-doc: design.md
+  bootstrap contradiction; added rolbypassrls + admin-count checks to studio-script BLOCK 4.
+  Push gated until P-4 recursion smoke is green.
 - [ ] T-09 - **NO push until Pedro's go-ahead** (per megaprompt). Report commit SHA.
 
 ## FASE C -- Pedro execution (Supabase Studio) -- ALREADY DONE for prod
