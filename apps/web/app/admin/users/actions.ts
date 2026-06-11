@@ -4,7 +4,10 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { assignRoleSchema, removeRoleSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
-export async function assignRole(userId: string, role: string) {
+export async function assignRole(
+  userId: string,
+  role: string,
+): Promise<{ error: string } | { success: true }> {
   const { supabase, user } = await requireAdmin();
 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
@@ -15,15 +18,22 @@ export async function assignRole(userId: string, role: string) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  const { error } = await supabase.from("user_roles").insert({
-    user_id: parsed.data.user_id,
-    role: parsed.data.role,
+  // Direct writes on user_roles are revoked (P0 #1). Route through the
+  // admin-guarded SECURITY DEFINER RPC; it does ON CONFLICT DO NOTHING, so a
+  // re-assign is idempotent (no 23505 to special-case anymore).
+  const { error } = await supabase.rpc("manage_user_role", {
+    p_user_id: parsed.data.user_id,
+    p_role: parsed.data.role,
+    p_action: "assign",
   });
-  if (error && error.code !== "23505") return { error: error.message };
+  if (error) return { error: error.message || "Error desconocido" };
   return { success: true };
 }
 
-export async function removeRole(userId: string, role: string) {
+export async function removeRole(
+  userId: string,
+  role: string,
+): Promise<{ error: string } | { success: true }> {
   const { supabase, user } = await requireAdmin();
 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
@@ -34,11 +44,13 @@ export async function removeRole(userId: string, role: string) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
 
-  const { error } = await supabase
-    .from("user_roles")
-    .delete()
-    .eq("user_id", parsed.data.user_id)
-    .eq("role", parsed.data.role);
-  if (error) return { error: error.message };
+  // Direct writes on user_roles are revoked (P0 #1). The RPC enforces admin and
+  // protects the last admin; propagate its message to the UI.
+  const { error } = await supabase.rpc("manage_user_role", {
+    p_user_id: parsed.data.user_id,
+    p_role: parsed.data.role,
+    p_action: "remove",
+  });
+  if (error) return { error: error.message || "Error desconocido" };
   return { success: true };
 }

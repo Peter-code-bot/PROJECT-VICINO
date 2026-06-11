@@ -25,8 +25,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     .maybeSingle();
   if (!adminCheck) redirect("/admin");
 
+  // profiles PII (email) is revoked from the user client (#2). admin_list_users()
+  // is a SECURITY DEFINER RPC (guard: has_role admin) returning full profiles; the
+  // filters/order/limit below are applied by PostgREST to the function's result set.
   let query = supabase
-    .from("profiles")
+    .rpc("admin_list_users")
     .select("id, nombre, email, user_id, es_vendedor, trust_level, average_rating, total_sales, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
@@ -49,7 +52,9 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     }
   }
 
-  const { data: users } = await query;
+  const { data: usersRaw } = await query;
+  // .rpc(...).select() types data as Row | Row[]; admin_list_users is SETOF -> array.
+  const users = Array.isArray(usersRaw) ? usersRaw : usersRaw ? [usersRaw] : [];
 
   // Get roles
   const { data: allRoles } = await supabase.from("user_roles").select("user_id, role");

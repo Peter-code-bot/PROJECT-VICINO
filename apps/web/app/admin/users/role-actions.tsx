@@ -12,6 +12,7 @@ interface RoleActionsProps {
 
 export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const isAdmin = currentRoles.includes("admin");
@@ -19,10 +20,14 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
 
   async function handleToggleAdmin() {
     setLoading(true);
-    if (isAdmin) {
-      await removeRole(userId, "admin");
-    } else {
-      await assignRole(userId, "admin");
+    setError(null);
+    const res = isAdmin
+      ? await removeRole(userId, "admin")
+      : await assignRole(userId, "admin");
+    if (res && "error" in res && res.error) {
+      setError(res.error);
+      setLoading(false);
+      return;
     }
     router.refresh();
     setLoading(false);
@@ -30,17 +35,25 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
 
   async function handleToggleMod() {
     setLoading(true);
-    if (isMod) {
-      await removeRole(userId, "moderator");
-    } else {
-      await assignRole(userId, "moderator");
+    setError(null);
+    const res = isMod
+      ? await removeRole(userId, "moderator")
+      : await assignRole(userId, "moderator");
+    if (res && "error" in res && res.error) {
+      setError(res.error);
+      setLoading(false);
+      return;
     }
     router.refresh();
     setLoading(false);
   }
 
   return (
-    <div className="flex gap-2 shrink-0">
+    <div className="flex flex-col items-end gap-1 shrink-0">
+      {error && (
+        <p className="text-xs text-destructive max-w-[16rem] text-right">{error}</p>
+      )}
+      <div className="flex gap-2">
       <button
         onClick={handleToggleAdmin}
         disabled={loading}
@@ -57,6 +70,7 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
         <ShieldCheck className="w-3 h-3" />
         {isMod ? "Quitar Mod" : "Hacer Mod"}
       </button>
+      </div>
     </div>
   );
 }

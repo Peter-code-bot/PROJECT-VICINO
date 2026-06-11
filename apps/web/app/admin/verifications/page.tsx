@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
 import { VerificationActions } from "./verification-actions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,6 +45,12 @@ async function signOrNull(
 }
 
 export default async function VerificationsPage() {
+  // Fail-fast: this page reads PII (submitter email) via the service-role client,
+  // which bypasses RLS. Assert admin/moderator here so a layout-gate regression
+  // cannot leak emails (#2 defense-in-depth).
+  const ctx = await requireAdminOrModerator();
+  if (!ctx) redirect("/login");
+
   const supabase = await createClient();
   // SECURITY: adminSupabase (service-role) is LOAD-BEARING for the signed-URL
   // generation below. The `verification-documents` storage bucket has NO RLS
@@ -56,11 +64,24 @@ export default async function VerificationsPage() {
   // in the UI).
   const adminSupabase = createAdminClient();
 
+  // profiles.email is revoked from the user client (#2): the user-context embed
+  // keeps only public columns; the submitter emails are fetched via the existing
+  // service-role client (this page is admin-only and already uses adminSupabase).
   const { data: verifications } = await supabase
     .from("seller_verification")
-    .select("*, profiles!user_id(nombre, email, trust_level)")
+    .select("*, profiles!user_id(nombre, trust_level)")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
+
+  const submitterIds = [...new Set((verifications ?? []).map((v) => v.user_id))];
+  const emailById = new Map<string, string>();
+  if (submitterIds.length > 0) {
+    const { data: emailRows } = await adminSupabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", submitterIds);
+    for (const r of emailRows ?? []) emailById.set(r.id, r.email);
+  }
 
   // Generate signed URLs in parallel for all docs across all verifications
   const verificationsWithUrls = await Promise.all(
@@ -70,7 +91,7 @@ export default async function VerificationsPage() {
         signOrNull(adminSupabase, v.ine_front_url),
         signOrNull(adminSupabase, v.ine_back_url),
       ]);
-      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl };
+      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl, submitterEmail: emailById.get(v.user_id) ?? null };
     })
   );
 
@@ -97,7 +118,7 @@ export default async function VerificationsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{v.submitterEmail}</p>
                   </div>
                   <span className="text-xs bg-amber-50 text-amber-600 dark:bg-amber-950/50 px-2 py-0.5 rounded-full shrink-0">
                     Pendiente

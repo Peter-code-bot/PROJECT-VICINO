@@ -16,11 +16,10 @@ export default async function PerfilPage() {
 
   if (!user) redirect("/login?next=/perfil");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // PII columns (email/telefono/rfc/coords/fcm_token) are revoked from the user
+  // client (#2). get_my_profile() is a SECURITY DEFINER RPC that returns the
+  // caller's OWN full profile row (auth.uid()-scoped) -- same shape as select("*").
+  const { data: profile } = await supabase.rpc("get_my_profile");
 
   // Get user's products.
   // MP#08 #5c-4: SELECT expandido con product_categories embed para que la

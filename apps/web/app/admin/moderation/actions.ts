@@ -18,11 +18,14 @@ export async function hideReview(reviewId: string) {
     return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
   }
 
-  const { error } = await supabase
-    .from("reviews")
-    .update({ visible: false })
-    .eq("id", parsed.data.review_id);
-  if (error) return { error: error.message };
+  // Privileged column write (visible) goes through the admin-guarded RPC -- direct
+  // UPDATE on reviews is revoked (#7).
+  const { error } = await supabase.rpc("moderate_review", {
+    p_review_id: parsed.data.review_id,
+    p_visible: false,
+    p_clear_reported: false,
+  });
+  if (error) return { error: error.message || "Error desconocido" };
 
   await supabase.from("audit_log").insert({
     actor_id: user.id,
@@ -47,11 +50,12 @@ export async function approveReview(reviewId: string) {
     return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
   }
 
-  const { error } = await supabase
-    .from("reviews")
-    .update({ reportada: false, visible: true })
-    .eq("id", parsed.data.review_id);
-  if (error) return { error: error.message };
+  const { error } = await supabase.rpc("moderate_review", {
+    p_review_id: parsed.data.review_id,
+    p_visible: true,
+    p_clear_reported: true,
+  });
+  if (error) return { error: error.message || "Error desconocido" };
 
   await supabase.from("audit_log").insert({
     actor_id: user.id,
@@ -93,15 +97,16 @@ export async function resolveReport(
   if (fetchError || !report) return { error: "Reporte no encontrado" };
 
   if (options.hideTarget) {
-    if (report.target_type === "listing") {
-      await supabase.from("products_services").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "review") {
-      await supabase.from("reviews").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "message") {
-      await supabase.from("messages").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "user") {
-      await supabase.from("profiles").update({ is_hidden: true }).eq("id", report.target_id);
-    }
+    // Privileged column write (is_hidden) goes through the admin/moderator-guarded
+    // RPC -- direct UPDATE on these columns is revoked (#7). CRITICAL: surface a
+    // real failure; hiding reported content must NEVER silently no-op (the previous
+    // direct update swallowed permission errors and returned success).
+    const { error: hideError } = await supabase.rpc("moderate_set_content_hidden", {
+      p_target_type: report.target_type,
+      p_target_id: report.target_id,
+      p_hidden: true,
+    });
+    if (hideError) return { error: hideError.message || "Error desconocido" };
   }
 
   const { error } = await supabase
@@ -224,12 +229,13 @@ export async function suspendUser(userId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_hidden: true })
-    .eq("id", userId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "profile",
+    p_target_id: userId,
+    p_hidden: true,
+  });
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message || "Error desconocido" };
 
   await supabase.from("audit_log").insert({
     actor_id: admin.id,
@@ -251,12 +257,13 @@ export async function unsuspendUser(userId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_hidden: false })
-    .eq("id", userId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "profile",
+    p_target_id: userId,
+    p_hidden: false,
+  });
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message || "Error desconocido" };
 
   await supabase.from("audit_log").insert({
     actor_id: admin.id,
@@ -278,12 +285,13 @@ export async function unhideListing(listingId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("products_services")
-    .update({ is_hidden: false })
-    .eq("id", listingId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "product",
+    p_target_id: listingId,
+    p_hidden: false,
+  });
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message || "Error desconocido" };
 
   await supabase.from("audit_log").insert({
     actor_id: ctx.user.id,
