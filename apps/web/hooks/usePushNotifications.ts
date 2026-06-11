@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from "@capacitor/push-notifications";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { FCM } from "@capacitor-community/fcm";
+import { FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
 
 /**
  * Guarda el token de push en profiles.fcm_token con reintentos.
@@ -43,6 +43,10 @@ export function usePushNotifications() {
     if (!Capacitor.isNativePlatform()) return;
 
     let isSubscribed = true;
+    // Handle del listener appUrlOpen del plugin App (FCM bridge). Se remueve en
+    // el cleanup: PushNotifications.removeAllListeners() NO lo cubre (es otro
+    // plugin) y el effect depende de [router] -> re-corre por navegacion.
+    let fcmUrlHandle: PluginListenerHandle | undefined;
 
     const registerPush = async () => {
       try {
@@ -68,13 +72,25 @@ export function usePushNotifications() {
 
         // En iOS, el plugin oficial se queda con el APNs, y el plugin de comunidad de FCM a veces falla por SPM/timing.
         // HACK DE PLAN C: El AppDelegate nativo nos envía el token FCM por un evento de Deep Link interno.
-        await App.addListener('appUrlOpen', async (data) => {
-          if (data.url.includes('fcm-token/')) {
-            const nativeFcmToken = data.url.split('fcm-token/')[1];
+        fcmUrlHandle = await App.addListener('appUrlOpen', async (data) => {
+          if (!isSubscribed) return;
+          if (data.url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)) {
+            const nativeFcmToken = data.url.split(FCM_TOKEN_DEEP_LINK_PREFIX)[1];
+            // Guard: bajo noUncheckedIndexedAccess split(...)[1] es string|undefined.
+            // Tambien protege contra un URL "vicino://fcm-token/" sin token.
+            if (!nativeFcmToken) {
+              console.error("FCM bridge: deep link sin token");
+              return;
+            }
             console.log(`Push token received via native bridge (ios): ${nativeFcmToken.substring(0, 20)}... (${nativeFcmToken.length} chars)`);
             await saveTokenToProfile(nativeFcmToken);
           }
         });
+        // Si el componente se desmonto durante el await anterior, remover ya.
+        if (!isSubscribed) {
+          void fcmUrlHandle.remove();
+          fcmUrlHandle = undefined;
+        }
 
         // 2. Registrar listeners ANTES de register()
         await PushNotifications.addListener('registration', async (token: Token) => {
@@ -148,6 +164,9 @@ export function usePushNotifications() {
       isSubscribed = false;
       // Remover todos los listeners al desmontar para evitar acumulacion
       PushNotifications.removeAllListeners().catch(() => {});
+      // El listener appUrlOpen vive en el plugin App, no en PushNotifications.
+      void fcmUrlHandle?.remove();
+      fcmUrlHandle = undefined;
     };
   }, [router]);
 }

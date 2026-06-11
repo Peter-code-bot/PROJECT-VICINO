@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
+import { OAUTH_DEEP_LINK_CALLBACK, FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
 
 /**
  * A4 sub-fase 4.2: smart back button + cleanup de los 4 listeners de
@@ -121,7 +121,10 @@ export function CapacitorInit() {
       // aqui como PREFIJO (startsWith) porque la URL delivered incluye
       // ?code=... despues del path.
       const urlH = await App.addListener("appUrlOpen", ({ url }) => {
-        if (url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) return;
+        // OAuth callback -> OAuthUrlListener. FCM token bridge -> usePushNotifications.
+        // Ambos son owned por otros listeners; sin estos guards este handler
+        // navegaria a /<token> o stripearia el ?code= del OAuth.
+        if (url.startsWith(OAUTH_DEEP_LINK_CALLBACK) || url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)) return;
         try {
           const u = new URL(url);
           // vicino:// scheme or https links
@@ -140,7 +143,11 @@ export function CapacitorInit() {
       // Cold-start deep link
       const launchUrl = await App.getLaunchUrl();
       if (state.cancelled) return;
-      if (launchUrl?.url && !launchUrl.url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) {
+      if (
+        launchUrl?.url &&
+        !launchUrl.url.startsWith(OAUTH_DEEP_LINK_CALLBACK) &&
+        !launchUrl.url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)
+      ) {
         try {
           const u = new URL(launchUrl.url);
           const path = u.pathname || u.host || "";

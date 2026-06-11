@@ -15,11 +15,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
       Messaging.messaging().apnsToken = deviceToken
-      
-      // Fetch FCM token natively to debug what Firebase is actually doing
+
+      // PLAN C (Deep Link Bridge): @capacitor/push-notifications solo entrega el
+      // token APNs (64 chars) en iOS, pero el backend exige el token FCM nativo
+      // (~142 chars). Lo generamos aqui y lo inyectamos al pipeline openURL de
+      // Capacitor como vicino://fcm-token/<token>; el listener JS en
+      // usePushNotifications.ts lo recibe via appUrlOpen. Mismo mecanismo
+      // ApplicationDelegateProxy.shared que ya se usa para deep links reales.
       Messaging.messaging().token { token, error in
         if let token = token {
-          print("🔥 FIREBASE NATIVE TOKEN: \(token)")
+          print("🔥 FIREBASE NATIVE TOKEN (\(token.count) chars): \(token)")
+          DispatchQueue.main.async {
+            if let url = URL(string: "vicino://fcm-token/\(token)") {
+              _ = ApplicationDelegateProxy.shared.application(application, open: url, options: [:])
+            }
+          }
         } else {
           print("🔥 FIREBASE ERROR: \(String(describing: error))")
         }

@@ -33,3 +33,19 @@
  * contract.
  */
 export const OAUTH_DEEP_LINK_CALLBACK = "vicino://auth/callback";
+
+/**
+ * Internal deep-link prefix used by the iOS FCM push-token bridge ("Plan C").
+ * The native AppDelegate fetches the Firebase token and injects it into
+ * Capacitor's openURL pipeline as `vicino://fcm-token/<token>`. Two consumers
+ * use this as a PREFIX (startsWith):
+ *
+ *   1. hooks/usePushNotifications.ts -- its `appUrlOpen` listener detects this
+ *      prefix, extracts the verbatim token (split on the prefix) and persists it.
+ *
+ *   2. components/capacitor-init.tsx -- the GLOBAL `appUrlOpen` handler must
+ *      SKIP this prefix; otherwise it would parse the URL and navigate to
+ *      `/<token>` (window.location.href), breaking the app on every token.
+ *      Mirrors the existing OAUTH_DEEP_LINK_CALLBACK guard.
+ */
+export const FCM_TOKEN_DEEP_LINK_PREFIX = "vicino://fcm-token/";
