@@ -14,13 +14,9 @@ export default async function EditarPerfilPage() {
 
   if (!user) redirect("/login?next=/perfil/editar");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "nombre, email, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
-    )
-    .eq("id", user.id)
-    .single();
+  // PII columns are revoked from the user client (#2). get_my_profile() (SECURITY
+  // DEFINER, auth.uid()-scoped) returns the caller's own full row incl. email.
+  const { data: profile } = await supabase.rpc("get_my_profile");
 
   // Phase 9: count active (disponible) products so the form can warn the user
   // before turning seller mode off — those products will be auto-paused.
