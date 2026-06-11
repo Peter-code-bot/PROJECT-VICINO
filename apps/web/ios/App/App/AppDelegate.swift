@@ -15,6 +15,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
       Messaging.messaging().apnsToken = deviceToken
+      
+      // Fetch FCM token natively to debug what Firebase is actually doing
+      Messaging.messaging().token { token, error in
+        if let token = token {
+          print("🔥 FIREBASE NATIVE TOKEN: \(token)")
+        } else {
+          print("🔥 FIREBASE ERROR: \(String(describing: error))")
+        }
+      }
+
       NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
     }
 
