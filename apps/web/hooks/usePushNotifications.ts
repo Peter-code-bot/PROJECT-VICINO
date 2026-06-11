@@ -4,6 +4,7 @@ import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } fro
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { FCM } from "@capacitor-community/fcm";
 
 /**
  * Guarda el token de push en profiles.fcm_token con reintentos.
@@ -52,8 +53,6 @@ export function usePushNotifications() {
         }
 
         // Android 8+ descarta toda notificacion cuyo channel_id no corresponda
-        // a un canal creado por la app. El id 'default' debe coincidir con el
-        // channel_id que envia la edge function send-push en android.notification.
         if (Capacitor.getPlatform() === 'android') {
           await PushNotifications.createChannel({
             id: 'default',
@@ -67,15 +66,25 @@ export function usePushNotifications() {
         }
 
         // 2. Registrar listeners ANTES de register() para evitar race condition.
-        //    iOS puede devolver el token APNs instantaneamente; si el listener
-        //    no existe aun, el evento se pierde y el token nunca se guarda.
-
-        // 2a. Token recibido exitosamente
         await PushNotifications.addListener('registration', async (token: Token) => {
           if (!isSubscribed) return;
           const platform = Capacitor.getPlatform();
-          console.log(`Push token received (${platform}): ${token.value.substring(0, 20)}... (${token.value.length} chars)`);
-          await saveTokenToProfile(token.value);
+          let finalToken = token.value;
+          
+          if (platform === 'ios') {
+            try {
+              // En iOS, el token de PushNotifications es APNs nativo.
+              // Usamos FCM.getToken() para obtener el Firebase Registration Token que requiere nuestro backend.
+              const fcmTokenResponse = await FCM.getToken();
+              finalToken = fcmTokenResponse.token;
+            } catch (err) {
+              console.error("Error obteniendo token FCM en iOS", err);
+              return;
+            }
+          }
+          
+          console.log(`Push token received (${platform}): ${finalToken.substring(0, 20)}... (${finalToken.length} chars)`);
+          await saveTokenToProfile(finalToken);
         });
 
         // 2b. Error de registro
