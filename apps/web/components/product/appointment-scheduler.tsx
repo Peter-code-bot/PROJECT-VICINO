@@ -59,14 +59,17 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
 
   useEffect(() => {
     if (!selectedDate) return;
+    // appointments SELECT is now participants-only (#8). Booked slots come from a
+    // SECURITY DEFINER RPC that returns ONLY the confirmed start-times (no buyer
+    // identity / notes) for this product + date.
     supabase
-      .from("appointments")
-      .select("appointment_start")
-      .eq("product_id", product.id)
-      .eq("appointment_date", selectedDate)
-      .eq("status", "confirmed")
+      .rpc("get_booked_slots", { p_product_id: product.id, p_date: selectedDate })
       .then(({ data }) => {
-        setBookedSlots(data?.map((a) => a.appointment_start.slice(0, 5)) ?? []);
+        setBookedSlots(
+          (data ?? []).map((a: { appointment_start: string }) =>
+            a.appointment_start.slice(0, 5),
+          ),
+        );
       });
   }, [selectedDate, product.id]);
 
