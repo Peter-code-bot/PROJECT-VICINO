@@ -33,6 +33,19 @@ const config: CapacitorConfig = {
     backgroundColor: '#0D0D1Aff',
     limitsNavigationsToAppBoundDomains: false,
     appendUserAgent: 'VICINO-iOS',
+    // TEMP: Sentry excluido de iOS por fallo de descarga sentry-cocoa (red). Re-incluir antes de release publico.
+    includePlugins: [
+      '@capacitor/app',
+      '@capacitor/browser',
+      '@capacitor/camera',
+      '@capacitor/geolocation',
+      '@capacitor/haptics',
+      '@capacitor/keyboard',
+      '@capacitor/network',
+      '@capacitor/push-notifications',
+      '@capacitor/splash-screen',
+      '@capacitor/status-bar',
+    ],
   },
   plugins: {
     SplashScreen: {
