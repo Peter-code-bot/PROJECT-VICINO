@@ -15,9 +15,8 @@
 
 ## FASE C -- Studio (DONE) + reconcile
 - [x] REVOKE SELECT PII cols; get_my_profile / admin_list_users / admin_get_user applied
-- [ ] **RECONCILE (Pedro)**: confirm the live REVOKE does NOT include user_id / is_hidden. If it
-      does, re-apply with ONLY the 6 PII columns (user_id is the public handle on vendedor/[id];
-      is_hidden is read by admin moderation). Otherwise vendedor/[id] is broken in prod.
+- [x] RECONCILE (DONE 2026-06-10): live REVOKE corrected to the 6 PII columns only; user_id /
+      is_hidden re-granted (VERIFY 4 correct rows). Mirror re-grants them explicitly (self-healing).
 - [ ] P-smoke: anon/auth curl of PII -> 42501; perfil/editar shows own email; admin users +
       verifications show emails; public seller page + search still work.
 

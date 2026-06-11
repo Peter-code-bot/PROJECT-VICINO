@@ -18,6 +18,7 @@ ORDER BY grantee, column_name;
 BEGIN;
 REVOKE SELECT (email, telefono, rfc, ubicacion_lat, ubicacion_lng, fcm_token)
   ON public.profiles FROM anon, authenticated;
+GRANT  SELECT (user_id, is_hidden) ON public.profiles TO anon, authenticated;  -- reconcile: NOT PII
 -- (then the 3 SECURITY DEFINER functions from 20260610000009: get_my_profile,
 --  admin_list_users, admin_get_user, each REVOKE anon / GRANT authenticated.)
 COMMIT;

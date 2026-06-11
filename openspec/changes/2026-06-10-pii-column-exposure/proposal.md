@@ -25,16 +25,14 @@ App edits (the 4 call sites the REVOKE breaks, per the pre-write sweep):
 
 Mirror migration: `supabase/migrations/20260610000009_ch6_pii_column_restrict.sql`.
 
-## RECONCILE (IMPORTANT) -- do NOT revoke user_id / is_hidden
+## RECONCILE (RESOLVED) -- user_id / is_hidden are NOT revoked
 
-The applied set was reported to also revoke `is_hidden` and `user_id`. This change does NOT, and
-recommends re-applying WITHOUT them, because they are NOT PII and revoking them breaks the app:
+An earlier apply also revoked `is_hidden` and `user_id`, breaking the public seller page + admin
+moderation. Reconciled 2026-06-10: re-granted (VERIFY 4 correct rows). The mirror revokes only the
+6 PII columns and explicitly re-grants user_id / is_hidden. They are NOT PII:
 - **`user_id`** is the PUBLIC 8-char handle shown on the public seller page
-  `vendedor/[id]/page.tsx:36` (and searchable). Revoking it 42501s a PUBLIC page -- a public
-  handle cannot be made private.
+  `vendedor/[id]/page.tsx:36` (and searchable). A public handle cannot be made private.
 - **`is_hidden`** is read by the admin moderation list `admin/moderation/users/page.tsx:31`.
-
-If the live DB revoked user_id/is_hidden, `vendedor/[id]` is currently broken in production.
 
 ## Scope
 

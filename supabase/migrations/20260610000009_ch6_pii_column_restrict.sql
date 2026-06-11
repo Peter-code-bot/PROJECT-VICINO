@@ -20,13 +20,19 @@
 --     it 42501s that public page -- a public handle cannot be made private.
 --   * is_hidden is read by the admin moderation list
 --     apps/web/app/admin/moderation/users/page.tsx:31.
--- Recommendation: re-apply the REVOKE with ONLY the 6 PII columns below (keep
--- user_id / is_hidden SELECTable). See the CODEX/report flag.
+-- RESOLVED 2026-06-10: user_id / is_hidden re-granted (VERIFY 4 correct rows). This
+-- mirror revokes ONLY the 6 PII columns and explicitly re-grants user_id / is_hidden
+-- (self-healing on replay).
 -- =============================================================================
 
 -- ---- REVOKE SELECT on the 6 PII columns (keep all other columns readable) ----
 REVOKE SELECT (email, telefono, rfc, ubicacion_lat, ubicacion_lng, fcm_token)
   ON public.profiles FROM anon, authenticated;
+
+-- Reconcile: user_id (public handle) + is_hidden (admin moderation read) are NOT PII
+-- and MUST stay readable. Re-grant explicitly so a DB where they were mistakenly
+-- revoked is self-healed (no-op on a fresh DB; a fix on a previously-over-revoked one).
+GRANT SELECT (user_id, is_hidden) ON public.profiles TO anon, authenticated;
 
 -- ---- self reads own PII via SECURITY DEFINER (auth.uid()-scoped) ----
 CREATE OR REPLACE FUNCTION public.get_my_profile()
