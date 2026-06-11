@@ -65,12 +65,19 @@ export function ReviewForm({
 
   async function uploadMedia(): Promise<string[]> {
     if (media.length === 0) return [];
+    // Prefix every object with the uploader's user-id as the first folder segment so the
+    // bucket INSERT policy can owner-scope it ((storage.foldername(name))[1] = auth.uid())
+    // -- #12 step 1. getPublicUrl reuses the same path, so previews stay correct.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Sesión expirada, vuelve a iniciar sesión");
     const urls: string[] = [];
     const ts = Date.now();
     for (let i = 0; i < media.length; i++) {
       const m = media[i]!;
       const ext = m.file.name.split(".").pop() ?? "jpg";
-      const path = `${saleConfirmationId}/${ts}-${i}.${ext}`;
+      const path = `${user.id}/${saleConfirmationId}/${ts}-${i}.${ext}`;
       const { error: err } = await supabase.storage
         .from("review-media")
         .upload(path, m.file);
