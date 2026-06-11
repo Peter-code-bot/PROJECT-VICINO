@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
 import { VerificationActions } from "./verification-actions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,6 +45,12 @@ async function signOrNull(
 }
 
 export default async function VerificationsPage() {
+  // Fail-fast: this page reads PII (submitter email) via the service-role client,
+  // which bypasses RLS. Assert admin/moderator here so a layout-gate regression
+  // cannot leak emails (#2 defense-in-depth).
+  const ctx = await requireAdminOrModerator();
+  if (!ctx) redirect("/login");
+
   const supabase = await createClient();
   // SECURITY: adminSupabase (service-role) is LOAD-BEARING for the signed-URL
   // generation below. The `verification-documents` storage bucket has NO RLS
