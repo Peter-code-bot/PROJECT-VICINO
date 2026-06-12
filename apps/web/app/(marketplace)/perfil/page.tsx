@@ -16,11 +16,19 @@ export default async function PerfilPage() {
 
   if (!user) redirect("/login?next=/perfil");
 
-  const { data: profile } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id, nombre, foto, bio, user_id, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at"
+    )
     .eq("id", user.id)
     .single();
+
+  if (profileError) {
+    console.error("[perfil] Error loading profile:", profileError);
+  }
+
+  const profile = profileData ? { ...profileData, email: user.email || "" } : null;
 
   // Get user's products.
   // MP#08 #5c-4: SELECT expandido con product_categories embed para que la

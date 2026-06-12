@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
@@ -54,9 +52,14 @@ export function ProfileHeader({
   followersCount = 0,
   followingCount = 0,
 }: ProfileHeaderProps) {
-  const [showActions, setShowActions] = useState(false);
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="py-8 text-center text-sm text-[color:var(--fg-muted)]">
+        No se pudo cargar el perfil.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 mb-6">
