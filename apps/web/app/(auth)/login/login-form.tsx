@@ -74,7 +74,7 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           placeholder="tu@email.com"
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/50 bg-auth-input text-auth-text px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -97,7 +97,7 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           placeholder="••••••••"
-          className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/50 bg-auth-input text-auth-text px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -121,7 +121,7 @@ export function LoginForm() {
           <span className="w-full border-t border-border/50" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground/60 font-medium tracking-wider">o continuar con</span>
+          <span className="bg-auth-card px-3 text-muted-foreground/60 font-medium tracking-wider">o continuar con</span>
         </div>
       </div>
 
