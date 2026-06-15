@@ -22,7 +22,7 @@ export default function RegisterPage() {
           
           <div className="text-center space-y-3 mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-2">
-              <Image src="/vicino-logo.png" alt="VICINO" width={48} height={48} className="shrink-0" priority />
+              <Image src="/vicino-logo-transparent.png" alt="VICINO" width={48} height={48} className="shrink-0" priority />
             </Link>
             <h1 className="text-2xl font-heading font-bold">Únete a VICINO</h1>
             <p className="text-sm text-muted-foreground">Crea tu cuenta para empezar</p>
