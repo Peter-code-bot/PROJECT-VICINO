@@ -12,7 +12,7 @@ async function run() {
   const q = "tacos al pastor";
   
   // PostgREST format requires double quotes for strings with spaces inside .or()
-  let orQuery = `search_vector.wfts."${q}"`;
+  const orQuery = `search_vector.wfts."${q}"`;
 
   const { data, error } = await supabase
     .from("products_services")
