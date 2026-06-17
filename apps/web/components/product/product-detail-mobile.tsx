@@ -8,6 +8,7 @@ import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
 import { GalleryTopBar } from "./gallery-top-bar";
 import { ListingStatusBanner } from "./listing-status-banner";
+import { LocationBanner } from "./location-banner";
 import { MetaRow } from "./meta-row";
 import { NegociablePill } from "./negociable-pill";
 import { PaymentChips } from "./payment-chips";
@@ -136,25 +137,29 @@ export function ProductDetailMobile({
         </StaggerItem>
 
         <StaggerItem idx={4}>
-          <DescriptionBlock descripcion={product.descripcion} />
+          <LocationBanner ubicacion={product.ubicacion} />
         </StaggerItem>
 
         <StaggerItem idx={5}>
+          <DescriptionBlock descripcion={product.descripcion} />
+        </StaggerItem>
+
+        <StaggerItem idx={6}>
           <PaymentChips
             metodosPagoAceptados={seller.metodos_pago_aceptados ?? null}
           />
         </StaggerItem>
 
-        <StaggerItem idx={6}>
+        <StaggerItem idx={7}>
           <TrustCallout />
         </StaggerItem>
 
-        <StaggerItem idx={7}>
+        <StaggerItem idx={8}>
           <CouponBlock coupons={safeCoupons} />
         </StaggerItem>
 
         {canShowAppointment ? (
-          <StaggerItem idx={8}>
+          <StaggerItem idx={9}>
             <AppointmentButton
               product={{
                 id: product.id,
@@ -171,7 +176,7 @@ export function ProductDetailMobile({
           </StaggerItem>
         ) : null}
 
-        <StaggerItem idx={canShowAppointment ? 9 : 8}>
+        <StaggerItem idx={canShowAppointment ? 10 : 9}>
           <ReviewsSummary
             reviews={reviews}
             averageRating={averageRating}

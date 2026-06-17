@@ -11,6 +11,7 @@ import { AppointmentButton } from "./appointment-button";
 import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
 import { ListingStatusBanner } from "./listing-status-banner";
+import { LocationBanner } from "./location-banner";
 import { MetaRow } from "./meta-row";
 import { NegociablePill } from "./negociable-pill";
 import { PaymentChips } from "./payment-chips";
@@ -148,24 +149,28 @@ export function ProductDetailDesktop({
           </StaggerItem>
 
           <StaggerItem idx={4}>
-            <DescriptionBlock descripcion={product.descripcion} />
+            <LocationBanner ubicacion={product.ubicacion} />
           </StaggerItem>
 
           <StaggerItem idx={5}>
+            <DescriptionBlock descripcion={product.descripcion} />
+          </StaggerItem>
+
+          <StaggerItem idx={6}>
             <PaymentChips
               metodosPagoAceptados={seller.metodos_pago_aceptados ?? null}
             />
           </StaggerItem>
 
-          <StaggerItem idx={6}>
+          <StaggerItem idx={7}>
             <TrustCallout />
           </StaggerItem>
 
-          <StaggerItem idx={7}>
+          <StaggerItem idx={8}>
             <CouponBlock coupons={safeCoupons} />
           </StaggerItem>
 
-          <StaggerItem idx={8}>
+          <StaggerItem idx={9}>
             <div className="flex flex-col gap-2 pt-2">
               {effectiveIsOwner ? (
                 <>
@@ -239,7 +244,7 @@ export function ProductDetailDesktop({
         </div>
       </div>
 
-      <div className="animate-fade-in-up px-4 md:px-0" style={stagger(9)}>
+      <div className="animate-fade-in-up px-4 md:px-0" style={stagger(10)}>
         <ReviewsSummary
           reviews={reviews}
           averageRating={averageRating}
