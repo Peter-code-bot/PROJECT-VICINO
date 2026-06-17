@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { FeedProduct } from "@/types/feed";
 
 /**
  * A5.2: cursor-based load-more for the home "Mas productos" flat section.
@@ -27,19 +28,10 @@ import { createClient } from "@/lib/supabase/server";
 export async function getMoreFeedProducts(
   cursor: string,
   limit: number = 30,
+  lat?: number,
+  lng?: number,
 ): Promise<{
-  items: Array<{
-    id: string;
-    titulo: string;
-    precio: number;
-    imagen_principal: string | null;
-    categoria: string;
-    slug: string | null;
-    created_at: string;
-    precio_negociable: boolean | null;
-    profiles: unknown;
-    product_categories: unknown;
-  }>;
+  items: FeedProduct[];
   nextCursor: string | null;
   error?: string;
 }> {
@@ -57,41 +49,57 @@ export async function getMoreFeedProducts(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("products_services")
-    .select(
-      `
-      id,
-      titulo,
-      precio,
-      imagen_principal,
-      categoria,
-      slug,
-      created_at,
-      precio_negociable,
-      profiles!inner(nombre, trust_level, average_rating, reviews_count),
-      product_categories(is_primary, categories(slug, nombre))
-    `,
-    )
-    .eq("estatus", "disponible")
-    .lt("created_at", cursor)
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
+  let data = null;
+  let error = null;
+
+  if (lat !== undefined && lng !== undefined) {
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      return { items: [], nextCursor: null, error: "Coordenadas inválidas" };
+    }
+    const res = await supabase.rpc("feed_nearby_products", {
+      user_lat: lat,
+      user_lng: lng,
+      radius_meters: 25000,
+      cursor_time: cursor,
+      result_limit: safeLimit,
+    });
+    data = res.data;
+    error = res.error;
+  } else {
+    const res = await supabase
+      .from("products_services")
+      .select(
+        `
+        id,
+        titulo,
+        precio,
+        imagen_principal,
+        categoria,
+        slug,
+        created_at,
+        precio_negociable,
+        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+        product_categories(is_primary, categories(slug, nombre))
+      `,
+      )
+      .eq("estatus", "disponible")
+      .lt("created_at", cursor)
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
+    data = res.data;
+    error = res.error;
+  }
 
   if (error) return { items: [], nextCursor: null, error: error.message };
 
-  const items = (data ?? []) as Array<{
-    id: string;
-    titulo: string;
-    precio: number;
-    imagen_principal: string | null;
-    categoria: string;
-    slug: string | null;
-    created_at: string;
-    precio_negociable: boolean | null;
-    profiles: unknown;
-    product_categories: unknown;
-  }>;
+  const items = (data ?? []) as FeedProduct[];
 
   // DESC order: the last (and oldest) item is the next cursor boundary.
   const nextCursor =

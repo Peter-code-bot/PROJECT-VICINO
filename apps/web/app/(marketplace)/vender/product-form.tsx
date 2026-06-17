@@ -409,6 +409,10 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
 
   async function handleSubmit(formData: FormData) {
     if (submittingRef.current) return;
+    if (mode === "create" && locationData.lat === 0 && locationData.lng === 0) {
+      setError("Selecciona una ubicación en el mapa para tu publicación");
+      return;
+    }
     // MP#08 #5c-2: validacion cliente del array de categorias. El zod del
     // servidor enforza la misma regla; este check ahorra un round-trip y
     // muestra el error en linea sin tocar la red.
@@ -911,7 +915,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       {/* Ubicación con mapa */}
       <div className="space-y-2 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Zona de entrega / operación <span className="text-muted-foreground font-normal">(opcional)</span>
+          Zona de entrega / operación {!isEdit && <span className="text-[color:var(--brand)] font-medium text-xs ml-1">* obligatorio</span>}
         </label>
         {isEdit && (
           <p className="text-xs text-muted-foreground">

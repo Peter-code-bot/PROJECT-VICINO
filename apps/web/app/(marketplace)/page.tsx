@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { HapticLink } from "@/components/shared/haptic-link";
@@ -43,6 +45,7 @@ import {
   Warehouse,
   Heart,
   Store,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +85,8 @@ interface Props {
   searchParams: Promise<{ feed?: string }>;
 }
 
+import type { FeedProduct } from "@/types/feed";
+
 export default async function HomePage({ searchParams }: Props) {
   const { feed: feedParam } = await searchParams;
   const feed = feedParam === "following" ? "following" : "parati";
@@ -91,6 +96,28 @@ export default async function HomePage({ searchParams }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const cookieStore = await cookies();
+  const locationCookie = cookieStore.get("vicino_location")?.value;
+  let userLat: number | null = null;
+  let userLng: number | null = null;
+  if (locationCookie) {
+    const [latStr, lngStr] = locationCookie.split(",");
+    const lat = parseFloat(latStr ?? "");
+    const lng = parseFloat(lngStr ?? "");
+    if (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      userLat = lat;
+      userLng = lng;
+    }
+  }
+  const hasLocation = userLat !== null && userLng !== null;
 
   let viewerIsVendedor = false;
   let viewerUniversity: string | null = null;
@@ -130,9 +157,72 @@ export default async function HomePage({ searchParams }: Props) {
     const sellerIds = uniSellers?.map(s => s.user_id) || [];
     if (sellerIds.length === 0) return [];
 
-    const { data: uProducts } = await supabase
+    let uProducts: FeedProduct[] | null = null;
+    let rpcFailed = false;
+    if (hasLocation) {
+      const { data, error } = await supabase.rpc("feed_nearby_products", {
+        user_lat: userLat!,
+        user_lng: userLng!,
+        radius_meters: 25000,
+        result_limit: 20,
+        seller_ids: sellerIds,
+      });
+      if (error) {
+        Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "university" } });
+        rpcFailed = true;
+      } else {
+        uProducts = data as FeedProduct[];
+      }
+    }
+    
+    if (!hasLocation || rpcFailed) {
+      const { data } = await supabase
+        .from("products_services")
+        .select(`
+          id,
+          titulo,
+          precio,
+          imagen_principal,
+          categoria,
+          slug,
+          created_at,
+          precio_negociable,
+          profiles!inner(nombre, trust_level, average_rating, reviews_count),
+          product_categories(is_primary, categories(slug, nombre))
+        `)
+        .eq("estatus", "disponible")
+        .in("creador_id", sellerIds)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      uProducts = data as FeedProduct[] | null;
+    }
+
+    return uProducts ?? [];
+  })();
+
+  // Fetch "Para ti" data
+  let products: FeedProduct[] | null = null;
+  let feedRpcFailed = false;
+  if (hasLocation) {
+    const { data, error } = await supabase.rpc("feed_nearby_products", {
+      user_lat: userLat!,
+      user_lng: userLng!,
+      radius_meters: 25000,
+      result_limit: 150,
+    });
+    if (error) {
+      Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "para_ti" } });
+      feedRpcFailed = true;
+    } else {
+      products = data as FeedProduct[];
+    }
+  }
+  
+  if (!hasLocation || feedRpcFailed) {
+    const { data } = await supabase
       .from("products_services")
-      .select(`
+      .select(
+        `
         id,
         titulo,
         precio,
@@ -143,35 +233,15 @@ export default async function HomePage({ searchParams }: Props) {
         precio_negociable,
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
-      `)
-      .eq("estatus", "disponible")
-      .in("creador_id", sellerIds)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    return uProducts ?? [];
-  })();
-
-  // Fetch "Para ti" data
-  const { data: products } = await supabase
-    .from("products_services")
-    .select(
       `
-      id,
-      titulo,
-      precio,
-      imagen_principal,
-      categoria,
-      slug,
-      created_at,
-      precio_negociable,
-      profiles!inner(nombre, trust_level, average_rating, reviews_count),
-      product_categories(is_primary, categories(slug, nombre))
-    `
-    )
-    .eq("estatus", "disponible")
-    .order("created_at", { ascending: false })
-    .limit(150);
+      )
+      .eq("estatus", "disponible")
+      .order("created_at", { ascending: false })
+      .limit(150);
+    products = data as FeedProduct[] | null;
+  }
+
+  const showGeoEmptyState = hasLocation && !feedRpcFailed;
 
   const all = products ?? [];
 
@@ -493,8 +563,38 @@ export default async function HomePage({ searchParams }: Props) {
               <MasProductos
                 key={masProductosInitialCursor ?? "empty"}
                 initialCursor={masProductosInitialCursor}
+                lat={!feedRpcFailed ? (userLat ?? undefined) : undefined}
+                lng={!feedRpcFailed ? (userLng ?? undefined) : undefined}
               />
             </div>
+          ) : showGeoEmptyState ? (
+            /* ─── EMPTY STATE GEO ─────────────────────────────── */
+            <section className="px-4 pb-8">
+              <div className="px-4 py-20 text-center">
+                <div className="mx-auto max-w-sm">
+                  <div className="relative mx-auto mb-6 h-24 w-24">
+                    <div className="absolute inset-0 rotate-6 rounded-3xl bg-[color:var(--brand-tint)]" />
+                    <div className="absolute inset-0 -rotate-3 rounded-3xl bg-[color:var(--brand-tint)]" />
+                    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] text-[color:var(--brand-hi)]">
+                      <MapPin className="w-10 h-10" />
+                    </div>
+                  </div>
+                  <h3 className="mb-2 font-heading text-xl font-bold text-[color:var(--fg)]">
+                    No hay vendedores cerca de ti
+                  </h3>
+                  <p className="mb-6 text-sm leading-relaxed text-[color:var(--fg-muted)]">
+                    Cambia tu ubicación para explorar otras zonas con más actividad.
+                  </p>
+                  <Link
+                    href="/buscar"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-6 py-3 font-semibold text-white shadow-[var(--shadow-glow)] transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.97]"
+                  >
+                    Explorar mapa
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </section>
           ) : (
             /* ─── EMPTY STATE ─────────────────────────────── */
             <section className="px-4 pb-8">

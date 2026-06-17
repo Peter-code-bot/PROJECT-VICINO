@@ -52,9 +52,11 @@ interface MasProductosProduct {
 
 interface MasProductosProps {
   initialCursor: string | null;
+  lat?: number;
+  lng?: number;
 }
 
-export function MasProductos({ initialCursor }: MasProductosProps) {
+export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { items, isLoading, hasMore, error, loadMore } = useInfiniteCursor<
@@ -63,7 +65,7 @@ export function MasProductos({ initialCursor }: MasProductosProps) {
   >({
     action: async ({ cursor, limit }) => {
       // The hook gates loadMore on cursor !== null (hasMore guard).
-      const result = await getMoreFeedProducts(cursor as string, limit);
+      const result = await getMoreFeedProducts(cursor as string, limit, lat, lng);
       return {
         items: result.items as MasProductosProduct[],
         nextCursor: result.nextCursor,

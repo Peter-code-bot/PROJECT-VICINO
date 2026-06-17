@@ -8,6 +8,7 @@ import { Search, LocateFixed, Check, X, Loader2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useRouter } from "next/navigation";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -147,6 +148,7 @@ async function reverseGeocodeOnce(
 }
 
 export function ChangeLocationSheet({ open, onClose }: Props) {
+  const router = useRouter();
   const { state, setManualPosition } = useGeolocation();
   const activePosition =
     state.status === "success" ? state.position : null;
@@ -251,8 +253,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
       setRecents(next);
       writeRecents(next);
       onClose();
+      router.refresh();
     },
-    [recents, setManualPosition, onClose],
+    [recents, setManualPosition, onClose, router],
   );
 
   const handleSelectResult = useCallback(

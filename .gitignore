@@ -5,6 +5,9 @@ node_modules/
 # Next.js
 .next/
 out/
+apps/web/public/sw.js
+apps/web/public/sw.js.map
+apps/web/public/workbox-*.js
 
 # Build
 dist/

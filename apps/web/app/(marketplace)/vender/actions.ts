@@ -261,6 +261,20 @@ export async function createProduct(formData: FormData) {
   const ubicLng = formData.get("ubicacion_lng") ? Number(formData.get("ubicacion_lng")) : null;
   const deliveryRadius = formData.get("delivery_radius_km") ? Number(formData.get("delivery_radius_km")) : 5;
 
+  if (!ubicLat || !ubicLng) {
+    return { error: "Selecciona una ubicación en el mapa para tu publicación" };
+  }
+  if (
+    !Number.isFinite(ubicLat) ||
+    !Number.isFinite(ubicLng) ||
+    ubicLat < -90 ||
+    ubicLat > 90 ||
+    ubicLng < -180 ||
+    ubicLng > 180
+  ) {
+    return { error: "Las coordenadas de la ubicación son inválidas" };
+  }
+
   const allowAppointments = formData.get("allow_appointments") === "true";
   const precioNegociable = formData.get("precio_negociable") === "true";
   const appointmentStartTime = (formData.get("appointment_start_time") as string) || "09:00";
@@ -424,6 +438,19 @@ export async function updateProductFull(
   const ubicLngRaw = formData.get("ubicacion_lng");
   const ubicLat = ubicLatRaw ? Number(ubicLatRaw) : null;
   const ubicLng = ubicLngRaw ? Number(ubicLngRaw) : null;
+
+  if (ubicLat !== null && ubicLng !== null) {
+    if (
+      !Number.isFinite(ubicLat) ||
+      !Number.isFinite(ubicLng) ||
+      ubicLat < -90 ||
+      ubicLat > 90 ||
+      ubicLng < -180 ||
+      ubicLng > 180
+    ) {
+      return { error: "Las coordenadas de la ubicación son inválidas" };
+    }
+  }
 
   const deliveryRadiusRaw = formData.get("delivery_radius_km");
   const deliveryRadius = deliveryRadiusRaw ? Number(deliveryRadiusRaw) : null;

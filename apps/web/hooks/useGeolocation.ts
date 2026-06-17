@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, startTransition } from "react";
+import { useRouter } from "next/navigation";
 
 export interface GeoPosition {
   lat: number;
@@ -30,6 +31,11 @@ function readCache(): GeoPosition | null {
 function writeCache(pos: GeoPosition) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
+    if (typeof document !== "undefined") {
+      const lat3 = pos.lat.toFixed(3);
+      const lng3 = pos.lng.toFixed(3);
+      document.cookie = `vicino_location=${lat3},${lng3}; path=/; max-age=31536000; SameSite=Lax`;
+    }
   } catch {
     // quota exceeded o modo privado — ignorar
   }
@@ -38,16 +44,44 @@ function writeCache(pos: GeoPosition) {
 export function useGeolocation() {
   const [state, setState] = useState<GeoState>({ status: "idle" });
 
+  const router = useRouter();
+
   useEffect(() => {
     // Mover la lectura del caché a useEffect evita el "React Hydration Error" 
     // porque el primer render coincidirá siempre con el servidor (idle).
     const cached = readCache();
     if (cached) {
+      const lat3 = cached.lat.toFixed(3);
+      const lng3 = cached.lng.toFixed(3);
+      const expectedCookieVal = `${lat3},${lng3}`;
+      const cookies = document.cookie.split("; ");
+      const locationCookie = cookies.find((c) => c.startsWith("vicino_location="));
+      const hasCorrectCookie = locationCookie === `vicino_location=${expectedCookieVal}`;
+
+      if (!hasCorrectCookie) {
+        writeCache(cached);
+        let synced = false;
+        try {
+          synced = sessionStorage.getItem("vicino_geo_synced") === "1";
+        } catch (e) {
+          console.warn("Storage access restricted by browser privacy settings");
+          synced = true;
+        }
+        if (!synced) {
+          try {
+            sessionStorage.setItem("vicino_geo_synced", "1");
+          } catch (e) {
+            console.warn("Storage access restricted by browser privacy settings");
+          }
+          router.refresh();
+        }
+      }
+
       startTransition(() => {
         setState({ status: "success", position: cached });
       });
     }
-  }, []);
+  }, [router]);
 
   const request = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
