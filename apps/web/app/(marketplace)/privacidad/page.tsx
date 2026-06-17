@@ -4,7 +4,7 @@ export default function PrivacidadPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1 className="text-3xl font-heading font-bold mb-1">Aviso de Privacidad Integral</h1>
-      <p className="text-sm text-muted-foreground mb-1">Última actualización: 1 de junio de 2026</p>
+      <p className="text-sm text-muted-foreground mb-1">Última actualización: 17 de junio de 2026</p>
       <p className="text-sm text-muted-foreground mb-8">Versión 2.1 — Conforme al artículo 16 de la LFPDPPP y artículos 26 y 27 de su Reglamento</p>
 
       <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none space-y-6">
@@ -63,10 +63,10 @@ export default function PrivacidadPage() {
           <p>Historial de publicaciones (productos ofertados, descripciones, fotografías cargadas), transacciones marcadas como confirmadas mutuamente entre Usuarios, calificaciones y reseñas emitidas y recibidas, contenido de mensajes intercambiados con otros Usuarios a través del chat de la Plataforma, productos guardados como favoritos, interacciones con otros perfiles (como tiendas seguidas o comunidades a las que se une), denuncias o reportes presentados, reportes de errores (crash logs) y métricas de uso (frecuencia de inicio de sesión, tiempo de permanencia, secciones visitadas).</p>
 
           <h3 className="text-base font-semibold mt-4">4.4. Datos técnicos y de identificación digital</h3>
-          <p>Dirección IP, identificador de dispositivo, tipo y versión de navegador, sistema operativo, tipo de dispositivo, fecha y hora de acceso, idioma del navegador, y cookies estrictamente necesarias para la operación de la sesión.</p>
+          <p>Dirección IP, identificador de dispositivo, tipo y versión de navegador, sistema operativo, tipo de dispositivo, fecha y hora de acceso, idioma del navegador, coordenadas de geolocalización (si el Usuario otorga permiso expreso en su navegador para personalizar el catálogo por cercanía), y cookies estrictamente necesarias para la operación de la sesión.</p>
 
           <h3 className="text-base font-semibold mt-4">4.5. Datos que NO recabamos</h3>
-          <p>VICINO <strong>no recaba</strong>: datos patrimoniales o financieros (números de tarjetas, cuentas bancarias, CLABE), CURP, RFC, datos de salud, origen racial o étnico, creencias religiosas, opiniones políticas, preferencias sexuales, ni información de geolocalización en tiempo real.</p>
+          <p>VICINO <strong>no recaba</strong>: datos patrimoniales o financieros (números de tarjetas, cuentas bancarias, CLABE), CURP, RFC, datos de salud, origen racial o étnico, creencias religiosas, opiniones políticas, preferencias sexuales, ni rastreo continuo de geolocalización en segundo plano.</p>
         </section>
 
         {/* 5 */}
@@ -81,6 +81,7 @@ export default function PrivacidadPage() {
             <li>Facilitar la comunicación entre compradores y vendedores mediante el chat interno.</li>
             <li>Operar el sistema de <strong>confirmación mutua de transacciones</strong>.</li>
             <li>Calcular, mantener y mostrar los <strong>niveles de confianza, reputación, reseñas y rankings hiperlocales</strong> de los vendedores.</li>
+            <li>Filtrar y mostrar productos cercanos en el catálogo principal con base en la ubicación geográfica del usuario.</li>
             <li>Gestionar el acceso y segmentación de usuarios en las <strong>comunidades universitarias</strong> mediante la validación de su ID o correo institucional.</li>
             <li>Moderar contenido publicado, prevenir fraudes, abusos y actividades ilícitas.</li>
             <li>Atender denuncias, disputas y solicitudes de soporte.</li>
