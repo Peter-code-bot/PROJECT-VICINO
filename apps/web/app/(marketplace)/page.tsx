@@ -543,19 +543,19 @@ export default async function HomePage({ searchParams }: Props) {
 
               {/* Per-category carousels */}
               {categoryCarousels.length === 0 && (
-                <section className="px-4 py-8 text-center bg-[color:var(--brand-tint)] rounded-2xl mx-4 mb-6 border border-[color:var(--brand-tint-strong)]">
+                <section className="px-4 py-8 text-center bg-card rounded-2xl mx-4 mb-6 border border-border">
                   <div className="mx-auto max-w-sm">
                     <div className="mb-3 text-[40px]">🚀</div>
-                    <h3 className="mb-2 font-heading text-[18px] font-bold text-[color:var(--brand-hi)]">
+                    <h3 className="mb-2 font-heading text-[18px] font-bold text-foreground">
                       ¡Sé de los primeros en vender en tu zona!
                     </h3>
-                    <p className="mb-4 text-sm leading-relaxed text-[color:var(--brand-hi)] opacity-90">
+                    <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
                       Hay una gran oportunidad para crear tu tienda aquí. Publica el primer producto o servicio para esta ubicación.
                     </p>
                     {viewerIsVendedor ? (
                       <Link
                         href="/vender"
-                        className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-[color:var(--brand-dark)]"
+                        className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background shadow-sm transition-all hover:opacity-90"
                       >
                         Publicar ahora
                         <ArrowRight className="h-4 w-4" />
@@ -563,7 +563,7 @@ export default async function HomePage({ searchParams }: Props) {
                     ) : (
                       <Link
                         href="/registro"
-                        className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-[color:var(--brand-dark)]"
+                        className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background shadow-sm transition-all hover:opacity-90"
                       >
                         Crear tienda
                         <ArrowRight className="h-4 w-4" />
