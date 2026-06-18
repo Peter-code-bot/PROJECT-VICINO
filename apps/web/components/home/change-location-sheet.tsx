@@ -250,7 +250,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
   const commit = useCallback(
     (loc: SavedLocation) => {
-      setManualPosition({ lat: loc.lat, lng: loc.lng });
+      setManualPosition({ lat: loc.lat, lng: loc.lng, name: loc.name, fullName: loc.fullName });
       const next = dedupAndPrepend(recents, loc);
       setRecents(next);
       writeRecents(next);

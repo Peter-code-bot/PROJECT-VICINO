@@ -8,6 +8,8 @@ export interface GeoPosition {
   lng: number;
   accuracy?: number;
   radius?: number;
+  name?: string;
+  fullName?: string;
 }
 
 type GeoState =
@@ -125,7 +127,7 @@ export function useGeolocation() {
     );
   }, []);
 
-  const setManualPosition = useCallback((pos: { lat: number; lng: number; radius?: number }) => {
+  const setManualPosition = useCallback((pos: { lat: number; lng: number; radius?: number; name?: string; fullName?: string }) => {
     if (
       !Number.isFinite(pos.lat) ||
       !Number.isFinite(pos.lng) ||
@@ -137,7 +139,13 @@ export function useGeolocation() {
       return;
     }
     const cached = readCache();
-    const position: GeoPosition = { lat: pos.lat, lng: pos.lng, radius: pos.radius ?? cached?.radius ?? 2000 };
+    const position: GeoPosition = { 
+      lat: pos.lat, 
+      lng: pos.lng, 
+      radius: pos.radius ?? cached?.radius ?? 2000,
+      name: pos.name,
+      fullName: pos.fullName
+    };
     writeCache(position);
     setState({ status: "success", position });
   }, []);

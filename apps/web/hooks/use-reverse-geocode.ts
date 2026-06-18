@@ -44,10 +44,10 @@ function buildName(addr: NominatimAddress | undefined): {
 }
 
 export function useReverseGeocode(
-  position: { lat: number; lng: number } | null,
+  position: { lat: number; lng: number; name?: string; fullName?: string } | null,
 ): Result {
-  const [name, setName] = useState<string | null>(null);
-  const [fullName, setFullName] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(position?.name ?? null);
+  const [fullName, setFullName] = useState<string | null>(position?.fullName ?? null);
   const [loading, setLoading] = useState(false);
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
 
@@ -58,6 +58,16 @@ export function useReverseGeocode(
         setName(null);
         setFullName(null);
       });
+      return;
+    }
+
+    // Si ya viene con nombre cacheado, usarlo instantáneamente
+    if (position.name) {
+      startTransition(() => {
+        setName(position.name!);
+        setFullName(position.fullName ?? position.name!);
+      });
+      lastFetchRef.current = { lat: position.lat, lng: position.lng };
       return;
     }
 
