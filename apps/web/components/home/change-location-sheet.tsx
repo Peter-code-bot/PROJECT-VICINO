@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, startTransition } from "react
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, LocateFixed, Check, X, Loader2, MapPin } from "lucide-react";
+import { Search, LocateFixed, Check, X, Loader2, MapPin, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -149,7 +149,7 @@ async function reverseGeocodeOnce(
 
 export function ChangeLocationSheet({ open, onClose }: Props) {
   const router = useRouter();
-  const { state, setManualPosition } = useGeolocation();
+  const { state, setManualPosition, setRadius } = useGeolocation();
   const activePosition =
     state.status === "success" ? state.position : null;
 
@@ -404,6 +404,33 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Radio de búsqueda */}
+              <div className="mx-5 mt-5">
+                <label className="text-[10px] font-medium uppercase tracking-widest text-[color:var(--fg-dim)]">
+                  Radio de búsqueda general
+                </label>
+                <div className="mt-2 relative">
+                  <select
+                    value={activePosition?.radius ?? 2000}
+                    onChange={(e) => {
+                      const newRadius = parseInt(e.target.value, 10);
+                      setRadius(newRadius);
+                    }}
+                    className="w-full appearance-none rounded-2xl bg-[color:var(--card-2)] px-4 py-3.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand-hi)]"
+                  >
+                    <option value={1000}>1 km (Caminando)</option>
+                    <option value={2000}>2 km (Colonia)</option>
+                    <option value={5000}>5 km (Zona cercana)</option>
+                    <option value={10000}>10 km (Media ciudad)</option>
+                    <option value={25000}>25 km (Ciudad completa)</option>
+                    <option value={50000}>50 km (Área metropolitana)</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                    <ChevronDown size={16} className="text-[color:var(--fg-dim)]" />
+                  </div>
+                </div>
               </div>
 
               {/* Usar mi ubicación */}

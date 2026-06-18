@@ -13,7 +13,7 @@ export function LocationBar() {
 
   const { products, loading } = useNearbyProducts({
     position,
-    radiusMeters: 5000,
+    radiusMeters: 1000,
   });
 
   return (
@@ -70,7 +70,7 @@ export function LocationBar() {
             />
           ) : !loading ? (
             <p className="py-4 text-sm text-[color:var(--fg-muted)]">
-              Sin publicaciones en un radio de 5 km.{" "}
+              Sin publicaciones en un radio de 1 km.{" "}
               <Link
                 href="/buscar"
                 className="font-medium text-[color:var(--brand-hi)] hover:underline"

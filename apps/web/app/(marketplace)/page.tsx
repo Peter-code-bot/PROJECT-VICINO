@@ -99,6 +99,10 @@ export default async function HomePage({ searchParams }: Props) {
 
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
+  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+  const parsedRadius = radiusCookie ? parseInt(radiusCookie, 10) : 2000;
+  const validRadius = Number.isFinite(parsedRadius) && parsedRadius > 0 ? parsedRadius : 2000;
+
   let userLat: number | null = null;
   let userLng: number | null = null;
   if (locationCookie) {
@@ -163,7 +167,7 @@ export default async function HomePage({ searchParams }: Props) {
       const { data, error } = await supabase.rpc("feed_nearby_products", {
         user_lat: userLat!,
         user_lng: userLng!,
-        radius_meters: 25000,
+        radius_meters: validRadius,
         result_limit: 20,
         seller_ids: sellerIds,
       });
@@ -175,7 +179,7 @@ export default async function HomePage({ searchParams }: Props) {
       }
     }
     
-    if (!hasLocation || rpcFailed) {
+    if (!hasLocation) {
       const { data } = await supabase
         .from("products_services")
         .select(`
@@ -207,7 +211,7 @@ export default async function HomePage({ searchParams }: Props) {
     const { data, error } = await supabase.rpc("feed_nearby_products", {
       user_lat: userLat!,
       user_lng: userLng!,
-      radius_meters: 25000,
+      radius_meters: validRadius,
       result_limit: 150,
     });
     if (error) {
@@ -218,7 +222,7 @@ export default async function HomePage({ searchParams }: Props) {
     }
   }
   
-  if (!hasLocation || feedRpcFailed) {
+  if (!hasLocation) {
     const { data } = await supabase
       .from("products_services")
       .select(
@@ -241,7 +245,7 @@ export default async function HomePage({ searchParams }: Props) {
     products = data as FeedProduct[] | null;
   }
 
-  const showGeoEmptyState = hasLocation && !feedRpcFailed;
+  const showGeoEmptyState = hasLocation;
 
   const all = products ?? [];
 

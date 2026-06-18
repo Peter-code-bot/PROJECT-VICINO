@@ -7,6 +7,7 @@ export interface GeoPosition {
   lat: number;
   lng: number;
   accuracy?: number;
+  radius?: number;
 }
 
 type GeoState =
@@ -35,6 +36,9 @@ function writeCache(pos: GeoPosition) {
       const lat3 = pos.lat.toFixed(3);
       const lng3 = pos.lng.toFixed(3);
       document.cookie = `vicino_location=${lat3},${lng3}; path=/; max-age=31536000; SameSite=Lax`;
+      if (pos.radius) {
+        document.cookie = `vicino_radius=${pos.radius}; path=/; max-age=31536000; SameSite=Lax`;
+      }
     }
   } catch {
     // quota exceeded o modo privado — ignorar
@@ -57,8 +61,12 @@ export function useGeolocation() {
       const cookies = document.cookie.split("; ");
       const locationCookie = cookies.find((c) => c.startsWith("vicino_location="));
       const hasCorrectCookie = locationCookie === `vicino_location=${expectedCookieVal}`;
+      
+      const expectedRadius = cached.radius ? `${cached.radius}` : "2000";
+      const radiusCookie = cookies.find((c) => c.startsWith("vicino_radius="));
+      const hasCorrectRadius = radiusCookie === `vicino_radius=${expectedRadius}`;
 
-      if (!hasCorrectCookie) {
+      if (!hasCorrectCookie || (!hasCorrectRadius && cached.radius)) {
         writeCache(cached);
         let synced = false;
         try {
@@ -94,10 +102,12 @@ export function useGeolocation() {
     );
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const cached = readCache();
         const position: GeoPosition = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          radius: cached?.radius ?? 2000,
         };
         writeCache(position);
         setState({ status: "success", position });
@@ -115,7 +125,7 @@ export function useGeolocation() {
     );
   }, []);
 
-  const setManualPosition = useCallback((pos: { lat: number; lng: number }) => {
+  const setManualPosition = useCallback((pos: { lat: number; lng: number; radius?: number }) => {
     if (
       !Number.isFinite(pos.lat) ||
       !Number.isFinite(pos.lng) ||
@@ -126,10 +136,21 @@ export function useGeolocation() {
       // el caché. La app sigue con la posición anterior.
       return;
     }
-    const position: GeoPosition = { lat: pos.lat, lng: pos.lng };
+    const cached = readCache();
+    const position: GeoPosition = { lat: pos.lat, lng: pos.lng, radius: pos.radius ?? cached?.radius ?? 2000 };
     writeCache(position);
     setState({ status: "success", position });
   }, []);
 
-  return { state, request, setManualPosition };
+  const setRadius = useCallback((radius: number) => {
+    setState((prev) => {
+      if (prev.status !== "success") return prev;
+      const position = { ...prev.position, radius };
+      writeCache(position);
+      return { ...prev, position };
+    });
+    router.refresh();
+  }, [router]);
+
+  return { state, request, setManualPosition, setRadius };
 }
