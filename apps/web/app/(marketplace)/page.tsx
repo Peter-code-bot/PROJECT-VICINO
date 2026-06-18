@@ -618,9 +618,9 @@ export default async function HomePage({ searchParams }: Props) {
               <div className="px-4 py-20 text-center">
                 <div className="mx-auto max-w-sm">
                   <div className="relative mx-auto mb-6 h-24 w-24">
-                    <div className="absolute inset-0 rotate-6 rounded-3xl bg-[color:var(--brand-tint)]" />
-                    <div className="absolute inset-0 -rotate-3 rounded-3xl bg-[color:var(--brand-tint)]" />
-                    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] text-[color:var(--brand-hi)]">
+                    <div className="absolute inset-0 rotate-6 rounded-3xl bg-muted" />
+                    <div className="absolute inset-0 -rotate-3 rounded-3xl bg-muted" />
+                    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-foreground text-background">
                       <MapPin className="w-10 h-10" />
                     </div>
                   </div>
@@ -646,9 +646,9 @@ export default async function HomePage({ searchParams }: Props) {
               <div className="px-4 py-20 text-center">
                 <div className="mx-auto max-w-sm">
                   <div className="relative mx-auto mb-6 h-24 w-24">
-                    <div className="absolute inset-0 rotate-6 rounded-3xl bg-[color:var(--brand-tint)]" />
-                    <div className="absolute inset-0 -rotate-3 rounded-3xl bg-[color:var(--brand-tint)]" />
-                    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-[color:var(--brand-tint-strong)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+                    <div className="absolute inset-0 rotate-6 rounded-3xl bg-muted" />
+                    <div className="absolute inset-0 -rotate-3 rounded-3xl bg-muted" />
+                    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-foreground">
                       <span className="text-4xl">🏪</span>
                     </div>
                   </div>
