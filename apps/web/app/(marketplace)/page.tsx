@@ -15,6 +15,7 @@ import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
 import { UNIVERSITY_COLORS, getContrastYIQ, cn } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
+import { makeFeedCursor } from "@/lib/feed-cursor";
 import {
   UtensilsCrossed,
   Shirt,
@@ -172,12 +173,13 @@ export default async function HomePage({ searchParams }: Props) {
     let uProducts: FeedProduct[] | null = null;
     let rpcFailed = false;
     if (hasLocation) {
-      const { data, error } = await supabase.rpc("feed_nearby_products", {
+      const { data, error } = await supabase.rpc("search_nearby_products_v4", {
         user_lat: userLat!,
         user_lng: userLng!,
         radius_meters: validRadius,
         result_limit: 20,
         seller_ids: sellerIds,
+        restrict_seller_mode: true,
       });
       if (error) {
         Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "university" } });
@@ -216,7 +218,7 @@ export default async function HomePage({ searchParams }: Props) {
   let products: FeedProduct[] | null = null;
   let feedRpcFailed = false;
   if (hasLocation) {
-    const { data, error } = await supabase.rpc("feed_nearby_products", {
+    const { data, error } = await supabase.rpc("search_nearby_products_v4", {
       user_lat: userLat!,
       user_lng: userLng!,
       radius_meters: validRadius,
@@ -266,7 +268,7 @@ export default async function HomePage({ searchParams }: Props) {
   const INITIAL_HOME_PAGE_SIZE = 150;
   const masProductosInitialCursor =
     all.length === INITIAL_HOME_PAGE_SIZE && all[all.length - 1]
-      ? (all[all.length - 1]!.created_at as string)
+      ? makeFeedCursor(all[all.length - 1]!.created_at as string, all[all.length - 1]!.id)
       : null;
 
   // MP#08 #4 Fase 1A: agrupamos por la PRIMARY del pivote en vez de por

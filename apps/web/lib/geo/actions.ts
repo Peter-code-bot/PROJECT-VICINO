@@ -67,22 +67,31 @@ export async function getNearbyProducts(
   const snappedRadius = Math.ceil(radius / 100) * 100 + 100;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("nearby_products", {
+  const { data, error } = await supabase.rpc("search_nearby_products_v4", {
     user_lat: snapped.lat,
     user_lng: snapped.lng,
     radius_meters: snappedRadius,
-    category_filter: params.categoryFilter ?? null,
+    search_term: params.categoryFilter ?? null,
     result_limit: limit,
+    sort_by_distance: true,
   });
 
   if (error) return { products: [], error: error.message };
 
-  // Bucket distance to 100m before exposing to the client. The RPC itself does
-  // NOT yet fuzz internally — see supabase/migrations/20260515000001_fuzz_nearby_products.sql
-  // for the pending DB-side defense in depth.
-  const products = ((data ?? []) as NearbyProduct[]).map((p) => ({
-    ...p,
+  // Mapeamos el output de V4 (profiles JSONB) a NearbyProduct
+  const products: NearbyProduct[] = (data ?? []).map((p: any) => ({
+    id: p.id,
+    titulo: p.titulo,
+    slug: p.slug,
+    precio: p.precio,
+    imagen_principal: p.imagen_principal,
+    categoria: p.categoria,
+    tipo_entrega: p.tipo_entrega,
     distance_meters: fuzzDistance(p.distance_meters),
+    vendedor_nombre: p.profiles?.nombre || "",
+    vendedor_trust: p.profiles?.trust_level || "new",
+    vendedor_rating: p.profiles?.average_rating || 0,
+    vendedor_reviews: p.profiles?.reviews_count || 0,
   }));
 
   return { products };
@@ -118,24 +127,18 @@ export async function getNearbyVendorCount(
   const snappedRadius = Math.ceil(radius / 100) * 100 + 100;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("nearby_products", {
+  const { data, error } = await supabase.rpc("search_nearby_products_v4", {
     user_lat: snapped.lat,
     user_lng: snapped.lng,
     radius_meters: snappedRadius,
-    category_filter: null,
     result_limit: 100,
+    sort_by_distance: true,
   });
 
   if (error) return { count: 0, error: error.message };
 
-  // Aproximación: el RPC nearby_products no expone creador_id, y el spec
-  // prohíbe crear nuevas migraciones / RPCs. Contar nombres únicos subestima
-  // sólo si dos vendedores distintos tienen exactamente el mismo display name
-  // en el mismo radio — aceptable para un indicador agregado "● N cerca".
   const names = new Set(
-    ((data ?? []) as Array<{ vendedor_nombre: string }>).map(
-      (p) => p.vendedor_nombre,
-    ),
+    (data ?? []).map((p: any) => p.profiles?.nombre).filter(Boolean)
   );
   return { count: names.size };
 }

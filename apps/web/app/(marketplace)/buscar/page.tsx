@@ -114,13 +114,15 @@ export default async function SearchPage({ searchParams }: Props) {
   if (hasLocation) {
     query = supabase
       .rpc(
-        "search_nearby_products",
+        "search_nearby_products_v4",
         {
           user_lat: userLat!,
           user_lng: userLng!,
           radius_meters: validRadius,
           search_term: unaccentedLike ? unaccentedLike : null,
           seller_ids: sellerIds.length > 0 ? sellerIds : null,
+          result_limit: null,
+          restrict_seller_mode: false,
         },
         { count: "exact" }
       )
@@ -411,7 +413,7 @@ export default async function SearchPage({ searchParams }: Props) {
           })}
         </div>
       ) : (
-        <div className="space-y-2 py-16 text-center">
+        <div role="status" aria-live="polite" className="space-y-2 py-16 text-center">
           <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--brand-tint)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
             <span className="text-3xl">🔍</span>
           </div>

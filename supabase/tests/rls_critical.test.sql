@@ -3,21 +3,32 @@
 -- Covers: profiles, products_services, messages, admin-only tables.
 
 BEGIN;
-SELECT plan(15);
+SELECT plan(17);
 
--- ── ANON: cannot read any profiles ─────────────────────────────────────────
+-- ── ANON: can read visible profiles but not hidden ones ──────────────────────
 SET LOCAL ROLE anon;
-SELECT is(
-  (SELECT COUNT(*)::bigint FROM profiles),
-  0::bigint,
-  'anon cannot SELECT profiles'
+-- This relies on the fact that the test DB has seeded data.
+SELECT ok(
+  (SELECT COUNT(*)::bigint FROM profiles WHERE is_hidden = FALSE) > 0,
+  'anon can SELECT visible profiles'
 );
 
--- ── ANON: cannot read any products ─────────────────────────────────────────
 SELECT is(
-  (SELECT COUNT(*)::bigint FROM products_services),
+  (SELECT COUNT(*)::bigint FROM profiles WHERE is_hidden = TRUE),
   0::bigint,
-  'anon cannot SELECT products_services'
+  'anon cannot SELECT hidden profiles'
+);
+
+-- ── ANON: can read available products but not hidden ones ──────────────────
+SELECT ok(
+  (SELECT COUNT(*)::bigint FROM products_services WHERE estatus = 'disponible' AND is_hidden = FALSE) > 0,
+  'anon can SELECT available and visible products_services'
+);
+
+SELECT is(
+  (SELECT COUNT(*)::bigint FROM products_services WHERE estatus != 'disponible' OR is_hidden = TRUE),
+  0::bigint,
+  'anon cannot SELECT unavailable or hidden products_services'
 );
 
 -- ── ANON: cannot read any messages ─────────────────────────────────────────

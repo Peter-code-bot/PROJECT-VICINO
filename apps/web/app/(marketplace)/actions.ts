@@ -2,6 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { FeedProduct } from "@/types/feed";
+import { parseFeedCursor, makeFeedCursor } from "@/lib/feed-cursor";
+import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
+import { headers } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * A5.2: cursor-based load-more for the home "Mas productos" flat section.
@@ -35,11 +39,23 @@ export async function getMoreFeedProducts(
   nextCursor: string | null;
   error?: string;
 }> {
-  // CODEX M4 fix: validate the cursor ISO timestamp before the query
-  // to avoid leaking a verbose Postgres cast error to the client when a
-  // hostile / buggy caller passes a malformed cursor.
-  if (Number.isNaN(Date.parse(cursor))) {
+  const parsedCursor = parseFeedCursor(cursor);
+  if (!parsedCursor.ok) {
     return { items: [], nextCursor: null, error: "Cursor invalido" };
+  }
+
+  // Rate Limiting con Fail-Open
+  try {
+    const ip = getClientIp(await headers());
+    const rateCheck = enforce(readHeavyRateLimit, `feed:${ip}`);
+    const timeout = new Promise<{ok: true}>((resolve) => setTimeout(() => resolve({ ok: true }), 800));
+    const rate = await Promise.race([rateCheck, timeout]);
+    if (!rate.ok) {
+      // Si el rate limiter falla intencionalmente (too many requests), reportamos pero dejamos pasar para no romper ventas
+      Sentry.captureMessage("Feed rate limit exceeded", { level: "warning" });
+    }
+  } catch (e) {
+    Sentry.captureException(e);
   }
 
   // CODEX H2 fix: clamp limit. The default is 30; cap at 50 so a
@@ -63,35 +79,30 @@ export async function getMoreFeedProducts(
     ) {
       return { items: [], nextCursor: null, error: "Coordenadas inválidas" };
     }
-    const res = await supabase.rpc("feed_nearby_products", {
+    const res = await supabase.rpc("search_nearby_products_v4", {
       user_lat: lat,
       user_lng: lng,
-      radius_meters: 25000,
-      cursor_time: cursor,
+      radius_meters: 50000,
+      cursor_time: parsedCursor.cursor.createdAt,
+      cursor_id: parsedCursor.cursor.id,
       result_limit: safeLimit,
+      sort_by_distance: false,
     });
     data = res.data;
     error = res.error;
   } else {
+    // Fallback no-geo
     const res = await supabase
       .from("products_services")
-      .select(
-        `
-        id,
-        titulo,
-        precio,
-        imagen_principal,
-        categoria,
-        slug,
-        created_at,
-        precio_negociable,
+      .select(`
+        id, titulo, precio, imagen_principal, categoria, slug, created_at, precio_negociable,
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
-      `,
-      )
+      `)
       .eq("estatus", "disponible")
-      .lt("created_at", cursor)
+      .or(`created_at.lt.${parsedCursor.cursor.createdAt},and(created_at.eq.${parsedCursor.cursor.createdAt},id.lt.${parsedCursor.cursor.id})`)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(safeLimit);
     data = res.data;
     error = res.error;
@@ -101,8 +112,9 @@ export async function getMoreFeedProducts(
 
   const items = (data ?? []) as FeedProduct[];
 
-  // DESC order: the last (and oldest) item is the next cursor boundary.
   const nextCursor =
-    items.length === safeLimit ? items[items.length - 1]!.created_at : null;
+    items.length === safeLimit 
+      ? makeFeedCursor(items[items.length - 1]!.created_at, items[items.length - 1]!.id)
+      : null;
   return { items, nextCursor };
 }
