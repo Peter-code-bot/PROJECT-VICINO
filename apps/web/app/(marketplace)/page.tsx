@@ -81,6 +81,14 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   otros: MoreHorizontal,
 };
 
+function RankingSkeleton() {
+  return (
+    <div className="px-4 pb-6 mt-4 animate-pulse">
+      <div className="h-[120px] w-full rounded-[20px] bg-[color:var(--card-2)] border" />
+    </div>
+  );
+}
+
 interface Props {
   searchParams: Promise<{ feed?: string }>;
 }
@@ -458,7 +466,7 @@ export default async function HomePage({ searchParams }: Props) {
           </section>
 
           {/* ─── RANKING STRIP ─────────────────────────────────── */}
-          <Suspense fallback={null}>
+          <Suspense fallback={<RankingSkeleton />}>
             <RankingsHomeStripSection />
           </Suspense>
 
@@ -532,6 +540,37 @@ export default async function HomePage({ searchParams }: Props) {
               </section>
 
               {/* Per-category carousels */}
+              {categoryCarousels.length === 0 && (
+                <section className="px-4 py-8 text-center bg-[color:var(--brand-tint)] rounded-2xl mx-4 mb-6 border border-[color:var(--brand-tint-strong)]">
+                  <div className="mx-auto max-w-sm">
+                    <div className="mb-3 text-[40px]">🚀</div>
+                    <h3 className="mb-2 font-heading text-[18px] font-bold text-[color:var(--brand-hi)]">
+                      ¡Sé de los primeros en vender en tu zona!
+                    </h3>
+                    <p className="mb-4 text-sm leading-relaxed text-[color:var(--brand-hi)] opacity-90">
+                      Hay una gran oportunidad para crear tu tienda aquí. Publica el primer producto o servicio para esta ubicación.
+                    </p>
+                    {viewerIsVendedor ? (
+                      <Link
+                        href="/vender"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-[color:var(--brand-dark)]"
+                      >
+                        Publicar ahora
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/registro"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-[color:var(--brand-dark)]"
+                      >
+                        Crear tienda
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    )}
+                  </div>
+                </section>
+              )}
+
               {categoryCarousels.map(([slug, ps]) => {
                 const label = CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
                 return (

@@ -58,35 +58,18 @@ export default async function SearchPage({ searchParams }: Props) {
   // (price_asc/desc, most_sold, default created_at desc) DENTRO de cada
   // tier (primary sorted + secondary sorted, concat). En la rama
   // no-category Postgres usa estas columnas via .order() como siempre.
-  let query = supabase
-    .from("products_services")
-    .select(
-      `
+  const selectFields = `
       id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
       created_at, ventas_count,
       profiles!inner(nombre, trust_level, average_rating, reviews_count),
       product_categories(is_primary, categories(slug, nombre))
-    `,
-      { count: "exact" }
-    )
-    .eq("estatus", "disponible");
+    `;
 
-  if (hasLocation) {
-    const { data: nearbyRows, error } = await supabase.rpc("get_nearby_product_ids", {
-      user_lat: userLat!,
-      user_lng: userLng!,
-      radius_meters: validRadius,
-    });
-    
-    if (!error && nearbyRows) {
-      const nearbyIds = nearbyRows.map((r: { id: string }) => r.id);
-      if (nearbyIds.length > 0) {
-        query = query.in("id", nearbyIds);
-      } else {
-        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-      }
-    }
-  }
+  const rpcSelectFields = `
+      id, titulo, precio, imagen_principal, categoria, slug, precio_negociable,
+      created_at, ventas_count, tipo,
+      profiles, product_categories
+    `;
 
   // F10: derive the topUsers element type from the actual SELECT shape so
   // there's no manual type that could diverge. The reference builder is
@@ -99,8 +82,11 @@ export default async function SearchPage({ searchParams }: Props) {
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
+  let unaccentedLike = "";
+  let sellerIds: string[] = [];
+
   if (params.q) {
-    const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
+    unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
     const { data: sellers } = await supabase
@@ -111,17 +97,47 @@ export default async function SearchPage({ searchParams }: Props) {
 
     if (sellers) {
       topUsers = sellers;
+      sellerIds = sellers.map((s) => s.id);
     }
+  }
 
-    const sellerIds = topUsers.map((s) => s.id);
+  // MP#08 #5c-3: incluimos created_at + ventas_count en el SELECT para que
+  // el sortFn de la rama category pueda aplicar los 4 criterios de orden
+  // (price_asc/desc, most_sold, default created_at desc) DENTRO de cada
+  // tier (primary sorted + secondary sorted, concat). En la rama
+  // no-category Postgres usa estas columnas via .order() como siempre.
+  const queryTypeRef = supabase
+    .from("products_services")
+    .select(selectFields, { count: "exact" });
 
-    // Buscamos en titulo y descripcion, o si el producto pertenece a un vendedor coincidente
-    let orQuery = `titulo.ilike.%${unaccentedLike}%,descripcion.ilike.%${unaccentedLike}%`;
-    if (sellerIds.length > 0) {
-      orQuery += `,creador_id.in.(${sellerIds.join(",")})`;
+  let query: typeof queryTypeRef;
+  if (hasLocation) {
+    query = supabase
+      .rpc(
+        "search_nearby_products",
+        {
+          user_lat: userLat!,
+          user_lng: userLng!,
+          radius_meters: validRadius,
+          search_term: unaccentedLike ? unaccentedLike : null,
+          seller_ids: sellerIds.length > 0 ? sellerIds : null,
+        },
+        { count: "exact" }
+      )
+      .select(rpcSelectFields) as any as typeof queryTypeRef;
+  } else {
+    query = supabase
+      .from("products_services")
+      .select(selectFields, { count: "exact" })
+      .eq("estatus", "disponible");
+
+    if (unaccentedLike) {
+      let orQuery = `titulo.ilike.%${unaccentedLike}%,descripcion.ilike.%${unaccentedLike}%`;
+      if (sellerIds.length > 0) {
+        orQuery += `,creador_id.in.(${sellerIds.join(",")})`;
+      }
+      query = query.or(orQuery);
     }
-
-    query = query.or(orQuery);
   }
   // MP#08 #5c-3: cuando hay filtro de categoria, el orden de los resultados
   // se decide por el ranking primary > secondary del pivote (no por el
