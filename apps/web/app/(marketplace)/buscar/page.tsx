@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
@@ -27,6 +28,28 @@ export const metadata = {
 export default async function SearchPage({ searchParams }: Props) {
   const params = await searchParams;
   const supabase = await createClient();
+  
+  const cookieStore = await cookies();
+  const locationCookie = cookieStore.get("vicino_location")?.value;
+  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+
+  let userLat: number | undefined;
+  let userLng: number | undefined;
+  let hasLocation = false;
+
+  if (locationCookie) {
+    const [latStr, lngStr] = locationCookie.split(",");
+    const parsedLat = parseFloat(latStr || "");
+    const parsedLng = parseFloat(lngStr || "");
+    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
+      userLat = parsedLat;
+      userLng = parsedLng;
+      hasLocation = true;
+    }
+  }
+
+  const validRadius = radiusCookie ? Math.min(Math.max(parseInt(radiusCookie, 10), 1000), 50000) : 2000;
+
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
 
@@ -47,6 +70,23 @@ export default async function SearchPage({ searchParams }: Props) {
       { count: "exact" }
     )
     .eq("estatus", "disponible");
+
+  if (hasLocation) {
+    const { data: nearbyRows, error } = await supabase.rpc("get_nearby_product_ids", {
+      user_lat: userLat!,
+      user_lng: userLng!,
+      radius_meters: validRadius,
+    });
+    
+    if (!error && nearbyRows) {
+      const nearbyIds = nearbyRows.map((r: { id: string }) => r.id);
+      if (nearbyIds.length > 0) {
+        query = query.in("id", nearbyIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
+  }
 
   // F10: derive the topUsers element type from the actual SELECT shape so
   // there's no manual type that could diverge. The reference builder is

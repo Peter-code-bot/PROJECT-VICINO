@@ -9,7 +9,7 @@ import {
   getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { Category, RankedSeller } from "@/lib/rankings/types";
-
+import { cookies } from "next/headers";
 const MEDAL_COLORS = {
   gold: {
     text: "text-gold",
@@ -126,12 +126,30 @@ export async function RankingsHomeStripSection() {
 
   if (categories.length === 0) return null;
 
-  const defaultLat = Number.parseFloat(
-    process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414",
-  );
-  const defaultLng = Number.parseFloat(
-    process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063",
-  );
+  const cookieStore = await cookies();
+  const locationCookie = cookieStore.get("vicino_location")?.value;
+  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+
+  let userLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
+  let userLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
+  let radius = 10000;
+
+  if (locationCookie) {
+    const [latStr, lngStr] = locationCookie.split(",");
+    const parsedLat = parseFloat(latStr || "");
+    const parsedLng = parseFloat(lngStr || "");
+    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
+      userLat = parsedLat;
+      userLng = parsedLng;
+    }
+  }
+
+  if (radiusCookie) {
+    const parsedRadius = parseInt(radiusCookie, 10);
+    if (!Number.isNaN(parsedRadius)) {
+      radius = parsedRadius;
+    }
+  }
 
   let bestCategory: Category | null = null;
   let bestTop3: RankedSeller[] = [];
@@ -142,9 +160,9 @@ export async function RankingsHomeStripSection() {
         const top3 = await getRankingHiperlocal({
           category_id: cat.id,
           period,
-          user_lat: defaultLat,
-          user_lng: defaultLng,
-          radius_meters: 10000,
+          user_lat: userLat,
+          user_lng: userLng,
+          radius_meters: radius,
           limit: 3,
         });
         return { category: cat, top3 };

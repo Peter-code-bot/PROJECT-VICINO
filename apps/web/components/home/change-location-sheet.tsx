@@ -185,11 +185,14 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        router.refresh();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, router]);
 
   // Reset state al abrir
   useEffect(() => {
@@ -321,7 +324,10 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              router.refresh();
+            }}
             className="fixed inset-0 md:left-64 z-[100] bg-black/60 backdrop-blur-sm"
             aria-hidden
           />
@@ -348,7 +354,10 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 </h2>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => {
+                    onClose();
+                    router.refresh();
+                  }}
                   aria-label="Cerrar"
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] transition-colors hover:bg-[color:var(--border)] active:bg-[color:var(--border-strong)]"
                 >
