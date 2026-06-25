@@ -15,6 +15,11 @@ function ThemeSync() {
     const syncStatusBar = async () => {
       const currentTheme = theme === "system" ? systemTheme : theme;
       
+      // Esperar a que next-themes hidrate el tema antes de aplicarlo
+      if (!currentTheme) return; 
+      
+      console.log(`[ThemeSync] Aplicando tema de Status Bar: ${currentTheme}`);
+      
       try {
         if (currentTheme === "dark") {
           await StatusBar.setStyle({ style: Style.Dark });
@@ -24,7 +29,7 @@ function ThemeSync() {
           await StatusBar.setBackgroundColor({ color: "#FFF8F0" });
         }
       } catch (err) {
-        console.error("Failed to sync status bar:", err);
+        console.error("[ThemeSync] Error sincronizando status bar:", err);
       }
     };
 
