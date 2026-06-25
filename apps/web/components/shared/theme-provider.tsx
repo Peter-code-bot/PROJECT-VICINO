@@ -2,7 +2,37 @@
 
 import * as React from "react";
 import { useEffect } from "react";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
+
+function ThemeSync() {
+  const { theme, systemTheme } = useTheme();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const syncStatusBar = async () => {
+      const currentTheme = theme === "system" ? systemTheme : theme;
+      
+      try {
+        if (currentTheme === "dark") {
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: "#050907" });
+        } else {
+          await StatusBar.setStyle({ style: Style.Light });
+          await StatusBar.setBackgroundColor({ color: "#FFF8F0" });
+        }
+      } catch (err) {
+        console.error("Failed to sync status bar:", err);
+      }
+    };
+
+    syncStatusBar();
+  }, [theme, systemTheme]);
+
+  return null;
+}
 
 export function ThemeProvider({
   children,
@@ -19,5 +49,10 @@ export function ThemeProvider({
     return () => { console.error = orig; };
   }, []);
 
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+  return (
+    <NextThemesProvider {...props}>
+      <ThemeSync />
+      {children}
+    </NextThemesProvider>
+  );
 }
