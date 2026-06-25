@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { Trophy } from "lucide-react";
 import { ActivateLocationCard } from "@/components/rankings/activate-location-card";
 import { PodioRanking } from "@/components/rankings/podio-ranking";
@@ -76,11 +77,37 @@ async function RankingsContent({
 
   const geo = parseLatLng(searchParams.lat, searchParams.lng);
   
-  // Fallback to default coords if geo is not provided (this matches what we do in the Home widget)
+  const cookieStore = await cookies();
+  const locationCookie = cookieStore.get("vicino_location")?.value;
+  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+  
+  let cookieLat: number | undefined;
+  let cookieLng: number | undefined;
+  if (locationCookie) {
+    const [latStr, lngStr] = locationCookie.split(",");
+    const parsedLat = parseFloat(latStr || "");
+    const parsedLng = parseFloat(lngStr || "");
+    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
+      cookieLat = parsedLat;
+      cookieLng = parsedLng;
+    }
+  }
+
+  let searchRadius = 10000; // 10km default
+  if (radiusCookie) {
+    const parsedRadius = parseInt(radiusCookie, 10);
+    if (!Number.isNaN(parsedRadius)) {
+      searchRadius = parsedRadius;
+    }
+  }
+  
+  const isLocationActive = !!geo || !!locationCookie;
+
+  // Fallback to default coords if geo and cookie are not provided (this matches what we do in the Home widget)
   const defaultLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
   const defaultLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
-  const searchLat = geo?.lat ?? defaultLat;
-  const searchLng = geo?.lng ?? defaultLng;
+  const searchLat = geo?.lat ?? cookieLat ?? defaultLat;
+  const searchLng = geo?.lng ?? cookieLng ?? defaultLng;
 
   // Pre-fetch rankings for all potentially active categories to see which ones actually have local data
   const localRankingsResults = await Promise.all(
@@ -91,7 +118,7 @@ async function RankingsContent({
           period: currentPeriod,
           user_lat: searchLat,
           user_lng: searchLng,
-          radius_meters: 10000,
+          radius_meters: searchRadius,
           limit: 50,
         });
         return { category: cat, rankings };
@@ -115,7 +142,7 @@ async function RankingsContent({
           currentCategoryId={undefined}
           currentPeriod={currentPeriod}
         />
-        {!geo ? (
+        {!isLocationActive ? (
           <ActivateLocationCard />
         ) : (
           <EmptyState
@@ -152,7 +179,7 @@ async function RankingsContent({
         {selectedCategoryName}
       </h2>
 
-      {!geo ? (
+      {!isLocationActive ? (
         <ActivateLocationCard />
       ) : (
         <>

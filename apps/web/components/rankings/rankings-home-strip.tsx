@@ -192,6 +192,8 @@ export async function RankingsHomeStripSection() {
       top3={bestTop3}
       category={bestCategory}
       period={period}
+      userLat={userLat}
+      userLng={userLng}
     />
   );
 }
@@ -200,17 +202,28 @@ function RankingsHomeStrip({
   top3,
   category,
   period,
+  userLat,
+  userLng,
 }: {
   top3: RankedSeller[];
   category: Category;
   period: string;
+  userLat: number;
+  userLng: number;
 }) {
   const monthLabel = formatMonth(period);
   const categoryLabel = category.nombre ?? category.slug ?? "Categoria";
 
   return (
     <Link
-      href={{ pathname: "/rankings", query: { category: category.id } }}
+      href={{
+        pathname: "/rankings",
+        query: {
+          category: category.id,
+          lat: userLat.toFixed(4),
+          lng: userLng.toFixed(4),
+        },
+      }}
       aria-label={`Ver ranking completo de ${categoryLabel} en ${monthLabel}`}
       className="group block px-4 pb-6"
       // A3 CODEX fix: strip en el home dentro de Suspense — prefetch default

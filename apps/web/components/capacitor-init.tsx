@@ -165,8 +165,36 @@ export function CapacitorInit() {
       // --- Status bar ---
       const { StatusBar, Style } = await import("@capacitor/status-bar");
       if (state.cancelled) return;
-      StatusBar.setStyle({ style: Style.Dark });
-      StatusBar.setBackgroundColor({ color: "#0D0D1A" });
+
+      const updateStatusBarTheme = () => {
+        const isDark = document.documentElement.classList.contains("dark");
+        void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
+        void StatusBar.setBackgroundColor({ color: isDark ? "#0D0D1A" : "#EDE0D4" });
+      };
+
+      // Initial apply
+      updateStatusBarTheme();
+
+      // Observe theme changes
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === "class") {
+            updateStatusBarTheme();
+            break;
+          }
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      state.handles.push({
+        remove: async () => {
+          observer.disconnect();
+        },
+      });
 
       // --- Keyboard: set CSS variable for keyboard height ---
       try {

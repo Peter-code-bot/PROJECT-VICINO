@@ -23,14 +23,12 @@ const config: CapacitorConfig = {
     // url: 'http://localhost:3000',
   },
   android: {
-    backgroundColor: '#0D0D1A',
     allowMixedContent: false,
     // Recommended by capacitor-best-practices skill
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development',
   },
   ios: {
     contentInset: 'never',
-    backgroundColor: '#0D0D1Aff',
     limitsNavigationsToAppBoundDomains: false,
     appendUserAgent: 'VICINO-iOS',
     // TEMP: Sentry excluido de iOS por fallo de descarga sentry-cocoa (red). Re-incluir antes de release publico.
@@ -54,17 +52,14 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: false,
       launchShowDuration: 3000,
-      backgroundColor: '#0D0D1A',
       showSpinner: true,
-      spinnerColor: '#EDE0D4',
       splashFullScreen: true,
       splashImmersive: true,
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
     },
     StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#0D0D1A',
+      style: 'DEFAULT',
       overlaysWebView: false,
     },
     Keyboard: {
