@@ -100,3 +100,21 @@ export async function updateProductsOrder(updates: { id: string; sort_order: num
   revalidatePath("/perfil");
   return { success: true };
 }
+
+export async function completeOnboarding() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ has_seen_onboarding: true })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  return { success: true };
+}

@@ -9,6 +9,7 @@ import { NotificationUnreadProvider } from "@/components/layout/notification-unr
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
+import { OnboardingModal } from "@/components/shared/onboarding-modal";
 
 export default async function MarketplaceLayout({
   children,
@@ -41,7 +42,7 @@ export default async function MarketplaceLayout({
     ] = await Promise.allSettled([
       supabase
         .from("profiles")
-        .select("nombre, foto, es_vendedor")
+        .select("nombre, foto, es_vendedor, has_seen_onboarding")
         .eq("id", user.id)
         .single(),
       supabase
@@ -98,6 +99,7 @@ export default async function MarketplaceLayout({
         initialCount={unreadNotifications}
       >
         <div className="flex min-h-screen">
+          <OnboardingModal show={!!profile && !profile.has_seen_onboarding} />
           <Sidebar
             user={user ? { id: user.id } : null}
             profile={profile}
