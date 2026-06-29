@@ -14,13 +14,19 @@ export default async function EditarPerfilPage() {
 
   if (!user) redirect("/login?next=/perfil/editar");
 
-  const { data: profile } = await supabase
+  const { data: profileData, error } = await supabase
     .from("profiles")
     .select(
-      "nombre, email, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
+      "nombre, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
     )
     .eq("id", user.id)
     .single();
+
+  if (error) {
+    console.error("[EditarPerfilPage] Error fetching profile:", error);
+  }
+
+  const profile = profileData ? { ...profileData, email: user.email ?? "" } : null;
 
   // Phase 9: count active (disponible) products so the form can warn the user
   // before turning seller mode off — those products will be auto-paused.
