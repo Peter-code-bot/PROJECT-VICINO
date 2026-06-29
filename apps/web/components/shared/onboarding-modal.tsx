@@ -8,16 +8,16 @@ import { useRouter } from "next/navigation";
 import { Store, ShoppingBag, Loader2 } from "lucide-react";
 
 export function OnboardingModal({ show }: { show: boolean }) {
-  const [open, setOpen] = useState(show);
+  const [closed, setClosed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  if (!show) return null;
+  if (!show || closed) return null;
 
   const handleSeller = () => {
     startTransition(async () => {
       await completeOnboarding();
-      setOpen(false);
+      setClosed(true);
       router.push("/perfil/editar?prompt=seller-mode");
     });
   };
@@ -25,12 +25,12 @@ export function OnboardingModal({ show }: { show: boolean }) {
   const handleBuyer = () => {
     startTransition(async () => {
       await completeOnboarding();
-      setOpen(false);
+      setClosed(true);
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
+    <Dialog open={true} onOpenChange={(val) => {
       // Evitar que lo cierren clickeando afuera si queremos forzar la decisión, 
       // pero por amigabilidad permitimos que se cierre y cuenta como "omitido por ahora".
       // Para respetar el onboarding strict, no los dejamos cerrar sin elegir.

@@ -127,10 +127,10 @@ export function CapacitorInit() {
         if (url.startsWith(OAUTH_DEEP_LINK_CALLBACK) || url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)) return;
         try {
           const u = new URL(url);
-          // vicino:// scheme or https links
-          const path = u.pathname || u.host || "/";
-          if (path && path !== "/") {
-            window.location.href = path;
+          // Include search and hash. Even if path is "/", if there are search params (like ?code=), we must navigate.
+          const fullPath = `${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
+          if (fullPath && fullPath !== "/") {
+            window.location.href = fullPath || "/";
           }
         } catch {}
       });
@@ -150,9 +150,9 @@ export function CapacitorInit() {
       ) {
         try {
           const u = new URL(launchUrl.url);
-          const path = u.pathname || u.host || "";
-          if (path && path !== "/") {
-            window.location.href = path;
+          const fullPath = `${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
+          if (fullPath && fullPath !== "/") {
+            window.location.href = fullPath || "/";
           }
         } catch {}
       }
