@@ -110,12 +110,16 @@ export async function completeOnboarding() {
   if (!user) return { error: "No autenticado" };
 
   const adminClient = createAdminClient();
-  const { error } = await adminClient
+  const { data, error } = await adminClient
     .from("profiles")
     .update({ has_seen_onboarding: true })
-    .eq("id", user.id);
+    .eq("id", user.id)
+    .select();
 
   if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: "No se encontró el perfil en la base de datos (0 filas actualizadas)." };
+  }
 
   revalidatePath("/");
   return { success: true };
