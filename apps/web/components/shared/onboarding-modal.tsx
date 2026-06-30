@@ -27,9 +27,10 @@ export function OnboardingModal() {
           .from("profiles")
           .select("has_seen_onboarding")
           .eq("id", userId)
-          // Cache busting: Next.js agresivamente cachea fetch(). 
-          // Forzamos una nueva petición variando la query.
-          .neq("id", `dummy_${Date.now()}`)
+          // Cache busting: Evitamos usar "id" aquí porque es un UUID estricto 
+          // y Postgres arroja error 22P02 si mandamos texto arbitrario.
+          // Usamos "email" que es un campo de texto libre.
+          .neq("email", `dummy_${Date.now()}@example.com`)
           .single();
 
         if (error) {
