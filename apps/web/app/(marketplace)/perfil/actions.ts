@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { updateProfileSchema } from "@vicino/shared";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -108,7 +109,8 @@ export async function completeOnboarding() {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
     .from("profiles")
     .update({ has_seen_onboarding: true })
     .eq("id", user.id);
