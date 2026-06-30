@@ -27,12 +27,16 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = safeNext(searchParams.get("next"), origin);
 
+  let errorMessage = "no_code_provided";
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`, NO_CACHE_REDIRECT_INIT);
     }
+    
+    errorMessage = error.message;
     
     // If PKCE verification fails (common when an email in-app browser opens the link, 
     // missing the PKCE cookie from the app/main browser), DO NOT redirect to /login.
@@ -77,9 +81,9 @@ export async function GET(request: Request) {
     }
   }
 
-  // Auth error — redirect to login with error
+  // Auth error — redirect to login with error details
   return NextResponse.redirect(
-    `${origin}/login?error=auth_callback_failed`,
+    `${origin}/login?error=auth_callback_failed&details=${encodeURIComponent(errorMessage)}`,
     NO_CACHE_REDIRECT_INIT,
   );
 }
