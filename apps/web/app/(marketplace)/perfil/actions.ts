@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { updateProfileSchema } from "@vicino/shared";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -109,17 +108,9 @@ export async function completeOnboarding() {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  const adminClient = createAdminClient();
-  const { data, error } = await adminClient
-    .from("profiles")
-    .update({ has_seen_onboarding: true })
-    .eq("id", user.id)
-    .select();
+  const { error } = await supabase.rpc("complete_user_onboarding");
 
   if (error) return { error: error.message };
-  if (!data || data.length === 0) {
-    return { error: "No se encontró el perfil en la base de datos (0 filas actualizadas)." };
-  }
 
   revalidatePath("/");
   return { success: true };
