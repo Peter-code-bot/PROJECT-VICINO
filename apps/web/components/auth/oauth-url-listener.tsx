@@ -85,15 +85,16 @@ export function OAuthUrlListener() {
 
       // Bugfix: En iOS WKWebView, document.cookie (usado por @supabase/ssr) 
       // tarda unos milisegundos en sincronizarse con el proceso de red nativo.
-      // Si hacemos window.location.replace("/") instantáneamente, la petición GET
-      // se va SIN las cookies de sesión, el servidor Next.js ve al usuario como "Guest",
-      // y el OnboardingModal nunca se renderiza. 
-      // Esperamos 300ms antes de recargar para asegurar la hidratación.
+      // Si usamos window.location.replace("/"), la petición de recarga completa (GET HTML)
+      // la hace la capa nativa y puede irse SIN la cookie, renderizando la sesión como Guest.
+      // Solución: Usar navegación del cliente de Next.js. El router usa fetch() internamente
+      // para obtener el layout RSC, el cual lee el document.cookie de forma síncrona en JS.
+      router.refresh();
       setTimeout(() => {
         if (!unmounted) {
-          window.location.replace("/");
+          router.replace("/");
         }
-      }, 300);
+      }, 50);
     }
 
     // Cold-launch: app fue iniciada POR el deep link.
