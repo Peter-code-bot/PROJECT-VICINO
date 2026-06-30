@@ -7,16 +7,18 @@
 //
 // Ver openspec/changes/2026-06-01-apk-google-oauth-custom-tab/ para spec.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase/client";
 import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
+import { Loader2 } from "lucide-react";
 
 export function OAuthUrlListener() {
   const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
   // CODEX C1: guard contra doble-procesamiento del mismo URL (cold-launch
   // de getLaunchUrl + remount del effect bajo router dep). exchangeCodeFor-
   // Session no es idempotente: segunda llamada con el mismo code falla y
@@ -66,26 +68,32 @@ export function OAuthUrlListener() {
       }
       if (!code) return;
 
+      setIsProcessing(true);
+
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       // Cerrar el Custom Tab regardless of success -- user ya esta de vuelta
       // en la app via el deep link.
       await Browser.close().catch(() => {});
+      
       if (unmounted) return;
+      
       if (error) {
+        setIsProcessing(false);
         router.push("/login?error=auth_callback_failed");
         return;
       }
-      // F2 (optimize-auth-session-hydration): hard navigation to eliminate the
-      // guest-state flash. router.push + router.refresh creates a window where
-      // the cached unauthenticated layout paints before the server revalidation
-      // completes. window.location.replace sends the new session cookie in the
-      // GET / request and the server returns the authenticated layout on first
-      // paint. Destination is hardcoded ("/") — no open redirect risk.
-      //
-      // NOTE: useRouter / router is retained for the error paths above
-      // (lines ~57 and ~68: router.push to /login?error=...). Do NOT remove the
-      // useRouter import if you only see this success branch.
-      window.location.replace("/");
+
+      // Bugfix: En iOS WKWebView, document.cookie (usado por @supabase/ssr) 
+      // tarda unos milisegundos en sincronizarse con el proceso de red nativo.
+      // Si hacemos window.location.replace("/") instantáneamente, la petición GET
+      // se va SIN las cookies de sesión, el servidor Next.js ve al usuario como "Guest",
+      // y el OnboardingModal nunca se renderiza. 
+      // Esperamos 300ms antes de recargar para asegurar la hidratación.
+      setTimeout(() => {
+        if (!unmounted) {
+          window.location.replace("/");
+        }
+      }, 300);
     }
 
     // Cold-launch: app fue iniciada POR el deep link.
@@ -104,5 +112,12 @@ export function OAuthUrlListener() {
     };
   }, [router]);
 
-  return null;
+  if (!isProcessing) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+      <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
+      <p className="text-lg font-medium text-foreground">Completando inicio de sesión...</p>
+    </div>
+  );
 }
