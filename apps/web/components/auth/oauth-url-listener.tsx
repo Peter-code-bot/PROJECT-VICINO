@@ -93,6 +93,14 @@ export function OAuthUrlListener() {
       setTimeout(() => {
         if (!unmounted) {
           router.replace("/");
+          // En Next.js, la navegación cliente no desmonta el Root Layout.
+          // Debemos limpiar explícitamente el estado de carga después
+          // de un breve periodo para permitir que la navegación termine.
+          setTimeout(() => {
+            if (!unmounted) {
+              setIsProcessing(false);
+            }
+          }, 500);
         }
       }, 50);
     }
