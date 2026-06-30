@@ -23,13 +23,13 @@ export function OnboardingModal() {
       if (unmounted) return;
       
       try {
-        const cacheBusterEmail = `dummy_${Date.now()}@example.com`;
-        
+        console.log(`[OnboardingModal] Iniciando fetchProfile con token de ${session.access_token?.length} caracteres. User: ${session.user.id}`);
         // Usamos fetch nativo para garantizar que el token se envía en el header
-        // y evitar problemas de desincronización de sesión interna del cliente Supabase
-        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=has_seen_onboarding&id=eq.${session.user.id}&email=neq.${encodeURIComponent(cacheBusterEmail)}`;
+        // Usamos cache: 'no-store' para que el navegador/Next.js no devuelva una respuesta cacheada
+        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=has_seen_onboarding&id=eq.${session.user.id}`;
         
         const response = await fetch(url, {
+          cache: 'no-store',
           headers: {
             apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             Authorization: `Bearer ${session.access_token}`,
