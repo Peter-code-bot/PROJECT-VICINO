@@ -1,75 +1,16 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
 import { useRouter } from "next/navigation";
 import { Store, ShoppingBag, Loader2 } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
-
-export function OnboardingModal() {
-  const [show, setShow] = useState(false);
+export function OnboardingModal({ show }: { show: boolean }) {
   const [closed, setClosed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-
-  useEffect(() => {
-    let unmounted = false;
-    const supabase = createClient();
-
-    async function fetchProfileWithRetry(session: any, attempt = 1) {
-      if (unmounted) return;
-      
-      try {
-        console.log(`[OnboardingModal] Iniciando llamada al API interno (intento ${attempt})...`);
-        
-        // Llamar a nuestro propio servidor (Next.js API) para que él consulte a Supabase
-        // Esto evita cualquier problema de CORS, Service Workers o headers cortados en el cliente.
-        const response = await fetch(`/api/auth/profile-status?_t=${Date.now()}`, {
-          cache: 'no-store'
-        });
-
-        if (response.status === 404) {
-          throw new Error("PGRST116_SIMULATED"); // Perfil aún no creado por el trigger
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        console.log(`[OnboardingModal] Perfil encontrado via API:`, data);
-        if (data && data.has_seen_onboarding === false) {
-          setShow(true);
-        }
-      } catch (err: any) {
-        console.error(`[OnboardingModal] Error obteniendo perfil via API:`, err);
-        if (attempt < 5) {
-          console.log(`[OnboardingModal] Reintentando en 500ms... (Intento ${attempt + 1}/5)`);
-          setTimeout(() => fetchProfileWithRetry(session, attempt + 1), 500);
-        } else {
-          console.error(`[OnboardingModal] Falló tras 5 intentos. No se pudo cargar el perfil.`);
-        }
-      }
-    }
-
-    // Suscribirnos a los cambios de sesión para no sufrir el "Auth Race Condition"
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-          fetchProfileWithRetry(session);
-        }
-      }
-    );
-
-    return () => {
-      unmounted = true;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
 
   if (!show || closed) return null;
 

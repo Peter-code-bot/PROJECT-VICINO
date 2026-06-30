@@ -99,7 +99,7 @@ export default async function MarketplaceLayout({
         initialCount={unreadNotifications}
       >
         <div className="flex min-h-screen">
-          <OnboardingModal />
+          <OnboardingModal show={!!profile && !profile.has_seen_onboarding} />
           <Sidebar
             user={user ? { id: user.id } : null}
             profile={profile}
