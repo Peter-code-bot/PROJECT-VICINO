@@ -26,6 +26,7 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     // Recommended by capacitor-best-practices skill
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development',
+    appendUserAgent: 'VICINO-Android',
   },
   ios: {
     contentInset: 'never',

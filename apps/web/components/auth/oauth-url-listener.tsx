@@ -32,7 +32,15 @@ export function OAuthUrlListener() {
 
     async function handleUrl(url: string) {
       if (unmounted) return;
-      if (!url.startsWith(OAUTH_DEEP_LINK_CALLBACK)) return;
+      
+      // Intercept both custom scheme OAuth callbacks and Universal Link email callbacks.
+      // By exchanging the code client-side in the WebView, we guarantee access to the
+      // PKCE cookie and avoid fragile server-side GET requests that email scanners break.
+      const isCustomScheme = url.startsWith(OAUTH_DEEP_LINK_CALLBACK);
+      const isUniversalLink = url.startsWith("https://vicinomarket.com/auth/callback");
+      
+      if (!isCustomScheme && !isUniversalLink) return;
+      
       if (processedUrls.has(url)) return; // CODEX C1: ya procesado.
       processedUrls.add(url);
 

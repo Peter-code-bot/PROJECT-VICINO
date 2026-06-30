@@ -124,7 +124,12 @@ export function CapacitorInit() {
         // OAuth callback -> OAuthUrlListener. FCM token bridge -> usePushNotifications.
         // Ambos son owned por otros listeners; sin estos guards este handler
         // navegaria a /<token> o stripearia el ?code= del OAuth.
-        if (url.startsWith(OAUTH_DEEP_LINK_CALLBACK) || url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)) return;
+        if (
+          url.startsWith(OAUTH_DEEP_LINK_CALLBACK) || 
+          url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX) ||
+          url.startsWith("https://vicinomarket.com/auth/callback")
+        ) return;
+        
         try {
           const u = new URL(url);
           // Include search and hash. Even if path is "/", if there are search params (like ?code=), we must navigate.
@@ -146,7 +151,8 @@ export function CapacitorInit() {
       if (
         launchUrl?.url &&
         !launchUrl.url.startsWith(OAUTH_DEEP_LINK_CALLBACK) &&
-        !launchUrl.url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX)
+        !launchUrl.url.startsWith(FCM_TOKEN_DEEP_LINK_PREFIX) &&
+        !launchUrl.url.startsWith("https://vicinomarket.com/auth/callback")
       ) {
         try {
           const u = new URL(launchUrl.url);
