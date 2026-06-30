@@ -1,16 +1,39 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
 import { useRouter } from "next/navigation";
 import { Store, ShoppingBag, Loader2 } from "lucide-react";
 
-export function OnboardingModal({ show }: { show: boolean }) {
+import { createClient } from "@/lib/supabase/client";
+
+export function OnboardingModal() {
+  const [show, setShow] = useState(false);
   const [closed, setClosed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("has_seen_onboarding")
+        .eq("id", user.id)
+        .single();
+      
+      if (!error && data && data.has_seen_onboarding === false) {
+        setShow(true);
+      }
+    }
+    
+    checkOnboarding();
+  }, []);
 
   if (!show || closed) return null;
 
