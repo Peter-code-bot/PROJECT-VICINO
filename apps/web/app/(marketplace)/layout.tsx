@@ -22,7 +22,6 @@ export default async function MarketplaceLayout({
   } = await supabase.auth.getUser();
 
   let profile = null;
-  let isMissingProfile = false;
   let isAdmin = false;
   let unreadNotifications = 0;
   let unreadChatMessages = 0;
@@ -69,8 +68,6 @@ export default async function MarketplaceLayout({
 
     profile =
       profileResult.status === "fulfilled" ? profileResult.value.data : null;
-    isMissingProfile =
-      profileResult.status === "fulfilled" && profileResult.value.error?.code === "PGRST116";
     isAdmin =
       rolesResult.status === "fulfilled" &&
       (rolesResult.value.data?.length ?? 0) > 0;
@@ -95,7 +92,7 @@ export default async function MarketplaceLayout({
 
   const isVendedor = profile?.es_vendedor ?? false;
 
-  if (user && (isMissingProfile || (profile && profile.has_seen_onboarding === false))) {
+  if (user && (!profile || profile.has_seen_onboarding === false)) {
     redirect("/bienvenida");
   }
 
