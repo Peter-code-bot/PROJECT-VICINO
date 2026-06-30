@@ -23,20 +23,17 @@ export function OnboardingModal() {
       if (unmounted) return;
       
       try {
-        console.log(`[OnboardingModal] Iniciando fetchProfile con token de ${session.access_token?.length} caracteres. User: ${session.user.id}`);
-        // Usamos fetch nativo para garantizar que el token se envía en el header
-        // Usamos cache: 'no-store' para que el navegador/Next.js no devuelva una respuesta cacheada
-        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=has_seen_onboarding&id=eq.${session.user.id}`;
+        console.log(`[OnboardingModal] Iniciando llamada al API interno (intento ${attempt})...`);
         
-        const response = await fetch(url, {
-          cache: 'no-store',
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            Authorization: `Bearer ${session.access_token}`,
-            Accept: 'application/json',
-            Prefer: 'return=representation'
-          }
+        // Llamar a nuestro propio servidor (Next.js API) para que él consulte a Supabase
+        // Esto evita cualquier problema de CORS, Service Workers o headers cortados en el cliente.
+        const response = await fetch(`/api/auth/profile-status?_t=${Date.now()}`, {
+          cache: 'no-store'
         });
+
+        if (response.status === 404) {
+          throw new Error("PGRST116_SIMULATED"); // Perfil aún no creado por el trigger
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -44,19 +41,12 @@ export function OnboardingModal() {
         
         const data = await response.json();
         
-        // PostgREST devuelve array, single() devuelve el primer elemento
-        if (data && data.length > 0) {
-          const profile = data[0];
-          console.log(`[OnboardingModal] Perfil encontrado (intento ${attempt}):`, profile);
-          if (!profile.has_seen_onboarding) {
-            setShow(true);
-          }
-          return;
-        } else {
-          throw new Error("Perfil no encontrado (array vacío)");
+        console.log(`[OnboardingModal] Perfil encontrado via API:`, data);
+        if (data && data.has_seen_onboarding === false) {
+          setShow(true);
         }
       } catch (err: any) {
-        console.error(`[OnboardingModal] Error obteniendo perfil (intento ${attempt}):`, err);
+        console.error(`[OnboardingModal] Error obteniendo perfil via API:`, err);
         if (attempt < 5) {
           console.log(`[OnboardingModal] Reintentando en 500ms... (Intento ${attempt + 1}/5)`);
           setTimeout(() => fetchProfileWithRetry(session, attempt + 1), 500);
