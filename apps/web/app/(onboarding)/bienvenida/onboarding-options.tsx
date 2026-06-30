@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function OnboardingOptions() {
   const [isPending, startTransition] = useTransition();
@@ -11,14 +12,22 @@ export function OnboardingOptions() {
 
   const handleSeller = () => {
     startTransition(async () => {
-      await completeOnboarding();
+      const result = await completeOnboarding();
+      if (result.error) {
+        toast.error("Error al guardar: " + result.error);
+        return;
+      }
       router.push("/perfil/editar?prompt=seller-mode");
     });
   };
 
   const handleBuyer = () => {
     startTransition(async () => {
-      await completeOnboarding();
+      const result = await completeOnboarding();
+      if (result.error) {
+        toast.error("Error al guardar: " + result.error);
+        return;
+      }
       router.push("/");
     });
   };
