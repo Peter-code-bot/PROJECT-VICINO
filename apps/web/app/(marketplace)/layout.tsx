@@ -9,7 +9,7 @@ import { NotificationUnreadProvider } from "@/components/layout/notification-unr
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
-import { OnboardingModal } from "@/components/shared/onboarding-modal";
+import { redirect } from "next/navigation";
 
 export default async function MarketplaceLayout({
   children,
@@ -92,6 +92,10 @@ export default async function MarketplaceLayout({
 
   const isVendedor = profile?.es_vendedor ?? false;
 
+  if (profile && profile.has_seen_onboarding === false) {
+    redirect("/bienvenida");
+  }
+
   return (
     <ChatUnreadProvider userId={user?.id ?? ""} initialCount={unreadChatMessages}>
       <NotificationUnreadProvider
@@ -99,7 +103,6 @@ export default async function MarketplaceLayout({
         initialCount={unreadNotifications}
       >
         <div className="flex min-h-screen">
-          <OnboardingModal show={!!profile && !profile.has_seen_onboarding} />
           <Sidebar
             user={user ? { id: user.id } : null}
             profile={profile}
