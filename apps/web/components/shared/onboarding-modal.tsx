@@ -19,36 +19,49 @@ export function OnboardingModal() {
     let unmounted = false;
     const supabase = createClient();
 
-    async function fetchProfileWithRetry(userId: string, attempt = 1) {
+    async function fetchProfileWithRetry(session: any, attempt = 1) {
       if (unmounted) return;
       
       try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("has_seen_onboarding")
-          .eq("id", userId)
-          // Cache busting: Evitamos usar "id" aquí porque es un UUID estricto 
-          // y Postgres arroja error 22P02 si mandamos texto arbitrario.
-          // Usamos "email" que es un campo de texto libre.
-          .neq("email", `dummy_${Date.now()}@example.com`)
-          .single();
+        const cacheBusterEmail = `dummy_${Date.now()}@example.com`;
+        
+        // Usamos fetch nativo para garantizar que el token se envía en el header
+        // y evitar problemas de desincronización de sesión interna del cliente Supabase
+        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=has_seen_onboarding&id=eq.${session.user.id}&email=neq.${encodeURIComponent(cacheBusterEmail)}`;
+        
+        const response = await fetch(url, {
+          headers: {
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: 'application/json',
+            Prefer: 'return=representation'
+          }
+        });
 
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        if (data && data.has_seen_onboarding === false) {
-          if (!unmounted) setShow(true);
-        }
-      } catch (error: any) {
-        // PGRST116: The result contains 0 rows (Trigger no ha insertado aún)
-        if (error?.code === "PGRST116" && attempt < 5) {
-          console.warn(`[OnboardingModal] Perfil no encontrado (intento ${attempt}). Reintentando en 500ms...`);
-          setTimeout(() => {
-            fetchProfileWithRetry(userId, attempt + 1);
-          }, 500);
+        
+        const data = await response.json();
+        
+        // PostgREST devuelve array, single() devuelve el primer elemento
+        if (data && data.length > 0) {
+          const profile = data[0];
+          console.log(`[OnboardingModal] Perfil encontrado (intento ${attempt}):`, profile);
+          if (!profile.has_seen_onboarding) {
+            setShow(true);
+          }
+          return;
         } else {
-          console.error("[OnboardingModal] Error obteniendo perfil:", error);
+          throw new Error("Perfil no encontrado (array vacío)");
+        }
+      } catch (err: any) {
+        console.error(`[OnboardingModal] Error obteniendo perfil (intento ${attempt}):`, err);
+        if (attempt < 5) {
+          console.log(`[OnboardingModal] Reintentando en 500ms... (Intento ${attempt + 1}/5)`);
+          setTimeout(() => fetchProfileWithRetry(session, attempt + 1), 500);
+        } else {
+          console.error(`[OnboardingModal] Falló tras 5 intentos. No se pudo cargar el perfil.`);
         }
       }
     }
@@ -57,7 +70,7 @@ export function OnboardingModal() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session?.user && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-          fetchProfileWithRetry(session.user.id);
+          fetchProfileWithRetry(session);
         }
       }
     );
