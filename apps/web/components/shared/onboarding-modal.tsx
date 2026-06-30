@@ -16,23 +16,55 @@ export function OnboardingModal() {
   const router = useRouter();
 
   useEffect(() => {
-    async function checkOnboarding() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    let unmounted = false;
+    const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("has_seen_onboarding")
-        .eq("id", user.id)
-        .single();
+    async function fetchProfileWithRetry(userId: string, attempt = 1) {
+      if (unmounted) return;
       
-      if (!error && data && data.has_seen_onboarding === false) {
-        setShow(true);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("has_seen_onboarding")
+          .eq("id", userId)
+          // Cache busting: Next.js agresivamente cachea fetch(). 
+          // Forzamos una nueva petición variando la query.
+          .neq("id", `dummy_${Date.now()}`)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.has_seen_onboarding === false) {
+          if (!unmounted) setShow(true);
+        }
+      } catch (error: any) {
+        // PGRST116: The result contains 0 rows (Trigger no ha insertado aún)
+        if (error?.code === "PGRST116" && attempt < 5) {
+          console.warn(`[OnboardingModal] Perfil no encontrado (intento ${attempt}). Reintentando en 500ms...`);
+          setTimeout(() => {
+            fetchProfileWithRetry(userId, attempt + 1);
+          }, 500);
+        } else {
+          console.error("[OnboardingModal] Error obteniendo perfil:", error);
+        }
       }
     }
-    
-    checkOnboarding();
+
+    // Suscribirnos a los cambios de sesión para no sufrir el "Auth Race Condition"
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+          fetchProfileWithRetry(session.user.id);
+        }
+      }
+    );
+
+    return () => {
+      unmounted = true;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   if (!show || closed) return null;
