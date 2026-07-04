@@ -71,15 +71,17 @@ SHALL show `EXECUTE` granted to `authenticated` and SHALL show no `EXECUTE` for 
 
 ---
 
-## Requirement R3 -- The RPC SHALL mutate only the caller's own row under INVOKER + RLS
+## Requirement R3 -- The RPC SHALL mutate only the caller's own row via in-body auth.uid()
 
-WHEN `complete_user_onboarding()` performs its `UPDATE`, the system SHALL run with the
-caller's rights (`SECURITY INVOKER`) so Row-Level Security enforces `(select auth.uid()) = id`,
-mutating only the caller's own `profiles` row. The function SHALL pin `search_path` to a
-fixed value and reference every object fully-qualified. The function SHALL NOT run as
-`SECURITY DEFINER`.
+WHEN `complete_user_onboarding()` performs its `UPDATE`, the system SHALL run as
+`SECURITY DEFINER` (owner postgres), because the `authenticated` role has no table-level
+grant on `public.profiles`. Since DEFINER bypasses RLS, the function SHALL enforce
+authorization in-body: it SHALL take NO parameters and SHALL restrict the write to
+`WHERE id = auth.uid()`, so a caller can mutate only their own `profiles` row (no BOLA/IDOR).
+The function SHALL pin `search_path` to a fixed value and reference every object
+fully-qualified.
 
-### Scenario: definition is INVOKER with pinned search_path
+### Scenario: definition is hardened DEFINER with pinned search_path
 
 - GIVEN the hardening has been applied
 - WHEN this query runs:
@@ -87,7 +89,7 @@ fixed value and reference every object fully-qualified. The function SHALL NOT r
   SELECT proname, prosecdef, proconfig FROM pg_proc
   WHERE proname = 'complete_user_onboarding';
   ```
-- THEN `prosecdef` is `false` (INVOKER)
+- THEN `prosecdef` is `true` (DEFINER)
 - AND `proconfig` contains `search_path=""`
 
 ### Scenario: RLS smoke confirms owner-only write

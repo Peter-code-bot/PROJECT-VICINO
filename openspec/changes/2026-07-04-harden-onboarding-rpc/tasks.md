@@ -8,7 +8,7 @@
 ## FASE A -- OpenSpec (this directory)
 
 - [x] T-01 -- proposal.md (why + what + scope + success criteria)
-- [x] T-02 -- design.md (INVOKER decision + FASE 0 evidence + 0-rows note + delivery)
+- [x] T-02 -- design.md (DEFINER decision after FASE C grant audit + 0-rows note + delivery)
 - [x] T-03 -- tasks.md (this file)
 - [x] T-04 -- specs/onboarding/spec.md (EARS delta: R1/R2/R3)
 - [ ] T-05 -- PARA y reportar a Pedro. Esperar sign-off antes de FASE B.
@@ -27,8 +27,10 @@
   (idempotent `CREATE OR REPLACE` + REVOKE/GRANT; pattern `20260521000011_rpc_update_profile_and_pause.sql`).
 - [ ] T-08 -- confirm NO app edits required (client already wired); the only allowed edit is
   the `revalidatePath("/", "layout")` fallback IF the redirect proves sticky in FASE C verify.
-- [ ] T-09 -- explicit `git add` (studio-script + migration + this openspec dir) + ASCII commit:
-  `fix(security): harden complete_user_onboarding RPC to INVOKER + revoke anon`.
+- [x] T-09 -- explicit `git add` (studio-script + migration + this openspec dir) + ASCII commit.
+  Subfase A first landed as `fix(security): harden complete_user_onboarding RPC to INVOKER + revoke anon`
+  (bcf0f72); corrected after the FASE C grant audit with
+  `fix(security): correct onboarding RPC to hardened DEFINER after grant audit`.
 - [ ] T-10 -- CODEX adversarial review loop (CLAUDE.md) on the SQL (migrations = max priority):
   blocker HIGH = STOP, max 3 iterations. PARA y entregar el script a Pedro antes de que corra.
 
@@ -54,8 +56,8 @@
   persists nothing.
 - [ ] P-4 -- Paste BLOCK 3 (APPLY), run. Confirm COMMIT, no errors.
 - [ ] P-5 -- Paste ledger INSERT (bookkeeping note above), run.
-- [ ] P-6 -- Paste BLOCK 4 (VERIFY), run. Expected: `prosecdef=false`; `proconfig` contains
-  `search_path=""`; `authenticated` has EXECUTE; `anon`/`PUBLIC` have none.
+- [ ] P-6 -- Paste BLOCK 4 (VERIFY), run. Expected: `prosecdef=true` (DEFINER); `proconfig`
+  contains `search_path=""`; `authenticated` has EXECUTE; `anon`/`PUBLIC` have none.
 - [ ] P-7 -- RLS smoke test (fill `<UUID>` with a real test user): `has_seen_onboarding`
   flips to `true` for that row inside the tx; ROLLBACK.
 

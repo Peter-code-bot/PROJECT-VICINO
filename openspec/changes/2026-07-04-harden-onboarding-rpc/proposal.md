@@ -19,12 +19,14 @@ Three concrete risks with the likely current state:
 2. **`EXECUTE` hanging on `PUBLIC`/`anon`** -- a direct PostgREST call (bypassing the app)
    can invoke the function as an anonymous client. Combined with DEFINER, that is a
    privileged mutation reachable without a session.
-3. **`SECURITY DEFINER` is unnecessary here** -- `profiles` already has an UPDATE policy
-   `"Users can update own profile"` scoped `TO authenticated` with
-   `USING/WITH CHECK ((select auth.uid()) = id)`
-   (`supabase/migrations/20260320000002_profiles.sql:107`, altered in
-   `20260602000001_optimize_rls_performance.sql:34`). An authenticated user can already
-   flip their own `has_seen_onboarding` under RLS. Elevated privileges are not needed.
+3. **DEFINER must be kept, but properly hardened** -- `profiles` has an UPDATE policy
+   `"Users can update own profile"` `TO authenticated` (`20260320000002_profiles.sql:107`,
+   altered in `20260602000001_optimize_rls_performance.sql:34`), which initially looked like
+   grounds for `SECURITY INVOKER`. The FASE C grant audit refuted that: `authenticated` holds
+   **no table-level `UPDATE`/`SELECT` grant** on `profiles` (only `service_role`/`postgres`
+   do), so an INVOKER version fails `42501 permission denied` (verified live). The function
+   must stay DEFINER (owner postgres) but be hardened -- pinned `search_path`, `anon`/`PUBLIC`
+   revoked, and in-body `auth.uid()` authorization since DEFINER bypasses RLS.
 
 Evidence (FASE 0 audit, this branch off `origin/master`):
 - Caller (client wiring already correct, unchanged by this change):
@@ -40,11 +42,13 @@ Evidence (FASE 0 audit, this branch off `origin/master`):
 
 ## What
 
-Harden `public.complete_user_onboarding()` to **least privilege** and capture it in the
-repo. Chosen shape (see design.md for the DEFINER-vs-INVOKER decision backed by FASE 0):
+Harden `public.complete_user_onboarding()` to the **minimum viable privilege** and capture it
+in the repo. Chosen shape (see design.md for the DEFINER-vs-INVOKER decision, corrected by the
+FASE C grant audit):
 
-- **`SECURITY INVOKER`** (drop DEFINER) -- RLS enforces `auth.uid() = id`, so the caller
-  updates only their own row. No privilege-escalation surface.
+- **`SECURITY DEFINER`, owner postgres** -- required because `authenticated` has no table grant
+  on `profiles`. Safe because the function takes no parameters and writes only
+  `WHERE id = auth.uid()`, so a caller can only ever set their own flag (no BOLA/IDOR).
 - **`SET search_path = ''`** -- fully-qualified references (`public.profiles`, `auth.uid()`)
   make the empty search_path safe and strict.
 - **`REVOKE ALL FROM PUBLIC` + `REVOKE EXECUTE FROM anon` + `GRANT EXECUTE TO authenticated`**
@@ -61,8 +65,8 @@ rewritten** -- only verified end-to-end (2 viewports).
 ## Scope
 
 ### IN
-- Hardened `CREATE OR REPLACE FUNCTION public.complete_user_onboarding()` (INVOKER,
-  pinned search_path, REVOKE/GRANT) delivered as a 4-block Camino 2 `studio-script.sql`.
+- Hardened `CREATE OR REPLACE FUNCTION public.complete_user_onboarding()` (DEFINER owner
+  postgres, pinned search_path, REVOKE/GRANT) delivered as a 4-block Camino 2 `studio-script.sql`.
 - Mirror migration file for git history (repo-of-record, manual Studio run).
 - POST verify queries + RLS smoke test.
 - End-to-end verification of the existing client wiring on mobile 375x812 + desktop 1280x800.
@@ -83,7 +87,7 @@ rewritten** -- only verified end-to-end (2 viewports).
 
 ## Success criteria (objective, measurable)
 
-1. POST verify shows `prosecdef = false` (INVOKER), `proconfig` contains `search_path=""`.
+1. POST verify shows `prosecdef = true` (DEFINER), `proconfig` contains `search_path=""`.
 2. `information_schema.role_routine_grants` shows `authenticated` with `EXECUTE` and
    **zero** rows for `anon`/`PUBLIC`.
 3. RLS smoke test (real `authenticated` role, `SET LOCAL ROLE`) flips

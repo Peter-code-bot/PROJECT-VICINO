@@ -5,9 +5,13 @@
 -- Run BLOCK by BLOCK in Supabase Studio SQL editor (project oxxdkwywprkfghhbnoto).
 -- Order: BLOCK 1 (snapshot) -> BLOCK 2 (dry-run) -> BLOCK 3 (apply) ->
 --        ledger INSERT (see tasks.md bookkeeping note) -> BLOCK 4 (verify + smoke).
--- Decision: SECURITY INVOKER (least privilege) -- profiles already has an UPDATE
--- policy "Users can update own profile" TO authenticated USING/CHECK auth.uid()=id.
--- See design.md.
+--
+-- Decision: SECURITY DEFINER (hardened). The INVOKER attempt failed live with
+-- 42501 -- the `authenticated` role has no table-level UPDATE/SELECT grant on
+-- public.profiles (only service_role/postgres do), so RLS alone cannot carry an
+-- INVOKER write. DEFINER (owner postgres) is the minimum viable privilege: the
+-- function takes no parameters and writes only WHERE id = auth.uid(), anon is
+-- revoked, and search_path is pinned. See design.md.
 -- =============================================================================
 
 
@@ -22,15 +26,15 @@ WHERE table_schema = 'public'
   AND table_name = 'profiles'
   AND column_name = 'has_seen_onboarding';
 
--- 1b. Current definition of the function if it exists (expect DEFINER + no
---     search_path pin + anon EXECUTE, per the change lineage).
+-- 1b. Current definition of the function if it exists (expected pre-state:
+--     DEFINER, no search_path pin, anon EXECUTE present).
 SELECT p.proname, p.prosecdef, p.proconfig, pg_get_functiondef(p.oid) AS definition
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname = 'complete_user_onboarding';
 
--- 1c. UPDATE policies on public.profiles (evidence for the INVOKER decision).
+-- 1c. UPDATE policies on public.profiles.
 SELECT polname, polcmd,
        pg_get_expr(polqual, polrelid)      AS using_expr,
        pg_get_expr(polwithcheck, polrelid) AS check_expr
@@ -42,6 +46,13 @@ SELECT grantee, privilege_type
 FROM information_schema.role_routine_grants
 WHERE routine_name = 'complete_user_onboarding';
 
+-- 1e. Table-level grants on public.profiles (why INVOKER is not viable:
+--     authenticated has no UPDATE/SELECT here -- only service_role/postgres).
+SELECT grantee, privilege_type
+FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND table_name = 'profiles'
+ORDER BY grantee, privilege_type;
+
 
 -- -----------------------------------------------------------------------------
 -- BLOCK 2 -- DRY-RUN (BEGIN/ROLLBACK -- persists nothing)
@@ -51,7 +62,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.complete_user_onboarding()
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
@@ -83,7 +94,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.complete_user_onboarding()
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
@@ -117,7 +128,7 @@ NOTIFY pgrst, 'reload schema';
 -- BLOCK 4 -- VERIFY + RLS SMOKE
 -- -----------------------------------------------------------------------------
 
--- 4a. Definition: expect prosecdef=false (INVOKER); proconfig contains search_path="".
+-- 4a. Definition: expect prosecdef=true (DEFINER); proconfig contains search_path="".
 SELECT proname, prosecdef, proconfig
 FROM pg_proc
 WHERE proname = 'complete_user_onboarding';
@@ -127,9 +138,12 @@ SELECT grantee, privilege_type
 FROM information_schema.role_routine_grants
 WHERE routine_name = 'complete_user_onboarding';
 
--- 4c. RLS smoke test under a REAL authenticated role (SET LOCAL ROLE is required;
---     the Studio editor runs as postgres and bypasses RLS otherwise -- CLAUDE.md
---     institutional lesson #2). Fill <UUID> with a real test user's profiles.id.
+-- 4c. Smoke test under a REAL authenticated role (SET LOCAL ROLE is required; the
+--     Studio editor runs as postgres otherwise -- CLAUDE.md institutional lesson
+--     #2). Under DEFINER the function runs as owner postgres, so the UPDATE
+--     succeeds even though authenticated lacks the table grant; the WHERE
+--     id = auth.uid() confines the write to the caller's own row. Fill <UUID>
+--     with a real test user's profiles.id. Expect has_seen_onboarding -> true.
 BEGIN;
   SET LOCAL ROLE authenticated;
   SET LOCAL request.jwt.claims = '{"sub":"<UUID>","role":"authenticated"}';
