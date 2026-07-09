@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { deleteAccount } from "./actions";
 
 const CONFIRM_WORD = "ELIMINAR";
 
@@ -19,17 +17,33 @@ export function DeleteAccountSection() {
     setLoading(true);
     setError(null);
 
-    const result = await deleteAccount();
+    // Deletion runs through /api/account/delete -> Edge Function delete-account
+    // (service-role key lives in Supabase Function secrets, never in Vercel).
+    // The route re-validates the confirm word and the session, forwards the
+    // caller's JWT, and signs the session out on success.
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmText: CONFIRM_WORD }),
+      });
 
-    if (result.error) {
-      setError(result.error);
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo eliminar la cuenta.");
+      }
+
+      router.push("/cuenta-eliminada");
+      router.refresh();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Error desconocido al eliminar la cuenta.";
+      setError(message);
       setLoading(false);
-      return;
     }
-
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/");
   }
 
   if (confirming) {
