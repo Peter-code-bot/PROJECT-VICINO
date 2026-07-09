@@ -150,3 +150,38 @@ BEGIN;
   SELECT public.complete_user_onboarding();
   SELECT id, has_seen_onboarding FROM public.profiles WHERE id = '<UUID>';
 ROLLBACK;
+
+
+-- -----------------------------------------------------------------------------
+-- BLOCK 5 -- COLUMN-LEVEL SELECT GRANT (read-side root cause; applied 2026-07-09)
+--
+-- Found during Subfase B verification: profiles carries COLUMN-LEVEL grants
+-- (2026-06-10-mass-assignment-column-locks). authenticated had SELECT on every
+-- column EXCEPT the sensitive set (has_seen_onboarding, email, fcm_token, rfc,
+-- telefono, ...). has_seen_onboarding (added 20260629000001) never got its
+-- grant, and Postgres fails the WHOLE statement when any selected column lacks
+-- privilege -> the (marketplace) layout gate query returned 42501 -> profile
+-- collapsed to null -> every logged-in user bounced to /bienvenida forever.
+-- Mirror migration: 20260704000002_grant_select_has_seen_onboarding.sql.
+-- -----------------------------------------------------------------------------
+
+-- 5a. READ -- column privileges inventory on profiles (before):
+--     expected: has_seen_onboarding ABSENT for authenticated.
+SELECT grantee, privilege_type, column_name
+FROM information_schema.column_privileges
+WHERE table_schema = 'public' AND table_name = 'profiles'
+ORDER BY grantee, privilege_type, column_name;
+
+-- 5b. WRITE -- SELECT only, authenticated only. NO UPDATE on the column: writes
+--     stay exclusively behind the SECURITY DEFINER RPC.
+GRANT SELECT (has_seen_onboarding) ON public.profiles TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+
+-- 5c. POST VERIFY -- re-run 5a: expected authenticated | SELECT |
+--     has_seen_onboarding present (no UPDATE row for it).
+
+-- 5d. Ledger bookkeeping for the mirror migration (after 5b succeeds):
+INSERT INTO supabase_migrations.schema_migrations (version, name)
+VALUES ('20260704000002', 'grant_select_has_seen_onboarding')
+ON CONFLICT (version) DO NOTHING;
