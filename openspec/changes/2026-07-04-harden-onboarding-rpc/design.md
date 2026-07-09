@@ -39,6 +39,52 @@ permission denied" -> `3810930` "switch to RPC"): the real blocker was always th
 base-table grant to `authenticated`, not a session problem. The team routed around it with the
 service-role key, then with an RPC. The correct, key-free fix is a hardened DEFINER RPC.
 
+### Root cause, fully resolved (Subfase B verification, 2026-07-09)
+
+The Subfase B end-to-end test surfaced the missing half of the picture. After the hardened
+DEFINER RPC was applied (write path green: RPC `204` as authenticated, `401/42501` as anon),
+the onboarding loop STILL bounced: the layout gate could not READ the flag.
+
+Surgical PostgREST probes with a real authenticated session pinpointed it:
+
+```
+select=nombre,foto,es_vendedor                      -> 200
+select=has_seen_onboarding                          -> 403 42501
+select=nombre,foto,es_vendedor,has_seen_onboarding  -> 403 42501   (the layout's exact query)
+```
+
+**`public.profiles` carries COLUMN-LEVEL grants** (change
+`2026-06-10-mass-assignment-column-locks`): `authenticated` has `SELECT` on every column
+EXCEPT the sensitive set (`has_seen_onboarding`, `email`, `fcm_token`, `rfc`, `telefono`, ...).
+The `has_seen_onboarding` column was added later (`20260629000001`) **without its grant**, and
+Postgres rejects the ENTIRE statement when any selected column lacks privilege. So the
+`(marketplace)` layout query (`apps/web/app/(marketplace)/layout.tsx:45`) failed whole with
+`42501`, `Promise.allSettled` collapsed `profile` to `null`, and the guard's `!profile` branch
+(`layout.tsx:95`) redirected every logged-in user to `/bienvenida` forever -- an active
+production incident from the moment the gate shipped.
+
+This **rewrites the incident narrative**: "Obstaculo 1" (ghost user) was not (only) a
+profile-creation race -- it was this column-level `42501` from the moment the layout query
+started including `has_seen_onboarding`. "Obstaculo 3" (permission denied on direct UPDATE)
+shares the same origin. The DEFINER decision for the RPC remains correct (write side); this
+was the missing READ side.
+
+Fix applied in Studio 2026-07-09 (mirror: `20260704000002_grant_select_has_seen_onboarding.sql`):
+
+```sql
+GRANT SELECT (has_seen_onboarding) ON public.profiles TO authenticated;
+```
+
+Verified: `authenticated` now holds SELECT on the column, still **no UPDATE** -- writes remain
+exclusively behind the DEFINER RPC. Least privilege intact.
+
+**Institutional lesson:** when adding a column to a table protected by column-level
+privileges, the SAME migration must `GRANT` the column explicitly (SELECT to the reading
+role), or every existing SELECT that includes it fails whole with `42501`. Audit column
+grants with `information_schema.column_privileges` -- `role_table_grants` shows nothing for
+column-granted tables and misleads (that blind spot is how the audit above concluded "no
+SELECT at all").
+
 ### Why hardened DEFINER is the minimum viable privilege
 
 Granting `authenticated` a broad table-level `UPDATE` on `profiles` just to flip one boolean
