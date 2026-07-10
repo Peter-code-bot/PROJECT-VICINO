@@ -51,7 +51,7 @@ export function OnboardingOptions() {
         size="lg"
         className="w-full py-4 text-lg h-auto font-medium rounded-xl !bg-brand-hi !text-white !shadow-none"
       >
-        Solo quiero explorar
+        Quiero explorar
       </Button>
     </div>
   );
