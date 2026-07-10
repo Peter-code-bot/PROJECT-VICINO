@@ -4,7 +4,7 @@ import { OnboardingOptions } from "./onboarding-options";
 export default function BienvenidaPage() {
   return (
     <div className="flex flex-col items-center justify-center w-full px-4 py-8">
-      <div className="mb-8 flex items-center justify-center">
+      <div className="mb-6 flex items-center justify-center">
         <Image 
           src="/vicino-logo-light-v2.png" 
           alt="VICINO Logo" 
@@ -23,11 +23,14 @@ export default function BienvenidaPage() {
         />
       </div>
       
-      <h1 className="text-3xl md:text-4xl font-outfit text-center mb-12 font-semibold">
+      <h1 className="text-3xl md:text-4xl font-outfit text-center font-semibold">
         ¡Bienvenido a VICINO!
       </h1>
+      <p className="text-base text-muted-foreground text-center mt-3 mb-10">
+        Compra y vende cerca de ti
+      </p>
       
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-sm">
         <OnboardingOptions />
       </div>
     </div>

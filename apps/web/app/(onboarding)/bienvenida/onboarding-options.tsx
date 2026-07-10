@@ -33,13 +33,13 @@ export function OnboardingOptions() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 w-full">
+    <div className="flex flex-col gap-3 w-full">
       <Button 
         onClick={handleSeller} 
         loading={isPending}
         variant="primary"
         size="lg"
-        className="flex-1 py-12 text-xl md:text-2xl h-auto font-medium"
+        className="w-full py-4 text-lg h-auto font-medium rounded-xl !bg-[#121212] !text-white !shadow-none dark:!bg-[#F4F1EB] dark:!text-[#121212]"
       >
         Quiero vender
       </Button>
@@ -47,9 +47,9 @@ export function OnboardingOptions() {
       <Button 
         onClick={handleBuyer} 
         loading={isPending}
-        variant="secondary"
+        variant="primary"
         size="lg"
-        className="flex-1 py-12 text-xl md:text-2xl h-auto font-medium"
+        className="w-full py-4 text-lg h-auto font-medium rounded-xl !bg-brand-hi !text-white !shadow-none"
       >
         Solo quiero explorar
       </Button>
