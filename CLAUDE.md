@@ -2,12 +2,18 @@
 
 ## Proyecto
 
-VICINO es un marketplace de startups. Monorepo con:
-- **Framework:** Next.js (App Router) + TypeScript
-- **Base de datos:** Supabase (PostgreSQL + Auth + Storage)
-- **Mobile:** Capacitor (Android)
-- **Package manager:** pnpm + Turborepo
-- **Estructura:** `apps/web` (frontend Next.js), `packages/` (código compartido), `supabase/` (migraciones)
+VICINO es un marketplace hiperlocal de proximidad en Puebla, México. Monorepo con:
+- **Framework:** Next.js 16.2 (App Router) + React 19.2 + TypeScript
+- **Styling:** Tailwind CSS v4 (CSS-based config, NO tailwind.config.ts)
+- **Base de datos:** Supabase (PostgreSQL + PostGIS + Auth + Storage + Realtime) — NO Prisma
+- **Auth:** Supabase Auth (`@supabase/ssr`) — NO NextAuth.js
+- **Mobile:** Capacitor 8.3 (Android + iOS)
+- **Package manager:** pnpm 9.15 + Turborepo
+- **Estructura:** `apps/web` (frontend Next.js), `packages/shared` (@vicino/shared — 10 Zod validators), `supabase/` (82 migraciones, 5 Edge Functions)
+- **Monitoring:** Sentry (`@sentry/nextjs` + `@sentry/capacitor`)
+- **Email:** Resend
+- **Maps:** Leaflet + react-leaflet
+- **UI:** Framer Motion 12, Sonner (toasts), Recharts (charts), next-themes
 
 ## Comandos
 

@@ -4,13 +4,21 @@ import { OnboardingOptions } from "./onboarding-options";
 export default function BienvenidaPage() {
   return (
     <div className="flex flex-col items-center justify-center w-full px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-8 flex items-center justify-center">
         <Image 
-          src="/vicino-logo-transparent.png" 
+          src="/vicino-logo-light-v2.png" 
           alt="VICINO Logo" 
-          width={150} 
-          height={50} 
-          className="object-contain dark:invert"
+          width={120} 
+          height={120} 
+          className="object-contain show-in-light"
+          priority
+        />
+        <Image 
+          src="/vicino-logo-dark.png" 
+          alt="VICINO Logo" 
+          width={120} 
+          height={120} 
+          className="object-contain show-in-dark"
           priority
         />
       </div>
