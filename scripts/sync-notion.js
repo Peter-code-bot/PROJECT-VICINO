@@ -1,4 +1,6 @@
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 // Default Notion configuration
 const DEFAULT_TOKEN = process.env.NOTION_TOKEN || "";
@@ -126,6 +128,32 @@ function divider() {
     type: 'divider',
     divider: {}
   };
+}
+
+function markdownToNotionBlocks(md) {
+  const blocks = [];
+  const lines = md.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith('# ')) {
+      blocks.push(heading(line.substring(2), 1));
+    } else if (line.startsWith('## ')) {
+      blocks.push(heading(line.substring(3), 2));
+    } else if (line.startsWith('### ')) {
+      blocks.push(heading(line.substring(4), 3));
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      blocks.push(bullet(line.substring(2)));
+    } else if (line.startsWith('> ')) {
+      blocks.push(callout(line.substring(2)));
+    } else if (line === '---') {
+      blocks.push(divider());
+    } else {
+      const text = line.length > 2000 ? line.substring(0, 1997) + '...' : line;
+      blocks.push(paragraph(text));
+    }
+  }
+  return blocks.slice(0, 99); // max 100 blocks per request
 }
 
 // Create page
@@ -444,47 +472,44 @@ async function main() {
     }
   }
 
-  // 5. Registro de Producción CapCut under 01_DevLogs page ID
+  // 5. Sync ALL DevLogs from local Obsidian folder under 01_DevLogs page ID
   const devLogsId = categoryPages["01_DevLogs"];
   if (devLogsId) {
-    console.log("\nSyncing 'Registro de Producción CapCut' page...");
-    const capcutTitle = "Registro de Producción CapCut";
+    console.log("\nSyncing ALL DevLogs dynamically from Obsidian...");
+    const devLogsDir = path.join(__dirname, '../../VICINO OBSIDIAN/VICINO/01_DevLogs');
     
-    // Check if it already exists under 01_DevLogs
-    let capcutPageId = existingPages.find(p => {
-      const title = p.properties?.title?.title?.[0]?.plain_text || "";
-      return title === capcutTitle && (p.parent?.page_id === devLogsId || p.parent?.id === devLogsId);
-    })?.id;
+    if (fs.existsSync(devLogsDir)) {
+      const files = fs.readdirSync(devLogsDir).filter(f => f.endsWith('.md'));
+      console.log(`Found ${files.length} DevLogs to sync.`);
+      
+      for (const file of files) {
+        await new Promise(r => setTimeout(r, 800)); // Rate limit buffer
+        const filePath = path.join(devLogsDir, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const title = file.replace('.md', '');
+        
+        let existingPageId = existingPages.find(p => {
+          const t = p.properties?.title?.title?.[0]?.plain_text || "";
+          return t === title && (p.parent?.page_id === devLogsId || p.parent?.id === devLogsId);
+        })?.id;
 
-    if (capcutPageId) {
-      console.log(` - Page already exists (ID: ${capcutPageId}). Archiving old page to refresh...`);
-      await archivePage(capcutPageId);
-    }
+        if (existingPageId) {
+          console.log(` - Updating DevLog: ${title} (ID: ${existingPageId})`);
+          await archivePage(existingPageId);
+        } else {
+          console.log(` - Creating DevLog: ${title}`);
+        }
 
-    const capcutBlocks = [
-      heading("Registro de Producción CapCut", 1),
-      callout("Bitácora de producción, edición en CapCut y guías técnicas para la captura de pantalla del video promocional de VICINO.", "🎬"),
-      divider(),
-      heading("1. Mega-Resumen del Chat: Producción del Video VICINO", 2),
-      paragraph("Durante las sesiones de alineación de producto y marketing, Javier y Alejandro coordinaron la recopilación de clips del emulador Android para el video demo. Se acordó evitar tiempos muertos de carga, recortar transiciones innecesarias y centrarse en la fluidez de la app con haptics y transiciones directas."),
-      divider(),
-      heading("2. Guía de Screen Recordings (OBS & scrcpy)", 2),
-      bullet("OBS Studio Setup: Capturar en resolución limpia de 1920x1080 a 30fps. Formato MKV con remux automático a MP4."),
-      bullet("scrcpy Tooling: Proyectar el teléfono Android real mediante scrcpy con la bandera --disable-screensaver y ocultar la barra de notificaciones y reloj para un look de app de producción."),
-      bullet("Clean UI Rule: Ninguna notificación de sistema, barra de señal o indicador de batería debe estar visible en los clips."),
-      divider(),
-      heading("3. Edición en CapCut (Tips Clave)", 2),
-      bullet("Keyframes: Generar efectos de zoom-through del 100% al 120% y transiciones parallax sutiles controlando la escala del clip en puntos clave (Keyframe al inicio normal -> Keyframe al final zoom 120%)."),
-      bullet("Transitions: Mantener consistencia usando cortes directos (hard cuts) dentro de la misma sección y transiciones suaves con flash blanco o slide-up para cambios de bloques narrativos."),
-      bullet("Beat Sync: Marcar los beats del track de Epidemic Sound en la línea de tiempo usando la función de Ritmo y cortar los clips coincidiendo exactamente con los golpes de la música."),
-      bullet("Export Settings: Formato H.264, resolución 1080p a 30fps con tasa de bits (bitrate) alta para máxima nitidez en proyectores.")
-    ];
-
-    try {
-      const capcutPage = await createPage(devLogsId, capcutTitle, capcutBlocks);
-      console.log(` ✅ CapCut Production page created successfully! (ID: ${capcutPage.id})`);
-    } catch (err) {
-      console.error(" ❌ Failed to create CapCut Production page:", err.message);
+        const blocks = markdownToNotionBlocks(content);
+        try {
+          const page = await createPage(devLogsId, title, blocks);
+          console.log(`   ✅ Synced: ${title} (ID: ${page.id})`);
+        } catch (err) {
+          console.error(`   ❌ Failed to sync ${title}:`, err.message);
+        }
+      }
+    } else {
+      console.log(`   ❌ Directory not found: ${devLogsDir}`);
     }
   }
 
