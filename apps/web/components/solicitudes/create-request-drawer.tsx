@@ -159,10 +159,18 @@ export function CreateRequestDrawer({
     }
   };
 
+  useEffect(() => {
+    // Lock body scroll when drawer is open
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const visibleCategories = CATEGORIES.filter((c) => !c.hidden_in_form);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -170,11 +178,11 @@ export function CreateRequestDrawer({
       />
 
       {/* Drawer */}
-      <div className="relative w-full max-w-lg rounded-t-3xl bg-card border-t border-border/50 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
+      <div className="relative flex flex-col w-full h-[100dvh] bg-card shadow-2xl animate-slide-up rounded-none md:h-auto md:max-h-[90vh] md:max-w-lg md:rounded-3xl border-t border-border/50">
         {/* Handle */}
-        <div className="sticky top-0 z-10 bg-card rounded-t-3xl">
-          <div className="mx-auto mt-3 mb-2 h-1 w-10 rounded-full bg-muted-foreground/30" />
-          <div className="flex items-center justify-between px-5 pb-3">
+        <div className="shrink-0 sticky top-0 z-10 bg-card rounded-none md:rounded-t-3xl pt-2 pb-3">
+          <div className="mx-auto mt-2 mb-3 h-1.5 w-12 rounded-full bg-muted-foreground/30 md:hidden" />
+          <div className="flex items-center justify-between px-5">
             <h2 className="font-heading text-lg font-bold text-foreground">
               ¿Qué estás buscando?
             </h2>
@@ -188,7 +196,8 @@ export function CreateRequestDrawer({
           </div>
         </div>
 
-        <div className="px-5 pb-8 space-y-5">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-safe pb-8 space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground/80">
