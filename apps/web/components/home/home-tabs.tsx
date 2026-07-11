@@ -39,8 +39,8 @@ export function HomeTabs({ active }: HomeTabsProps) {
           className={cn(
             "font-heading text-[19px] font-extrabold tracking-tight transition-colors",
             active === "solicitudes"
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-emerald-600/30 dark:text-emerald-400/30 hover:text-emerald-600/60 dark:hover:text-emerald-400/60"
+              ? "text-[color:var(--brand)]"
+              : "text-[color:var(--brand)]/40 hover:text-[color:var(--brand)]/80"
           )}
         >
           Solicitudes

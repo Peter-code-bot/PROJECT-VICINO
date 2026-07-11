@@ -162,7 +162,7 @@ export function CreateRequestDrawer({
   const visibleCategories = CATEGORIES.filter((c) => !c.hidden_in_form);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
