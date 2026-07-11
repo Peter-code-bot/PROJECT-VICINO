@@ -13,6 +13,7 @@ import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from
 import { HomeTabs } from "@/components/home/home-tabs";
 import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
+import { SolicitudesFeed } from "@/components/solicitudes/solicitudes-feed";
 import { UNIVERSITY_COLORS, getContrastYIQ, cn } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import { makeFeedCursor } from "@/lib/feed-cursor";
@@ -98,7 +99,7 @@ import type { FeedProduct } from "@/types/feed";
 
 export default async function HomePage({ searchParams }: Props) {
   const { feed: feedParam } = await searchParams;
-  const feed = feedParam === "following" ? "following" : "parati";
+  const feed = feedParam === "following" ? "following" : feedParam === "solicitudes" ? "solicitudes" : "parati";
 
   const supabase = await createClient();
 
@@ -674,6 +675,16 @@ export default async function HomePage({ searchParams }: Props) {
             </section>
           )}
         </>
+      ) : feed === "solicitudes" ? (
+        /* ─── SOLICITUDES FEED ─────────────────────────────── */
+        <div className="pt-4">
+          <SolicitudesFeed
+            userLat={userLat}
+            userLng={userLng}
+            radiusMeters={validRadius}
+            userId={user?.id ?? null}
+          />
+        </div>
       ) : (
         /* ─── SIGUIENDO FEED ─────────────────────────────── */
         <div className="max-w-lg mx-auto pb-12">

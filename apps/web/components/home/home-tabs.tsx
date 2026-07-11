@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { HapticLink } from "@/components/shared/haptic-link";
 
 export interface HomeTabsProps {
-  active: "parati" | "following";
+  active: "parati" | "following" | "solicitudes";
 }
 
 export function HomeTabs({ active }: HomeTabsProps) {
@@ -32,6 +32,18 @@ export function HomeTabs({ active }: HomeTabsProps) {
           )}
         >
           Siguiendo
+        </HapticLink>
+        <HapticLink
+          href="/?feed=solicitudes"
+          haptic="selection"
+          className={cn(
+            "font-heading text-[19px] font-extrabold tracking-tight transition-colors",
+            active === "solicitudes"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-emerald-600/30 dark:text-emerald-400/30 hover:text-emerald-600/60 dark:hover:text-emerald-400/60"
+          )}
+        >
+          Solicitudes
         </HapticLink>
       </div>
     </div>
