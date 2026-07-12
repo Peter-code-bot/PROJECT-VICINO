@@ -147,8 +147,7 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
             setDrawerOpen(false);
             fetchRequests();
           }}
-          userLat={userLat}
-          userLng={userLng}
+
         />
       )}
     </div>

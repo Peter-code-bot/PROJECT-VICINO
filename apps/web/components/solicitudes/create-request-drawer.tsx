@@ -13,12 +13,14 @@ import {
   MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
+
+const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
 
 interface CreateRequestDrawerProps {
   onClose: () => void;
   onCreated: () => void;
-  userLat: number | null;
-  userLng: number | null;
 }
 
 interface CategorySelection {
@@ -35,8 +37,6 @@ const EXPIRY_OPTIONS = [
 export function CreateRequestDrawer({
   onClose,
   onCreated,
-  userLat,
-  userLng,
 }: CreateRequestDrawerProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -49,8 +49,13 @@ export function CreateRequestDrawer({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [locationLabel, setLocationLabel] = useState<string | null>(null);
-  const hasFetchedLocation = useRef(false);
+  
+  const [locationData, setLocationData] = useState({
+    lat: 0,
+    lng: 0,
+    address: "",
+    radius: 5,
+  });
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,41 +67,6 @@ export function CreateRequestDrawer({
     }
   };
 
-  // Reverse geocoding with Nominatim — with fallback
-  useEffect(() => {
-    if (hasFetchedLocation.current) return;
-    if (userLat === null || userLng === null) return;
-    hasFetchedLocation.current = true;
-
-    const controller = new AbortController();
-    fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1`,
-      {
-        signal: controller.signal,
-        headers: { "Accept-Language": "es" },
-      }
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.address) {
-          const parts = [
-            data.address.neighbourhood || data.address.suburb,
-            data.address.city || data.address.town || data.address.village,
-          ].filter(Boolean);
-          setLocationLabel(
-            parts.length > 0 ? parts.join(", ") : "Cerca de tu ubicación actual"
-          );
-        } else {
-          setLocationLabel("Cerca de tu ubicación actual");
-        }
-      })
-      .catch(() => {
-        setLocationLabel("Cerca de tu ubicación actual");
-      });
-
-    return () => controller.abort();
-  }, [userLat, userLng]);
-
   const handleSubmit = async () => {
     setError(null);
 
@@ -106,10 +76,6 @@ export function CreateRequestDrawer({
     }
     if (categories.length === 0) {
       setError("Selecciona al menos una categoría");
-      return;
-    }
-    if (userLat === null || userLng === null) {
-      setError("Activa tu ubicación para publicar una solicitud");
       return;
     }
 
@@ -162,7 +128,9 @@ export function CreateRequestDrawer({
           description: description.trim() || null,
           budget_estimated: budget ? parseFloat(budget) : null,
           image_url: imageUrl,
-          ubicacion_geo: `SRID=4326;POINT(${userLng} ${userLat})`,
+          ubicacion_geo: locationData.lat !== 0 && locationData.lng !== 0 
+            ? `SRID=4326;POINT(${locationData.lng} ${locationData.lat})` 
+            : null,
           expires_at: expiresAt,
         })
         .select("id")
@@ -209,7 +177,10 @@ export function CreateRequestDrawer({
     }
   };
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     // Lock body scroll when drawer is open
     document.body.style.overflow = "hidden";
     return () => {
@@ -217,9 +188,11 @@ export function CreateRequestDrawer({
     };
   }, []);
 
+  if (!mounted) return null;
+
   const visibleCategories = CATEGORIES.filter((c) => !c.hidden_in_form);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center">
       {/* Backdrop */}
       <div
@@ -494,11 +467,17 @@ export function CreateRequestDrawer({
           </div>
 
           {/* Location indicator */}
-          <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-4 py-3">
-            <MapPin className="h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-            <span className="text-sm text-foreground/80">
-              {locationLabel ?? "Obteniendo ubicación..."}
-            </span>
+          <div className="space-y-1.5 pt-2">
+            <label className="text-sm font-medium text-foreground/80">
+              Ubicación de la solicitud{" "}
+              <span className="text-muted-foreground/70 font-normal">
+                (opcional)
+              </span>
+            </label>
+            <DeliveryMap
+              onLocationChange={(lat, lng, address) => setLocationData((p) => ({ ...p, lat, lng, address }))}
+              onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
+            />
           </div>
         </div>
 
@@ -524,6 +503,7 @@ export function CreateRequestDrawer({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
