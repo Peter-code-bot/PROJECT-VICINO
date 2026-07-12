@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES } from "@vicino/shared";
 import {
@@ -10,6 +10,7 @@ import {
   ImagePlus,
   Clock,
   Loader2,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,8 @@ export function CreateRequestDrawer({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const hasFetchedLocation = useRef(false);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,6 +61,41 @@ export function CreateRequestDrawer({
       reader.readAsDataURL(file);
     }
   };
+
+  // Reverse geocoding with Nominatim — with fallback
+  useEffect(() => {
+    if (hasFetchedLocation.current) return;
+    if (userLat === null || userLng === null) return;
+    hasFetchedLocation.current = true;
+
+    const controller = new AbortController();
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1`,
+      {
+        signal: controller.signal,
+        headers: { "Accept-Language": "es" },
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.address) {
+          const parts = [
+            data.address.neighbourhood || data.address.suburb,
+            data.address.city || data.address.town || data.address.village,
+          ].filter(Boolean);
+          setLocationLabel(
+            parts.length > 0 ? parts.join(", ") : "Cerca de tu ubicación actual"
+          );
+        } else {
+          setLocationLabel("Cerca de tu ubicación actual");
+        }
+      })
+      .catch(() => {
+        setLocationLabel("Cerca de tu ubicación actual");
+      });
+
+    return () => controller.abort();
+  }, [userLat, userLng]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -88,20 +126,26 @@ export function CreateRequestDrawer({
         return;
       }
 
-      // Upload image if provided
+      // Upload image if provided — fail explicitly if upload errors
       let imageUrl: string | null = null;
+      let uploadedFilePath: string | null = null;
       if (imageFile) {
-        const ext = imageFile.name.split(".").pop();
-        const filePath = `solicitudes/${user.id}/${Date.now()}.${ext}`;
+        const ext = imageFile.name.split(".").pop() ?? "jpg";
+        const rand = Math.random().toString(36).slice(2, 8);
+        const filePath = `${user.id}/solicitudes-${Date.now()}-${rand}.${ext}`;
         const { error: uploadError } = await supabase.storage
-          .from("media")
+          .from("product-media")
           .upload(filePath, imageFile, { contentType: imageFile.type });
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage
-            .from("media")
-            .getPublicUrl(filePath);
-          imageUrl = urlData?.publicUrl ?? null;
+        if (uploadError) {
+          setError(`Error subiendo imagen: ${uploadError.message}`);
+          setSubmitting(false);
+          return;
         }
+        uploadedFilePath = filePath;
+        const { data: urlData } = supabase.storage
+          .from("product-media")
+          .getPublicUrl(filePath);
+        imageUrl = urlData?.publicUrl ?? null;
       }
 
       // Calculate expiration
@@ -109,7 +153,7 @@ export function CreateRequestDrawer({
         Date.now() + expiryHours * 60 * 60 * 1000
       ).toISOString();
 
-      // Insert purchase request
+      // Insert purchase request — WKT with SRID prefix (matches product-form pattern)
       const { data: newRequest, error: insertError } = await supabase
         .from("purchase_requests")
         .insert({
@@ -118,13 +162,20 @@ export function CreateRequestDrawer({
           description: description.trim() || null,
           budget_estimated: budget ? parseFloat(budget) : null,
           image_url: imageUrl,
-          ubicacion_geo: `POINT(${userLng} ${userLat})`,
+          ubicacion_geo: `SRID=4326;POINT(${userLng} ${userLat})`,
           expires_at: expiresAt,
         })
         .select("id")
         .single();
 
       if (insertError) {
+        // Clean up orphaned image if upload succeeded but insert failed
+        if (uploadedFilePath) {
+          await supabase.storage
+            .from("product-media")
+            .remove([uploadedFilePath])
+            .catch(() => {});
+        }
         setError("Error al publicar. Intenta de nuevo.");
         setSubmitting(false);
         return;
@@ -132,7 +183,6 @@ export function CreateRequestDrawer({
 
       // Insert categories into pivot table
       if (newRequest) {
-        // Fetch category IDs by slug
         const { data: catRows } = await supabase
           .from("categories")
           .select("id, slug")
@@ -197,7 +247,7 @@ export function CreateRequestDrawer({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-safe pb-8 space-y-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground/80">
@@ -443,12 +493,20 @@ export function CreateRequestDrawer({
             )}
           </div>
 
-          {/* Error */}
-          {error && (
-            <p className="text-sm text-destructive font-medium">{error}</p>
-          )}
+          {/* Location indicator */}
+          <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-4 py-3">
+            <MapPin className="h-4 w-4 shrink-0 text-[color:var(--brand)]" />
+            <span className="text-sm text-foreground/80">
+              {locationLabel ?? "Obteniendo ubicación..."}
+            </span>
+          </div>
+        </div>
 
-          {/* Submit */}
+        {/* Fixed bottom — Submit button (outside scroll area) */}
+        <div className="shrink-0 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] border-t border-border/30 bg-card md:rounded-b-3xl">
+          {error && (
+            <p className="text-sm text-destructive font-medium mb-2">{error}</p>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
