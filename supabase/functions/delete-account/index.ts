@@ -27,11 +27,11 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabasePublishableKey = Deno.env.get("SB_PUBLISHABLE_KEY")!;
+    const supabaseSecretKey = Deno.env.get("SB_SECRET_KEY")!;
 
     // 1) Validate identity using caller's session
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const userClient = createClient(supabaseUrl, supabasePublishableKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -48,7 +48,7 @@ serve(async (req) => {
     const userEmail = user.email;
 
     // 2) Admin client for the actual deletion
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    const adminClient = createClient(supabaseUrl, supabaseSecretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
