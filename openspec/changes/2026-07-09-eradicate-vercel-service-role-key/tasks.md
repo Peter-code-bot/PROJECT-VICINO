@@ -23,7 +23,7 @@
 
 - [ ] B-01 -- Rewire `delete-account-section.tsx` to `fetch("/api/account/delete")`
   (restore `8b382d2` pattern: send `confirmText`, keep error box + loading, on success
-  `router.replace("/")`).
+  `router.push("/cuenta-eliminada")`).
 - [ ] B-02 -- Eradicate `deleteAccount()` + `createAdminClient` import from
   `apps/web/app/(marketplace)/configuracion/actions.ts` (delete the file if empty).
 - [ ] B-03 -- Confirm NO edits needed in `api/account/delete/route.ts` nor the Edge
@@ -39,7 +39,7 @@
   `node apps/web/scripts/qa-delete-account.mjs` -> all steps green.
 - [ ] B-09 -- UI validation, 2 viewports (mobile 375x812 + desktop 1280x800): login with a
   throwaway/test user -> Configuracion -> Eliminar mi cuenta -> type ELIMINAR -> account
-  deleted, signed out, redirected home; login again fails (user gone). Screenshot each
+  deleted, signed out, redirected to /cuenta-eliminada; login again fails (user gone). Screenshot each
   viewport.
 - [ ] B-10 -- STOP. Pedro validates Subfase 1 before FASE C.
 

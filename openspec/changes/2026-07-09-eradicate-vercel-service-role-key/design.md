@@ -27,7 +27,7 @@ DeleteAccountSection (client)
        3) storage cleanup best-effort: product-media, verification-documents,
           avatars, chat-media, review-media (paths {user_id}/...)
        4) auth.admin.deleteUser (official GoTrue Admin API)
-  -> route calls supabase.auth.signOut(); client redirects home
+  -> route calls supabase.auth.signOut(); client redirects to /cuenta-eliminada
 ```
 
 All three layers already exist and the Edge Function is deployed (verified alive via
@@ -36,7 +36,7 @@ OPTIONS 200 / POST-noauth 401 on 2026-07-09). Code changes are surgical:
 1. `delete-account-section.tsx`: replace the `deleteAccount()` call with the
    `fetch("/api/account/delete", ...)` pattern from `8b382d2` (send `confirmText`, keep
    the existing error box + loading state; on success rely on the route's signOut and do
-   `router.replace("/")`).
+   `router.push("/cuenta-eliminada")`).
 2. `configuracion/actions.ts`: DELETE `deleteAccount()` and the `createAdminClient`
    import (the file keeps nothing else -- if the action was its only content, delete the
    file and its import in the section component accordingly).

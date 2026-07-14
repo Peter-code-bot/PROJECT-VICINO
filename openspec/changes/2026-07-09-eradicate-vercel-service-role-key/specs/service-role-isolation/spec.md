@@ -38,7 +38,7 @@ moderation/audit trails preserved, `account_deletion_log` retained 90 days).
 - GIVEN a logged-in user on `/configuracion` who typed `ELIMINAR`
 - WHEN they confirm deletion
 - THEN `/api/account/delete` returns success, the session is signed out, and the client
-  redirects home
+  redirects to `/cuenta-eliminada`
 - AND their profile, listings, chats, favorites, notifications and other owned rows are
   gone; their received reviews are anonymized; their storage files are removed
 - AND a subsequent login with the same credentials fails (auth user deleted)
