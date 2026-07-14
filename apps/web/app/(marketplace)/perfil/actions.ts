@@ -110,7 +110,18 @@ export async function completeOnboarding() {
 
   const { error } = await supabase.rpc("complete_user_onboarding");
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[completeOnboarding] RPC error:", error.code, error.message);
+    // P0002: no profiles row for the caller (raised by the anti-loop RPC).
+    // Keep the technical detail in the server log, not in the toast.
+    if (error.code === "P0002") {
+      return {
+        error:
+          "Tu perfil aún no está listo. Espera unos segundos e intenta de nuevo; si persiste, contáctanos.",
+      };
+    }
+    return { error: error.message };
+  }
 
   revalidatePath("/");
   return { success: true };

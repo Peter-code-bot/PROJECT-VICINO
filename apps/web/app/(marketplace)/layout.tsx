@@ -92,7 +92,11 @@ export default async function MarketplaceLayout({
 
   const isVendedor = profile?.es_vendedor ?? false;
 
-  if (user && (!profile || profile.has_seen_onboarding === false)) {
+  // Only a profile that explicitly has not seen onboarding goes to /bienvenida.
+  // profile === null bundles transient query failures (allSettled), the signup
+  // trigger race and genuinely missing rows -- redirecting those loops the user
+  // between / and /bienvenida (completeOnboarding updates 0 rows "successfully").
+  if (user && profile && profile.has_seen_onboarding === false) {
     redirect("/bienvenida");
   }
 

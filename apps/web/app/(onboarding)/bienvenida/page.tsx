@@ -1,7 +1,26 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { OnboardingOptions } from "./onboarding-options";
 
-export default function BienvenidaPage() {
+export default async function BienvenidaPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  // Already-onboarded users have nothing to do here. A missing profile row
+  // still renders the page: completeOnboarding surfaces it as a visible error.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("has_seen_onboarding")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.has_seen_onboarding) redirect("/");
+
   return (
     <div className="flex flex-col items-center justify-center w-full px-4 py-8">
       <div className="mb-6 flex items-center justify-center">
