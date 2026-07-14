@@ -38,7 +38,12 @@ export async function signUp(email: string, password: string, fullName: string) 
     password,
     options: { data: { full_name: fullName } },
   });
-  if (error) return { error: error.message };
+  if (error) {
+    // GoTrue failures (SMTP rate limit, auth.users trigger errors) reach the
+    // user as a generic message; keep the literal cause in the server logs.
+    console.error("[signUp] GoTrue error:", error.status, error.message);
+    return { error: error.message };
+  }
   return { hasSession: Boolean(data.session) };
 }
 

@@ -34,6 +34,14 @@ export function RegisterForm() {
         setError("Este email ya está registrado. Intenta iniciar sesión.");
       } else if (msg.includes("demasiadas") || msg.includes("too many")) {
         setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
+      } else if (msg.includes("rate limit") || msg.includes("sending confirmation email")) {
+        setError(
+          "No pudimos enviar el correo de confirmación en este momento. Espera unos minutos e intenta de nuevo.",
+        );
+      } else if (msg.includes("database error saving new user")) {
+        setError(
+          "Ocurrió un problema al crear tu perfil. Intenta de nuevo; si persiste, contáctanos.",
+        );
       } else {
         setError("Error al crear la cuenta. Intenta de nuevo.");
       }
