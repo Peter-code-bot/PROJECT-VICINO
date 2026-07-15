@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Clock, MapPin, MessageSquare, DollarSign } from "lucide-react";
+import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
 export interface RequestCardData {
@@ -21,17 +22,6 @@ export interface RequestCardData {
   };
   categories: Array<{ slug: string; nombre: string }>;
   response_count: number;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Hace ${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `Hace ${days}d`;
 }
 
 function formatDistance(meters: number): string {
@@ -57,7 +47,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
             <span>·</span>
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {timeAgo(data.created_at)}
+              {formatRelativeTime(data.created_at)}
             </span>
           </div>
 

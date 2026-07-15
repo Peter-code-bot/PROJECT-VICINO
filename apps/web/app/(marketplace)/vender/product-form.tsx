@@ -333,7 +333,11 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     setUploading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id ?? "anon";
+    if (!user) {
+      setUploading(false);
+      throw new Error("Tu sesion expiro. Vuelve a iniciar sesion para subir imagenes.");
+    }
+    const userId = user.id;
     const timestamp = Date.now();
     const finalUrls: string[] = [];
     let pendingIdx = 0;

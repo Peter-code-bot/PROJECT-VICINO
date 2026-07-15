@@ -1,4 +1,7 @@
 -- Migración: Solicitudes (Marketplace Inverso) — MP#10
+-- Corregida 2026-07-14 (auditoría): C1 profiles.foto (avatar_url no existe),
+-- C2 CHECK constraints, C3 policy de ofertas exige expires_at > NOW(),
+-- C4 trigger límite 3 categorías. Aplicación: Camino 2 (Studio), ver SQL-5A.
 -- Propósito: Crear tablas para purchase_requests, purchase_request_categories
 --            y request_responses con RLS, índices PostGIS y RPC de feed.
 --
@@ -30,7 +33,10 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
   status          request_status NOT NULL DEFAULT 'open',
   expires_at      TIMESTAMPTZ NOT NULL,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (char_length(title) >= 3),
+  CHECK (budget_estimated IS NULL OR budget_estimated >= 0),
+  CHECK (expires_at > created_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_purchase_requests_geo
@@ -55,6 +61,29 @@ CREATE TABLE IF NOT EXISTS purchase_request_categories (
 CREATE INDEX IF NOT EXISTS idx_prc_categoria
   ON purchase_request_categories(categoria_id);
 
+-- Límite DB-side: máximo 3 categorías por solicitud (la UI también lo limita).
+-- Best-effort bajo concurrencia (READ COMMITTED sin lock): dos tx simultáneas
+-- podrían superar el cap. Aceptado: el insert del pivote ocurre una sola vez al
+-- crear la solicitud desde un solo cliente; esto es defensa en profundidad.
+CREATE OR REPLACE FUNCTION enforce_max_request_categories()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF (SELECT COUNT(*) FROM public.purchase_request_categories
+      WHERE request_id = NEW.request_id) >= 3 THEN
+    RAISE EXCEPTION 'max 3 categories per request' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_max_request_categories ON purchase_request_categories;
+CREATE TRIGGER trg_max_request_categories
+  BEFORE INSERT ON purchase_request_categories
+  FOR EACH ROW EXECUTE FUNCTION enforce_max_request_categories();
+
 -- =========================================================================
 -- 4. TABLE request_responses (ofertas de vendedores)
 -- =========================================================================
@@ -66,6 +95,8 @@ CREATE TABLE IF NOT EXISTS request_responses (
   price_offer       NUMERIC,
   linked_product_id UUID REFERENCES products_services(id) ON DELETE SET NULL,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (price_offer IS NULL OR price_offer >= 0),
+  CHECK (char_length(message_offer) BETWEEN 1 AND 1000),
   UNIQUE (request_id, seller_id)
 );
 
@@ -165,6 +196,7 @@ CREATE POLICY "request_responses_insert" ON request_responses
       SELECT 1 FROM purchase_requests pr
       WHERE pr.id = request_responses.request_id
         AND pr.status = 'open'
+        AND pr.expires_at > NOW()
         AND pr.buyer_id != auth.uid()
     )
   );
@@ -224,7 +256,7 @@ RETURNS TABLE (
     -- Buyer profile embed
     jsonb_build_object(
       'nombre',      bp.nombre,
-      'avatar_url',  bp.avatar_url
+      'avatar_url',  bp.foto
     ) AS buyer_profile,
     -- Categories embed
     COALESCE(

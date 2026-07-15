@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Star, MessageCircle, Send, Loader2, User } from "lucide-react";
+import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
 interface OfferData {
@@ -29,17 +30,6 @@ interface OffersListProps {
   isOpen: boolean;
   userHasOffer: boolean;
   userId: string | null;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Hace ${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `Hace ${days}d`;
 }
 
 export function OffersList({
@@ -95,7 +85,7 @@ export function OffersList({
         created_at,
         profiles!request_responses_seller_id_fkey (
           nombre,
-          avatar_url,
+          avatar_url:foto,
           average_rating,
           reviews_count
         )
@@ -179,7 +169,7 @@ export function OffersList({
                         </span>
                       )}
                     <span className="text-xs text-muted-foreground ml-auto">
-                      {timeAgo(offer.created_at)}
+                      {formatRelativeTime(offer.created_at)}
                     </span>
                   </div>
 
@@ -198,7 +188,7 @@ export function OffersList({
                   {/* Owner action: Accept + Chat */}
                   {isOwner && isOpen && (
                     <Link
-                      href={`/chat?to=${offer.seller_id}`}
+                      href={`/chat?seller=${offer.seller_id}`}
                       className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       <MessageCircle className="h-3.5 w-3.5" />

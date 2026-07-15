@@ -54,7 +54,6 @@ export function CreateRequestDrawer({
     lat: 0,
     lng: 0,
     address: "",
-    radius: 5,
   });
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +75,10 @@ export function CreateRequestDrawer({
     }
     if (categories.length === 0) {
       setError("Selecciona al menos una categoría");
+      return;
+    }
+    if (locationData.lat === 0 && locationData.lng === 0) {
+      setError("Selecciona la ubicación de tu solicitud");
       return;
     }
 
@@ -128,9 +131,7 @@ export function CreateRequestDrawer({
           description: description.trim() || null,
           budget_estimated: budget ? parseFloat(budget) : null,
           image_url: imageUrl,
-          ubicacion_geo: locationData.lat !== 0 && locationData.lng !== 0 
-            ? `SRID=4326;POINT(${locationData.lng} ${locationData.lat})` 
-            : null,
+          ubicacion_geo: `SRID=4326;POINT(${locationData.lng} ${locationData.lat})`,
           expires_at: expiresAt,
         })
         .select("id")
@@ -469,14 +470,12 @@ export function CreateRequestDrawer({
           {/* Location indicator */}
           <div className="space-y-1.5 pt-2">
             <label className="text-sm font-medium text-foreground/80">
-              Ubicación de la solicitud{" "}
-              <span className="text-muted-foreground/70 font-normal">
-                (opcional)
-              </span>
+              Ubicación de la solicitud
             </label>
+            {/* el radio de busqueda lo elige quien explora el feed; no es parte de la solicitud */}
             <DeliveryMap
               onLocationChange={(lat, lng, address) => setLocationData((p) => ({ ...p, lat, lng, address }))}
-              onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
+              onRadiusChange={() => {}}
             />
           </div>
         </div>

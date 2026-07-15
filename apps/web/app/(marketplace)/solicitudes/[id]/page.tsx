@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowLeft, Clock, MapPin, DollarSign, MessageSquare } from "lucide-react";
+import { formatRelativeTime } from "@vicino/shared";
 import { OffersList } from "@/components/solicitudes/offers-list";
 
 interface Props {
@@ -23,17 +24,6 @@ export async function generateMetadata({ params }: Props) {
   return {
     title: data ? `${data.title} — Solicitudes VICINO` : "Solicitud — VICINO",
   };
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Hace ${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `Hace ${days}d`;
 }
 
 function timeLeft(dateStr: string): string {
@@ -70,7 +60,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
       created_at,
       profiles!purchase_requests_buyer_id_fkey (
         nombre,
-        avatar_url
+        avatar_url:foto
       )
     `
     )
@@ -107,7 +97,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
       created_at,
       profiles!request_responses_seller_id_fkey (
         nombre,
-        avatar_url,
+        avatar_url:foto,
         average_rating,
         reviews_count
       )
@@ -178,7 +168,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
               {buyerProfile.nombre}
             </p>
             <p className="text-xs text-muted-foreground">
-              {timeAgo(request.created_at)}
+              {formatRelativeTime(request.created_at)}
             </p>
           </div>
           {isOpen && (
