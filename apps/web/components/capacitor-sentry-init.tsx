@@ -22,9 +22,12 @@ export function CapacitorSentryInit() {
         SentryCapacitor.init(
           {
             dsn: process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE,
-            environment: "android-production",
+            environment: `${Capacitor.getPlatform()}-production`,
             release: `vicino@${process.env.NEXT_PUBLIC_VERSION ?? "dev"}`,
-            dist: process.env.NEXT_PUBLIC_ANDROID_BUILD ?? "1",
+            dist:
+              Capacitor.getPlatform() === "ios"
+                ? (process.env.NEXT_PUBLIC_IOS_BUILD ?? "1")
+                : (process.env.NEXT_PUBLIC_ANDROID_BUILD ?? "1"),
             sampleRate: 1.0,
             tracesSampleRate: 0.05,
             // Session Replay intentionally omitted: removed entirely in
