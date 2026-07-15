@@ -12,6 +12,11 @@
 -- Delivery: Camino 2 (Pedro corre el WRITE en Studio, bloque C6 de SQL-5A, con
 -- READ verify de paths no conformes antes de aplicar). Repo-of-record, NO via
 -- `supabase db push`.
+--
+-- OJO drift: las policies permisivas se combinan con OR. El READ verify de SQL-5A
+-- lista TODAS las policies de product-media; si la DB viva tiene policies
+-- INSERT/DELETE con nombres distintos a los de 20260320000017 (creadas via
+-- Studio), hay que DROPearlas por su nombre real o esta restriccion no aplica.
 
 DROP POLICY IF EXISTS "Owner delete product media" ON storage.objects;
 CREATE POLICY "Owner delete product media"
