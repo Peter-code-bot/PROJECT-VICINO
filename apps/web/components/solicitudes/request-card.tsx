@@ -33,7 +33,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
   return (
     <Link
       href={`/solicitudes/${data.id}`}
-      className="block rounded-2xl bg-[color:var(--sidebar-bg)] border border-border/50 p-4 transition-all hover:shadow-md hover:border-border/80 active:scale-[0.98]"
+      className="block rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md active:scale-[0.98]"
     >
       <div className="flex gap-3">
         {/* Text content */}
@@ -67,8 +67,12 @@ export function RequestCard({ data }: { data: RequestCardData }) {
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Budget chip */}
             {data.budget_estimated && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-3 w-3" />
+              <span className={cn(
+                "inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm",
+                "bg-[#1A1A2E] text-white",
+                "dark:bg-white/92 dark:text-brand-dark"
+              )}>
+                <DollarSign className="h-3.5 w-3.5" />
                 ${data.budget_estimated.toLocaleString()} MXN
               </span>
             )}
@@ -77,7 +81,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
             {data.categories.slice(0, 2).map((cat) => (
               <span
                 key={cat.slug}
-                className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]"
               >
                 {cat.nombre}
               </span>

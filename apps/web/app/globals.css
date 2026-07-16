@@ -394,12 +394,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .category-tile-unselected {
-  background-color: #F4F1EB;
+  background-color: var(--sidebar-bg);
   color: #121212;
+  border: none;
 }
 .dark .category-tile-unselected {
-  background-color: #121212;
+  background-color: var(--sidebar-bg);
   color: #F4F1EB;
+  border: none;
 }
 
 .product-card-custom {
