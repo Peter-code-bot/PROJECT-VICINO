@@ -33,7 +33,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
   return (
     <Link
       href={`/solicitudes/${data.id}`}
-      className="block rounded-2xl bg-card border border-border/50 p-4 transition-all hover:shadow-md hover:border-border/80 active:scale-[0.98]"
+      className="block rounded-2xl bg-[color:var(--sidebar-bg)] border border-border/50 p-4 transition-all hover:shadow-md hover:border-border/80 active:scale-[0.98]"
     >
       <div className="flex gap-3">
         {/* Text content */}

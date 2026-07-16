@@ -403,10 +403,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-card-custom {
-  background-color: #F4F1EB;
+  background-color: var(--sidebar-bg);
 }
 .dark .product-card-custom {
-  background-color: #121212;
+  background-color: var(--sidebar-bg);
 }
 
 .product-card-text {
