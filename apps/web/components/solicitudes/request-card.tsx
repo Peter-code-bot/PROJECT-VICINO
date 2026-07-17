@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, MapPin, MessageSquare, DollarSign } from "lucide-react";
+import { Clock, MapPin, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
@@ -69,10 +69,8 @@ export function RequestCard({ data }: { data: RequestCardData }) {
             {data.budget_estimated && (
               <span className={cn(
                 "inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm",
-                "bg-[#1A1A2E] text-white",
-                "dark:bg-white/92 dark:text-brand-dark"
+                "product-card-tab"
               )}>
-                <DollarSign className="h-3.5 w-3.5" />
                 ${data.budget_estimated.toLocaleString()} MXN
               </span>
             )}

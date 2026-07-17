@@ -29,4 +29,22 @@
 - [x] **6. Verificación**
   - [x] TypeScript compila sin errores
   - [x] CODEX Adversarial Review completado
-  - [ ] Aplicar migraciones SQL en Supabase (pendiente del desarrollador)
+  - [x] Aplicar migraciones SQL en Supabase
+
+- [x] **7. Hotfixes de UI (Polishing)**
+  - [x] Alinear color del tab "Solicitudes" con `--brand`
+  - [x] Ajustar Z-index global y SafeArea para BottomNav y Botón Flotante
+  - [x] Bloqueo de scroll (`overflow: hidden`) en desktop al abrir Drawer
+  - [x] Ajuste Fullscreen Mobile (`100dvh`) con scroll interno habilitado para Drawer
+
+- [x] **8. Bug Fixes Críticos (Post-Deploy)**
+  - [x] Corregir bucket de Storage: `"media"` → `"product-media"`
+  - [x] Corregir path de Storage: `solicitudes/{uid}/...` → `{uid}/solicitudes-...` (cumplir política hardened)
+  - [x] Corregir WKT de PostGIS: `POINT(...)` → `SRID=4326;POINT(...)`
+  - [x] Error handling explícito: si upload falla, no intentar INSERT
+  - [x] Limpieza de archivos huérfanos: si INSERT falla tras upload exitoso, borrar imagen subida
+  - [x] Extraer botón Submit fuera del scroll area (`shrink-0`) — siempre visible
+  - [x] Safe area cross-platform (iOS + Android/Capacitor, confirmado `viewport-fit: cover`)
+  - [x] Indicador de ubicación con reverse geocoding Nominatim + fallback graceful
+  - [x] Sufijo random en filename para prevenir colisiones de milisegundo
+
