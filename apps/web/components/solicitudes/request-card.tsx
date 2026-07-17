@@ -38,18 +38,19 @@ export function RequestCard({ data }: { data: RequestCardData }) {
       <div className="flex gap-3">
         {/* Text content */}
         <div className="flex-1 min-w-0">
-          {/* Metadata row */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              A {formatDistance(data.distance_meters)}
-            </span>
-            <span>·</span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatRelativeTime(data.created_at)}
-            </span>
-          </div>
+          {/* Top category (only if no image) */}
+          {!data.image_url && data.categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+              {data.categories.slice(0, 2).map((cat) => (
+                <span
+                  key={cat.slug}
+                  className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]"
+                >
+                  {cat.nombre}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Title */}
           <h3 className="font-semibold text-foreground text-[15px] leading-snug line-clamp-2 mb-1">
@@ -63,8 +64,8 @@ export function RequestCard({ data }: { data: RequestCardData }) {
             </p>
           )}
 
-          {/* Chips row */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Bottom row: Budget, Location, Time, Offers */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2">
             {/* Budget chip */}
             {data.budget_estimated && (
               <span className={cn(
@@ -75,15 +76,18 @@ export function RequestCard({ data }: { data: RequestCardData }) {
               </span>
             )}
 
-            {/* Category chips */}
-            {data.categories.slice(0, 2).map((cat) => (
-              <span
-                key={cat.slug}
-                className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]"
-              >
-                {cat.nombre}
+            {/* Metadata row (Location, Time) */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                A {formatDistance(data.distance_meters)}
               </span>
-            ))}
+              <span>·</span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatRelativeTime(data.created_at)}
+              </span>
+            </div>
 
             {/* Response count */}
             {data.response_count > 0 && (
@@ -97,14 +101,23 @@ export function RequestCard({ data }: { data: RequestCardData }) {
 
         {/* Optional image thumbnail */}
         {data.image_url && (
-          <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl">
+          <div className="relative h-20 w-24 flex-shrink-0 overflow-hidden rounded-xl">
             <Image
               src={data.image_url}
               alt={data.title}
               fill
               className="object-cover"
-              sizes="80px"
+              sizes="96px"
             />
+            {data.categories.length > 0 && (
+              <div className="absolute bottom-1 right-1 left-1 flex justify-end">
+                <span
+                  className="inline-flex px-1.5 py-0.5 rounded product-card-tab font-heading font-extrabold text-[8px] tracking-[1px] uppercase shadow-[0_2px_5px_rgba(0,0,0,0.5)] truncate max-w-full"
+                >
+                  {data.categories[0]?.nombre}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

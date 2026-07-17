@@ -104,11 +104,7 @@ export function ProfileHeader({
 
           {/* Stats — Fila Compacta */}
           <div className="w-full">
-            {/* Línea superior verde */}
-            <div
-              className="h-px w-full mb-3"
-              style={{ background: 'linear-gradient(to right, transparent, #2E8773, transparent)' }}
-            />
+
 
             {/* Fila de stats */}
             <div className="flex w-full text-center py-1">
@@ -160,11 +156,7 @@ export function ProfileHeader({
 
             </div>
 
-            {/* Línea inferior verde */}
-            <div
-              className="h-px w-full mt-3"
-              style={{ background: 'linear-gradient(to right, transparent, #2E8773, transparent)' }}
-            />
+
           </div>
         </div>
       </div>
@@ -211,7 +203,7 @@ export function ProfileHeader({
           const progress = next ? Math.min(100, ((points - currentMin) / (nextMin - currentMin)) * 100) : 100;
           return (
             <div className="space-y-1">
-              <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
+              <div className="h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
                 <div
                   className="h-full rounded-full bg-[color:var(--brand)] shadow-[var(--shadow-glow)] transition-all"
                   style={{ width: `${Math.max(5, progress)}%` }}
@@ -233,14 +225,14 @@ export function ProfileHeader({
       {/* Seller info */}
       {profile.es_vendedor && profile.nombre_negocio && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand-tint-strong)] px-2.5 py-1 text-xs font-medium text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold product-card-btn">
             <Store className="w-3 h-3" />
             {profile.nombre_negocio}
           </span>
           {profile.metodos_pago_aceptados?.split(",").map((m) => (
             <span
               key={m.trim()}
-              className="rounded-lg bg-[color:var(--card-2)] px-2 py-1 text-xs text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]"
+              className="rounded-full px-2.5 py-1 text-xs font-semibold product-card-tab shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
             >
               {m.trim()}
             </span>

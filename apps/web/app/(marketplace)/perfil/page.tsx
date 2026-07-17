@@ -110,7 +110,7 @@ export default async function PerfilPage() {
           <Link
             href="?edit=products"
             scroll={false}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] text-[#1A1A2E] transition-colors"
             aria-label="Editar productos"
           >
             <Pencil className="w-4 h-4" />
@@ -124,7 +124,7 @@ export default async function PerfilPage() {
           trigger={
             <button
               aria-label="Menú de cuenta"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] text-[#1A1A2E] transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>

@@ -27,12 +27,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   let query = supabase
     .from("profiles")
-    .select("id, nombre, email, user_id, es_vendedor, trust_level, average_rating, total_sales, created_at")
+    .select("id, nombre, user_id, es_vendedor, trust_level, average_rating, total_sales, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (params.q) {
-    query = query.or(`nombre.ilike.%${params.q}%,email.ilike.%${params.q}%,user_id.ilike.%${params.q}%`);
+    query = query.or(`nombre.ilike.%${params.q}%,user_id.ilike.%${params.q}%`);
   }
 
   if (params.role) {
@@ -64,7 +64,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     <div className="space-y-4 flex flex-col flex-1 h-full">
       <h1 className="text-xl font-bold">Usuarios</h1>
 
-      <form className="flex gap-2">
+      <form className="flex flex-col sm:flex-row flex-wrap gap-2">
         <input
           name="q"
           type="text"
@@ -113,7 +113,6 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                   ))}
                 </div>
                 <div className="flex gap-3 text-xs text-muted-foreground">
-                  <span>{u.email}</span>
                   <span>{u.user_id}</span>
                   <span>{u.total_sales} ventas</span>
                 </div>
