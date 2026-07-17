@@ -5,8 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES } from "@vicino/shared";
 import { RequestCard, type RequestCardData } from "./request-card";
 import { CreateRequestDrawer } from "./create-request-drawer";
-import { Plus, Inbox } from "lucide-react";
+import { 
+  Plus, Inbox, MoreHorizontal,
+  UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
+  Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
+  Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
+  Stethoscope, Camera, Building, Warehouse, Briefcase, LucideIcon
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  comida: UtensilsCrossed, ropa: Shirt, tecnologia: Smartphone, hogar: Home,
+  belleza: Sparkles, salud: HeartPulse, deportes: Dumbbell, mascotas: PawPrint,
+  bebes: Baby, vehiculos: Car, libros: BookOpen, juguetes: Gamepad2,
+  arte: Palette, muebles: Armchair, "servicios-hogar": Wrench, educacion: GraduationCap,
+  eventos: PartyPopper, transporte: Truck, "diseno-tech": Code, "salud-terapias": Stethoscope,
+  fotografia: Camera, inmuebles: Building, "proveedores-mayoreo": Warehouse, empleos: Briefcase,
+  otros: MoreHorizontal,
+};
 
 interface SolicitudesFeedProps {
   userLat: number | null;
@@ -61,29 +77,33 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
             type="button"
             onClick={() => setActiveCategory(null)}
             className={cn(
-              "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors border",
+              "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
               activeCategory === null
-                ? "bg-foreground text-background border-foreground"
-                : "bg-transparent text-muted-foreground border-border hover:border-foreground/30"
+                ? "category-tile-selected"
+                : "product-card-custom hover:opacity-90"
             )}
           >
             Todas
           </button>
-          {visibleCategories.map((cat) => (
-            <button
-              key={cat.slug}
-              type="button"
-              onClick={() => setActiveCategory(cat.slug === activeCategory ? null : cat.slug)}
-              className={cn(
-                "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors border whitespace-nowrap",
-                activeCategory === cat.slug
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-transparent text-muted-foreground border-border hover:border-foreground/30"
-              )}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {visibleCategories.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.slug] ?? MoreHorizontal;
+            return (
+              <button
+                key={cat.slug}
+                type="button"
+                onClick={() => setActiveCategory(cat.slug === activeCategory ? null : cat.slug)}
+                className={cn(
+                  "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
+                  activeCategory === cat.slug
+                    ? "category-tile-selected"
+                    : "product-card-custom hover:opacity-90"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{cat.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

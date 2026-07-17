@@ -39,8 +39,8 @@
   --fg:            #1A1A2E;
   --fg-muted:      #5C6360;
   --fg-dim:        #8B8F8C;
-  --border:        #E8E2D5;
-  --border-strong: #D5CDB8;
+  --border:        #1A1A2E;
+  --border-strong: #1A1A2E;
 
   /* Auth custom colors */
   --auth-card: #F4ECE0;
@@ -89,8 +89,8 @@
   --fg:            #F4F1EB;
   --fg-muted:      #A8B0AD;
   --fg-dim:        #5C6360;
-  --border:        #1F3530;
-  --border-strong: #2A4640;
+  --border:        #FFF8F0;
+  --border-strong: #FFF8F0;
   --auth-card: #0D0D1A;
   --auth-page-bg: transparent;
   --auth-input: #000000;

@@ -131,7 +131,7 @@ export function OffersList({
           {localResponses.map((offer) => (
             <div
               key={offer.id}
-              className="rounded-2xl bg-card border border-border/50 p-4"
+              className="rounded-2xl product-card-custom p-4"
             >
               <div className="flex items-start gap-3">
                 {/* Avatar */}
@@ -175,7 +175,7 @@ export function OffersList({
 
                   {/* Price offer */}
                   {offer.price_offer && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                    <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm product-card-tab mt-1">
                       ${offer.price_offer.toLocaleString()} MXN
                     </span>
                   )}

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft, Clock, MapPin, DollarSign, MessageSquare } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { OffersList } from "@/components/solicitudes/offers-list";
 
@@ -207,15 +207,14 @@ export default async function SolicitudDetailPage({ params }: Props) {
         {/* Chips */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
           {request.budget_estimated && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <DollarSign className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm product-card-tab">
               Presupuesto: ${request.budget_estimated.toLocaleString()} MXN
             </span>
           )}
           {catList.map((cat) => (
             <span
               key={cat.slug}
-              className="inline-flex rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground"
+              className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]"
             >
               {cat.nombre}
             </span>
