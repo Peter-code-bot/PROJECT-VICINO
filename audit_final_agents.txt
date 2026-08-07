@@ -1,0 +1,84 @@
+﻿DISCREPANCY: Page '­ƒÄ¼ Arquitectura de Agentes y Skills para Producci├│n Audiovisual' content differs
+  Line 32:
+    Local : "| `sickn33/antigravity-awesome-skills` | 1,595+ skills incluyendo ingest-youtube, youtube-automation |"
+    Notion: "| `sickn33/antigravity-awesome-skills`"
+  Line 33:
+    Local : "| `vizionik25/vidmagik-mcp` | 70+ funciones creativas MoviePy |"
+    Notion: " | 1,595+ skills incluyendo ingest-youtube, youtube-automation |"
+  Line 34:
+    Local : "| `mikechambers/adb-mcp` | Proxy MCP ÔåÆ Adobe Premiere/Photoshop v├¡a UXP |"
+    Notion: "| `vizionik25/vidmagik-mcp` | 70+ funciones creativas MoviePy |"
+  Line 35:
+    Local : "## Prerequisitos de Sistema"
+    Notion: "| `mikechambers/adb-mcp` | Proxy MCP ÔåÆ Adobe Premiere/Photoshop v├¡a UXP |"
+  Line 36:
+    Local : "- FFmpeg en PATH"
+    Notion: "## Prerequisitos de Sistema"
+  Line 37:
+    Local : "- Python 3.12+ con uv"
+    Notion: "- FFmpeg en PATH"
+  Line 38:
+    Local : "- yt-dlp"
+    Notion: "- Python 3.12+ con uv"
+  Line 39:
+    Local : "- API Keys: ElevenLabs, Mux, Pexels (opcionales)"
+    Notion: "- yt-dlp"
+  Line 40:
+    Local : "## Tiempo Estimado: ~5-6 horas"
+    Notion: "- API Keys: ElevenLabs, Mux, Pexels (opcionales)"
+  Line 41:
+    Local : "---"
+    Notion: "## Tiempo Estimado: ~5-6 horas"
+  Line 42:
+    Local : "> Ver tambi├®n: [[skill_anuncios_marketing]] ┬À [[skills_catalog]]"
+    Notion: "---"
+  Line 43:
+    Local : "<EOF>"
+    Notion: "> Ver tambi├®n: [[skill_anuncios_marketing]] ┬À [[skills_catalog]]"
+MATCH: Page 'Registro de Skills de Video' is in sync
+DISCREPANCY: Page '­ƒñû Ruflo y Agentes Auto-Reflexivos' content differs
+  Line 24:
+    Local : "Para proyectos que requieren el servidor MCP completo y un demonio gestionando la memoria vectorial aut├│noma:"
+    Notion: "Para proyectos que requieren el servidor MCP co"
+  Line 25:
+    Local : "```bash"
+    Notion: "mpleto y un demonio gestionando la memoria vectorial aut├│noma:"
+  Line 26:
+    Local : "npx ruflo@latest init wizard"
+    Notion: "```bash"
+  Line 27:
+    Local : "```"
+    Notion: "npx ruflo@latest init wizard"
+  Line 28:
+    Local : "<EOF>"
+    Notion: "```"
+MISSING: Page '­ƒñû Inventario de AI Skills & Herramientas' is not found in Notion
+MISSING: Page '­ƒôó AI Skill: Creaci├│n de Anuncios de Marketing' is not found in Notion
+DISCREPANCY: Page '05_AI_Agents ÔÇö Inteligencia Artificial y Herramientas' content differs
+  Line 26:
+    Local : "CI/CD: coderabbit, github-actions, husky, lighthouse, vercel-preview"
+    Notion: "CI/CD: coderabbit, github-actions, husky, lighthou"
+  Line 27:
+    Local : "Geo: h3-zoning, map-render, postgis-bootstrap, proximity-rpc, share-whatsapp"
+    Notion: "se, vercel-preview"
+  Line 28:
+    Local : "Mobile: capacitor-wrap, konsta-ui, native-plugins, pwa-serwist"
+    Notion: "Geo: h3-zoning, map-render, postgis-bootstrap, proximity-rpc, share-whatsapp"
+  Line 29:
+    Local : "QA: debug2fix, hydration-hunter, playwright-e2e, sentry, storybook, vitest"
+    Notion: "Mobile: capacitor-wrap, konsta-ui, native-plugins, pwa-serwist"
+  Line 30:
+    Local : "Supabase: google-oauth, mcp-bridge, realtime, rls-author, ssr-auth, storage-policies"
+    Notion: "QA: debug2fix, hydration-hunter, playwright-e2e, sentry, storybook, vitest"
+  Line 31:
+    Local : "UI: lottie-loader, magic-accents, motion-choreographer, shadcn, tailwind-hygiene, toast-drawer, variant-author"
+    Notion: "Supabase: google-oauth, mcp-bridge, realtime, rls-author, ssr-auth, storage-policies"
+  Line 32:
+    Local : "---"
+    Notion: "UI: lottie-loader, magic-accents, motion-choreographer, shadcn, tailwind-hygiene, toast-drawer, variant-author"
+  Line 33:
+    Local : "­ƒôî Inteligencia Artificial y herramientas. Cat├ílogo de skills de IA, mega prompts, arquitectura de agentes reflexivos (Ruflo), herramientas audiovisuales y cualquier instrucci├│n o configuraci├│n dise├▒ada para que los agentes de IA operen dentro de VICINO."
+    Notion: "---"
+  Line 34:
+    Local : "<EOF>"
+    Notion: "­ƒôî Inteligencia Artificial y herramientas. Cat├ílogo de skills de IA, mega prompts, arquitectura de agentes reflexivos (Ruflo), herramientas audiovisuales y cualquier instrucci├│n o configuraci├│n dise├▒ada para que los agentes de IA operen dentro de VICINO."

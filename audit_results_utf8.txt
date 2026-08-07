@@ -1,0 +1,594 @@
+﻿MISSING: Page '­ƒÄ¼ Arquitectura de Agentes y Skills para Producci├│n Audiovisual' is not found in Notion
+DISCREPANCY: Page 'Registro de Skills de Video' content differs
+  Line 2:
+    Local : "# Registro de Skills de Video"
+    Notion: "> Resumen de las habilidades locales (AI Agent Skills) para direcci├│n y producci├│n audiovisual en el proyecto VICINO."
+  Line 3:
+    Local : "> Resumen de las habilidades locales (AI Agent Skills) para direcci├│n y producci├│n audiovisual en el proyecto VICINO."
+    Notion: "---"
+  Line 4:
+    Local : "---"
+    Notion: "## 1. Skill: av-demo-director"
+  Line 5:
+    Local : "## 1. Skill: av-demo-director"
+    Notion: "Habilidad especializada que gu├¡a la direcci├│n creativa de los videos promocionales y pitches de competencia de VICINO."
+  Line 6:
+    Local : "Habilidad especializada que gu├¡a la direcci├│n creativa de los videos promocionales y pitches de competencia de VICINO."
+    Notion: "- Ruta local: .agents/skills/av-demo-director/SKILL.md"
+  Line 7:
+    Local : "- Ruta local: .agents/skills/av-demo-director/SKILL.md"
+    Notion: "- Metodolog├¡a: Define el estilo visual 'Quiet Luxury' (colores, tipograf├¡as), la estructura del pitch de 3-5 minutos dividida en 5 bloques narrativos, lineamientos de color grading (sombras Charcoal, highlights Cream) y dise├▒o de audio de 3 capas."
+  Line 8:
+    Local : "- Metodolog├¡a: Define el estilo visual 'Quiet Luxury' (colores, tipograf├¡as), la estructura del pitch de 3-5 minutos dividida en 5 bloques narrativos, lineamientos de color grading (sombras Charcoal, highlights Cream) y dise├▒o de audio de 3 capas."
+    Notion: "---"
+  Line 9:
+    Local : "---"
+    Notion: "## 2. Skill: av-design-toolkit"
+  Line 10:
+    Local : "## 2. Skill: av-design-toolkit"
+    Notion: "Cat├ílogo y gu├¡a de herramientas para producci├│n de contenido gr├ífico y audiovisual optimizado para el equipo de VICINO."
+  Line 11:
+    Local : "Cat├ílogo y gu├¡a de herramientas para producci├│n de contenido gr├ífico y audiovisual optimizado para el equipo de VICINO."
+    Notion: "- Ruta local: .agents/skills/av-design-toolkit/SKILL.md"
+  Line 12:
+    Local : "- Ruta local: .agents/skills/av-design-toolkit/SKILL.md"
+    Notion: "- Metodolog├¡a: Re├║ne mejores pr├ícticas para edici├│n r├ípida con CapCut, uso de Canva Pro para overlays, OBS Studio para grabaci├│n de pantallas m├│viles, DaVinci Resolve para grading profesional y acceso a recursos estudiantiles/edu de Figma."
+  Line 13:
+    Local : "- Metodolog├¡a: Re├║ne mejores pr├ícticas para edici├│n r├ípida con CapCut, uso de Canva Pro para overlays, OBS Studio para grabaci├│n de pantallas m├│viles, DaVinci Resolve para grading profesional y acceso a recursos estudiantiles/edu de Figma."
+    Notion: "<EOF>"
+MISSING: Page '­ƒñû Ruflo y Agentes Auto-Reflexivos' is not found in Notion
+MISSING: Page '­ƒñû Inventario de AI Skills & Herramientas' is not found in Notion
+MISSING: Page '­ƒôó AI Skill: Creaci├│n de Anuncios de Marketing' is not found in Notion
+DISCREPANCY: Page '05_AI_Agents ÔÇö Inteligencia Artificial y Herramientas' content differs
+  Line 1:
+    Local : "# 05_AI_Agents ÔÇö Inteligencia Artificial y Herramientas"
+    Notion: "# VICINO Category: 05_AI_Agents"
+  Line 2:
+    Local : "# VICINO Category: 05_AI_Agents"
+    Notion: "This is the numerical taxonomy root folder for 05_AI_Agents in the VICINO project."
+  Line 3:
+    Local : "This is the numerical taxonomy root folder for 05_AI_Agents in the VICINO project."
+    Notion: "---"
+  Line 4:
+    Local : "---"
+    Notion: "# Registro de Skills de Video"
+  Line 5:
+    Local : "# Registro de Skills de Video"
+    Notion: "> Resumen de las habilidades locales (AI Agent Skills) para direcci├│n y producci├│n audiovisual en el proyecto VICINO."
+  Line 6:
+    Local : "> Resumen de las habilidades locales (AI Agent Skills) para direcci├│n y producci├│n audiovisual en el proyecto VICINO."
+    Notion: "---"
+  Line 7:
+    Local : "---"
+    Notion: "## 1. Skill: av-demo-director"
+  Line 8:
+    Local : "## 1. Skill: av-demo-director"
+    Notion: "Habilidad especializada que gu├¡a la direcci├│n creativa de los videos promocionales y pitches de competencia de VICINO."
+  Line 9:
+    Local : "Habilidad especializada que gu├¡a la direcci├│n creativa de los videos promocionales y pitches de competencia de VICINO."
+    Notion: "- Ruta local: .agents/skills/av-demo-director/SKILL.md"
+  Line 10:
+    Local : "- Ruta local: .agents/skills/av-demo-director/SKILL.md"
+    Notion: "- Metodolog├¡a: Define el estilo visual 'Quiet Luxury' (colores, tipograf├¡as), la estructura del pitch de 3-5 minutos dividida en 5 bloques narrativos, lineamientos de color grading (sombras Charcoal, highlights Cream) y dise├▒o de audio de 3 capas."
+  Line 11:
+    Local : "- Metodolog├¡a: Define el estilo visual 'Quiet Luxury' (colores, tipograf├¡as), la estructura del pitch de 3-5 minutos dividida en 5 bloques narrativos, lineamientos de color grading (sombras Charcoal, highlights Cream) y dise├▒o de audio de 3 capas."
+    Notion: "---"
+  Line 12:
+    Local : "---"
+    Notion: "## 2. Skill: av-design-toolkit"
+  Line 13:
+    Local : "## 2. Skill: av-design-toolkit"
+    Notion: "Cat├ílogo y gu├¡a de herramientas para producci├│n de contenido gr├ífico y audiovisual optimizado para el equipo de VICINO."
+  Line 14:
+    Local : "Cat├ílogo y gu├¡a de herramientas para producci├│n de contenido gr├ífico y audiovisual optimizado para el equipo de VICINO."
+    Notion: "- Ruta local: .agents/skills/av-design-toolkit/SKILL.md"
+  Line 15:
+    Local : "- Ruta local: .agents/skills/av-design-toolkit/SKILL.md"
+    Notion: "- Metodolog├¡a: Re├║ne mejores pr├ícticas para edici├│n r├ípida con CapCut, uso de Canva Pro para overlays, OBS Studio para grabaci├│n de pantallas m├│viles, DaVinci Resolve para grading profesional y acceso a recursos estudiantiles/edu de Figma."
+  Line 16:
+    Local : "- Metodolog├¡a: Re├║ne mejores pr├ícticas para edici├│n r├ípida con CapCut, uso de Canva Pro para overlays, OBS Studio para grabaci├│n de pantallas m├│viles, DaVinci Resolve para grading profesional y acceso a recursos estudiantiles/edu de Figma."
+    Notion: "Registro centralizado de todas las Skills y herramientas del agente de IA para VICINO. ├Ültima actualizaci├│n: 2026-05-21"
+  Line 17:
+    Local : "Registro centralizado de todas las Skills y herramientas del agente de IA para VICINO. ├Ültima actualizaci├│n: 2026-05-21"
+    Notion: "ÔöüÔöüÔöü Herramientas de Automatizaci├│n ÔöüÔöüÔöü"
+  Line 18:
+    Local : "ÔöüÔöüÔöü Herramientas de Automatizaci├│n ÔöüÔöüÔöü"
+    Notion: "Skill Seeker: Python/pip para generar y empaquetar nuevas habilidades desde docs web, PDFs o repos."
+  Line 19:
+    Local : "Skill Seeker: Python/pip para generar y empaquetar nuevas habilidades desde docs web, PDFs o repos."
+    Notion: "ÔöüÔöüÔöü Skills en .agents/skills (10 skills) ÔöüÔöüÔöü"
+  Line 20:
+    Local : "ÔöüÔöüÔöü Skills en .agents/skills (10 skills) ÔöüÔöüÔöü"
+    Notion: "- Arquitectura: postgis-vicino, vicino-data-model"
+  Line 21:
+    Local : "- Arquitectura: postgis-vicino, vicino-data-model"
+    Notion: "- Seguridad: audit-geo-privacy, verify-trust-scores"
+  Line 22:
+    Local : "- Seguridad: audit-geo-privacy, verify-trust-scores"
+    Notion: "- Backend: scaffold-hyperlocal-api, test-proximity-logic, vicino-chat, vicino-vendor"
+  Line 23:
+    Local : "- Backend: scaffold-hyperlocal-api, test-proximity-logic, vicino-chat, vicino-vendor"
+    Notion: "- Frontend: ui-ux-pro-max, vicino-brand, redesign-v2-migration"
+  Line 24:
+    Local : "- Frontend: ui-ux-pro-max, vicino-brand, redesign-v2-migration"
+    Notion: "ÔöüÔöüÔöü Skills en .claude/skills (45 skills) ÔöüÔöüÔöü"
+  Line 25:
+    Local : "ÔöüÔöüÔöü Skills en .claude/skills (45 skills) ÔöüÔöüÔöü"
+    Notion: "CI/CD: coderabbit, github-actions, husky, lighthouse, vercel-preview"
+  Line 26:
+    Local : "CI/CD: coderabbit, github-actions, husky, lighthouse, vercel-preview"
+    Notion: "Geo: h3-zoning, map-render, postgis-bootstrap, proximity-rpc, share-whatsapp"
+  Line 27:
+    Local : "Geo: h3-zoning, map-render, postgis-bootstrap, proximity-rpc, share-whatsapp"
+    Notion: "Mobile: capacitor-wrap, konsta-ui, native-plugins, pwa-serwist"
+  Line 28:
+    Local : "Mobile: capacitor-wrap, konsta-ui, native-plugins, pwa-serwist"
+    Notion: "QA: debug2fix, hydration-hunter, playwright-e2e, sentry, storybook, vitest"
+  Line 29:
+    Local : "QA: debug2fix, hydration-hunter, playwright-e2e, sentry, storybook, vitest"
+    Notion: "Supabase: google-oauth, mcp-bridge, realtime, rls-author, ssr-auth, storage-policies"
+  Line 30:
+    Local : "Supabase: google-oauth, mcp-bridge, realtime, rls-author, ssr-auth, storage-policies"
+    Notion: "UI: lottie-loader, magic-accents, motion-choreographer, shadcn, tailwind-hygiene, toast-drawer, variant-author"
+  Line 31:
+    Local : "UI: lottie-loader, magic-accents, motion-choreographer, shadcn, tailwind-hygiene, toast-drawer, variant-author"
+    Notion: "---"
+  Line 32:
+    Local : "---"
+    Notion: "name: ranking-builder"
+  Line 33:
+    Local : "name: ranking-builder"
+    Notion: "description: Sistema de rankings hiperlocales de vendedores para Vicino. Activa SIEMPRE cuando el usuario mencione "ranking", "rankings", "leaderboard", "podio", "top vendedores", "mejores vendedores", "los mejores en", "/ranking", "/rankings", "composite_score", "seller_rankings", "score de vendedor", "snapshot mensual de ranking", o cuando pida construir pantallas de tipo "Los Mejores de Vicino" con podio asim├®trico 1-2-3 y lista 4-10. Activa tambi├®n cuando pida el widget de preview "Los mejores en [Categor├¡a]" para el home, cron nocturno de c├ílculo de scores, RPC con PostGIS para filtrado por radio, o tabla de snapshots hist├│ricos por per├¡odo YYYY-MM. Cubre dise├▒o visual exacto (terracota #C45B3F sobre charcoal #1A1A2E, Outfit/Inter, dark mode primario), modelo de datos, f├│rmula del composite_score ponderado, query hiperlocal con ST_DWithin, y reglas de privacidad geoespacial. NO se activa para rankings gen├®ricos no-Vicino ni para listados que no involucren score ponderado."
+  Line 34:
+    Local : "description: Sistema de rankings hiperlocales de vendedores para Vicino. Activa SIEMPRE cuando el usuario mencione "ranking", "rankings", "leaderboard", "podio", "top vendedores", "mejores vendedores", "los mejores en", "/ranking", "/rankings", "composite_score", "seller_rankings", "score de vendedor", "snapshot mensual de ranking", o cuando pida construir pantallas de tipo "Los Mejores de Vicino" con podio asim├®trico 1-2-3 y lista 4-10. Activa tambi├®n cuando pida el widget de preview "Los mejores en [Categor├¡a]" para el home, cron nocturno de c├ílculo de scores, RPC con PostGIS para filtrado por radio, o tabla de snapshots hist├│ricos por per├¡odo YYYY-MM. Cubre dise├▒o visual exacto (terracota #C45B3F sobre charcoal #1A1A2E, Outfit/Inter, dark mode primario), modelo de datos, f├│rmula del composite_score ponderado, query hiperlocal con ST_DWithin, y reglas de privacidad geoespacial. NO se activa para rankings gen├®ricos no-Vicino ni para listados que no involucren score ponderado."
+    Notion: "---"
+  Line 35:
+    Local : "---"
+    Notion: "# Ranking Builder ┬À Vicino"
+  Line 36:
+    Local : "# Ranking Builder ┬À Vicino"
+    Notion: "Sistema completo para la p├ígina `/rankings` de Vicino y sus componentes derivados. Cubre data layer (tabla + RPC + cron), UI (podio + lista + widget preview) y reglas de privacidad geoespacial."
+  Line 37:
+    Local : "Sistema completo para la p├ígina `/rankings` de Vicino y sus componentes derivados. Cubre data layer (tabla + RPC + cron), UI (podio + lista + widget preview) y reglas de privacidad geoespacial."
+    Notion: "## Stack confirmado"
+  Line 38:
+    Local : "## Stack confirmado"
+    Notion: "Next.js App Router ┬À TypeScript ┬À Tailwind CSS ┬À Supabase (Postgres + PostGIS + SSR auth) ┬À TanStack Query v5 ┬À shadcn/ui ┬À lucide-react ┬À Outfit + Inter."
+  Line 39:
+    Local : "Next.js App Router ┬À TypeScript ┬À Tailwind CSS ┬À Supabase (Postgres + PostGIS + SSR auth) ┬À TanStack Query v5 ┬À shadcn/ui ┬À lucide-react ┬À Outfit + Inter."
+    Notion: "## Identidad visual (recordatorio r├ípido)"
+  Line 40:
+    Local : "## Identidad visual (recordatorio r├ípido)"
+    Notion: "- **Dark mode primario.** Charcoal `#1A1A2E` como fondo base, cream `#FFF8F0` como texto."
+  Line 41:
+    Local : "- **Dark mode primario.** Charcoal `#1A1A2E` como fondo base, cream `#FFF8F0` como texto."
+    Notion: "- **Terracota `#C45B3F`** es el acento ├║nico: usar SOLO para el #1 del podio, badge "Confiable" activo, y CTA principal. No saturar."
+  Line 42:
+    Local : "- **Terracota `#C45B3F`** es el acento ├║nico: usar SOLO para el #1 del podio, badge "Confiable" activo, y CTA principal. No saturar."
+    Notion: "- **Tipograf├¡a.** `Outfit` para los n├║meros grandes del score (font-display) y headers. `Inter` para body."
+  Line 43:
+    Local : "- **Tipograf├¡a.** `Outfit` para los n├║meros grandes del score (font-display) y headers. `Inter` para body."
+    Notion: "- **Spacing.** Usar el sistema de Tailwind con `tracking-tight` en headings, `leading-none` en los scores grandes."
+  Line 44:
+    Local : "- **Spacing.** Usar el sistema de Tailwind con `tracking-tight` en headings, `leading-none` en los scores grandes."
+    Notion: "- **Anti-patrones bloqueados.** Cero gradientes purple/violet, cero "AI generic look", cero glassmorphism barato, cero shadows azules. Los glows del #1 son `shadow-[0_0_60px_-12px_rgba(196,91,63,0.5)]`, terracota nunca azul."
+  Line 45:
+    Local : "- **Anti-patrones bloqueados.** Cero gradientes purple/violet, cero "AI generic look", cero glassmorphism barato, cero shadows azules. Los glows del #1 son `shadow-[0_0_60px_-12px_rgba(196,91,63,0.5)]`, terracota nunca azul."
+    Notion: "## Anatom├¡a de la p├ígina `/rankings`"
+  Line 46:
+    Local : "## Anatom├¡a de la p├ígina `/rankings`"
+    Notion: "Ver Image 1 del usuario como referencia visual can├│nica. Layout vertical mobile-first:"
+  Line 47:
+    Local : "Ver Image 1 del usuario como referencia visual can├│nica. Layout vertical mobile-first:"
+    Notion: "1. **Header con back + t├¡tulo** (`Los Mejores de VICINO` con "VICINO" en terracota)."
+  Line 48:
+    Local : "1. **Header con back + t├¡tulo** (`Los Mejores de VICINO` con "VICINO" en terracota)."
+    Notion: "2. **Subt├¡tulo descriptivo** + selector de mes (chip outlined, formato `Mayo 2026`)."
+  Line 49:
+    Local : "2. **Subt├¡tulo descriptivo** + selector de mes (chip outlined, formato `Mayo 2026`)."
+    Notion: "3. **Chips de categor├¡a** scrollables horizontalmente. El activo va en terracota fill, los inactivos en outline charcoal. Fuente desde tabla `categories`."
+  Line 50:
+    Local : "3. **Chips de categor├¡a** scrollables horizontalmente. El activo va en terracota fill, los inactivos en outline charcoal. Fuente desde tabla `categories`."
+    Notion: "4. **Podio asim├®trico** con #1 elevado al centro (m├ís grande, glow terracota), #2 a la izquierda, #3 a la derecha. Cards charcoal con bordes sutiles, n├║meros 1/2/3 en gradient sutil debajo de cada uno."
+  Line 51:
+    Local : "4. **Podio asim├®trico** con #1 elevado al centro (m├ís grande, glow terracota), #2 a la izquierda, #3 a la derecha. Cards charcoal con bordes sutiles, n├║meros 1/2/3 en gradient sutil debajo de cada uno."
+    Notion: "5. **Lista 4-10** estilo tabla compacta con avatar circular peque├▒o, nombre, badge "Confiable" cuando aplica, y score a la derecha."
+  Line 52:
+    Local : "5. **Lista 4-10** estilo tabla compacta con avatar circular peque├▒o, nombre, badge "Confiable" cuando aplica, y score a la derecha."
+    Notion: "Para el componente reutilizable del podio y el header completo, ver `references/podio-component.tsx`."
+  Line 53:
+    Local : "Para el componente reutilizable del podio y el header completo, ver `references/podio-component.tsx`."
+    Notion: "## Modelo de datos"
+  Line 54:
+    Local : "## Modelo de datos"
+    Notion: "Tabla `seller_rankings` (snapshot mensual congelado). Llave compuesta `(seller_id, category_id, period)`. Period en formato `YYYY-MM`. NO calcular en tiempo real nunca: siempre leer del snapshot."
+  Line 55:
+    Local : "Tabla `seller_rankings` (snapshot mensual congelado). Llave compuesta `(seller_id, category_id, period)`. Period en formato `YYYY-MM`. NO calcular en tiempo real nunca: siempre leer del snapshot."
+    Notion: "```sql"
+  Line 56:
+    Local : "```sql"
+    Notion: "-- ver references/migration.sql para el DDL completo con ├¡ndices"
+  Line 57:
+    Local : "-- ver references/migration.sql para el DDL completo con ├¡ndices"
+    Notion: "CREATE TABLE seller_rankings ("
+  Line 58:
+    Local : "CREATE TABLE seller_rankings ("
+    Notion: "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+  Line 59:
+    Local : "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    Notion: "  seller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,"
+  Line 60:
+    Local : "  seller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,"
+    Notion: "  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,"
+  Line 61:
+    Local : "  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,"
+    Notion: "  period TEXT NOT NULL,  -- 'YYYY-MM'"
+  Line 62:
+    Local : "  period TEXT NOT NULL,  -- 'YYYY-MM'"
+    Notion: "  composite_score NUMERIC(7,2) NOT NULL,  -- 0.00 a 1000.00"
+  Line 63:
+    Local : "  composite_score NUMERIC(7,2) NOT NULL,  -- 0.00 a 1000.00"
+    Notion: "  -- componentes desglosados para auditabilidad"
+  Line 64:
+    Local : "  -- componentes desglosados para auditabilidad"
+    Notion: "  ventas_count INT NOT NULL DEFAULT 0,"
+  Line 65:
+    Local : "  ventas_count INT NOT NULL DEFAULT 0,"
+    Notion: "  ingresos_total NUMERIC(12,2) NOT NULL DEFAULT 0,"
+  Line 66:
+    Local : "  ingresos_total NUMERIC(12,2) NOT NULL DEFAULT 0,"
+    Notion: "  rating_avg NUMERIC(3,2),"
+  Line 67:
+    Local : "  rating_avg NUMERIC(3,2),"
+    Notion: "  response_time_avg_minutes INT,"
+  Line 68:
+    Local : "  response_time_avg_minutes INT,"
+    Notion: "  trust_points_snapshot INT NOT NULL DEFAULT 0,"
+  Line 69:
+    Local : "  trust_points_snapshot INT NOT NULL DEFAULT 0,"
+    Notion: "  is_frozen BOOLEAN NOT NULL DEFAULT FALSE,  -- true tras d├¡a 1 del mes siguiente"
+  Line 70:
+    Local : "  is_frozen BOOLEAN NOT NULL DEFAULT FALSE,  -- true tras d├¡a 1 del mes siguiente"
+    Notion: "  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+  Line 71:
+    Local : "  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+    Notion: "  UNIQUE (seller_id, category_id, period)"
+  Line 72:
+    Local : "  UNIQUE (seller_id, category_id, period)"
+    Notion: ");"
+  Line 73:
+    Local : ");"
+    Notion: "```"
+  Line 74:
+    Local : "```"
+    Notion: "**Importante.** No hay tabla `businesses` ÔÇö vendedores son `profiles WHERE es_vendedor = TRUE`. La FK apunta a `profiles(id)`."
+  Line 75:
+    Local : "**Importante.** No hay tabla `businesses` ÔÇö vendedores son `profiles WHERE es_vendedor = TRUE`. La FK apunta a `profiles(id)`."
+    Notion: "Categor├¡as SIEMPRE din├ímicas desde la tabla `categories` existente (25 registros). NO hardcodear nada de categor├¡as en el cliente; siempre query."
+  Line 76:
+    Local : "Categor├¡as SIEMPRE din├ímicas desde la tabla `categories` existente (25 registros). NO hardcodear nada de categor├¡as en el cliente; siempre query."
+    Notion: "## F├│rmula del composite_score"
+  Line 77:
+    Local : "## F├│rmula del composite_score"
+    Notion: "Pesos (suman 100%):"
+  Line 78:
+    Local : "Pesos (suman 100%):"
+    Notion: "| Componente | Peso | Fuente |"
+  Line 79:
+    Local : "| Componente | Peso | Fuente |"
+    Notion: "|---|---|---|"
+  Line 80:
+    Local : "|---|---|---|"
+    Notion: "| Ventas completadas | 40% | `COUNT(sale_confirmations) WHERE status='completed' AND mes` |"
+  Line 81:
+    Local : "| Ventas completadas | 40% | `COUNT(sale_confirmations) WHERE status='completed' AND mes` |"
+    Notion: "| Ingresos totales | 25% | `SUM(precio) FROM sale_confirmations` |"
+  Line 82:
+    Local : "| Ingresos totales | 25% | `SUM(precio) FROM sale_confirmations` |"
+    Notion: "| Rating promedio | 20% | `AVG(reviews.calificacion)` recibidas como vendedor |"
+  Line 83:
+    Local : "| Rating promedio | 20% | `AVG(reviews.calificacion)` recibidas como vendedor |"
+    Notion: "| Tasa de respuesta | 10% | promedio del tiempo al primer mensaje en chats nuevos |"
+  Line 84:
+    Local : "| Tasa de respuesta | 10% | promedio del tiempo al primer mensaje en chats nuevos |"
+    Notion: "| Trust level bonus | 5% | escalado por `profiles.trust_points` |"
+  Line 85:
+    Local : "| Trust level bonus | 5% | escalado por `profiles.trust_points` |"
+    Notion: "Normalizaci├│n por **percentile rank dentro de la categor├¡a y per├¡odo** (m├ís estable que dividir entre el m├íximo, que es vulnerable a outliers). Score final escalado a `0..1000`."
+  Line 86:
+    Local : "Normalizaci├│n por **percentile rank dentro de la categor├¡a y per├¡odo** (m├ís estable que dividir entre el m├íximo, que es vulnerable a outliers). Score final escalado a `0..1000`."
+    Notion: "```"
+  Line 87:
+    Local : "```"
+    Notion: "score = ("
+  Line 88:
+    Local : "score = ("
+    Notion: "  percentile_rank(ventas_count)            * 0.40 +"
+  Line 89:
+    Local : "  percentile_rank(ventas_count)            * 0.40 +"
+    Notion: "  percentile_rank(ingresos_total)          * 0.25 +"
+  Line 90:
+    Local : "  percentile_rank(ingresos_total)          * 0.25 +"
+    Notion: "  (rating_avg / 5.0)                       * 0.20 +"
+  Line 91:
+    Local : "  (rating_avg / 5.0)                       * 0.20 +"
+    Notion: "  response_time_score(response_avg_min)    * 0.10 +"
+  Line 92:
+    Local : "  response_time_score(response_avg_min)    * 0.10 +"
+    Notion: "  trust_bonus(trust_points)                * 0.05"
+  Line 93:
+    Local : "  trust_bonus(trust_points)                * 0.05"
+    Notion: ") * 1000"
+  Line 94:
+    Local : ") * 1000"
+    Notion: "```"
+  Line 95:
+    Local : "```"
+    Notion: "Detalle de cada subf├│rmula, manejo de nulos (vendedor sin reviews, vendedor sin chats activos), y el SQL completo de c├ílculo en `references/score-formula.md`. **Leer ese archivo antes de implementar el cron o cualquier rec├ílculo.**"
+  Line 96:
+    Local : "Detalle de cada subf├│rmula, manejo de nulos (vendedor sin reviews, vendedor sin chats activos), y el SQL completo de c├ílculo en `references/score-formula.md`. **Leer ese archivo antes de implementar el cron o cualquier rec├ílculo.**"
+    Notion: "## Query hiperlocal con PostGIS"
+  Line 97:
+    Local : "## Query hiperlocal con PostGIS"
+    Notion: "El score se calcula a nivel municipal (Puebla) en el snapshot. La pantalla filtra din├ímicamente por radio del usuario y re-numera 1/2/3 sobre el subconjunto local."
+  Line 98:
+    Local : "El score se calcula a nivel municipal (Puebla) en el snapshot. La pantalla filtra din├ímicamente por radio del usuario y re-numera 1/2/3 sobre el subconjunto local."
+    Notion: "RPC obligatorio: `get_ranking_hiperlocal(p_category_id, p_period, p_user_lat, p_user_lng, p_radius_meters, p_limit)`. Implementaci├│n completa en `references/rpc.sql`."
+  Line 99:
+    Local : "RPC obligatorio: `get_ranking_hiperlocal(p_category_id, p_period, p_user_lat, p_user_lng, p_radius_meters, p_limit)`. Implementaci├│n completa en `references/rpc.sql`."
+    Notion: "### Reglas de privacidad geo (CR├ìTICAS, no negociables)"
+  Line 100:
+    Local : "### Reglas de privacidad geo (CR├ìTICAS, no negociables)"
+    Notion: "Esta skill comparte responsabilidad con `audit-geo-privacy`. Reglas:"
+  Line 101:
+    Local : "Esta skill comparte responsabilidad con `audit-geo-privacy`. Reglas:"
+    Notion: "- El RPC **JAM├üS** retorna `ubicacion_geo`, lat, lng, ni coordenadas crudas del vendedor en el resultado."
+  Line 102:
+    Local : "- El RPC **JAM├üS** retorna `ubicacion_geo`, lat, lng, ni coordenadas crudas del vendedor en el resultado."
+    Notion: "- Si se necesita mostrar distancia ("a 800 m"), calcularla en el RPC con `ST_Distance` y redondear con fuzzing a m├║ltiplos de 100m (mismo patr├│n del resto de la app)."
+  Line 103:
+    Local : "- Si se necesita mostrar distancia ("a 800 m"), calcularla en el RPC con `ST_Distance` y redondear con fuzzing a m├║ltiplos de 100m (mismo patr├│n del resto de la app)."
+    Notion: "- El par├ímetro `p_user_lat/p_user_lng` no se almacena ni se loguea."
+  Line 104:
+    Local : "- El par├ímetro `p_user_lat/p_user_lng` no se almacena ni se loguea."
+    Notion: "- `SECURITY DEFINER` en el RPC para que el cliente nunca pueda hacer JOIN libre con `profiles.ubicacion_geo`."
+  Line 105:
+    Local : "- `SECURITY DEFINER` en el RPC para que el cliente nunca pueda hacer JOIN libre con `profiles.ubicacion_geo`."
+    Notion: "- RLS en `seller_rankings`: SELECT abierto solo a usuarios autenticados, INSERT/UPDATE solo por service_role (el cron)."
+  Line 106:
+    Local : "- RLS en `seller_rankings`: SELECT abierto solo a usuarios autenticados, INSERT/UPDATE solo por service_role (el cron)."
+    Notion: "Si alg├║n paso violar├¡a estas reglas, detente y avisa al usuario en lugar de seguir."
+  Line 107:
+    Local : "Si alg├║n paso violar├¡a estas reglas, detente y avisa al usuario en lugar de seguir."
+    Notion: "## Componentes a entregar"
+  Line 108:
+    Local : "## Componentes a entregar"
+    Notion: "Cuando el usuario pida "la p├ígina completa" entregar los cinco:"
+  Line 109:
+    Local : "Cuando el usuario pida "la p├ígina completa" entregar los cinco:"
+    Notion: "1. **`<PodioRanking />`** ÔÇö Recibe `[#1, #2, #3]`. Layout asim├®trico, terracota en #1, glow, avatars circulares."
+  Line 110:
+    Local : "1. **`<PodioRanking />`** ÔÇö Recibe `[#1, #2, #3]`. Layout asim├®trico, terracota en #1, glow, avatars circulares."
+    Notion: "2. **`<RankingHeader />`** ÔÇö T├¡tulo, selector de mes (popover con lista de meses disponibles desde la DB), chips de categor├¡a scrollables."
+  Line 111:
+    Local : "2. **`<RankingHeader />`** ÔÇö T├¡tulo, selector de mes (popover con lista de meses disponibles desde la DB), chips de categor├¡a scrollables."
+    Notion: "3. **`<RankingList />`** ÔÇö Posiciones 4-N. Row compacto con `#N`, avatar, nombre, badge `Confiable` condicional, score."
+  Line 112:
+    Local : "3. **`<RankingList />`** ÔÇö Posiciones 4-N. Row compacto con `#N`, avatar, nombre, badge `Confiable` condicional, score."
+    Notion: "4. **`<RankingPreviewWidget />`** ÔÇö Versi├│n condensada para el home. Muestra solo top 3 mini-podio + "Ver m├ís". Ver Image 2 del usuario como referencia."
+  Line 113:
+    Local : "4. **`<RankingPreviewWidget />`** ÔÇö Versi├│n condensada para el home. Muestra solo top 3 mini-podio + "Ver m├ís". Ver Image 2 del usuario como referencia."
+    Notion: "5. **`<RankingPage />`** ÔÇö Server Component que orquesta todo, consume el RPC con TanStack Query v5 + Supabase SSR."
+  Line 114:
+    Local : "5. **`<RankingPage />`** ÔÇö Server Component que orquesta todo, consume el RPC con TanStack Query v5 + Supabase SSR."
+    Notion: "Templates de los componentes en `references/podio-component.tsx`. Tomarlo como base ÔÇö no es c├│digo terminado, es el esqueleto con la jerarqu├¡a visual correcta. Adaptar a la convenci├│n de carpetas del proyecto Vicino."
+  Line 115:
+    Local : "Templates de los componentes en `references/podio-component.tsx`. Tomarlo como base ÔÇö no es c├│digo terminado, es el esqueleto con la jerarqu├¡a visual correcta. Adaptar a la convenci├│n de carpetas del proyecto Vicino."
+    Notion: "## Cron nocturno"
+  Line 116:
+    Local : "## Cron nocturno"
+    Notion: "Edge Function de Supabase ejecutada por `pg_cron` a las 03:00 hora CDMX cada noche. Recalcula el per├¡odo actual (mes en curso). El d├¡a 1 del mes siguiente a las 00:05, hace un ├║ltimo pase y marca `is_frozen = TRUE` para el mes reci├®n terminado, generando los registros hist├│ricos definitivos."
+  Line 117:
+    Local : "Edge Function de Supabase ejecutada por `pg_cron` a las 03:00 hora CDMX cada noche. Recalcula el per├¡odo actual (mes en curso). El d├¡a 1 del mes siguiente a las 00:05, hace un ├║ltimo pase y marca `is_frozen = TRUE` para el mes reci├®n terminado, generando los registros hist├│ricos definitivos."
+    Notion: "Detalles de implementaci├│n, idempotencia, manejo de empates, y rollback en `references/cron-job.md`."
+  Line 118:
+    Local : "Detalles de implementaci├│n, idempotencia, manejo de empates, y rollback en `references/cron-job.md`."
+    Notion: "## Badge "Confiable""
+  Line 119:
+    Local : "## Badge "Confiable""
+    Notion: "Computado en el cliente con un simple `profile.trust_points >= 200`. NO duplicar la l├│gica de trust_level en este sistema; reusar la columna existente `profiles.trust_level` o el c├│mputo derivado. La skill solo *consume* el badge, no lo define."
+  Line 120:
+    Local : "Computado en el cliente con un simple `profile.trust_points >= 200`. NO duplicar la l├│gica de trust_level en este sistema; reusar la columna existente `profiles.trust_level` o el c├│mputo derivado. La skill solo *consume* el badge, no lo define."
+    Notion: "Visualmente: pill peque├▒o junto al nombre, fondo `bg-emerald-500/15`, texto `text-emerald-400`, icono `Shield` de lucide a 12px. NO usar terracota para "Confiable" (terracota est├í reservado para el #1)."
+  Line 121:
+    Local : "Visualmente: pill peque├▒o junto al nombre, fondo `bg-emerald-500/15`, texto `text-emerald-400`, icono `Shield` de lucide a 12px. NO usar terracota para "Confiable" (terracota est├í reservado para el #1)."
+    Notion: "## Estados especiales"
+  Line 122:
+    Local : "## Estados especiales"
+    Notion: "- **Vendedor sin ventas en el per├¡odo.** No aparece en el snapshot (no crear filas con score=0). Si el usuario filtra por radio donde no hay vendedores con score, mostrar empty state: ilustraci├│n m├¡nima + "A├║n no hay ranking en tu zona ÔÇö s├® el primero en vender este mes"."
+  Line 123:
+    Local : "- **Vendedor sin ventas en el per├¡odo.** No aparece en el snapshot (no crear filas con score=0). Si el usuario filtra por radio donde no hay vendedores con score, mostrar empty state: ilustraci├│n m├¡nima + "A├║n no hay ranking en tu zona ÔÇö s├® el primero en vender este mes"."
+    Notion: "- **Menos de 3 vendedores en el radio.** Mostrar solo los que haya, no rellenar con placeholders. El podio se adapta: si solo hay 1, mostrar solo el centro; si hay 2, mostrar centro + izquierda."
+  Line 124:
+    Local : "- **Menos de 3 vendedores en el radio.** Mostrar solo los que haya, no rellenar con placeholders. El podio se adapta: si solo hay 1, mostrar solo el centro; si hay 2, mostrar centro + izquierda."
+    Notion: "- **Empate en score.** Desempate por `ventas_count` DESC, luego `trust_points_snapshot` DESC, luego `computed_at` ASC."
+  Line 125:
+    Local : "- **Empate en score.** Desempate por `ventas_count` DESC, luego `trust_points_snapshot` DESC, luego `computed_at` ASC."
+    Notion: "## C├│mo proceder ante un pedido"
+  Line 126:
+    Local : "## C├│mo proceder ante un pedido"
+    Notion: "1. **Pregunta corta solo si falta dato bloqueante.** Default: ejecutar."
+  Line 127:
+    Local : "1. **Pregunta corta solo si falta dato bloqueante.** Default: ejecutar."
+    Notion: "2. Si el usuario pide la **p├ígina completa**, entregar: migraci├│n SQL ÔåÆ RPC SQL ÔåÆ componentes en orden Podio ÔåÆ Header ÔåÆ List ÔåÆ Page ÔåÆ Widget preview."
+  Line 128:
+    Local : "2. Si el usuario pide la **p├ígina completa**, entregar: migraci├│n SQL ÔåÆ RPC SQL ÔåÆ componentes en orden Podio ÔåÆ Header ÔåÆ List ÔåÆ Page ÔåÆ Widget preview."
+    Notion: "3. Si pide **solo un componente**, entregar ese componente sin pedir m├ís contexto. Usar los defaults documentados."
+  Line 129:
+    Local : "3. Si pide **solo un componente**, entregar ese componente sin pedir m├ís contexto. Usar los defaults documentados."
+    Notion: "4. Si pide **solo la l├│gica/data**, entregar migraci├│n + RPC + cron sin componentes."
+  Line 130:
+    Local : "4. Si pide **solo la l├│gica/data**, entregar migraci├│n + RPC + cron sin componentes."
+    Notion: "5. Al terminar, dejar siempre un bloque corto de "verificaci├│n r├ípida" con los comandos para probar el RPC desde el SQL editor de Supabase (con un seller_id real de prueba)."
+  Line 131:
+    Local : "5. Al terminar, dejar siempre un bloque corto de "verificaci├│n r├ípida" con los comandos para probar el RPC desde el SQL editor de Supabase (con un seller_id real de prueba)."
+    Notion: "## Archivos de referencia"
+  Line 132:
+    Local : "## Archivos de referencia"
+    Notion: "- `references/migration.sql` ÔÇö DDL completo de `seller_rankings` con ├¡ndices, RLS, comments."
+  Line 133:
+    Local : "- `references/migration.sql` ÔÇö DDL completo de `seller_rankings` con ├¡ndices, RLS, comments."
+    Notion: "- `references/rpc.sql` ÔÇö Funci├│n `get_ranking_hiperlocal` con PostGIS y privacidad."
+  Line 134:
+    Local : "- `references/rpc.sql` ÔÇö Funci├│n `get_ranking_hiperlocal` con PostGIS y privacidad."
+    Notion: "- `references/score-formula.md` ÔÇö F├│rmula detallada, SQL de c├ílculo, edge cases."
+  Line 135:
+    Local : "- `references/score-formula.md` ÔÇö F├│rmula detallada, SQL de c├ílculo, edge cases."
+    Notion: "- `references/podio-component.tsx` ÔÇö Esqueleto del componente Podio + Lista en Tailwind."
+  Line 136:
+    Local : "- `references/podio-component.tsx` ÔÇö Esqueleto del componente Podio + Lista en Tailwind."
+    Notion: "- `references/cron-job.md` ÔÇö Edge Function, pg_cron schedule, idempotencia, freezing."
+  Line 137:
+    Local : "- `references/cron-job.md` ÔÇö Edge Function, pg_cron schedule, idempotencia, freezing."
+    Notion: "Leer SOLO los referenciados por la tarea actual. No cargar todo si el usuario solo pidi├│ el componente visual."
+  Line 138:
+    Local : "Leer SOLO los referenciados por la tarea actual. No cargar todo si el usuario solo pidi├│ el componente visual."
+    Notion: "## Contexto del batch"
+  Line 139:
+    Local : "## Contexto del batch"
+    Notion: "**Estado:** Ô£à CERRADO A NIVEL C├ôDIGO (2-May-2026). Pendiente solo: validaci├│n E2E manual de Pedro en producci├│n."
+  Line 140:
+    Local : "**Estado:** Ô£à CERRADO A NIVEL C├ôDIGO (2-May-2026). Pendiente solo: validaci├│n E2E manual de Pedro en producci├│n."
+    Notion: "**Branch:** `feat/moderation-mp04` (mergeado fast-forward a master, sigue en remoto + local; cleanup opcional cuando Pedro quiera)."
+  Line 141:
+    Local : "**Branch:** `feat/moderation-mp04` (mergeado fast-forward a master, sigue en remoto + local; cleanup opcional cuando Pedro quiera)."
+    Notion: "**Master final:** `9725525`."
+  Line 142:
+    Local : "**Master final:** `9725525`."
+    Notion: "**Stash:** `wip-moderation-pre-batch-may-2026` INTACTO en stash@{0} hasta 16-May-2026."
+  Line 143:
+    Local : "**Stash:** `wip-moderation-pre-batch-may-2026` INTACTO en stash@{0} hasta 16-May-2026."
+    Notion: "**Producci├│n:** `https://vicinomarket.com/` HTTP 200 confirmado."
+  Line 144:
+    Local : "**Producci├│n:** `https://vicinomarket.com/` HTTP 200 confirmado."
+    Notion: "## Resumen de fases"
+  Line 145:
+    Local : "## Resumen de fases"
+    Notion: "## Cierre Fase 8"
+  Line 146:
+    Local : "## Cierre Fase 8"
+    Notion: "**Git/deploy verificado:**"
+  Line 147:
+    Local : "**Git/deploy verificado:**"
+    Notion: "- Hash master final: `9725525` (chore(polish): link tautol├│gico + qa-script hardening)"
+  Line 148:
+    Local : "- Hash master final: `9725525` (chore(polish): link tautol├│gico + qa-script hardening)"
+    Notion: "- Push origin master: Ô£à `5369d40..9725525`"
+  Line 149:
+    Local : "- Push origin master: Ô£à `5369d40..9725525`"
+    Notion: "- Fast-forward merge: Ô£à Sin merge commit (3 commits secuenciales: `1bdfdc1` + `5b3bf3e` + `9725525`)"
+  Line 150:
+    Local : "- Fast-forward merge: Ô£à Sin merge commit (3 commits secuenciales: `1bdfdc1` + `5b3bf3e` + `9725525`)"
+    Notion: "- HTTP root [vicinomarket.com](http://vicinomarket.com/): Ô£à 200 (2.77s)"
+  Line 151:
+    Local : "- HTTP root [vicinomarket.com](http://vicinomarket.com/): Ô£à 200 (2.77s)"
+    Notion: "- Endpoint `/api/reports`: Ô£à 405 (existe, POST-only ÔÇö confirma deployment del MP#04 LIVE)"
+  Line 152:
+    Local : "- Endpoint `/api/reports`: Ô£à 405 (existe, POST-only ÔÇö confirma deployment del MP#04 LIVE)"
+    Notion: "- Endpoint `/admin/moderation`: Ô£à 307 (existe, auth redirect)"
+  Line 153:
+    Local : "- Endpoint `/admin/moderation`: Ô£à 307 (existe, auth redirect)"
+    Notion: "- Capacitor sync android: Ô£à 1.066s, 8 plugins"
+  Line 154:
+    Local : "- Capacitor sync android: Ô£à 1.066s, 8 plugins"
+    Notion: "- Stash retenido: Ô£à stash@{0} INTACTO"
+  Line 155:
+    Local : "- Stash retenido: Ô£à stash@{0} INTACTO"
+    Notion: "- Branch `feat/moderation-mp04`: sigue en remoto + local. Cleanup opcional cuando Pedro quiera"
+  Line 156:
+    Local : "- Branch `feat/moderation-mp04`: sigue en remoto + local. Cleanup opcional cuando Pedro quiera"
+    Notion: "## Lo que est├í LIVE en producci├│n"
+  Line 157:
+    Local : "## Lo que est├í LIVE en producci├│n"
+    Notion: "- Sistema de reportes UGC completo (4 target types: listing, user, message, review)."
+  Line 158:
+    Local : "- Sistema de reportes UGC completo (4 target types: listing, user, message, review)."
+    Notion: "- 9 reasons (incluido `child_safety`)."
+  Line 159:
+    Local : "- 9 reasons (incluido `child_safety`)."
+    Notion: "- RLS bidireccional (block-aware policies)."
+  Line 160:
+    Local : "- RLS bidireccional (block-aware policies)."
+    Notion: "- Auto-hide en threshold 3+ reportes para listing/review."
+  Line 161:
+    Local : "- Auto-hide en threshold 3+ reportes para listing/review."
+    Notion: "- CSAM trigger (auto-hide unilateral inmediato + critical_reports audit trail inmutable)."
+  Line 162:
+    Local : "- CSAM trigger (auto-hide unilateral inmediato + critical_reports audit trail inmutable)."
+    Notion: "- Panel admin completo (`/admin/moderation/*` con sub-p├íginas listings/users/messages/reviews/critical)."
+  Line 163:
+    Local : "- Panel admin completo (`/admin/moderation/*` con sub-p├íginas listings/users/messages/reviews/critical)."
+    Notion: "- Pesta├▒a vertical RESE├æAS + ProductReviewsDrawer mobile (z-40, accesible, scroll lock, link tautol├│gico hide)."
+  Line 164:
+    Local : "- Pesta├▒a vertical RESE├æAS + ProductReviewsDrawer mobile (z-40, accesible, scroll lock, link tautol├│gico hide)."
+    Notion: "- 5 migrations SQL en DB prod (4 originales + 5ta inmutabilidad audit_log + critical_reports)."
+  Line 165:
+    Local : "- 5 migrations SQL en DB prod (4 originales + 5ta inmutabilidad audit_log + critical_reports)."
+    Notion: "- 1 migration adicional fuera de scope (audit_log que descubrimos missing del hardening Q2 2026)."
+  Line 166:
+    Local : "- 1 migration adicional fuera de scope (audit_log que descubrimos missing del hardening Q2 2026)."
+    Notion: "## Codex review summary"
+  Line 167:
+    Local : "## Codex review summary"
+    Notion: "3 commits, 3 reviews, 0 issues introducidos:"
+  Line 168:
+    Local : "3 commits, 3 reviews, 0 issues introducidos:"
+    Notion: "- Commit `1bdfdc1`: 2 issues pre-existentes del stash detectados (P1, P2) ÔåÆ diferidos a MP#05 con amend."
+  Line 169:
+    Local : "- Commit `1bdfdc1`: 2 issues pre-existentes del stash detectados (P1, P2) ÔåÆ diferidos a MP#05 con amend."
+    Notion: "- Commit `5b3bf3e`: 0 issues. Codex iter 1 limpio."
+  Line 170:
+    Local : "- Commit `5b3bf3e`: 0 issues. Codex iter 1 limpio."
+    Notion: "- Commit `9725525`: 0 issues. Codex iter 1 limpio."
+  Line 171:
+    Local : "- Commit `9725525`: 0 issues. Codex iter 1 limpio."
+    Notion: "## Pendiente Pedro post-cierre"
+  Line 172:
+    Local : "## Pendiente Pedro post-cierre"
+    Notion: "**Checklist E2E (~30 min en ****`vicinomarket.com`****):**"
+  Line 173:
+    Local : "**Checklist E2E (~30 min en ****`vicinomarket.com`****):**"
+    Notion: "A) **Cambio manual obligatorio:** Database Webhook URL en Supabase ÔåÆ cambiar de preview URL a `https://vicinomarket.com/api/admin/report-webhook`."
+  Line 174:
+    Local : "A) **Cambio manual obligatorio:** Database Webhook URL en Supabase ÔåÆ cambiar de preview URL a `https://vicinomarket.com/api/admin/report-webhook`."
+    Notion: "B) **Smoke test reporte normal:** desde cuenta secundaria, reportar producto ÔåÆ verificar DB + email a `admin@vicinomarket.com`."
+  Line 175:
+    Local : "B) **Smoke test reporte normal:** desde cuenta secundaria, reportar producto ÔåÆ verificar DB + email a `admin@vicinomarket.com`."
+    Notion: "C) **Smoke test CSAM simulado** (Fase 4 diferida): INSERT directo SQL con placeholder `TEST-CSAM-SIMULATION-` ÔåÆ verificar trigger + email URGENTE + p├ígina `/admin/moderation/critical`. NO contactar autoridades reales."
+  Line 176:
+    Local : "C) **Smoke test CSAM simulado** (Fase 4 diferida): INSERT directo SQL con placeholder `TEST-CSAM-SIMULATION-` ÔåÆ verificar trigger + email URGENTE + p├ígina `/admin/moderation/critical`. NO contactar autoridades reales."
+    Notion: "D) **Smoke test drawer rese├▒as mobile** (Fase 6): pesta├▒a vertical + drawer + a11y + link tautol├│gico hide."
+  Line 177:
+    Local : "D) **Smoke test drawer rese├▒as mobile** (Fase 6): pesta├▒a vertical + drawer + a11y + link tautol├│gico hide."
+    Notion: "E) **Cleanup post-tests:** dismiss reports test (NO DELETE ÔÇö triggers de inmutabilidad bloquean)."
+  Line 178:
+    Local : "E) **Cleanup post-tests:** dismiss reports test (NO DELETE ÔÇö triggers de inmutabilidad bloquean)."
+    Notion: "## Backlog MP#05 (10 items, ordenados por prioridad)"
+  Line 179:
+    Local : "## Backlog MP#05 (10 items, ordenados por prioridad)"
+    Notion: "## Plan post-MP#04"
+  Line 180:
+    Local : "## Plan post-MP#04"
+    Notion: "- **MP#05:** los 10 items del backlog. Plan Mode dedicado con priorizaci├│n por da├▒o/esfuerzo. Probable approach: sub-batch A (security: items 1+2+3+4+5 ÔÇö secrets + hardening + RLS fix). Sub-batch B (DRY refactors: 7+8+9). Item 6 standalone cuando aparezca caso real. Item 10 ad-hoc si Pedro reporta surface."
+  Line 181:
+    Local : "- **MP#05:** los 10 items del backlog. Plan Mode dedicado con priorizaci├│n por da├▒o/esfuerzo. Probable approach: sub-batch A (security: items 1+2+3+4+5 ÔÇö secrets + hardening + RLS fix). Sub-batch B (DRY refactors: 7+8+9). Item 6 standalone cuando aparezca caso real. Item 10 ad-hoc si Pedro reporta surface."
+    Notion: "- **MP#06+:** nuevos errores que junten Pedro + Alejandro post-validaci├│n E2E producci├│n."
+  Line 182:
+    Local : "- **MP#06+:** nuevos errores que junten Pedro + Alejandro post-validaci├│n E2E producci├│n."
+    Notion: "- **Branches paralelas:** `dependabot/zod-4.3.6` (ajustar WIP a zod 4 si requerido), `design` (Alejandro)."
+  Line 183:
+    Local : "- **Branches paralelas:** `dependabot/zod-4.3.6` (ajustar WIP a zod 4 si requerido), `design` (Alejandro)."
+    Notion: "­ƒôî Inteligencia Artificial y herramientas. Cat├ílogo de skills de IA, mega prompts, arquitectura de agentes reflexivos (Ruflo), herramientas audiovisuales y cualquier instrucci├│n o configuraci├│n dise├▒ada para que los agentes de IA operen dentro de VICINO."
+  Line 184:
+    Local : "­ƒôî Inteligencia Artificial y herramientas. Cat├ílogo de skills de IA, mega prompts, arquitectura de agentes reflexivos (Ruflo), herramientas audiovisuales y cualquier instrucci├│n o configuraci├│n dise├▒ada para que los agentes de IA operen dentro de VICINO."
+    Notion: "<EOF>"

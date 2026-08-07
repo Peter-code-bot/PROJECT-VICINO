@@ -64,7 +64,7 @@ export function useGeolocation() {
       const locationCookie = cookies.find((c) => c.startsWith("vicino_location="));
       const hasCorrectCookie = locationCookie === `vicino_location=${expectedCookieVal}`;
       
-      const expectedRadius = cached.radius ? `${cached.radius}` : "2000";
+      const expectedRadius = cached.radius ? `${cached.radius}` : "10000";
       const radiusCookie = cookies.find((c) => c.startsWith("vicino_radius="));
       const hasCorrectRadius = radiusCookie === `vicino_radius=${expectedRadius}`;
 
@@ -109,7 +109,7 @@ export function useGeolocation() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
-          radius: cached?.radius ?? 2000,
+          radius: cached?.radius ?? 10000,
         };
         writeCache(position);
         setState({ status: "success", position });
@@ -142,7 +142,7 @@ export function useGeolocation() {
     const position: GeoPosition = { 
       lat: pos.lat, 
       lng: pos.lng, 
-      radius: pos.radius ?? cached?.radius ?? 2000,
+      radius: pos.radius ?? cached?.radius ?? 10000,
       name: pos.name,
       fullName: pos.fullName
     };

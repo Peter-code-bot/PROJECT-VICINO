@@ -48,7 +48,7 @@ export default async function SearchPage({ searchParams }: Props) {
     }
   }
 
-  const validRadius = radiusCookie ? Math.min(Math.max(parseInt(radiusCookie, 10), 1000), 50000) : 2000;
+  const validRadius = radiusCookie ? Math.min(Math.max(parseInt(radiusCookie, 10), 1000), 50000) : 10000;
 
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;

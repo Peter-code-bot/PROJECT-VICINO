@@ -415,7 +415,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 </label>
                 <div className="mt-2 relative">
                   <select
-                    value={activePosition?.radius ?? 2000}
+                    value={activePosition?.radius ?? 10000}
                     onChange={(e) => {
                       const newRadius = parseInt(e.target.value, 10);
                       setRadius(newRadius);
