@@ -32,8 +32,12 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     limitsNavigationsToAppBoundDomains: false,
     appendUserAgent: 'VICINO-iOS',
-    // TEMP: Sentry excluido de iOS por fallo de descarga sentry-cocoa (red). Re-incluir antes de release publico.
+    // Sentry re-incluido (2026-07-14; antes excluido por fallo transitorio de red
+    // descargando sentry-cocoa). Verificar `pod install` en la Mac antes del release:
+    // sentry-cocoa dejo de publicar a CocoaPods tras 9.19.1 (SPM es el camino
+    // soportado), pero las versiones ya publicadas siguen descargables.
     includePlugins: [
+      '@sentry/capacitor',
       '@capacitor/app',
       '@capacitor/browser',
       '@capacitor/camera',
