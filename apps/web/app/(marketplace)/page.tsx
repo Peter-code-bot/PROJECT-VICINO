@@ -109,7 +109,11 @@ export default async function HomePage({ searchParams }: Props) {
 
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
-  const validRadius = 2000; // Cerca de ti siempre a 2km
+  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+  const parsedRadius = radiusCookie ? parseInt(radiusCookie, 10) : NaN;
+  const validRadius = Number.isFinite(parsedRadius)
+    ? Math.min(Math.max(parsedRadius, 1000), 50000)
+    : 10000;
 
   let userLat: number | null = null;
   let userLng: number | null = null;
