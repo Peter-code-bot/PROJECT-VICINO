@@ -1,6 +1,7 @@
 // Constants
 export * from "./constants/categories";
 export * from "./constants/trust-levels";
+export * from "./constants/privacy";
 
 // Validators
 export * from "./validators/product";
