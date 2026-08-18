@@ -279,7 +279,7 @@ export default async function HomePage({ searchParams }: Props) {
   // Fallback al TEXT preserva agrupacion para edge cases sin pivote (Fase 1A
   // graceful; el writer-stop es 1C). Productos sin primary NI TEXT caen a
   // "sin-categoria" y NO desaparecen del grouping (filter de carousels los
-  // descartara despues si <3 productos comparten ese bucket).
+  // descartara despues si <1 productos comparten ese bucket).
   const byCategory = all.reduce<Record<string, typeof all>>((acc, p) => {
     const key = primaryCategorySlug((p as { product_categories?: unknown }).product_categories)
       ?? p.categoria
@@ -289,7 +289,7 @@ export default async function HomePage({ searchParams }: Props) {
   }, {});
 
   const categoryCarousels = Object.entries(byCategory)
-    .filter(([, ps]) => ps.length >= 3)
+    .filter(([, ps]) => ps.length >= 1)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, 15);
 
