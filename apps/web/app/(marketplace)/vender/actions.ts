@@ -632,13 +632,19 @@ export async function updateProductFull(
     .maybeSingle();
 
   if (updateErr) {
-    if (updateErr.code === "42501") {
-      return { error: "No tienes permiso para editar esta publicación." };
-    }
+    // Sentry SIEMPRE primero: el 42501 solia salir por un return anterior y
+    // perdiamos el `details` de Postgres, que es donde el motor nombra la
+    // columna o la policy que rechazo (el P0 del GRANT faltante se diagnostico
+    // a ciegas por esto).
     Sentry.captureException(updateErr, {
       tags: { action: "updateProductFull" },
       contexts: { product: { id }, supabase: { code: updateErr.code } },
     });
+    // Un 42501 no implica que el usuario no sea el dueno: ese caso cae en el
+    // 0-row de abajo. Aqui es un problema de permisos del lado nuestro.
+    if (updateErr.code === "42501") {
+      return { error: "No se pudo guardar por un problema de permisos. Ya lo estamos revisando." };
+    }
     return { error: "No se pudo guardar. Intenta de nuevo." };
   }
 

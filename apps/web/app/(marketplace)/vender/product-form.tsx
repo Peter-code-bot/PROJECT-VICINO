@@ -81,6 +81,12 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXT_RE.test(url.split("?")[0] ?? "");
 }
 
+/** Postgres devuelve `time` como "HH:MM:SS"; el select usa "HH:MM". */
+function toHHMM(t: string | null | undefined, fallback: string): string {
+  if (!t) return fallback;
+  return t.slice(0, 5);
+}
+
 type ExistingMedia = { id: string; kind: "existing"; url: string; isVideo: boolean };
 type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean; videoCropArea?: CropArea };
 type MediaItem = ExistingMedia | PendingMedia;
@@ -184,8 +190,12 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   const [precioNegociable, setPrecioNegociable] = useState(initialValues?.precio_negociable ?? false);
   const [modoPrecio, setModoPrecio] = useState(initialValues?.modo_precio ?? "precio");
   const [allowAppointments, setAllowAppointments] = useState(initialValues?.allow_appointments ?? false);
-  const [apptStart, setApptStart] = useState(initialValues?.appointment_start_time ?? "09:00");
-  const [apptEnd, setApptEnd] = useState(initialValues?.appointment_end_time ?? "18:00");
+  const [apptStart, setApptStart] = useState(
+    toHHMM(initialValues?.appointment_start_time, "09:00"),
+  );
+  const [apptEnd, setApptEnd] = useState(
+    toHHMM(initialValues?.appointment_end_time, "18:00"),
+  );
   const [apptDuration, setApptDuration] = useState(
     initialValues?.appointment_duration_minutes != null
       ? String(initialValues.appointment_duration_minutes)
