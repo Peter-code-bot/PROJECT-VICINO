@@ -10,6 +10,7 @@ export interface NearbyProduct {
   titulo: string;
   slug: string;
   precio: number | null;
+  modo_precio: string | null;
   imagen_principal: string | null;
   categoria: string;
   tipo_entrega: string;
@@ -84,6 +85,7 @@ export async function getNearbyProducts(
     titulo: p.titulo,
     slug: p.slug,
     precio: p.precio,
+    modo_precio: p.modo_precio ?? null,
     imagen_principal: p.imagen_principal,
     categoria: p.categoria,
     tipo_entrega: p.tipo_entrega,

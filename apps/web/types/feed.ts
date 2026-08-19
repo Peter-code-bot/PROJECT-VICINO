@@ -7,6 +7,7 @@ export interface FeedProduct {
   slug: string | null;
   created_at: string;
   precio_negociable: boolean | null;
+  modo_precio: string | null;
   profiles: {
     nombre: string;
     trust_level: string;
