@@ -1,9 +1,12 @@
 export const CATEGORIES = [
   // Productos
   { id: "comida", name: "Comida y Bebidas", slug: "comida", icon: "UtensilsCrossed", type: "producto", hidden_in_form: false },
+  { id: "postres", name: "Postres y Repostería", slug: "postres", icon: "Cake", type: "producto", hidden_in_form: false },
   { id: "ropa", name: "Ropa y Accesorios", slug: "ropa", icon: "Shirt", type: "producto", hidden_in_form: false },
+  { id: "joyeria", name: "Joyería", slug: "joyeria", icon: "Gem", type: "producto", hidden_in_form: false },
   { id: "tecnologia", name: "Tecnología", slug: "tecnologia", icon: "Smartphone", type: "producto", hidden_in_form: false },
   { id: "hogar", name: "Hogar y Jardín", slug: "hogar", icon: "Home", type: "producto", hidden_in_form: false },
+  { id: "electrodomesticos", name: "Electrodomésticos", slug: "electrodomesticos", icon: "Refrigerator", type: "producto", hidden_in_form: false },
   { id: "belleza", name: "Belleza", slug: "belleza", icon: "Sparkles", type: "producto", hidden_in_form: false },
   { id: "salud", name: "Salud y Bienestar", slug: "salud", icon: "HeartPulse", type: "producto", hidden_in_form: false },
   { id: "deportes", name: "Deportes y Fitness", slug: "deportes", icon: "Dumbbell", type: "producto", hidden_in_form: false },
@@ -13,11 +16,14 @@ export const CATEGORIES = [
   { id: "libros", name: "Libros y Papelería", slug: "libros", icon: "BookOpen", type: "producto", hidden_in_form: false },
   { id: "juguetes", name: "Juguetes y Juegos", slug: "juguetes", icon: "Gamepad2", type: "producto", hidden_in_form: false },
   { id: "arte", name: "Arte y Manualidades", slug: "arte", icon: "Palette", type: "producto", hidden_in_form: false },
+  { id: "regalos", name: "Regalos y Detalles", slug: "regalos", icon: "Gift", type: "producto", hidden_in_form: false },
   { id: "muebles", name: "Muebles", slug: "muebles", icon: "Armchair", type: "producto", hidden_in_form: false },
+  { id: "herramientas", name: "Herramientas", slug: "herramientas", icon: "Hammer", type: "producto", hidden_in_form: false },
   // Servicios
   { id: "servicios-hogar", name: "Servicios del Hogar", slug: "servicios-hogar", icon: "Wrench", type: "servicio", hidden_in_form: false },
   { id: "educacion", name: "Educación y Clases", slug: "educacion", icon: "GraduationCap", type: "servicio", hidden_in_form: false },
   { id: "eventos", name: "Eventos", slug: "eventos", icon: "PartyPopper", type: "servicio", hidden_in_form: false },
+  { id: "entretenimiento", name: "Entretenimiento", slug: "entretenimiento", icon: "Ticket", type: "servicio", hidden_in_form: false },
   { id: "transporte", name: "Transporte y Mudanzas", slug: "transporte", icon: "Truck", type: "servicio", hidden_in_form: false },
   { id: "diseno-tech", name: "Diseño y Tech", slug: "diseno-tech", icon: "Code", type: "servicio", hidden_in_form: false },
   { id: "salud-terapias", name: "Salud y Terapias", slug: "salud-terapias", icon: "Stethoscope", type: "servicio", hidden_in_form: false },
