@@ -69,7 +69,7 @@ function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: 
       {!isEditing && (
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <span className="text-white font-heading font-bold text-sm">
-            {formatPrice(Number(p.precio))}
+            {formatPrice(p.precio)}
           </span>
         </div>
       )}

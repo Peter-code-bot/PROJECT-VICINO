@@ -8,7 +8,7 @@ import type { TrustLevel } from "@vicino/shared";
 interface CarouselProduct {
   id: string;
   titulo: string;
-  precio: number;
+  precio: number | string | null;
   imagen_principal: string | null;
   categoria: string;
   slug: string | null;
@@ -44,7 +44,7 @@ export function ProductCarousel({ products, priorityFirstItem = false }: Product
               <ProductCard
                 id={p.id}
                 titulo={p.titulo}
-                precio={Number(p.precio)}
+                precio={p.precio}
                 imagen={p.imagen_principal}
                 categoria={p.categoria}
                 slug={p.slug ?? p.id}

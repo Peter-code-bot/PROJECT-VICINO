@@ -127,7 +127,7 @@ export function ProductDetailDesktop({
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <PriceDisplay
-                amount={Number(product.precio ?? 0)}
+                amount={product.precio}
                 size="lg"
                 className="text-4xl"
               />

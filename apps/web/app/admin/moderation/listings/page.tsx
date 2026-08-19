@@ -90,7 +90,7 @@ export default async function ListingsModerationPage() {
                       </Link>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatPrice(Number(listing.precio))}</span>
+                      <span>{formatPrice(listing.precio)}</span>
                       <span className="hidden sm:inline">·</span>
                       <span className="truncate flex-1 min-w-0">Vendedor: {creador?.nombre ?? "?"}</span>
                     </div>

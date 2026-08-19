@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 interface ProductCardProps {
   id: string;
   titulo: string;
-  precio: number;
+  precio: number | string | null;
   imagen: string | null;
   categoria: string;
   slug: string;

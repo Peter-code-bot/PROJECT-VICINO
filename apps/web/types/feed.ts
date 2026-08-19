@@ -1,7 +1,7 @@
 export interface FeedProduct {
   id: string;
   titulo: string;
-  precio: number;
+  precio: number | null;
   imagen_principal: string | null;
   categoria: string;
   slug: string | null;

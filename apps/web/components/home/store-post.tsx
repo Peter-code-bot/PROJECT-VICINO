@@ -22,7 +22,7 @@ export interface StorePostProps {
     tone?: "gold" | "brand";
   };
   title: string;
-  price: number;
+  price: number | string | null;
   distance: string;
   rating: number;
   count: number;

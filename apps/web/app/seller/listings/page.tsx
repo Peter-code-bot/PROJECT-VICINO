@@ -67,7 +67,7 @@ export default async function ListingsPage() {
                   <span className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}>
                     {p.estatus}
                   </span>
-                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(Number(p.precio))}</span>
+                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio)}</span>
                   <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
               </div>

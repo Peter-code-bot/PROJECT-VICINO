@@ -9,7 +9,7 @@ export interface NearbyProduct {
   id: string;
   titulo: string;
   slug: string;
-  precio: number;
+  precio: number | null;
   imagen_principal: string | null;
   categoria: string;
   tipo_entrega: string;

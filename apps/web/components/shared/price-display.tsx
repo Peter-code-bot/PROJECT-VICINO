@@ -2,12 +2,14 @@ import { formatPrice } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
 interface PriceDisplayProps {
-  amount: number;
+  amount: number | string | null | undefined;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export function PriceDisplay({ amount, size = "md", className }: PriceDisplayProps) {
+  const formatted = formatPrice(amount);
+  if (formatted === null) return null;
   return (
     <span
       className={cn(
@@ -18,7 +20,7 @@ export function PriceDisplay({ amount, size = "md", className }: PriceDisplayPro
         className
       )}
     >
-      {formatPrice(amount)}
+      {formatted}
     </span>
   );
 }

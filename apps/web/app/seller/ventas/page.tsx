@@ -95,7 +95,7 @@ export default async function VentasPage() {
                     {status.label}
                   </span>
                   <span className="font-semibold text-sm">
-                    {formatPrice(Number(s.precio_acordado))}
+                    {formatPrice(s.precio_acordado)}
                     {s.cantidad > 1 && ` x${s.cantidad}`}
                   </span>
                 </div>

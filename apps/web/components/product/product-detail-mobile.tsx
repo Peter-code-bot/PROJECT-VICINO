@@ -114,7 +114,7 @@ export function ProductDetailMobile({
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <PriceDisplay
-                amount={Number(product.precio ?? 0)}
+                amount={product.precio}
                 size="lg"
                 className="text-3xl"
               />
