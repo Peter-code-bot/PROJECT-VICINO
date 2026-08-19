@@ -428,6 +428,19 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       setError("Marca exactamente una categoría como principal");
       return;
     }
+    // La ventana de disponibilidad tiene que dar para al menos una cita.
+    // Sin esto se guarda un rango invalido (ej. 12:00 a.m. a 12:00 a.m.) y
+    // el calendario resultante no ofrece ni un horario, sin avisar nada.
+    if (allowAppointments) {
+      const [startH = 0, startM = 0] = apptStart.split(":").map(Number);
+      const [endH = 0, endM = 0] = apptEnd.split(":").map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      if (endMinutes - startMinutes < Number(apptDuration)) {
+        setError("Tu horario de citas no alcanza para una sola cita. Revisa la hora de inicio, la de fin y la duración.");
+        return;
+      }
+    }
     // A4 sub-fase 4.1 (codex follow-up): haptic Medium DESPUES de validar
     // ambos checks (count + primary). Asi no suena en envio fallido.
     void hapticMedium();
@@ -623,6 +636,10 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 <label className="text-xs text-muted-foreground">Cada cita dura:</label>
                 <select name="appointment_duration_minutes" value={apptDuration} onChange={(e) => setApptDuration(e.target.value)}
                   className="w-full product-card-btn rounded-xl px-4 py-3 text-sm border-0 outline-none appearance-none">
+                  <option value="5">5 minutos</option>
+                  <option value="10">10 minutos</option>
+                  <option value="15">15 minutos</option>
+                  <option value="20">20 minutos</option>
                   <option value="30">30 minutos</option>
                   <option value="45">45 minutos</option>
                   <option value="60">1 hora</option>
@@ -630,6 +647,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                   <option value="120">2 horas</option>
                   <option value="240">4 horas</option>
                 </select>
+                <p className="text-xs text-muted-foreground">Si atiendes de noche, pon un horario que termine antes de medianoche.</p>
               </div>
             </div>
           )}
