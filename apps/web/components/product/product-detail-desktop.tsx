@@ -7,6 +7,7 @@ import { Edit3, Eye, MessageCircle, ShoppingBag } from "lucide-react";
 import { FavoriteButton } from "@/components/shared/favorite-button";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { AppointmentButton } from "./appointment-button";
 import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
@@ -128,13 +129,7 @@ export function ProductDetailDesktop({
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <PriceDisplay
                 amount={product.precio}
-                fallback={
-                  product.modo_precio === "cotizacion"
-                    ? "Cotización"
-                    : product.modo_precio === "reservacion"
-                      ? "Reservación"
-                      : "Consultar"
-                }
+                fallback={priceFallbackLabel(product.modo_precio)}
                 size="lg"
                 className="text-4xl"
               />

@@ -3,6 +3,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { PriceDisplay } from "@/components/shared/price-display";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { AppointmentButton } from "./appointment-button";
 import { CouponBlock } from "./coupon-block";
 import { DescriptionBlock } from "./description-block";
@@ -116,13 +117,7 @@ export function ProductDetailMobile({
             <div className="flex flex-wrap items-center gap-2">
               <PriceDisplay
                 amount={product.precio}
-                fallback={
-                  product.modo_precio === "cotizacion"
-                    ? "Cotización"
-                    : product.modo_precio === "reservacion"
-                      ? "Reservación"
-                      : "Consultar"
-                }
+                fallback={priceFallbackLabel(product.modo_precio)}
                 size="lg"
                 className="text-3xl"
               />
