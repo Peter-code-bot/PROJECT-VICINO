@@ -13,6 +13,7 @@ import { CategoryBadge } from "@/components/product/category-badge";
 import type { ProductCardCategory, TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { priceFallbackLabel } from "@/lib/price-mode";
 
 interface ProductCardProps {
   id: string;
@@ -29,6 +30,9 @@ interface ProductCardProps {
   reviewsCount: number;
   isFavorite?: boolean;
   precioNegociable?: boolean;
+  // 4c-2: sin este prop la card cae al default "Consultar" de
+  // priceFallbackLabel, que es exactamente lo que estaba hardcodeado antes.
+  modoPrecio?: string | null;
   // MP#08 #5c-4: array opcional normalizado primary-first via
   // normalizeCardCategories(product.product_categories) en el caller.
   // Default [] mantiene la card identica para callers no migrados.
@@ -50,6 +54,7 @@ export function ProductCard({
   reviewsCount,
   isFavorite: initialFavorite = false,
   precioNegociable,
+  modoPrecio,
   categories = [],
   priority = false,
 }: ProductCardProps) {
@@ -200,7 +205,7 @@ export function ProductCard({
             <PriceDisplay
               amount={precio}
               size="sm"
-              fallback="Consultar"
+              fallback={priceFallbackLabel(modoPrecio)}
               className="font-heading font-bold text-brand-dark"
             />
           </div>
