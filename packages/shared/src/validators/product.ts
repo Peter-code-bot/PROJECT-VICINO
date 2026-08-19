@@ -39,10 +39,11 @@ export const PRODUCT_CONDITION_VALUES = [
   "para_piezas",
 ] as const;
 
-export const createProductSchema = z.object({
+const baseProductSchema = z.object({
   titulo: z.string().min(3, "Mínimo 3 caracteres").max(120),
   descripcion: z.string().min(10, "Mínimo 10 caracteres").max(5000),
-  precio: z.number().positive("El precio debe ser mayor a 0").max(99999999),
+  precio: z.number().positive("El precio debe ser mayor a 0").max(99999999).nullable().optional(),
+  modo_precio: z.enum(["precio", "cotizacion", "reservacion"]).default("precio"),
   tipo: z.enum(["producto", "servicio"]),
   categories: z
     .array(
@@ -70,7 +71,23 @@ export const createProductSchema = z.object({
   color: z.string().trim().max(40).optional().nullable(),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+// El superRefine cruza modo_precio con precio: en modo "precio" el campo es
+// obligatorio; en "cotizacion"/"reservacion" NO debe venir. Ojo: esto convierte
+// createProductSchema en ZodEffects, que NO expone .partial()/.shape/.extend.
+// Por eso updateProductSchema deriva del baseProductSchema plano, no de este.
+export const createProductSchema = baseProductSchema.superRefine((data, ctx) => {
+  if (data.modo_precio === "precio") {
+    if (data.precio == null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["precio"],
+        message: "Pon un precio o cambia el modo a Cotización o Reservación" });
+    }
+  } else if (data.precio != null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["precio"],
+      message: "En modo Cotización o Reservación no se envía precio" });
+  }
+});
+
+export const updateProductSchema = baseProductSchema.partial();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

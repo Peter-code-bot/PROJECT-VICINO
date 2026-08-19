@@ -132,7 +132,7 @@ export function StorePost({
           <FavoriteButton productId={id} initialFavorite={heart} size="md" variant="overlay" />
         </div>
         <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-[12px] font-bold text-[15px] tracking-tight shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
-          <PriceDisplay amount={price} className="text-white" />
+          <PriceDisplay amount={price} fallback="Consultar" className="text-white" />
         </div>
       </Link>
 

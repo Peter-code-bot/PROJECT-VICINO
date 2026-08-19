@@ -24,7 +24,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
   const { data: product } = await supabase
     .from("products_services")
     .select(
-      `id, titulo, descripcion, precio, tipo, categoria, ubicacion,
+      `id, titulo, descripcion, precio, modo_precio, tipo, categoria, ubicacion,
        delivery_radius_km, tipo_entrega, estado, color, precio_negociable, allow_appointments,
        appointment_start_time, appointment_end_time, appointment_duration_minutes,
        imagen_principal, galeria_imagenes`,
@@ -81,7 +81,8 @@ export default async function EditarPublicacionPage({ params }: Props) {
           id: product.id,
           titulo: product.titulo,
           descripcion: product.descripcion,
-          precio: Number(product.precio),
+          precio: product.precio == null ? null : Number(product.precio),
+          modo_precio: product.modo_precio ?? "precio",
           tipo: product.tipo,
           categories: initialCategories,
           ubicacion: product.ubicacion,

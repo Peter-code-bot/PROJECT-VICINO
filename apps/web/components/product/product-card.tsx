@@ -200,6 +200,7 @@ export function ProductCard({
             <PriceDisplay
               amount={precio}
               size="sm"
+              fallback="Consultar"
               className="font-heading font-bold text-brand-dark"
             />
           </div>

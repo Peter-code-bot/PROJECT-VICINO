@@ -5,11 +5,15 @@ interface PriceDisplayProps {
   amount: number | string | null | undefined;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Texto a mostrar cuando no hay precio (ej. "Consultar"). Sin esto el
+   *  componente no pinta nada. */
+  fallback?: string;
 }
 
-export function PriceDisplay({ amount, size = "md", className }: PriceDisplayProps) {
+export function PriceDisplay({ amount, size = "md", className, fallback }: PriceDisplayProps) {
   const formatted = formatPrice(amount);
-  if (formatted === null) return null;
+  if (formatted === null && fallback === undefined) return null;
+  const text = formatted ?? fallback;
   return (
     <span
       className={cn(
@@ -20,7 +24,7 @@ export function PriceDisplay({ amount, size = "md", className }: PriceDisplayPro
         className
       )}
     >
-      {formatted}
+      {text}
     </span>
   );
 }

@@ -229,10 +229,19 @@ export async function createProduct(formData: FormData) {
     categoriesParsed = [];
   }
 
+  // 4c-1: modo_precio decide si el listing lleva precio. En "cotizacion" y
+  // "reservacion" el precio viaja como null y el zod rechaza que venga con
+  // valor; en "precio" el zod exige que no sea null.
+  const modoPrecioRaw = (formData.get("modo_precio") as string) || "precio";
+  const precioRaw = formData.get("precio");
+
   const raw = {
     titulo: formData.get("titulo") as string,
     descripcion: formData.get("descripcion") as string,
-    precio: Number(formData.get("precio")),
+    precio: modoPrecioRaw === "precio" && precioRaw !== null && precioRaw !== ""
+      ? Number(precioRaw)
+      : null,
+    modo_precio: modoPrecioRaw,
     tipo: formData.get("tipo") as string,
     categories: categoriesParsed,
     ubicacion: (formData.get("ubicacion") as string) || undefined,
@@ -276,7 +285,11 @@ export async function createProduct(formData: FormData) {
   }
 
   const allowAppointments = formData.get("allow_appointments") === "true";
-  const precioNegociable = formData.get("precio_negociable") === "true";
+  // Sin precio no hay nada que negociar: los modos cotizacion/reservacion
+  // fuerzan precio_negociable a false aunque el form mande otra cosa.
+  const precioNegociable =
+    result.data.modo_precio === "precio" &&
+    formData.get("precio_negociable") === "true";
   const appointmentStartTime = (formData.get("appointment_start_time") as string) || "09:00";
   const appointmentEndTime = (formData.get("appointment_end_time") as string) || "18:00";
   const appointmentDurationMinutes = formData.get("appointment_duration_minutes") ? Number(formData.get("appointment_duration_minutes")) : 60;
@@ -309,7 +322,8 @@ export async function createProduct(formData: FormData) {
       creador_id: user.id,
       titulo: result.data.titulo,
       descripcion: result.data.descripcion,
-      precio: result.data.precio,
+      precio: result.data.precio ?? null,
+      modo_precio: result.data.modo_precio,
       tipo: result.data.tipo,
       categoria: primaryCategoria,
       ubicacion: result.data.ubicacion ?? null,
@@ -400,7 +414,20 @@ export async function updateProductFull(
   const colorField = formData.get("color");
   if (typeof titulo === "string" && titulo.length > 0) raw.titulo = titulo;
   if (typeof descripcion === "string" && descripcion.length > 0) raw.descripcion = descripcion;
-  if (precio !== null && precio !== "") raw.precio = Number(precio);
+  // 4c-1: el modo manda sobre el precio. En "cotizacion"/"reservacion" se
+  // escribe null explicito (limpia el precio viejo si el seller cambio de
+  // modo); solo en "precio" se toma el valor del input.
+  const modoPrecioField = formData.get("modo_precio");
+  const modoPrecio =
+    typeof modoPrecioField === "string" && modoPrecioField.length > 0
+      ? modoPrecioField
+      : "precio";
+  raw.modo_precio = modoPrecio;
+  if (modoPrecio === "precio") {
+    if (precio !== null && precio !== "") raw.precio = Number(precio);
+  } else {
+    raw.precio = null;
+  }
   // MP#08 #5c-2: categories llega como JSON string. Solo se valida cuando
   // viene presente (tri-state coherente con el resto de updateProductFull:
   // ausente == no tocar, presente == reemplazar). El zod .partial() hereda
@@ -531,6 +558,7 @@ export async function updateProductFull(
   if (parsed.data.titulo !== undefined) updateObj.titulo = parsed.data.titulo;
   if (parsed.data.descripcion !== undefined) updateObj.descripcion = parsed.data.descripcion;
   if (parsed.data.precio !== undefined) updateObj.precio = parsed.data.precio;
+  if (parsed.data.modo_precio !== undefined) updateObj.modo_precio = parsed.data.modo_precio;
   // MP#08 #4 Fase 1C: writer-stop del espejo TEXT. El UPDATE ya no escribe
   // categoria TEXT -- la columna queda congelada al valor del INSERT (Camino
   // X, D1C-A). Si el seller cambia la primary, products_services.categoria
@@ -553,7 +581,11 @@ export async function updateProductFull(
   if (deliveryRadius !== null && !Number.isNaN(deliveryRadius)) {
     updateObj.delivery_radius_km = deliveryRadius;
   }
-  if (precioNegociable !== null) {
+  // Sin precio no hay nada que negociar: cotizacion/reservacion apagan el flag
+  // aunque el form lo mande en true (o no lo mande).
+  if (modoPrecio !== "precio") {
+    updateObj.precio_negociable = false;
+  } else if (precioNegociable !== null) {
     updateObj.precio_negociable = precioNegociable;
   }
   if (allowAppointments !== null) {

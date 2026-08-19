@@ -128,6 +128,13 @@ export function ProductDetailDesktop({
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <PriceDisplay
                 amount={product.precio}
+                fallback={
+                  product.modo_precio === "cotizacion"
+                    ? "Cotización"
+                    : product.modo_precio === "reservacion"
+                      ? "Reservación"
+                      : "Consultar"
+                }
                 size="lg"
                 className="text-4xl"
               />

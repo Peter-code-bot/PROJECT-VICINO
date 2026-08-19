@@ -49,7 +49,8 @@ export interface ProductInitialValues {
   id: string;
   titulo: string;
   descripcion: string;
-  precio: number;
+  precio: number | null;
+  modo_precio?: string | null;
   tipo: "producto" | "servicio";
   // MP#08 #5c-2: editar page lee el pivote y envia el array de 1..3 categorias
   // con la primary marcada. Para productos pre-5c-1 sin filas en el pivote
@@ -181,6 +182,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     radius: initialValues?.delivery_radius_km ?? 5,
   });
   const [precioNegociable, setPrecioNegociable] = useState(initialValues?.precio_negociable ?? false);
+  const [modoPrecio, setModoPrecio] = useState(initialValues?.modo_precio ?? "precio");
   const [allowAppointments, setAllowAppointments] = useState(initialValues?.allow_appointments ?? false);
   const [apptStart, setApptStart] = useState(initialValues?.appointment_start_time ?? "09:00");
   const [apptEnd, setApptEnd] = useState(initialValues?.appointment_end_time ?? "18:00");
@@ -527,7 +529,13 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 name="tipo"
                 value="producto"
                 checked={tipoSeleccionado === "producto"}
-                onChange={() => setTipoSeleccionado("producto")}
+                onChange={() => {
+                  setTipoSeleccionado("producto");
+                  // "Reservación" solo existe para servicios; al cambiar a
+                  // producto la opcion desaparece del select y el estado
+                  // quedaria apuntando a un value inexistente.
+                  if (modoPrecio === "reservacion") setModoPrecio("precio");
+                }}
                 className="peer sr-only"
               />
               <div className={cn(
@@ -675,27 +683,65 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
 
         {/* Precio */}
         <div className="space-y-2">
-          <label htmlFor="precio" className="text-sm font-medium text-foreground/80">
-            Precio <span className="text-muted-foreground font-normal">(MXN)</span>
+          <label htmlFor="modo_precio" className="text-sm font-medium text-foreground/80">
+            ¿Cómo manejas el precio?
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-            <input
-              id="precio"
-              name="precio"
-              type="number"
-              required
-              min={1}
-              max={99999999}
-              step="0.01"
-              defaultValue={initialValues?.precio ?? ""}
-              placeholder="0.00"
-              className="w-full rounded-xl product-card-btn pl-8 pr-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
-            />
-          </div>
+          <select
+            id="modo_precio"
+            value={modoPrecio}
+            onChange={(e) => {
+              const next = e.target.value;
+              setModoPrecio(next);
+              // Sin precio visible no hay nada que negociar.
+              if (next !== "precio") setPrecioNegociable(false);
+              // Reservación implica que el comprador aparta un horario.
+              if (next === "reservacion") setAllowAppointments(true);
+            }}
+            className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 1rem center",
+              backgroundSize: "0.75em auto",
+              paddingRight: "2.5rem",
+            }}
+          >
+            <option value="precio">Precio fijo</option>
+            <option value="cotizacion">Cotización</option>
+            {tipoSeleccionado === "servicio" && (
+              <option value="reservacion">Reservación</option>
+            )}
+          </select>
+          <input type="hidden" name="modo_precio" value={modoPrecio} />
+
+          {modoPrecio === "precio" ? (
+            <>
+              <label htmlFor="precio" className="text-sm font-medium text-foreground/80">
+                Precio <span className="text-muted-foreground font-normal">(MXN)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                <input
+                  id="precio"
+                  name="precio"
+                  type="number"
+                  required
+                  min={1}
+                  max={99999999}
+                  step="0.01"
+                  defaultValue={initialValues?.precio ?? ""}
+                  placeholder="0.00"
+                  className="w-full rounded-xl product-card-btn pl-8 pr-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 tabular-nums font-heading font-medium"
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">No se mostrará precio. El comprador te contactará.</p>
+          )}
         </div>
 
         {/* Precio negociable */}
+        {modoPrecio === "precio" && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div>
@@ -720,6 +766,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           </div>
           <input type="hidden" name="precio_negociable" value={precioNegociable ? "true" : "false"} />
         </div>
+        )}
 
         {/* Categorias — multi-select hasta 3, una marcada como principal (MP#08 #5c-2) */}
         <div className="space-y-2 relative">
