@@ -200,6 +200,61 @@ un duplicado redundante.
 
 ---
 
+## Schema — los grants de `products_services` son columna por columna
+
+Los `GRANT` de `products_services` se otorgan **columna por columna**, nunca a
+nivel de tabla. Es deliberado: acota exactamente qué puede escribir el cliente
+y evita que una columna interna quede expuesta sola por existir.
+
+La consecuencia es una obligación, no una recomendación: **toda columna nueva
+que el cliente escriba necesita su `GRANT` explícito en la misma migración que
+la crea.**
+
+```sql
+GRANT SELECT (col), INSERT (col), UPDATE (col) ON products_services TO authenticated;
+GRANT SELECT (col) ON products_services TO anon;  -- solo si el feed público la lee
+```
+
+`ADD COLUMN` **nunca** hereda los grants de las columnas hermanas: cada grant
+por columna es un privilegio independiente, y una columna nueva nace sin
+ninguno. Ejemplo canónico completo en
+`supabase/migrations/20260819000000_products_services_modo_precio_column.sql`.
+
+Verificación antes de dar por buena la migración:
+
+```sql
+SELECT grantee, privilege_type
+FROM information_schema.column_privileges
+WHERE table_name = 'products_services' AND column_name = '<col>';
+```
+
+### Incidente que originó la regla — `modo_precio` (agosto 2026)
+
+`modo_precio` se agregó a `products_services` sin su `GRANT`. Resultado: **toda**
+edición de publicación moría con `42501 permission denied for column modo_precio`
+— no un caso borde, todas.
+
+Lo que encareció el diagnóstico fue el mensaje. El usuario veía *"No tienes
+permiso para editar esta publicación."*, que **no** era una verificación de
+propiedad: era el `catch` genérico del `42501` en
+`app/(marketplace)/vender/actions.ts` — el `if (updateErr)` de
+`updateProductFull`, línea 634 en ese momento, con el `return` en la 636. El
+texto apuntaba a RLS y ownership, y el fallo real era un privilegio de columna
+faltante.
+
+Dos cambios salieron de ahí (commit `e5e13de`) y conviene no revertirlos:
+
+- El mensaje del `42501` ya no habla de propiedad. Hoy dice *"No se pudo
+  guardar por un problema de permisos. Ya lo estamos revisando."*
+  (`vender/actions.ts:645-646`). El caso real de "no eres el dueño" no pasa por
+  aquí: cae en el 0-row de `.maybeSingle()` más abajo.
+- `Sentry.captureException` va **antes** del `return` del `42501`, para no
+  perder el `details` de Postgres — que es donde el motor nombra la columna o
+  la policy que rechazó. Ese P0 se diagnosticó a ciegas justamente por
+  perderlo.
+
+---
+
 ## Limitaciones conocidas
 
 ### Editar publicación: cambiar categoría rompe la URL anterior del producto
