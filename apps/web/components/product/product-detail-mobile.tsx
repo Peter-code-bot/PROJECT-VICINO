@@ -93,6 +93,7 @@ export function ProductDetailMobile({
           productTitle={product.titulo}
           isFavorite={isFavorite}
           isOwner={effectiveIsOwner}
+          estatus={product.estatus ?? ""}
         />
       </div>
 

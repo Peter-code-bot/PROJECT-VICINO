@@ -9,11 +9,13 @@ import {
   Flag,
   MoreHorizontal,
   Pause,
+  Play,
   Share2,
   Trash2,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/shared/favorite-button";
 import { ReportModal } from "@/components/moderation/report-modal";
+import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +29,7 @@ interface GalleryTopBarProps {
   productTitle: string;
   isFavorite: boolean;
   isOwner: boolean;
+  estatus: string;
 }
 
 export function GalleryTopBar({
@@ -34,9 +37,35 @@ export function GalleryTopBar({
   productTitle,
   isFavorite,
   isOwner,
+  estatus,
 }: GalleryTopBarProps) {
   const router = useRouter();
   const [reportOpen, setReportOpen] = useState(false);
+
+  const isPaused = estatus === "pausado";
+
+  async function handleToggleStatus() {
+    const nuevo = isPaused ? "disponible" : "pausado";
+    const res = await toggleProductStatus(productId, nuevo);
+    if (res && "error" in res && res.error) {
+      window.alert(res.error);
+      return;
+    }
+    // El action revalida /seller/listings, no esta ruta: sin este refresh la
+    // propia ficha seguiria mostrando el estatus viejo.
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!confirm("¿Eliminar esta publicación? Esta acción no se puede deshacer.")) return;
+    // No hay navegacion aqui: deleteProduct termina en redirect(), que en un
+    // server action navega solo. Este bloque solo se alcanza cuando el action
+    // devuelve { error } antes de llegar al redirect.
+    const res = await deleteProduct(productId);
+    if (res && "error" in res && res.error) {
+      window.alert(res.error);
+    }
+  }
 
   async function handleShare() {
     if (typeof window === "undefined") return;
@@ -104,23 +133,18 @@ export function GalleryTopBar({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e: any) => {
-                      e.preventDefault();
-                      // TODO Fase posterior: invocar mutation pausar/reanudar listado
-                      // contra products_services.estatus (requiere server action).
-                      window.alert("Pausar listado: proximamente");
+                    onSelect={() => {
+                      void handleToggleStatus();
                     }}
                   >
-                    <Pause className="h-4 w-4" />
-                    Pausar listado
+                    {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                    {isPaused ? "Reanudar listado" : "Pausar listado"}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     destructive
-                    onSelect={(e: any) => {
-                      e.preventDefault();
-                      // TODO Fase posterior: confirm + delete o soft-delete del listado.
-                      window.alert("Eliminar producto: proximamente");
+                    onSelect={() => {
+                      void handleDelete();
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
