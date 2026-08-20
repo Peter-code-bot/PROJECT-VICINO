@@ -2,7 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatRelativeTime } from "@vicino/shared";
+import { formatPrice, formatRelativeTime } from "@vicino/shared";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage, getMessagesBefore } from "../actions";
@@ -47,7 +48,13 @@ interface ChatWindowProps {
   currentUserId: string;
   isBuyer: boolean;
   otherUser: { id: string; nombre: string; foto: string | null; trust_level: string } | null;
-  product: { id: string; titulo: string; precio: number; imagen_principal: string | null } | null;
+  product: {
+    id: string;
+    titulo: string;
+    precio: number | null;
+    modo_precio: string | null;
+    imagen_principal: string | null;
+  } | null;
   initialMessages: Message[];
   initialSaleConfirmations: SaleConfirmation[];
 }
@@ -569,7 +576,17 @@ export function ChatWindow({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-[color:var(--fg)]">{product.titulo}</p>
-            <p className="text-[10px] text-[color:var(--brand-hi)]">${product.precio.toLocaleString("es-MX")} MXN</p>
+            {/* precio es nullable (modo cotizacion/reservacion). Llamar
+                .toLocaleString() directo sobre null reventaba el detalle del
+                chat entero con un TypeError. */}
+            <p className="text-[10px] text-[color:var(--brand-hi)]">
+              {(() => {
+                const precioFmt = formatPrice(product.precio);
+                return precioFmt
+                  ? `${precioFmt} MXN`
+                  : priceFallbackLabel(product.modo_precio);
+              })()}
+            </p>
           </div>
         </Link>
       )}

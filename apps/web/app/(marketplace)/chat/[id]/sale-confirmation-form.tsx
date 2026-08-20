@@ -7,7 +7,7 @@ import { createSaleConfirmation } from "../actions";
 interface SaleConfirmationFormProps {
   chatId: string;
   currentUserId: string;
-  product: { id: string; titulo: string; precio: number } | null;
+  product: { id: string; titulo: string; precio: number | null } | null;
   onClose: () => void;
 }
 
