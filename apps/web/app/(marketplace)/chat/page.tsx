@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { formatPrice } from "@vicino/shared";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { getOrCreateChat } from "./actions";
 import { ChatItemCard } from "./chat-item-card";
 
@@ -41,7 +43,7 @@ export default async function ChatPage({ searchParams }: Props) {
       if (params.intent === "buy" && params.product) {
         const { data: product } = await supabase
           .from("products_services")
-          .select("titulo, precio")
+          .select("titulo, precio, modo_precio")
           .eq("id", params.product)
           .single();
         const { data: profile } = await supabase
@@ -50,10 +52,20 @@ export default async function ChatPage({ searchParams }: Props) {
           .eq("id", user.id)
           .single();
         if (product) {
+          // El precio es nullable desde que existe modo_precio. El
+          // Number(precio) anterior convertia null en 0 y guardaba en la base
+          // un "por $0 MXN" que se lee como una oferta real de cero pesos.
+          // formatPrice devuelve null cuando no hay monto, y ahi la etiqueta
+          // del modo dice la verdad ("Cotizacion" / "Reservacion").
+          const precioFmt = formatPrice(product.precio);
           await supabase.from("messages").insert({
             chat_id: result.chatId,
             autor_id: user.id,
-            texto: `🛒 ${profile?.nombre ?? "Un comprador"} quiere comprar: ${product.titulo} por $${Number(product.precio).toLocaleString("es-MX")} MXN`,
+            texto: `🛒 ${profile?.nombre ?? "Un comprador"} quiere comprar: ${product.titulo} ${
+              precioFmt
+                ? `por ${precioFmt} MXN`
+                : `(${priceFallbackLabel(product.modo_precio)})`
+            }`,
           });
         }
       }
