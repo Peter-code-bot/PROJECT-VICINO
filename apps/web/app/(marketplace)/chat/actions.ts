@@ -10,6 +10,7 @@ import {
   createSaleConfirmationSchema,
   confirmSaleSchema,
   cancelSaleSchema,
+  formatPrice,
 } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
@@ -286,7 +287,7 @@ export async function createSaleConfirmation(data: {
   const { error: autoMsgErr } = await supabase.from("messages").insert({
     chat_id: parsed.data.chat_id,
     autor_id: user.id,
-    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — $${parsed.data.precio_acordado} MXN. Confirma para completar la venta.`,
+    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — ${formatPrice(parsed.data.precio_acordado)} MXN. Confirma para completar la venta.`,
   });
   if (autoMsgErr) {
     console.error("[createSaleConfirmation] auto-message insert:", autoMsgErr);
@@ -361,7 +362,7 @@ export async function confirmSale(saleConfirmationId: string) {
     const { error: completedMsgErr } = await supabase.from("messages").insert({
       chat_id: sc.chat_id,
       autor_id: user.id,
-      texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo}" — $${sc.precio_acordado} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
+      texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo}" — ${formatPrice(sc.precio_acordado)} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
       sale_confirmation_id: saleConfirmationId,
       message_type: "sale_confirmed",
     });

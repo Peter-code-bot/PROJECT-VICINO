@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@vicino/shared";
+import { formatDate, formatPrice } from "@vicino/shared";
 import { CouponActions } from "./coupon-actions";
 
 export const metadata = { title: "Mis cupones" };
@@ -52,7 +52,7 @@ export default async function CuponesPage() {
               <p className="text-sm">
                 {c.tipo_descuento === "porcentaje"
                   ? `${c.valor}% de descuento`
-                  : `$${c.valor} MXN de descuento`}
+                  : `${formatPrice(c.valor)} MXN de descuento`}
               </p>
               <div className="flex gap-4 text-xs text-[color:var(--fg-muted)]">
                 {c.fecha_expiracion && (

@@ -2,6 +2,7 @@
 
 import { Ticket } from "lucide-react";
 import { useState } from "react";
+import { formatPrice } from "@vicino/shared";
 import { BottomSheet } from "./bottom-sheet";
 import type { ProductDetailCoupon } from "./types";
 
@@ -13,7 +14,7 @@ function formatDiscount(coupon: ProductDetailCoupon): string {
   if (coupon.tipo_descuento === "porcentaje") {
     return `-${coupon.valor}%`;
   }
-  return `-$${coupon.valor}`;
+  return `-${formatPrice(coupon.valor)}`;
 }
 
 export function CouponBlock({ coupons }: CouponBlockProps) {
@@ -76,7 +77,7 @@ export function CouponBlock({ coupons }: CouponBlockProps) {
                 <span className="text-xs text-fg-muted">
                   {coupon.tipo_descuento === "porcentaje"
                     ? `${coupon.valor}% de descuento`
-                    : `$${coupon.valor} de descuento`}
+                    : `${formatPrice(coupon.valor)} de descuento`}
                 </span>
               </div>
               <span className="shrink-0 rounded-full bg-emerald-trust/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-trust">
