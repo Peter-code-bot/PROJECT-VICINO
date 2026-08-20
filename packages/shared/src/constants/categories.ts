@@ -9,7 +9,7 @@ export const CATEGORIES = [
   { id: "electrodomesticos", name: "Electrodomésticos", slug: "electrodomesticos", icon: "Refrigerator", type: "producto", hidden_in_form: false },
   { id: "belleza", name: "Belleza", slug: "belleza", icon: "Sparkles", type: "producto", hidden_in_form: false },
   { id: "salud", name: "Salud y Bienestar", slug: "salud", icon: "HeartPulse", type: "producto", hidden_in_form: false },
-  { id: "deportes", name: "Deportes y Fitness", slug: "deportes", icon: "Dumbbell", type: "producto", hidden_in_form: false },
+  { id: "deportes", name: "Artículos Deportivos", slug: "deportes", icon: "Dumbbell", type: "producto", hidden_in_form: false },
   { id: "mascotas", name: "Mascotas", slug: "mascotas", icon: "PawPrint", type: "producto", hidden_in_form: false },
   { id: "bebes", name: "Bebés y Niños", slug: "bebes", icon: "Baby", type: "producto", hidden_in_form: false },
   { id: "vehiculos", name: "Vehículos", slug: "vehiculos", icon: "Car", type: "producto", hidden_in_form: false },
@@ -22,6 +22,7 @@ export const CATEGORIES = [
   // Servicios
   { id: "servicios-hogar", name: "Servicios del Hogar", slug: "servicios-hogar", icon: "Wrench", type: "servicio", hidden_in_form: false },
   { id: "educacion", name: "Educación y Clases", slug: "educacion", icon: "GraduationCap", type: "servicio", hidden_in_form: false },
+  { id: "deportes-aventura", name: "Deportes y Aventura", slug: "deportes-aventura", icon: "Mountain", type: "servicio", hidden_in_form: false },
   { id: "eventos", name: "Eventos", slug: "eventos", icon: "PartyPopper", type: "servicio", hidden_in_form: false },
   { id: "entretenimiento", name: "Entretenimiento", slug: "entretenimiento", icon: "Ticket", type: "servicio", hidden_in_form: false },
   { id: "transporte", name: "Transporte y Mudanzas", slug: "transporte", icon: "Truck", type: "servicio", hidden_in_form: false },
