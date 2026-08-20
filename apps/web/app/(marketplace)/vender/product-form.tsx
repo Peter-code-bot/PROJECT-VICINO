@@ -164,6 +164,36 @@ function SortableMediaItem({
   );
 }
 
+// El schema exige exactamente una primaria. Cuando desaparece la que lo era
+// —al quitarla a mano o al descartarla por cambio de tipo— hay que promover
+// otra. Recibe la lista YA filtrada; con lista vacia no hay nada que
+// promover y el usuario tendra que elegir.
+function ensureOnePrimary(list: CategorySelection[]): CategorySelection[] {
+  if (list.length === 0) return list;
+  const found = list.findIndex((c) => c.is_primary);
+  const primaryIdx = found === -1 ? 0 : found;
+  return list.map((c, i) =>
+    c.is_primary === (i === primaryIdx) ? c : { ...c, is_primary: i === primaryIdx },
+  );
+}
+
+// Al cambiar el tipo de publicacion, las categorias del tipo contrario dejan
+// de tener sentido. Se descartan esas y se conservan las compatibles: perder
+// selecciones validas por un toggle es peor que el bug. Un slug sin meta en
+// CATEGORIES tambien cae — el zod del servidor lo rechazaria igual y en los
+// chips ni se pinta, asi que arrastrarlo solo produce un error invisible.
+function filterCategoriesByTipo(
+  list: CategorySelection[],
+  tipo: "producto" | "servicio",
+): CategorySelection[] {
+  return ensureOnePrimary(
+    list.filter((sel) => {
+      const meta = CATEGORIES.find((c) => c.slug === sel.slug);
+      return !!meta && (meta.type === tipo || meta.type === "otro");
+    }),
+  );
+}
+
 export function ProductForm({ mode = "create", initialValues }: ProductFormProps) {
   const submittingRef = useRef(false);
   const [error, setError] = useState("");
@@ -545,6 +575,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                   // producto la opcion desaparece del select y el estado
                   // quedaria apuntando a un value inexistente.
                   if (modoPrecio === "reservacion") setModoPrecio("precio");
+                  setCategories((prev) => filterCategoriesByTipo(prev, "producto"));
                 }}
                 className="peer sr-only"
               />
@@ -570,7 +601,10 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 name="tipo"
                 value="servicio"
                 checked={tipoSeleccionado === "servicio"}
-                onChange={() => setTipoSeleccionado("servicio")}
+                onChange={() => {
+                  setTipoSeleccionado("servicio");
+                  setCategories((prev) => filterCategoriesByTipo(prev, "servicio"));
+                }}
                 className="peer sr-only"
               />
               <div className={cn(
@@ -793,6 +827,16 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
             required
           />
 
+          {/* El required del input hidden no lo valida el navegador, y un
+              cambio de tipo puede vaciar la lista sin que el usuario lo pida.
+              Sin este aviso el formulario queda mudo hasta que falla al
+              enviar. */}
+          {categories.length === 0 && (
+            <p className="text-xs text-[color:var(--fg-muted)]">
+              Elige al menos una categoría. La primera que agregues queda como principal.
+            </p>
+          )}
+
           {/* Chips de las categorias seleccionadas */}
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -830,15 +874,9 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                       type="button"
                       aria-label={`Quitar ${meta.name}`}
                       onClick={() =>
-                        setCategories((prev) => {
-                          const removed = prev.find((c) => c.slug === cat.slug);
-                          const next = prev.filter((c) => c.slug !== cat.slug);
-                          // Si quitamos la primary y quedan otras, la primera pasa a primary.
-                          if (removed?.is_primary && next.length > 0 && next[0]) {
-                            next[0] = { ...next[0], is_primary: true };
-                          }
-                          return next;
-                        })
+                        setCategories((prev) =>
+                          ensureOnePrimary(prev.filter((c) => c.slug !== cat.slug)),
+                        )
                       }
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--danger-tint,rgba(255,59,48,0.15))]"
                     >
