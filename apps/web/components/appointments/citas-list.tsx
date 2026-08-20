@@ -15,7 +15,7 @@ interface Appointment {
   notes: string | null;
   buyer_id: string;
   seller_id: string;
-  products_services: { id: string; titulo: string; imagen_principal: string | null; precio: number } | { id: string; titulo: string; imagen_principal: string | null; precio: number }[] | null;
+  products_services: { id: string; titulo: string; imagen_principal: string | null; precio: number | null } | { id: string; titulo: string; imagen_principal: string | null; precio: number | null }[] | null;
   buyer: { id: string; nombre: string; foto: string | null } | { id: string; nombre: string; foto: string | null }[] | null;
   seller: { id: string; nombre: string; foto: string | null } | { id: string; nombre: string; foto: string | null }[] | null;
 }

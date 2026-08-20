@@ -18,7 +18,7 @@ export default async function ListingsPage() {
   // porque este listing no muestra label de categoria (solo el href).
   const { data: products } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, estatus, categoria, slug, ventas_count, vistas_count, created_at, product_categories(is_primary, categories(slug))")
+    .select("id, titulo, precio, modo_precio, estatus, categoria, slug, ventas_count, vistas_count, created_at, product_categories(is_primary, categories(slug))")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("created_at", { ascending: false });

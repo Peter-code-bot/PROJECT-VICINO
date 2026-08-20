@@ -51,7 +51,7 @@ export default async function VendedorPage({ params }: Props) {
   // hover). Misma decision que perfil/page.tsx.
   const { data: products } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
+    .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
     .eq("creador_id", id)
     .eq("estatus", "disponible")
     .order("created_at", { ascending: false });

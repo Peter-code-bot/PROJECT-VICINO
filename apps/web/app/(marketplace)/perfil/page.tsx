@@ -38,7 +38,7 @@ export default async function PerfilPage() {
   // requiere diseno de overlay propio para no colisionar.
   let { data: products, error: productsError } = await supabase
     .from("products_services")
-    .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
+    .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("sort_order", { ascending: true })
@@ -48,7 +48,7 @@ export default async function PerfilPage() {
   if (productsError && productsError.code === "42703") {
     const fallback = await supabase
       .from("products_services")
-      .select("id, titulo, precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
+      .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, product_categories(is_primary, categories(slug, nombre))")
       .eq("creador_id", user.id)
       .neq("estatus", "eliminado")
       .order("created_at", { ascending: false });

@@ -95,7 +95,7 @@ export async function getMoreFeedProducts(
     const res = await supabase
       .from("products_services")
       .select(`
-        id, titulo, precio, imagen_principal, categoria, slug, created_at, precio_negociable,
+        id, titulo, precio, imagen_principal, categoria, slug, created_at, precio_negociable, modo_precio,
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
       `)

@@ -216,6 +216,7 @@ export default async function HomePage({ searchParams }: Props) {
           slug,
           created_at,
           precio_negociable,
+          modo_precio,
           profiles!inner(nombre, trust_level, average_rating, reviews_count),
           product_categories(is_primary, categories(slug, nombre))
         `)
@@ -260,6 +261,7 @@ export default async function HomePage({ searchParams }: Props) {
         slug,
         created_at,
         precio_negociable,
+        modo_precio,
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
       `
@@ -353,6 +355,7 @@ export default async function HomePage({ searchParams }: Props) {
           slug,
           created_at,
           precio_negociable,
+          modo_precio,
           profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count),
           product_categories(is_primary, categories(slug, nombre))
         `)
@@ -822,6 +825,7 @@ export default async function HomePage({ searchParams }: Props) {
                       when={when}
                       title={post.titulo}
                       price={post.precio}
+                      modoPrecio={post.modo_precio}
                       distance="A 2.5 km"
                       rating={post.profiles.average_rating ?? 0}
                       count={post.profiles.reviews_count ?? 0}

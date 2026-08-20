@@ -13,6 +13,7 @@ interface CarouselProduct {
   categoria: string;
   slug: string | null;
   precio_negociable?: boolean | null;
+  modo_precio?: string | null;
   profiles:
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }
     | { nombre: string; trust_level: string; average_rating: number; reviews_count: number }[]
@@ -55,6 +56,7 @@ export function ProductCarousel({ products, priorityFirstItem = false }: Product
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
                 precioNegociable={p.precio_negociable ?? false}
+                modoPrecio={p.modo_precio}
                 categories={normalizeCardCategories(p.product_categories)}
                 priority={priorityFirstItem && index === 0}
               />

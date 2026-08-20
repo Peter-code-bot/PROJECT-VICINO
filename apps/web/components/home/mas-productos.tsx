@@ -46,6 +46,7 @@ interface MasProductosProduct {
   slug: string | null;
   created_at: string;
   precio_negociable: boolean | null;
+  modo_precio: string | null;
   profiles: unknown;
   product_categories: unknown;
 }
@@ -144,6 +145,7 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
                   rating={Number(profileShape?.average_rating ?? 0)}
                   reviewsCount={Number(profileShape?.reviews_count ?? 0)}
                   precioNegociable={p.precio_negociable ?? false}
+                  modoPrecio={p.modo_precio}
                   categories={normalizeCardCategories(p.product_categories)}
                 />
               );
