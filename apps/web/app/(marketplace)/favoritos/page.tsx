@@ -45,6 +45,8 @@ export default async function FavoritosPage() {
             const profile = Array.isArray(product.profiles)
               ? product.profiles[0]
               : product.profiles;
+            // Todo lo listado aqui ES un favorito por construccion: la
+            // query sale de la tabla favorites del propio usuario.
             return (
               <ProductCard
                 key={fav.id}
@@ -60,6 +62,7 @@ export default async function FavoritosPage() {
                 }}
                 rating={Number(profile?.average_rating ?? 0)}
                 reviewsCount={Number(profile?.reviews_count ?? 0)}
+                isFavorite={true}
                 precioNegociable={product.precio_negociable ?? false}
                 modoPrecio={product.modo_precio}
                 categories={normalizeCardCategories(
