@@ -50,6 +50,7 @@ import {
   Briefcase,
   MoreHorizontal,
   Warehouse,
+  Mountain,
   Ticket,
   Cake,
   Refrigerator,
@@ -67,7 +68,8 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   "proveedores-mayoreo": Warehouse,
   arte: Palette, regalos: Gift, muebles: Armchair, herramientas: Hammer,
   "servicios-hogar": Wrench,
-  educacion: GraduationCap, eventos: PartyPopper, entretenimiento: Ticket, transporte: Truck,
+  educacion: GraduationCap, "deportes-aventura": Mountain,
+  eventos: PartyPopper, entretenimiento: Ticket, transporte: Truck,
   "diseno-tech": Code, "salud-terapias": Stethoscope, fotografia: Camera,
   inmuebles: Building, empleos: Briefcase, otros: MoreHorizontal,
 };

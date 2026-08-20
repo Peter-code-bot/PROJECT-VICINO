@@ -10,7 +10,7 @@ import {
   UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
   Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
   Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
-  Stethoscope, Camera, Building, Warehouse, Briefcase,
+  Stethoscope, Camera, Building, Warehouse, Briefcase, Mountain,
   Ticket, Cake, Refrigerator, Hammer, Gift, Gem, LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   belleza: Sparkles, salud: HeartPulse, deportes: Dumbbell, mascotas: PawPrint,
   bebes: Baby, vehiculos: Car, libros: BookOpen, juguetes: Gamepad2,
   arte: Palette, regalos: Gift, muebles: Armchair, herramientas: Hammer,
-  "servicios-hogar": Wrench, educacion: GraduationCap,
+  "servicios-hogar": Wrench, educacion: GraduationCap, "deportes-aventura": Mountain,
   eventos: PartyPopper, entretenimiento: Ticket, transporte: Truck, "diseno-tech": Code, "salud-terapias": Stethoscope,
   fotografia: Camera, inmuebles: Building, "proveedores-mayoreo": Warehouse, empleos: Briefcase,
   otros: MoreHorizontal,

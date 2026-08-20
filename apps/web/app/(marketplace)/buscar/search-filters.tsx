@@ -8,7 +8,7 @@ import {
   UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
   Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
   Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
-  Stethoscope, Camera, Building, Warehouse, Briefcase, MoreHorizontal,
+  Stethoscope, Camera, Building, Warehouse, Briefcase, Mountain, MoreHorizontal,
   Ticket, Cake, Refrigerator, Hammer, Gift, Gem,
 } from "lucide-react";
 import { CATEGORIES } from "@vicino/shared";
@@ -41,6 +41,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   herramientas: Hammer,
   "servicios-hogar": Wrench,
   educacion: GraduationCap,
+  "deportes-aventura": Mountain,
   eventos: PartyPopper,
   entretenimiento: Ticket,
   transporte: Truck,
