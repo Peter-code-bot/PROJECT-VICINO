@@ -882,7 +882,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 </div>
               </div>
               <div className="overflow-y-auto max-h-48 p-1">
-                {["producto", "servicio", "otro"].map((type) => {
+                {[tipoSeleccionado, "otro"].map((type) => {
                   const label = type === "producto" ? "Productos" : type === "servicio" ? "Servicios" : "Otros";
                   const cats = CATEGORIES.filter((c) =>
                     c.type === type
