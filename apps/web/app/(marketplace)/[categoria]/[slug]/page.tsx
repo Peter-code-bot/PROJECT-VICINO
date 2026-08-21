@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
 import { primaryCategoryFull, primaryCategorySlug } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
+import { posterUrl } from "@/lib/video-thumbnail";
 import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
 import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
 import type {
@@ -52,7 +53,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${product.titulo} — VICINO`,
       description: product.descripcion?.slice(0, 160),
-      images: product.imagen_principal ? [product.imagen_principal] : [],
+      // Un .mp4 aquí rompe la preview al compartir (WhatsApp/OG no rasterizan
+      // video): posterUrl lo cambia por el _thumb.jpg y deja las imágenes intactas.
+      images: product.imagen_principal ? [posterUrl(product.imagen_principal)] : [],
       url: canonical,
     },
   };

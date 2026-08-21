@@ -42,6 +42,9 @@ export function ProductMediaCropper({
   const [croppedArea, setCroppedArea] = useState<CropArea | null>(null);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Sin esto el fallo de crop era mudo: el catch solo hacia console.error y el
+  // usuario veia el modal volver a "Aplicar crop" sin explicacion.
+  const [error, setError] = useState<string | null>(null);
 
   // Portal mount gate — avoids SSR hydration mismatch
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -54,6 +57,7 @@ export function ProductMediaCropper({
       setZoom(1);
       setCroppedArea(null);
       setSaving(false);
+      setError(null);
     }
   }, [mediaSrc]);
 
@@ -67,6 +71,7 @@ export function ProductMediaCropper({
   async function handleApply() {
     if (!mediaSrc || !croppedArea) return;
     setSaving(true);
+    setError(null);
     try {
       if (mediaType === "image") {
         const blob = await getCroppedProductBlob(mediaSrc, croppedArea);
@@ -75,7 +80,14 @@ export function ProductMediaCropper({
         // Video: pass through the original file + crop coordinates.
         // The actual video file is NOT re-encoded; the crop area is used
         // to generate a cropped thumbnail and for visual display.
-        if (!originalFile) return;
+        //
+        // Este early-return dejaba el boton clavado en "Procesando..." para
+        // siempre: saltaba el setSaving(false) que estaba despues del try.
+        // Ahora vive en el finally, asi que cualquier salida lo libera.
+        if (!originalFile) {
+          setError("No se pudo leer el archivo de video. Vuelve a seleccionarlo.");
+          return;
+        }
         onCropComplete({
           type: "video",
           file: originalFile,
@@ -84,8 +96,14 @@ export function ProductMediaCropper({
       }
     } catch (err) {
       console.error("Crop failed:", err);
+      setError(
+        mediaType === "video"
+          ? "No se pudo recortar el video. Intenta de nuevo u omite el recorte."
+          : "No se pudo recortar la imagen. Intenta de nuevo u omite el recorte.",
+      );
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   function handleCancel() {
@@ -172,6 +190,15 @@ export function ProductMediaCropper({
             <RotateCcw className="w-3 h-3" /> Restablecer
           </button>
         </div>
+
+        {/* Error — el modal ya no se queda mudo cuando el crop falla */}
+        {error && (
+          <div className="px-6 pb-1">
+            <p role="alert" className="text-xs text-[color:var(--danger)]">
+              {error}
+            </p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="px-6 pb-5 pt-2 flex gap-3">

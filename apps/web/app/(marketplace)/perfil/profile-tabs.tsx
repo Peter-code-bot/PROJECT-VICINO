@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { updateProductsOrder } from "./actions";
+import { posterUrl } from "@/lib/video-thumbnail";
 
 // --- Subcomponente SortableProductCard ---
 // F10: p type derived from ProfileTabsProps["products"] element so the
@@ -55,7 +56,7 @@ function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: 
     >
       {p.imagen_principal ? (
         <Image
-          src={p.imagen_principal}
+          src={posterUrl(p.imagen_principal)}
           alt={p.titulo}
           fill
           className={cn("object-cover transition-opacity", !isEditing && "group-hover:opacity-80")}

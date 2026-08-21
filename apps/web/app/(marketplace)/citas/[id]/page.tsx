@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { primaryCategorySlug } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
+import { posterUrl } from "@/lib/video-thumbnail";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { CancelAppointmentButton } from "@/components/appointments/cancel-appointment-button";
 
@@ -113,7 +114,7 @@ export default async function CitaDetailPage({ params }: PageProps) {
               {product.imagen_principal ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={product.imagen_principal}
+                  src={posterUrl(product.imagen_principal)}
                   alt={product.titulo}
                   className="w-full h-full object-cover"
                 />

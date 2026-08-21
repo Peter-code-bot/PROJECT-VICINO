@@ -14,6 +14,7 @@ import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation 
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { posterUrl } from "@/lib/video-thumbnail";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -569,7 +570,7 @@ export function ChatWindow({
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
             {product.imagen_principal ? (
-              <img src={product.imagen_principal} alt="" className="h-full w-full object-cover" />
+              <img src={posterUrl(product.imagen_principal)} alt="" className="h-full w-full object-cover" />
             ) : (
               <span className="text-xs text-[color:var(--fg-muted)]">{product.titulo[0]}</span>
             )}

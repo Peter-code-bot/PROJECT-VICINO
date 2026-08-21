@@ -41,6 +41,32 @@ export function derivedThumbnailUrl(videoUrl: string): string {
 }
 
 /**
+ * Whether a stored media URL points at a video. Single source of truth for
+ * the render layer — VIDEO_EXT_RE already tolerates `?query` and `#frag`,
+ * so callers must NOT pre-strip the query string.
+ */
+export function isVideoUrl(url: string): boolean {
+  return VIDEO_EXT_RE.test(url);
+}
+
+/**
+ * URL de imagen segura para <Image>: el poster si es video, la propia URL si no.
+ *
+ * `derivedThumbnailUrl` ya es idempotente sobre imágenes — el .replace no
+ * matchea y devuelve el string intacto. El wrapper existe por claridad en el
+ * call site, no por lógica: donde se lee `posterUrl(x)` queda explícito que
+ * ese destino solo sabe pintar imágenes.
+ *
+ * Caveat: para videos sin `_thumb.jpg` (legacy pre-Phase 8, o generación que
+ * falló/expiró) la URL devuelta 404ea. Eso NO es una regresión — hoy esas
+ * superficies reciben el .mp4 crudo y también fallan. Superficies que puedan
+ * degradar a <video> deben usar `isVideoUrl` en vez de esto.
+ */
+export function posterUrl(url: string): string {
+  return derivedThumbnailUrl(url);
+}
+
+/**
  * Generate a JPEG thumbnail blob from the first frame of a video file
  * using a hidden <video> + <canvas>. Resolves with the blob; rejects on
  * any failure (canvas tainted, codec unsupported, decode error, etc.).

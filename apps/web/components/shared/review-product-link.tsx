@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { primaryCategorySlug } from "@vicino/shared";
 import { cn } from "@/lib/utils";
+import { posterUrl } from "@/lib/video-thumbnail";
 
 interface ReviewProductLinkProps {
   product:
@@ -44,7 +45,7 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
     >
       {product.imagen_principal ? (
         <Image
-          src={product.imagen_principal}
+          src={posterUrl(product.imagen_principal)}
           alt={product.titulo}
           width={40}
           height={40}

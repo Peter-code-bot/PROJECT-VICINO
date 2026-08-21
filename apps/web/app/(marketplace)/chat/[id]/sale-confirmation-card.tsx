@@ -7,6 +7,7 @@ import { formatPrice } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import { hapticMedium } from "@/lib/haptics";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
+import { posterUrl } from "@/lib/video-thumbnail";
 
 export type ConfirmationStatus = "pendiente" | "esperando" | "completado" | "rechazado";
 
@@ -148,7 +149,7 @@ function ProductThumb({ url, fallback, rejected }: { url?: string | null, fallba
   return (
     <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
       {url ? (
-        <img src={url} alt="" className={cn("h-full w-full object-cover", rejected && "opacity-50 grayscale")} />
+        <img src={posterUrl(url)} alt="" className={cn("h-full w-full object-cover", rejected && "opacity-50 grayscale")} />
       ) : (
         <span className="text-xl font-bold text-[color:var(--fg-muted)]">{fallback[0]}</span>
       )}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { derivedThumbnailUrl, isVideoUrl } from "@/lib/video-thumbnail";
 
 interface ProductGalleryCarouselProps {
   images: string[];
@@ -24,6 +25,46 @@ interface ProductGalleryCarouselProps {
    * cleanly (no name match -> default fade). Out of scope for A5.3.
    */
   productId?: string;
+}
+
+/**
+ * Un item del carrusel. Hasta ahora este archivo renderizaba <Image> de forma
+ * incondicional, así que un .mp4 en galeria_imagenes llegaba al optimizador de
+ * next/image y el slide quedaba en blanco (el detalle desktop nunca tuvo el
+ * bug porque product-gallery.tsx sí discrimina).
+ *
+ * Mismo patrón que components/product/product-gallery.tsx:115-121 — el poster
+ * sale de la convención de path, y si el _thumb.jpg no existe el browser
+ * simplemente no pinta poster, que es el comportamiento de preload="metadata".
+ *
+ * `playsInline` es un añadido deliberado sobre ese patrón, no una divergencia
+ * casual: sin él iOS Safari fuerza reproducción a pantalla completa al tocar,
+ * lo que rompe el snap-scroll del carrusel. El detalle desktop no lo necesita.
+ */
+function CarouselMedia({ src, alt, eager }: { src: string; alt: string; eager: boolean }) {
+  if (isVideoUrl(src)) {
+    return (
+      <video
+        src={src}
+        poster={derivedThumbnailUrl(src)}
+        controls
+        playsInline
+        preload="metadata"
+        className="h-full w-full object-contain bg-black"
+      />
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="100vw"
+      priority={eager}
+      loading={eager ? "eager" : "lazy"}
+      className="object-cover"
+    />
+  );
 }
 
 export function ProductGalleryCarousel({ images, title, productId }: ProductGalleryCarouselProps) {
@@ -75,14 +116,7 @@ export function ProductGalleryCarousel({ images, title, productId }: ProductGall
         className="relative aspect-square w-full overflow-hidden bg-card-2"
         style={heroTransitionName ? { viewTransitionName: heroTransitionName } : undefined}
       >
-        <Image
-          src={single}
-          alt={title}
-          fill
-          sizes="100vw"
-          priority
-          className="object-cover"
-        />
+        <CarouselMedia src={single} alt={title} eager />
       </div>
     );
   }
@@ -118,14 +152,10 @@ export function ProductGalleryCarousel({ images, title, productId }: ProductGall
             aria-roledescription="diapositiva"
             aria-label={`Imagen ${idx + 1} de ${images.length}`}
           >
-            <Image
+            <CarouselMedia
               src={src}
               alt={`${title} imagen ${idx + 1}`}
-              fill
-              sizes="100vw"
-              priority={idx === 0}
-              loading={idx === 0 ? "eager" : "lazy"}
-              className="object-cover"
+              eager={idx === 0}
             />
           </div>
         ))}

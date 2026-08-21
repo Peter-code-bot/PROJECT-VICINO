@@ -5,11 +5,7 @@ import Image from "next/image";
 import { Play, Pencil, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { derivedThumbnailUrl } from "@/lib/video-thumbnail";
-
-function isVideo(url: string) {
-  return /\.(mp4|webm|mov)$/i.test(url.split("?")[0] ?? "");
-}
+import { derivedThumbnailUrl, isVideoUrl as isVideo } from "@/lib/video-thumbnail";
 
 /**
  * Grid-cell video preview. Tries the path-convention thumbnail (uploaded

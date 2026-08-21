@@ -14,6 +14,7 @@ import type { ProductCardCategory, TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { priceFallbackLabel } from "@/lib/price-mode";
+import { posterUrl } from "@/lib/video-thumbnail";
 
 interface ProductCardProps {
   id: string;
@@ -177,7 +178,7 @@ export function ProductCard({
       <div ref={imageWrapperRef} className="relative aspect-square overflow-hidden bg-bg-elev-2">
         {imagen ? (
           <Image
-            src={imagen}
+            src={posterUrl(imagen)}
             alt={titulo}
             fill
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
