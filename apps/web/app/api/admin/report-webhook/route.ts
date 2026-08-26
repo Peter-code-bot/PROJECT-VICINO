@@ -15,6 +15,10 @@
  * Limitaciones:
  *   - El estado del burst es in-memory por isolate. Distintos isolates
  *     tienen contadores independientes. Aceptable a escala MVP.
+ *   - Si el email falla la respuesta sigue siendo 200: notify_report_created
+ *     dispara con net.http_post, que no reintenta ni lee el status, y el
+ *     reporte ya quedó en la BD. El body lleva `emailed: false` y el fallo
+ *     va a Sentry; un child_safety sin email se captura con level "fatal".
  *   - Header secret simple (no HMAC). TODO post-MVP migrar a HMAC con
  *     timing-safe compare. Ver docs/moderation-setup.md.
  *
@@ -29,6 +33,7 @@
  */
 
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { sendAdminEmail, escapeHtml } from "@/lib/email/resend";
 
 interface SupabaseWebhookPayload {
@@ -162,8 +167,45 @@ export async function POST(request: Request): Promise<Response> {
 
   // 3. CSAM siempre dispara email URGENTE (no se incluye en burst dedup)
   if (record.reason === "child_safety") {
-    await sendAdminEmail({ ...renderUrgentEmail(record), urgent: true });
-    return NextResponse.json({ ok: true, urgent: true }, { status: 200 });
+    const urgentResult = await sendAdminEmail({
+      ...renderUrgentEmail(record),
+      urgent: true,
+    });
+
+    if (!urgentResult.sent) {
+      // Seguimos respondiendo 200: el trigger trg_reports_child_safety ya ocultó
+      // el target y dejó la fila en critical_reports, y notify_report_created
+      // dispara con net.http_post sin reintentos, así que un status de error no
+      // reenviaría el correo — solo ensuciaría net._http_response. Lo que no
+      // puede pasar es que el único canal de alerta muera en un console.error:
+      // esto va a Sentry con el id del reporte para poder atenderlo a mano.
+      Sentry.captureMessage(
+        "[report-webhook] alerta de child_safety sin enviar: el email falló",
+        {
+          level: "fatal",
+          tags: {
+            source: "report-webhook",
+            reason: "child_safety",
+            email_failure: urgentResult.reason,
+          },
+          contexts: {
+            report: {
+              id: record.id,
+              target_type: record.target_type,
+              target_id: record.target_id,
+              created_at: record.created_at,
+              admin_url: adminLink(record.id),
+            },
+            email: { detail: urgentResult.detail },
+          },
+        }
+      );
+    }
+
+    return NextResponse.json(
+      { ok: true, urgent: true, emailed: urgentResult.sent },
+      { status: 200 }
+    );
   }
 
   // 4. Burst dedup
@@ -173,8 +215,13 @@ export async function POST(request: Request): Promise<Response> {
   if (recentEmails.length === DIGEST_THRESHOLD) {
     // Justo cruzamos el umbral: enviamos UN email "burst" y omitimos siguientes
     recentEmails.push(now);
-    await sendAdminEmail(renderBurstEmail(record, DIGEST_THRESHOLD + 1));
-    return NextResponse.json({ ok: true, burst: true }, { status: 200 });
+    const burstResult = await sendAdminEmail(
+      renderBurstEmail(record, DIGEST_THRESHOLD + 1)
+    );
+    return NextResponse.json(
+      { ok: true, burst: true, emailed: burstResult.sent },
+      { status: 200 }
+    );
   }
 
   if (recentEmails.length > DIGEST_THRESHOLD) {
@@ -185,6 +232,9 @@ export async function POST(request: Request): Promise<Response> {
 
   // 5. Modo normal
   recentEmails.push(now);
-  await sendAdminEmail(renderNormalEmail(record));
-  return NextResponse.json({ ok: true }, { status: 200 });
+  const normalResult = await sendAdminEmail(renderNormalEmail(record));
+  return NextResponse.json(
+    { ok: true, emailed: normalResult.sent },
+    { status: 200 }
+  );
 }
