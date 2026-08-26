@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AVISO_PRIVACIDAD_VERSION } from "@vicino/shared";
+import { registrarConsentimientoBiometrico } from "@/app/actions/consentimiento";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
@@ -30,6 +33,8 @@ const MAX_DOCUMENT_MB = 10;
 const MAX_DOCUMENT_BYTES = MAX_DOCUMENT_MB * 1024 * 1024;
 
 interface VerificationUploadProps {
+  /** Si ya dejo constancia en una sesion anterior. El consentimiento no caduca al cerrar la pestana. */
+  yaConsintio?: boolean;
   userId: string;
   verification: {
     selfie_url?: string | null;
@@ -66,7 +71,15 @@ export function VerificationUpload({
   userId,
   verification,
   sellerVerification,
+  yaConsintio = false,
 }: VerificationUploadProps) {
+  // Consentimiento expreso para datos biometricos (LFPDPPP art. 8).
+  //
+  // Nace DESMARCADA a proposito, y esa es la parte importante: el articulo 8
+  // exige consentimiento expreso para datos sensibles, y una casilla marcada
+  // por defecto no lo es. Si ya consintio antes, no se le vuelve a pedir.
+  const [consiente, setConsiente] = useState(yaConsintio);
+  const [guardandoConsentimiento, setGuardandoConsentimiento] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState("");
@@ -130,6 +143,17 @@ export function VerificationUpload({
 
   async function handleUpload(key: string, file: File) {
     setError("");
+
+    // Sin consentimiento no se sube nada. La comprobacion tambien esta en el
+    // servidor (app/actions/verify-document.ts): una casilla solo de cliente
+    // se salta con la consola abierta, y aqui lo que se trata son datos
+    // biometricos.
+    if (!consiente) {
+      setError(
+        "Antes de subir tus documentos necesitas aceptar el tratamiento de tus datos biométricos.",
+      );
+      return;
+    }
 
     // `accept="image/*"` es una sugerencia al selector de archivos del sistema,
     // no una validacion: se puede arrastrar un PDF, un video o un .zip y subirlo
@@ -315,6 +339,55 @@ export function VerificationUpload({
           <span className="text-sm font-medium text-indigo-500">
             Analizando documento con Inteligencia Artificial...
           </span>
+        </div>
+      )}
+
+      {/* Consentimiento expreso para datos biometricos.
+          Va ARRIBA de las tarjetas de subida y no debajo: es la condicion para
+          subir, no una nota al pie. */}
+      {!yaConsintio && (
+        <div className="rounded-[var(--r-lg)] border border-border bg-card p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={consiente}
+              disabled={guardandoConsentimiento}
+              onChange={async (e) => {
+                if (!e.target.checked) {
+                  setConsiente(false);
+                  return;
+                }
+                setError("");
+                setGuardandoConsentimiento(true);
+                const r = await registrarConsentimientoBiometrico();
+                setGuardandoConsentimiento(false);
+                if (r.error) {
+                  // No se marca la casilla si no quedo constancia: una casilla
+                  // marcada sin fila en la base es justo lo que no acredita nada.
+                  setError(r.error);
+                  return;
+                }
+                setConsiente(true);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--brand)]"
+            />
+            <span className="text-sm text-[color:var(--fg-dim)]">
+              Autorizo a VICINO a tratar mi <strong>selfie</strong> como dato
+              biométrico con el único fin de verificar mi identidad, conforme al{" "}
+              <Link
+                href="/privacidad"
+                target="_blank"
+                className="underline text-[color:var(--brand-hi)]"
+              >
+                Aviso de Privacidad
+              </Link>{" "}
+              (versión {AVISO_PRIVACIDAD_VERSION}). Sé que puedo revocar este
+              consentimiento y que los documentos se eliminan a los 90 días.
+              {guardandoConsentimiento && (
+                <span className="ml-2 text-xs opacity-70">Guardando…</span>
+              )}
+            </span>
+          </label>
         </div>
       )}
 

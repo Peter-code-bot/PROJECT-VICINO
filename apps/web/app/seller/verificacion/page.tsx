@@ -26,6 +26,14 @@ export default async function VerificacionPage() {
     .limit(1)
     .maybeSingle();
 
+  // Consentimiento expreso para datos biometricos (LFPDPPP art. 8). Si ya
+  // consintio en una sesion anterior no se le vuelve a pedir: el consentimiento
+  // no caduca por cerrar la pestana.
+  const { data: yaConsintio } = await supabase.rpc(
+    "tiene_consentimiento_biometrico",
+    { p_user_id: user.id },
+  );
+
   return (
     <div className="space-y-6 min-w-0">
       <div className="min-w-0">
@@ -41,6 +49,7 @@ export default async function VerificacionPage() {
         userId={user.id}
         verification={verification}
         sellerVerification={sellerVerification}
+        yaConsintio={yaConsintio}
       />
     </div>
   );

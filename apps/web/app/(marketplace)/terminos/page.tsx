@@ -1,3 +1,4 @@
+import { TERMINOS_VERSION, TERMINOS_ACTUALIZADO } from "@vicino/shared";
 import Link from "next/link";
 
 export const metadata = { title: "Términos y Condiciones" };
@@ -6,7 +7,9 @@ export default function TerminosPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1 className="text-3xl font-heading font-bold mb-2">Términos y Condiciones de Uso</h1>
-      <p className="text-sm text-muted-foreground mb-8">Última actualización: 1 de junio de 2026</p>
+      <p className="text-sm text-muted-foreground mb-8">
+        Última actualización: {TERMINOS_ACTUALIZADO} · Versión {TERMINOS_VERSION}
+      </p>
 
       <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none space-y-6">
         <section>

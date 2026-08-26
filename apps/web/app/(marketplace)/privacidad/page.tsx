@@ -1,11 +1,17 @@
+import { AVISO_PRIVACIDAD_VERSION, AVISO_PRIVACIDAD_ACTUALIZADO } from "@vicino/shared";
 export const metadata = { title: "Aviso de Privacidad Integral — VICINO" };
 
 export default function PrivacidadPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1 className="text-3xl font-heading font-bold mb-1">Aviso de Privacidad Integral</h1>
-      <p className="text-sm text-muted-foreground mb-1">Última actualización: 17 de junio de 2026</p>
-      <p className="text-sm text-muted-foreground mb-8">Versión 2.1 — Conforme al artículo 16 de la LFPDPPP y artículos 26 y 27 de su Reglamento</p>
+      <p className="text-sm text-muted-foreground mb-1">
+        Última actualización: {AVISO_PRIVACIDAD_ACTUALIZADO}
+      </p>
+      <p className="text-sm text-muted-foreground mb-8">
+        Versión {AVISO_PRIVACIDAD_VERSION} — Conforme al artículo 16 de la LFPDPPP
+        y artículos 26 y 27 de su Reglamento
+      </p>
 
       <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none space-y-6">
         {/* 1 */}

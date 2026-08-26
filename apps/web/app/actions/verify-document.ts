@@ -27,6 +27,31 @@ export async function verifyDocument(
   }
   const userId = userResponse.user.id;
 
+  // Sin consentimiento expreso registrado, no se procesa nada.
+  //
+  // La casilla de la interfaz es necesaria pero no suficiente: se salta con la
+  // consola abierta, y lo que se trata aqui es dato BIOMETRICO —la selfie—,
+  // que la LFPDPPP clasifica como sensible y cuyo articulo 8 exige
+  // consentimiento expreso y por escrito. Una casilla sin registro no acredita
+  // nada, y una casilla que solo vive en el cliente ni siquiera es una casilla.
+  const { data: tieneConsentimiento, error: errorConsentimiento } =
+    await supabase.rpc("tiene_consentimiento_biometrico", { p_user_id: userId });
+
+  if (errorConsentimiento) {
+    Sentry.captureException(errorConsentimiento, {
+      tags: { action: "verifyDocument", paso: "consentimiento" },
+    });
+    return { success: false, error: "No se pudo comprobar tu consentimiento." };
+  }
+
+  if (!tieneConsentimiento) {
+    return {
+      success: false,
+      error:
+        "Necesitas aceptar el tratamiento de tus datos biométricos antes de verificar tu identidad.",
+    };
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("nombre")
