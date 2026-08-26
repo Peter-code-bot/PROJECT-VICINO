@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { generateVideoThumbnail, generateCroppedVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
 import type { CropArea } from "@/lib/crop-image";
+import * as Sentry from "@sentry/nextjs";
 import type { CropResult } from "@/components/product/product-media-cropper";
 
 import {
@@ -433,8 +434,15 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                 ),
               ),
             ]);
-          } catch {
-            // Either generation rejected or timed out — proceed without thumb.
+          } catch (thumbGenErr) {
+            // Se sigue sin miniatura a proposito: el video ya se subio y la
+            // capa de render cae a <video #t=0.1>. Lo que NO puede pasar es que
+            // el fallo desaparezca: sin esto, la miniatura queda en 404 y nadie
+            // se entera nunca de que la generacion viene fallando.
+            Sentry.captureException(thumbGenErr, {
+              tags: { action: "productForm", step: "video_thumbnail" },
+              level: "warning",
+            });
           }
         }
         if (thumbBlob) {
