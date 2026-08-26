@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { FeedProduct } from "@/types/feed";
 import { parseFeedCursor, makeFeedCursor } from "@/lib/feed-cursor";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
+import { parseRadiusCookie } from "@/lib/geo/radius";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -79,10 +80,20 @@ export async function getMoreFeedProducts(
     ) {
       return { items: [], nextCursor: null, error: "Coordenadas inválidas" };
     }
+    // El radio sale de la MISMA cookie que usa el feed inicial. Estaba
+    // escrito a mano en 50.000 mientras la primera pagina usaba el radio del
+    // usuario, asi que al seguir bajando aparecian publicaciones de hasta 50 km
+    // que la primera pagina habia excluido a proposito. Nadie lo veia como un
+    // fallo: parecia que "cargaban mas cosas".
+    const cookieStore = await cookies();
+    const radioDelUsuario = parseRadiusCookie(
+      cookieStore.get("vicino_radius")?.value,
+    );
+
     const res = await supabase.rpc("search_nearby_products_v4", {
       user_lat: lat,
       user_lng: lng,
-      radius_meters: 50000,
+      radius_meters: radioDelUsuario,
       cursor_time: parsedCursor.cursor.createdAt,
       cursor_id: parsedCursor.cursor.id,
       result_limit: safeLimit,

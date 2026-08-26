@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapPin, Loader2 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useNearbyProducts } from "@/hooks/useNearbyProducts";
+import { RADIUS_DEFAULT_METERS } from "@/lib/geo/radius";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import type { TrustLevel } from "@vicino/shared";
 
@@ -11,9 +12,18 @@ export function LocationBar() {
   const { state } = useGeolocation();
   const position = state.status === "success" ? state.position : null;
 
+  // La seccion se llama "Cerca de ti" y pedia 1.000 m ESCRITOS A MANO,
+  // ignorando el radio que el usuario configuro. En Puebla eso son unas pocas
+  // cuadras: una publicacion a 3 km quedaba fuera de la unica seccion que
+  // promete ensenar lo que tienes cerca, sin ningun aviso de que habia un
+  // radio distinto al elegido.
+  //
+  // useGeolocation ya guarda el radio del usuario (y lo persiste en la cookie
+  // vicino_radius). RADIUS_DEFAULT_METERS es el mismo default que usa el feed
+  // principal, asi que las dos superficies hablan por fin del mismo alcance.
   const { products, loading } = useNearbyProducts({
     position,
-    radiusMeters: 1000,
+    radiusMeters: position?.radius ?? RADIUS_DEFAULT_METERS,
   });
 
   return (
