@@ -52,6 +52,29 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // 2b) Recolectar las rutas de review-media ANTES de borrar nada.
+    //
+    // Este bucket NO sigue la convencion {user_id}/... como los otros cuatro:
+    // sus archivos se guardan bajo {saleConfirmationId}/ (ver
+    // apps/web/app/(account)/historial/review/review-form.tsx). El barrido de
+    // abajo listaba por userId, asi que en review-media NUNCA encontraba nada
+    // y las fotos de resena de quien borraba su cuenta se quedaban para
+    // siempre. En produccion hay una asi.
+    //
+    // Y va AQUI y no en el paso 4 por orden: delete_user_data borra las filas
+    // de sale_confirmations, asi que despues de ese paso ya no hay forma de
+    // saber que carpetas eran suyas.
+    const carpetasDeResenas: string[] = [];
+    try {
+      const { data: ventas } = await adminClient
+        .from("sale_confirmations")
+        .select("id")
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+      for (const v of ventas ?? []) carpetasDeResenas.push(v.id as string);
+    } catch (e) {
+      console.warn("No se pudieron listar las ventas para limpiar review-media:", e);
+    }
+
     // 3) Delete relational data via SQL function
     const { data: deleteData, error: deleteError } = await adminClient.rpc(
       "delete_user_data",
@@ -73,29 +96,65 @@ serve(async (req) => {
     // Buckets confirmed in migration 20260320000017_storage_buckets.sql.
     // Convention: files live under `{user_id}/...` paths.
     try {
-      const buckets = [
+      // Deja constancia de lo que NO se pudo borrar.
+      //
+      // Antes esto era un console.warn y nada mas. Justo despues se borra la
+      // cuenta de auth.users, que es irreversible, asi que a partir de ese
+      // momento el archivo queda huerfano y sin ninguna forma de encontrarlo:
+      // ni usuario del que colgarlo, ni fila que lo referencie, ni registro de
+      // que fallo. Los 31 archivos huerfanos que hay hoy en produccion
+      // llegaron exactamente por ahi.
+      const anotarFallo = async (bucket: string, path: string, motivo: string) => {
+        try {
+          await adminClient.from("storage_cleanup_pending").insert({
+            bucket,
+            path,
+            former_user_id: userId,
+            motivo: motivo.slice(0, 500),
+          });
+        } catch (e) {
+          // Si ni siquiera se puede anotar, al menos que salga en el log.
+          console.error(`No se pudo registrar la limpieza pendiente ${bucket}/${path}:`, e);
+        }
+      };
+
+      const borrarCarpeta = async (bucket: string, carpeta: string) => {
+        const { data: files, error: listError } = await adminClient.storage
+          .from(bucket)
+          .list(carpeta, { limit: 1000 });
+
+        if (listError) {
+          await anotarFallo(bucket, `${carpeta}/`, `list: ${listError.message}`);
+          return;
+        }
+        if (!files || files.length === 0) return;
+
+        const paths = files.map((f) => `${carpeta}/${f.name}`);
+        const { error: removeError } = await adminClient.storage
+          .from(bucket)
+          .remove(paths);
+
+        if (removeError) {
+          console.warn(`Storage cleanup failed for "${bucket}/${carpeta}":`, removeError);
+          for (const path of paths) {
+            await anotarFallo(bucket, path, `remove: ${removeError.message}`);
+          }
+        }
+      };
+
+      // Los cuatro buckets que SI usan la convencion {user_id}/...
+      for (const bucket of [
         "product-media",
         "verification-documents",
         "avatars",
         "chat-media",
-        "review-media",
-      ];
-      for (const bucket of buckets) {
-        const { data: files } = await adminClient.storage
-          .from(bucket)
-          .list(userId, { limit: 1000 });
-        if (files && files.length > 0) {
-          const paths = files.map((f) => `${userId}/${f.name}`);
-          const { error: removeError } = await adminClient.storage
-            .from(bucket)
-            .remove(paths);
-          if (removeError) {
-            console.warn(
-              `Storage cleanup failed for bucket "${bucket}":`,
-              removeError
-            );
-          }
-        }
+      ]) {
+        await borrarCarpeta(bucket, userId);
+      }
+
+      // review-media va por {saleConfirmationId}/, recolectados en el paso 2b.
+      for (const carpeta of carpetasDeResenas) {
+        await borrarCarpeta("review-media", carpeta);
       }
     } catch (storageErr) {
       console.warn("Storage cleanup non-fatal error:", storageErr);
