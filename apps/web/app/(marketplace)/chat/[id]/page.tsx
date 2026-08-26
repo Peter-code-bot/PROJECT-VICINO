@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { ChatWindow } from "./chat-window";
 
@@ -90,11 +91,27 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     .order("created_at", { ascending: false })
     .limit(5);
 
-  // Mark messages as read
-  await supabase.rpc("mark_messages_as_read", {
+  // Mark messages as read. Gemelo del markAsRead de chat/actions.ts: la RPC es
+  // SECURITY DEFINER y levanta 'unauthenticated', 'chat not found' o
+  // 'forbidden' como excepcion, y el await pelado las descartaba todas.
+  const { error: markReadErr } = await supabase.rpc("mark_messages_as_read", {
     p_chat_id: chatId,
     p_user_id: user.id,
   });
+
+  // Solo se registra, nunca se aborta: la pagina tiene que renderizar el chat
+  // aunque el contador de no leidos se quede pegado.
+  if (markReadErr) {
+    Sentry.captureException(markReadErr, {
+      tags: { action: "ChatDetailPage", step: "mark_read" },
+      extra: {
+        chatId,
+        code: markReadErr.code,
+        details: markReadErr.details,
+        hint: markReadErr.hint,
+      },
+    });
+  }
 
   // `isBuyer` already computed above
   const otherUser = isBuyer

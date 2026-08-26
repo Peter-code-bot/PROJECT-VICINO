@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import {
   sendMessageSchema,
@@ -195,10 +196,29 @@ export async function markAsRead(chatId: string) {
   const parsed = markChatReadSchema.safeParse({ chat_id: chatId });
   if (!parsed.success) return;
 
-  await supabase.rpc("mark_messages_as_read", {
+  // mark_messages_as_read es SECURITY DEFINER y levanta 'unauthenticated',
+  // 'chat not found' o 'forbidden: no eres participante de este chat' como
+  // excepcion. El await pelado descartaba el { error } entero, asi que un
+  // contador de no leidos pegado no dejaba rastro en ningun lado.
+  const { error: markReadErr } = await supabase.rpc("mark_messages_as_read", {
     p_chat_id: parsed.data.chat_id,
     p_user_id: user.id,
   });
+
+  // Solo se registra: marcar leido es un efecto secundario de abrir el chat y
+  // no debe romper nada de cara al usuario. Sentry conserva el `details` de
+  // Postgres, que es donde el motor nombra la columna o la policy.
+  if (markReadErr) {
+    Sentry.captureException(markReadErr, {
+      tags: { action: "markAsRead" },
+      extra: {
+        chatId: parsed.data.chat_id,
+        code: markReadErr.code,
+        details: markReadErr.details,
+        hint: markReadErr.hint,
+      },
+    });
+  }
 }
 
 export async function createSaleConfirmation(data: {
@@ -287,10 +307,23 @@ export async function createSaleConfirmation(data: {
   const { error: autoMsgErr } = await supabase.from("messages").insert({
     chat_id: parsed.data.chat_id,
     autor_id: user.id,
-    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo}" — ${formatPrice(parsed.data.precio_acordado)} MXN. Confirma para completar la venta.`,
+    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo ?? "el producto"}" — ${formatPrice(parsed.data.precio_acordado)} MXN. Confirma para completar la venta.`,
   });
+  // La confirmacion YA esta escrita en la base: perder el mensaje del chat no
+  // puede deshacerla, asi que esto solo se registra y el flujo sigue. Sentry
+  // en vez de console.error para conservar el `details` de Postgres, que es
+  // donde el motor nombra la columna o la policy que rechazo el INSERT.
   if (autoMsgErr) {
-    console.error("[createSaleConfirmation] auto-message insert:", autoMsgErr);
+    Sentry.captureException(autoMsgErr, {
+      tags: { action: "createSaleConfirmation", step: "auto_message" },
+      extra: {
+        chatId: parsed.data.chat_id,
+        saleConfirmationId: confirmation?.id,
+        code: autoMsgErr.code,
+        details: autoMsgErr.details,
+        hint: autoMsgErr.hint,
+      },
+    });
   }
 
   revalidatePath(`/chat/${parsed.data.chat_id}`);
@@ -334,25 +367,53 @@ export async function confirmSale(saleConfirmationId: string) {
     ? { buyer_confirmed: true, buyer_confirmed_at: new Date().toISOString() }
     : { seller_confirmed: true, seller_confirmed_at: new Date().toISOString() };
 
-  // UPDATE with WHERE narrowed to "my side not yet confirmed"; .select() returns
-  // the mutated rows so we can detect 0-row no-ops from a parallel race.
-  const { data: updatedRows, error: updateError } = await supabase
+  // El WHERE acota a "la confirmacion sigue pendiente". El `.select()` es lo
+  // que convierte el 204-sin-cuerpo de PostgREST en filas reales: sin el, un
+  // UPDATE de 0 filas (la otra parte cancelo en paralelo, expiro, o RLS filtro
+  // la fila) era indistinguible del exito y el usuario veia la venta
+  // confirmada sin que se hubiera escrito nada.
+  //
+  // complete_sale_on_mutual_confirm es un trigger BEFORE UPDATE, asi que el
+  // RETURNING ya trae el `status` posterior al trigger: nos dice si fue ESTA
+  // confirmacion la que cerro la venta, sin el segundo SELECT que abria una
+  // ventana para que dos llamadas concurrentes leyeran ambas 'completed'.
+  const { data: updated, error: updateError } = await supabase
     .from("sale_confirmations")
     .update(updates)
     .eq("id", parsed.data.sale_confirmation_id)
-    .eq("status", "pending_confirmation");
-
-  if (updateError) return { error: updateError.message };
-
-  // Check if both confirmed now
-  const { data: updated } = await supabase
-    .from("sale_confirmations")
+    .eq("status", "pending_confirmation")
     .select("status")
-    .eq("id", parsed.data.sale_confirmation_id)
-    .single();
+    .maybeSingle();
+
+  if (updateError) {
+    // Sentry SIEMPRE antes del return: el `details` de Postgres es donde el
+    // motor nombra la columna o la policy que rechazo, y es lo unico que
+    // separa un GRANT faltante de un problema de RLS.
+    Sentry.captureException(updateError, {
+      tags: { action: "confirmSale", step: "update" },
+      extra: {
+        saleConfirmationId: parsed.data.sale_confirmation_id,
+        side: isBuyer ? "buyer" : "seller",
+        code: updateError.code,
+        details: updateError.details,
+        hint: updateError.hint,
+      },
+    });
+    return { error: "No se pudo confirmar la venta. Vuelve a intentarlo en un momento." };
+  }
+
+  // 0 filas: la confirmacion dejo de estar pendiente entre nuestra lectura y
+  // este UPDATE, o RLS la filtro. Nunca es un exito -- abortamos aqui, antes
+  // de escribir el mensaje de venta confirmada.
+  if (!updated) {
+    return {
+      error:
+        "Esta venta ya no está pendiente: la otra parte la canceló o el plazo venció. Actualiza el chat para ver el estado.",
+    };
+  }
 
   // Only insert the "venta confirmada" message if THIS update flipped status to completed.
-  if (updated?.status === "completed" && sc.chat_id) {
+  if (updated.status === "completed" && sc.chat_id) {
     const { data: product } = await supabase
       .from("products_services")
       .select("titulo")
@@ -362,12 +423,27 @@ export async function confirmSale(saleConfirmationId: string) {
     const { error: completedMsgErr } = await supabase.from("messages").insert({
       chat_id: sc.chat_id,
       autor_id: user.id,
-      texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo}" — ${formatPrice(sc.precio_acordado)} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
+      texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo ?? "el producto"}" — ${formatPrice(sc.precio_acordado)} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
       sale_confirmation_id: saleConfirmationId,
       message_type: "sale_confirmed",
     });
-    if (completedMsgErr) {
-      console.error("[confirmSale] completed-message insert:", completedMsgErr);
+    // La venta YA esta cerrada en la base (el trigger BEFORE fijo status y
+    // completed_at y repartio trust_points): perder este mensaje no puede
+    // deshacerla, asi que solo se registra y el flujo termina en exito.
+    //
+    // El 23505 es el indice unico messages_unique_sale_confirmed haciendo su
+    // trabajo -- el mensaje ya existe, no es un fallo, y no se reporta.
+    if (completedMsgErr && completedMsgErr.code !== "23505") {
+      Sentry.captureException(completedMsgErr, {
+        tags: { action: "confirmSale", step: "completed_message" },
+        extra: {
+          chatId: sc.chat_id,
+          saleConfirmationId,
+          code: completedMsgErr.code,
+          details: completedMsgErr.details,
+          hint: completedMsgErr.hint,
+        },
+      });
     }
   }
 
