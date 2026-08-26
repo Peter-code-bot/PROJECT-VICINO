@@ -9,9 +9,18 @@
  * por sesion. Repetir curl con el token en la linea de comandos lo expondria al
  * historial de la terminal en cada consulta.
  *
- * Por que es seguro: rechaza cualquier cosa que no sea SELECT / WITH / EXPLAIN
- * antes de mandarla. No es una comodidad que se pueda usar para escribir, y por
- * eso no abre un hueco alrededor del barandal de .claude/hooks/guard-db.js.
+ * Por que es seguro, en dos capas:
+ *
+ *   1. Sintactica: rechaza lo que no empiece por SELECT / WITH / EXPLAIN y lo
+ *      que contenga un verbo de escritura. Falla rapido y con un mensaje claro.
+ *   2. Del motor: envuelve la consulta en BEGIN READ ONLY ... ROLLBACK. Postgres
+ *      rechaza entonces cualquier escritura con 25006, incluida la que ocurriria
+ *      DENTRO de una funcion SECURITY DEFINER.
+ *
+ * La segunda capa es la que de verdad cuenta. La primera sola no basta: una
+ * consulta como `select moderate_set_content_hidden(...)` pasa todos los filtros
+ * de texto y escribe igual. Sin la transaccion de solo lectura, esta herramienta
+ * seria un hueco alrededor del barandal de .claude/hooks/guard-db.js.
  *
  * El token sale de VICINO_SUPABASE_PAT o, si no esta, del .env del repo. Nunca
  * se imprime.
@@ -88,13 +97,17 @@ const main = async () => {
 
   assertReadOnly(query);
 
+  // La red de seguridad real. Postgres aborta con 25006 cualquier escritura que
+  // se intente aqui dentro, venga de la consulta o de una funcion que llame.
+  const guarded = `BEGIN READ ONLY;\n${query.trim().replace(/;\s*$/, '')};\nROLLBACK;`;
+
   const response = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${readToken()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query: guarded }),
   });
 
   const text = await response.text();

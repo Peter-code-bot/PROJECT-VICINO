@@ -7,6 +7,28 @@ import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
 import { moderateReviewSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Toda escritura de moderación pasa por un RPC `SECURITY DEFINER`, nunca por un
+ * UPDATE directo. No es preferencia de estilo: el rol `authenticated` no tiene
+ * privilegio de columna sobre `reviews.visible`, `reviews.reportada`,
+ * `reviews.is_hidden`, `products_services.is_hidden` ni `profiles.is_hidden`, así
+ * que el UPDATE directo muere con 42501. `messages.is_hidden` sí tiene GRANT pero
+ * ninguna policy de UPDATE, con lo que afecta cero filas y NO devuelve error —
+ * el caso peor, porque el panel pintaba éxito con el contenido aún público.
+ *
+ * `reports.target_type` habla el idioma del reporte y el RPC habla el de la tabla.
+ * Sin este mapeo, ocultar un "listing" o un "user" revienta con `target_type
+ * invalido`.
+ */
+const MODERATION_TARGET = {
+  listing: "product",
+  review: "review",
+  message: "message",
+  user: "profile",
+} as const;
+
+type ReportTargetType = keyof typeof MODERATION_TARGET;
+
 export async function hideReview(reviewId: string) {
   const { supabase, user } = await requireAdmin();
 
@@ -18,10 +40,11 @@ export async function hideReview(reviewId: string) {
     return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
   }
 
-  const { error } = await supabase
-    .from("reviews")
-    .update({ visible: false })
-    .eq("id", parsed.data.review_id);
+  const { error } = await supabase.rpc("moderate_review", {
+    p_review_id: parsed.data.review_id,
+    p_visible: false,
+    p_clear_reported: false,
+  });
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
@@ -47,10 +70,11 @@ export async function approveReview(reviewId: string) {
     return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
   }
 
-  const { error } = await supabase
-    .from("reviews")
-    .update({ reportada: false, visible: true })
-    .eq("id", parsed.data.review_id);
+  const { error } = await supabase.rpc("moderate_review", {
+    p_review_id: parsed.data.review_id,
+    p_visible: true,
+    p_clear_reported: true,
+  });
   if (error) return { error: error.message };
 
   await supabase.from("audit_log").insert({
@@ -93,15 +117,21 @@ export async function resolveReport(
   if (fetchError || !report) return { error: "Reporte no encontrado" };
 
   if (options.hideTarget) {
-    if (report.target_type === "listing") {
-      await supabase.from("products_services").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "review") {
-      await supabase.from("reviews").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "message") {
-      await supabase.from("messages").update({ is_hidden: true }).eq("id", report.target_id);
-    } else if (report.target_type === "user") {
-      await supabase.from("profiles").update({ is_hidden: true }).eq("id", report.target_id);
+    const moderationTarget =
+      MODERATION_TARGET[report.target_type as ReportTargetType];
+    if (!moderationTarget) {
+      return { error: `Tipo de contenido no soportado: ${report.target_type}` };
     }
+
+    // Si ocultar falla, el reporte NO se marca resuelto. Antes el error se
+    // descartaba y se resolvía igual, así que el moderador cerraba la denuncia
+    // convencido de que el contenido había desaparecido, y seguía público.
+    const { error: hideError } = await supabase.rpc("moderate_set_content_hidden", {
+      p_target_type: moderationTarget,
+      p_target_id: report.target_id,
+      p_hidden: true,
+    });
+    if (hideError) return { error: hideError.message };
   }
 
   const { error } = await supabase
@@ -224,10 +254,11 @@ export async function suspendUser(userId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_hidden: true })
-    .eq("id", userId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "profile",
+    p_target_id: userId,
+    p_hidden: true,
+  });
 
   if (error) return { error: error.message };
 
@@ -251,10 +282,11 @@ export async function unsuspendUser(userId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_hidden: false })
-    .eq("id", userId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "profile",
+    p_target_id: userId,
+    p_hidden: false,
+  });
 
   if (error) return { error: error.message };
 
@@ -278,10 +310,11 @@ export async function unhideListing(listingId: string) {
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("products_services")
-    .update({ is_hidden: false })
-    .eq("id", listingId);
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: "product",
+    p_target_id: listingId,
+    p_hidden: false,
+  });
 
   if (error) return { error: error.message };
 
