@@ -25,7 +25,6 @@ interface GetNearbyParams {
   lat: number;
   lng: number;
   radiusMeters?: number;
-  categoryFilter?: string | null;
   limit?: number;
 }
 
@@ -72,7 +71,6 @@ export async function getNearbyProducts(
     user_lat: snapped.lat,
     user_lng: snapped.lng,
     radius_meters: snappedRadius,
-    search_term: params.categoryFilter ?? null,
     result_limit: limit,
     sort_by_distance: true,
   });

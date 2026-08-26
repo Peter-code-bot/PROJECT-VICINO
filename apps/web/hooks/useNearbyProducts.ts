@@ -9,14 +9,12 @@ export type { NearbyProduct };
 interface Options {
   position: GeoPosition | null;
   radiusMeters?: number;
-  categoryFilter?: string | null;
   limit?: number;
 }
 
 export function useNearbyProducts({
   position,
   radiusMeters = 5000,
-  categoryFilter = null,
   limit = 20,
 }: Options) {
   const [products, setProducts] = useState<NearbyProduct[]>([]);
@@ -36,7 +34,6 @@ export function useNearbyProducts({
       lat: position.lat,
       lng: position.lng,
       radiusMeters,
-      categoryFilter,
       limit,
     }).then((result) => {
       if (cancelled) return;
@@ -51,7 +48,7 @@ export function useNearbyProducts({
     return () => {
       cancelled = true;
     };
-  }, [position?.lat, position?.lng, radiusMeters, categoryFilter, limit]);
+  }, [position?.lat, position?.lng, radiusMeters, limit]);
 
   return { products, loading, error };
 }
