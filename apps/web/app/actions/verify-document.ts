@@ -97,12 +97,34 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     const analysis = JSON.parse(responseText);
 
     let finalStatus = "pending";
-    
+
     // Evaluate rules
     if (analysis.confianza_porcentaje >= 90 && analysis.es_credencial_valida && analysis.vigente && analysis.el_nombre_coincide) {
       finalStatus = "approved";
     } else if (!analysis.es_credencial_valida || !analysis.el_nombre_coincide) {
       finalStatus = "rejected";
+    }
+
+    // La IA se dispara al subir la foto FRONTAL, que suele ser la primera de las
+    // tres. Sin este freno podia aprobar una identidad con el reverso y la
+    // selfie todavia sin subir — es el item 47 de la lista.
+    //
+    // La regla vive tambien en la base (trigger guard_verification_approval, en
+    // 20260826230000), que es el guardian de verdad. Aqui se comprueba antes
+    // para degradar a 'pending' con sentido, en vez de chocar contra el trigger
+    // y devolverle a la persona un error cuando lo unico que pasa es que le
+    // faltan fotos.
+    if (finalStatus === "approved") {
+      const { data: fila } = await supabase
+        .from("seller_verification")
+        .select("ine_back_url, selfie_url")
+        .eq("user_id", userId)
+        .eq("ine_front_url", path)
+        .maybeSingle();
+
+      if (!fila?.ine_back_url || !fila?.selfie_url) {
+        finalStatus = "pending";
+      }
     }
 
     // Save to DB

@@ -7,6 +7,28 @@ import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "luc
 import { verifyDocument } from "@/app/actions/verify-document";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 
+/**
+ * Tipos que aceptamos como documento de identidad.
+ *
+ * heic y heif estan porque son lo que produce la camara de un iPhone. El resto
+ * —PDF, video, comprimidos— se rechaza antes de subir: la IA que revisa el
+ * documento solo entiende imagenes, y sin esta validacion un PDF llegaba hasta
+ * el analisis para fallar alli, gastando la subida y sin decirle nada util a la
+ * persona.
+ */
+const ALLOWED_DOCUMENT_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
+/** Una foto de credencial no necesita mas. Por encima, suele ser un video mal elegido. */
+const MAX_DOCUMENT_MB = 10;
+const MAX_DOCUMENT_BYTES = MAX_DOCUMENT_MB * 1024 * 1024;
+
 interface VerificationUploadProps {
   userId: string;
   verification: {
@@ -108,12 +130,43 @@ export function VerificationUpload({
 
   async function handleUpload(key: string, file: File) {
     setError("");
+
+    // `accept="image/*"` es una sugerencia al selector de archivos del sistema,
+    // no una validacion: se puede arrastrar un PDF, un video o un .zip y subirlo
+    // igual. Aqui se rechaza antes de gastar la subida, y con un mensaje que
+    // dice que hacer en vez de un error de Storage en ingles.
+    //
+    // Se admiten heic y heif porque son lo que produce un iPhone. Safari suele
+    // convertirlos a JPEG al usar un input de archivo, pero no siempre.
+    if (!ALLOWED_DOCUMENT_TYPES.includes(file.type)) {
+      setError(
+        "Ese archivo no es una imagen. Sube una foto en JPG, PNG o WEBP — no un PDF ni un documento."
+      );
+      return;
+    }
+
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      const mb = Math.round(file.size / (1024 * 1024));
+      setError(
+        `La imagen pesa ${mb} MB y el limite son ${MAX_DOCUMENT_MB} MB. Toma la foto con menos resolucion o recortala.`
+      );
+      return;
+    }
+
     setUploading(key);
 
-    const path = `${userId}/${key}-${Date.now()}.${file.name.split(".").pop()}`;
+    // Ruta DETERMINISTA, sin Date.now(). Antes cada resubida creaba un objeto
+    // nuevo y el anterior se quedaba para siempre: por eso el bucket llego a
+    // acumular 23 archivos para 3 verificaciones. Con upsert, subir de nuevo
+    // reemplaza, que es lo que el vendedor espera cuando repite la foto porque
+    // "no se ve".
+    //
+    // Sin extension a proposito: si dependiera de ella, un JPG y un PNG del
+    // mismo documento volverian a convivir. El tipo real viaja en contentType.
+    const path = `${userId}/${key}`;
     const { error: uploadError } = await supabase.storage
       .from("verification-documents")
-      .upload(path, file);
+      .upload(path, file, { upsert: true, contentType: file.type });
 
     if (uploadError) {
       setError(uploadError.message);
