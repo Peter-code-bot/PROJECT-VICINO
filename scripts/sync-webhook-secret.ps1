@@ -19,6 +19,33 @@
   mandarlo. No queda en el historial de PSReadLine ni en el scrollback.
 
 .NOTES
+  ROTAR, NO SOLO SINCRONIZAR (pendiente desde el 2026-08-26).
+
+  El valor actual esta COMPROMETIDO: se filtro al scrollback de la terminal por
+  una redaccion incompleta. Sincronizarlo no basta, hay que cambiarlo. El orden
+  importa, porque entre el paso 2 y el 4 los avisos de reporte no llegan:
+
+    1. Genera un valor nuevo. En PowerShell, sin que pase por el historial:
+         [Convert]::ToBase64String((1..24 | ForEach-Object {
+           Get-Random -Maximum 256 })) | Set-Clipboard
+       Queda en el portapapeles y no en pantalla.
+
+    2. Pegalo en Vercel: Settings > Environment Variables >
+       SUPABASE_WEBHOOK_SECRET > editar > guardar.
+
+    3. Redespliega. Las variables de entorno NO se aplican al despliegue vivo:
+       hasta que no haya un despliegue nuevo, produccion sigue usando el valor
+       viejo y este script te dira 401 con el nuevo, correctamente.
+
+    4. Corre este script y pega el mismo valor. Comprueba contra produccion
+       antes de tocar Vault, asi que si te saltaste el paso 3 se planta y no
+       deja Vault peor de lo que estaba.
+
+  La ventana de los pasos 2 a 4 es inevitable sin soporte para dos secretos a la
+  vez. Hoy no cuesta nada: los avisos de reporte llevan rotos el dia entero por
+  el desparejamiento, asi que cualquier ventana es una mejora.
+
+
   Comprobado el 2026-08-26: el valor que vivia dentro del trigger NO coincidia con
   el de Vercel — daba 401 contra produccion. Por eso el webhook estaba roto por dos
   causas a la vez, URL muerta y secreto desparejado, y arreglar solo una no bastaba.
