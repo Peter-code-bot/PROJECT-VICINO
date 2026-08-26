@@ -12,6 +12,16 @@ import { parseRadiusCookie } from "@/lib/geo/radius";
 
 const PAGE_SIZE = 20;
 
+/**
+ * La barra invertida, construida y no escrita.
+ *
+ * Escaparla dentro de un literal y luego dentro de una expresion regular es
+ * de los sitios donde mas facil es equivocarse, y el error no se ve: produce
+ * un patron que casa con otra cosa en vez de fallar. Asi no hay nada que
+ * escapar.
+ */
+const BARRA = String.fromCharCode(92);
+
 interface Props {
   searchParams: Promise<{
     q?: string;
@@ -88,17 +98,40 @@ export default async function SearchPage({ searchParams }: Props) {
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
-  let unaccentedLike = "";
+  // Tres terminos, no uno, porque los tres caminos comparan de forma distinta:
+  //
+  //   nombreVendedorLike  va por PostgREST contra profiles.nombre. Ahi el guion
+  //                       bajo SIGUE siendo comodin, asi que el truco de
+  //                       convertir vocales en guion bajo funciona y se queda.
+  //   terminoProducto     va al RPC, que desde 20260826260000 compara sin
+  //                       acentos por los dos lados. Se manda CRUDO: mandarlo
+  //                       mutilado es lo que dejo la busqueda en cero desde que
+  //                       el RPC empezo a escapar los comodines.
+  //   terminoSinGeo       va por PostgREST contra products_services. Se escapa
+  //                       el porcentaje (agujero del item 102) pero NO el guion
+  //                       bajo, para no matar ahi el truco de acentos, que es
+  //                       lo unico que tiene esa rama.
+  let nombreVendedorLike = "";
+  let terminoProducto = "";
+  let terminoSinGeo = "";
   let sellerIds: string[] = [];
 
   if (params.q) {
-    unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
+    nombreVendedorLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
+    terminoProducto = params.q;
+    // Solo el porcentaje y la barra invertida. Un guion bajo suelto casa un
+    // caracter y como mucho devuelve ruido; un porcentaje suelto devuelve el
+    // catalogo entero, que es justo el item 102.
+    terminoSinGeo = params.q
+      .split(BARRA).join(BARRA + BARRA)
+      .split("%").join(BARRA + "%")
+      .replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
     const { data: sellers, error: sellersError } = await supabase
       .from("profiles")
       .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count")
-      .ilike("nombre", `%${unaccentedLike}%`)
+      .ilike("nombre", `%${nombreVendedorLike}%`)
       .limit(4);
 
     // El error se reporta en vez de descartarse. Esta consulta pedia una
@@ -135,7 +168,7 @@ export default async function SearchPage({ searchParams }: Props) {
           user_lat: userLat!,
           user_lng: userLng!,
           radius_meters: validRadius,
-          search_term: unaccentedLike ? unaccentedLike : null,
+          search_term: terminoProducto || null,
           seller_ids: sellerIds.length > 0 ? sellerIds : null,
           result_limit: null,
           restrict_seller_mode: false,
@@ -149,8 +182,8 @@ export default async function SearchPage({ searchParams }: Props) {
       .select(selectFields, { count: "exact" })
       .eq("estatus", "disponible");
 
-    if (unaccentedLike) {
-      let orQuery = `titulo.ilike.%${unaccentedLike}%,descripcion.ilike.%${unaccentedLike}%`;
+    if (terminoSinGeo) {
+      let orQuery = `titulo.ilike.%${terminoSinGeo}%,descripcion.ilike.%${terminoSinGeo}%`;
       if (sellerIds.length > 0) {
         orQuery += `,creador_id.in.(${sellerIds.join(",")})`;
       }
