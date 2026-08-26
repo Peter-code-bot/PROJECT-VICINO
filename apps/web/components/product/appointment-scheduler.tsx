@@ -31,6 +31,7 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [month, setMonth] = useState(new Date());
   const supabase = createClient();
 
@@ -64,8 +65,19 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
       .select("appointment_start")
       .eq("product_id", product.id)
       .eq("appointment_date", selectedDate)
-      .eq("status", "confirmed")
-      .then(({ data }) => {
+      // Antes filtraba por status = 'confirmed', pero el indice unico bloquea
+      // todo lo que no este cancelado: un hueco 'completed' se ofrecia libre y
+      // el INSERT moria con 23505. Ahora el selector y el indice dicen lo mismo.
+      .neq("status", "cancelled")
+      .then(({ data, error }) => {
+        if (error) {
+          // Sin este catch, un fallo dejaba bookedSlots vacio y se ofrecian como
+          // libres TODOS los horarios, incluidos los ya ocupados.
+          console.error("[citas] no se pudieron leer los horarios ocupados:", error);
+          setErrorMsg("No pudimos revisar los horarios ocupados. Recarga la página.");
+          return;
+        }
+        setErrorMsg(null);
         setBookedSlots(data?.map((a) => a.appointment_start.slice(0, 5)) ?? []);
       });
   }, [selectedDate, product.id]);
@@ -92,33 +104,28 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
       .select("id")
       .single();
     setLoading(false);
-    if (error) return;
 
-    // Notify both buyer and seller
-    const dateLabel = new Date(selectedDate + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-    const slotH = parseInt(selectedSlot.split(":")[0] ?? "0");
-    const slotM = selectedSlot.split(":")[1] ?? "00";
-    const ampm = slotH >= 12 ? "PM" : "AM";
-    const h12 = slotH % 12 === 0 ? 12 : slotH % 12;
-    const timeLabel = `${h12}:${slotM} ${ampm}`;
+    // Antes era `if (error) return;`: el spinner se apagaba y no pasaba nada
+    // mas. La persona pulsaba Confirmar, no veia ni exito ni fallo, y se
+    // quedaba sin saber si tenia cita.
+    if (error) {
+      console.error("[citas] no se pudo agendar:", error);
+      setErrorMsg(
+        error.code === "23505"
+          ? "Ese horario acaba de ocuparse. Elige otro."
+          : "No se pudo agendar la cita. Intenta de nuevo."
+      );
+      return;
+    }
 
-    await supabase.from("notifications").insert([
-      {
-        user_id: user.id,
-        tipo: "cita_agendada",
-        titulo: "Cita agendada",
-        mensaje: `${product.titulo} el ${dateLabel} | ${timeLabel}`,
-        data: { appointment_id: newAppt?.id, appointment_date: selectedDate, appointment_start: selectedSlot },
-      },
-      {
-        user_id: product.creador_id,
-        tipo: "cita_agendada",
-        titulo: "Nueva cita agendada",
-        mensaje: `Alguien agendó "${product.titulo}" el ${dateLabel} | ${timeLabel}`,
-        data: { appointment_id: newAppt?.id, appointment_date: selectedDate, appointment_start: selectedSlot },
-      },
-    ]);
+    // El aviso a comprador y vendedor lo crea ahora el trigger
+    // on_appointment_created_notify (migracion 20260826140000). El INSERT que
+    // habia aqui escribia en `notifications` desde el navegador, y esa tabla no
+    // tiene policy de INSERT: moria con 42501 en cada agendamiento, descartado
+    // por un `await` sin comprobar. Nadie se entero nunca de una cita.
+    void newAppt;
 
+    setErrorMsg(null);
     setSuccess(true);
     setTimeout(onClose, 2000);
   }
@@ -264,6 +271,11 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
 
             {/* Confirm button — sticky */}
             <div className="sticky bottom-0 bg-card pt-2 pb-5 px-5 border-t border-border/40">
+              {errorMsg && (
+                <p role="alert" className="mb-3 text-sm text-destructive">
+                  {errorMsg}
+                </p>
+              )}
               <button onClick={handleConfirm}
                 disabled={!selectedDate || !selectedSlot || loading}
                 className="w-full rounded-full py-4 bg-primary text-primary-foreground font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors">
