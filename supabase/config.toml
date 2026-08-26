@@ -39,3 +39,11 @@ file_size_limit = "20MB"
 
 [realtime]
 enabled = true
+
+# Invocada por pg_cron vía pg_net, no por un usuario. El header que llega es
+# `Bearer <cron_secret>`, que NO es un JWT de Supabase: con verify_jwt = true el
+# gateway devuelve 401 antes de entrar a la función y el chequeo de CRON_SECRET
+# de index.ts nunca corre. La autenticación real es ese bearer compartido,
+# igual que en expire-confirmations y send-appointment-reminders.
+[functions.purge-verification-documents]
+verify_jwt = false
