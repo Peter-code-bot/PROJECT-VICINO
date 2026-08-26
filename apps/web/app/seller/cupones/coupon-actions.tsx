@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { toggleCoupon, deleteCoupon } from "./actions";
 import { Play, Pause, Trash2 } from "lucide-react";
 
@@ -14,15 +15,40 @@ export function CouponActions({ id, activo }: CouponActionsProps) {
 
   async function handleToggle() {
     setLoading(true);
-    await toggleCoupon(id, !activo);
-    setLoading(false);
+    try {
+      // El { error } de la accion NO se descarta: es dinero del vendedor. Si
+      // la escritura falla (rate limit, sesion caida, RLS) y no avisamos, el
+      // cupon sigue activo y el vendedor cree que lo apago.
+      const res = await toggleCoupon(id, !activo);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(activo ? "Cupón desactivado" : "Cupón activado");
+    } catch {
+      // La promesa del Server Action rechaza si se cae la red. Sin este catch
+      // el finally tampoco corria y el boton quedaba deshabilitado para siempre.
+      toast.error("No se pudo conectar. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleDelete() {
     if (!confirm("¿Eliminar este cupón?")) return;
     setLoading(true);
-    await deleteCoupon(id);
-    setLoading(false);
+    try {
+      const res = await deleteCoupon(id);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Cupón eliminado");
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

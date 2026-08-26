@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { respondToReview } from "./actions";
 
 export function RespondForm({ reviewId }: { reviewId: string }) {
@@ -25,10 +26,28 @@ export function RespondForm({ reviewId }: { reviewId: string }) {
     e.preventDefault();
     if (!respuesta.trim()) return;
     setLoading(true);
-    await respondToReview(reviewId, respuesta.trim());
-    router.refresh();
-    setLoading(false);
-    setOpen(false);
+    try {
+      const res = await respondToReview(reviewId, respuesta.trim());
+      // Antes se descartaba el retorno y el formulario se cerraba igual: sesion
+      // expirada, limite de escritura, texto invalido o un UPDATE de 0 filas
+      // pasaban como exito y el vendedor creia publicada una respuesta que no
+      // existia. En el fallo dejamos el formulario abierto y el texto intacto
+      // para que pueda reintentar sin volver a escribirlo.
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Respuesta publicada");
+      setRespuesta("");
+      setOpen(false);
+      router.refresh();
+    } catch {
+      // Si la llamada al Server Action revienta (red caida), sin este catch la
+      // excepcion escapaba de handleSubmit y el boton se quedaba en "...".
+      toast.error("No se pudo enviar tu respuesta. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
