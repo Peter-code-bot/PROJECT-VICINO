@@ -36,6 +36,22 @@ export default async function EditarPublicacionPage({ params }: Props) {
 
   if (!product) notFound();
 
+  // Las coordenadas van por RPC y no en el SELECT de arriba: ubicacion_geo es
+  // de tipo geography y PostgREST la devuelve en binario hexadecimal, que
+  // habria que interpretar en TypeScript. En todo el repo no hay hoy ni un
+  // lector de esa columna desde el cliente, asi que no hay patron probado que
+  // copiar. get_product_location la devuelve ya en lat/lng, y comprueba
+  // propiedad por dentro.
+  //
+  // Sin esto, el vendedor abria "Editar publicacion" y veia un buscador vacio
+  // y ningun mapa, como si nunca hubiera puesto ubicacion. El dato no se
+  // perdia (vender/actions.ts solo toca ubicacion_geo si llegan coordenadas),
+  // pero para mover el marcador tenia que buscar su direccion desde cero.
+  const { data: coords } = await supabase.rpc("get_product_location", {
+    p_product_id: id,
+  });
+  const ubicacion = Array.isArray(coords) ? coords[0] : null;
+
   // MP#08 #5c-2: leemos las categorias del pivote (joineamos categories.slug)
   // para pre-poblar el form multi-select. Tras el backfill de 5c-1 cada
   // producto tiene exactamente 1 fila con is_primary=true, asi que el form
@@ -87,6 +103,8 @@ export default async function EditarPublicacionPage({ params }: Props) {
           categories: initialCategories,
           ubicacion: product.ubicacion,
           delivery_radius_km: product.delivery_radius_km,
+          ubicacion_lat: ubicacion?.lat ?? null,
+          ubicacion_lng: ubicacion?.lng ?? null,
           tipo_entrega: product.tipo_entrega,
           estado: product.estado ?? null,
           color: product.color ?? null,

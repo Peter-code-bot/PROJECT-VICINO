@@ -79,17 +79,65 @@ export default function DeliveryMap({
   const [searching, setSearching] = useState(false);
   const [showMap, setShowMap] = useState(hasInitial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Para la geocodificacion inversa del arrastre. La busqueda por texto ya
+  // tenia su propio retardo; esta no tenia nada.
+  const inversaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inversaAbortRef = useRef<AbortController | null>(null);
 
   const handleDrag = useCallback(
     (lat: number, lng: number) => {
       setPosition([lat, lng]);
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
-        .then((r) => r.json())
-        .then((data) => onLocationChange(lat, lng, data.display_name ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`))
-        .catch(() => onLocationChange(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`));
+
+      // La coordenada se entrega YA, sin esperar a Nominatim: es el dato que de
+      // verdad importa y no debe depender de un servicio externo. Lo que se
+      // retrasa es solo el nombre legible de la calle.
+      const provisional = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      onLocationChange(lat, lng, provisional);
+
+      // Dos guardas, por motivos distintos:
+      //
+      // El retardo respeta la politica de uso de Nominatim, que pide como
+      // maximo una peticion por segundo. Arrastrar el marcador varias veces
+      // seguidas la superaba con facilidad, y la sancion es el bloqueo de la
+      // IP: se quedaria sin buscador de direcciones TODO el mundo, no quien
+      // arrastro.
+      //
+      // El AbortController evita que una respuesta lenta pise a otra
+      // posterior. Sin el, arrastrar a A y luego a B podia terminar con la
+      // direccion de A sobre las coordenadas de B — y el usuario no tiene
+      // forma de notarlo.
+      if (inversaRef.current) clearTimeout(inversaRef.current);
+      inversaAbortRef.current?.abort();
+
+      inversaRef.current = setTimeout(() => {
+        const control = new AbortController();
+        inversaAbortRef.current = control;
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+          { signal: control.signal },
+        )
+          .then((r) => r.json())
+          .then((data) => {
+            if (control.signal.aborted) return;
+            if (data?.display_name) onLocationChange(lat, lng, data.display_name);
+          })
+          .catch(() => {
+            // Si falla o se cancela, se queda la coordenada provisional, que ya
+            // es un destino valido. Antes el catch reescribia lo mismo.
+          });
+      }, 1100);
     },
     [onLocationChange]
   );
+
+  useEffect(() => {
+    // Sin esto, un temporizador o una peticion en vuelo sobreviven al desmontaje
+    // y llaman a onLocationChange sobre un componente que ya no existe.
+    return () => {
+      if (inversaRef.current) clearTimeout(inversaRef.current);
+      inversaAbortRef.current?.abort();
+    };
+  }, []);
 
   function handleSearch(q: string) {
     setSearchQuery(q);

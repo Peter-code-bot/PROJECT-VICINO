@@ -159,12 +159,27 @@ export default async function ProductDetailPage({ params }: Props) {
     });
   }
 
+  // delivery_radius_km era una columna de SOLO ESCRITURA: el vendedor movia el
+  // deslizador, se guardaba, y no lo leia nadie. El circulo naranja del mapa
+  // era decoracion pura. Aqui pasa a significar algo para el comprador.
+  //
+  // Deliberadamente NO se usa para filtrar el feed. Eso cambiaria quien ve que
+  // —ocultaria publicaciones a quien esta fuera del radio— y es una decision
+  // de producto, no un arreglo. Ensenarlo es la mitad que no tiene vuelta
+  // atras mala: si el vendedor dice que reparte hasta 5 km, el comprador
+  // merece saberlo antes de escribirle.
+  const radioKm =
+    typeof product.delivery_radius_km === "number" && product.delivery_radius_km > 0
+      ? product.delivery_radius_km
+      : null;
+  const alcance = radioKm ? ` · hasta ${radioKm} km` : "";
+
   const deliveryLabel =
     product.tipo_entrega === "pickup"
       ? "Recoger en punto local"
       : product.tipo_entrega === "envio"
-        ? "Envío disponible"
-        : "Pickup o envío disponible";
+        ? `Envío disponible${alcance}`
+        : `Pickup o envío disponible${alcance}`;
 
   const isOwner = user?.id === product.creador_id;
 

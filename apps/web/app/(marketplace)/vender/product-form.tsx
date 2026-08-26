@@ -61,6 +61,9 @@ export interface ProductInitialValues {
   categories: CategorySelection[];
   ubicacion?: string | null;
   delivery_radius_km?: number | null;
+  /** Coordenadas guardadas, para hidratar el mapa al editar. */
+  ubicacion_lat?: number | null;
+  ubicacion_lng?: number | null;
   tipo_entrega: string;
   estado?: string | null;
   color?: string | null;
@@ -213,9 +216,11 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   const [color, setColor] = useState<string>(initialValues?.color ?? "");
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
+  // lat/lng nacen de lo guardado cuando se edita. Antes arrancaban en 0,0
+   // siempre, y por eso el mapa salia en blanco al editar.
   const [locationData, setLocationData] = useState({
-    lat: 0,
-    lng: 0,
+    lat: initialValues?.ubicacion_lat ?? 0,
+    lng: initialValues?.ubicacion_lng ?? 0,
     address: initialValues?.ubicacion ?? "",
     radius: initialValues?.delivery_radius_km ?? 5,
   });
@@ -1097,7 +1102,14 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
         <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
         <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
         <input type="hidden" name="delivery_radius_km" value={locationData.radius} />
+        {/* El componente ya aceptaba estas tres props y NADIE se las pasaba.
+            initialLat/initialLng ademas destapan el mapa: su estado `showMap`
+            nace de `hasInitial`, asi que sin ellas el mapa quedaba oculto
+            hasta buscar una direccion, tambien al editar. */}
         <DeliveryMap
+          initialLat={initialValues?.ubicacion_lat ?? undefined}
+          initialLng={initialValues?.ubicacion_lng ?? undefined}
+          initialRadius={initialValues?.delivery_radius_km ?? undefined}
           onLocationChange={(lat, lng, address) => setLocationData((p) => ({ ...p, lat, lng, address }))}
           onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
         />
