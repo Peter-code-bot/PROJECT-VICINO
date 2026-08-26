@@ -75,6 +75,39 @@ const baseProductSchema = z.object({
 // obligatorio; en "cotizacion"/"reservacion" NO debe venir. Ojo: esto convierte
 // createProductSchema en ZodEffects, que NO expone .partial()/.shape/.extend.
 // Por eso updateProductSchema deriva del baseProductSchema plano, no de este.
+/**
+ * Cruza `tipo` con el `type` de cada categoría elegida.
+ *
+ * El formulario ya solo ofrece las categorías del tipo elegido, pero eso es
+ * filtrado de interfaz: un POST directo con `tipo: "producto"` y la categoría
+ * `servicios-hogar` pasaba entero. Un producto catalogado como servicio ensucia
+ * el feed por categoría, el filtro de /buscar y el ranking, que agrupa por
+ * categoría.
+ *
+ * Las categorías `type: "otro"` — hoy Empleos y Otros — valen para ambos a
+ * propósito: son justamente el cajón para lo que no encaja en la dicotomía.
+ */
+function validarCoherenciaTipoCategoria(
+  data: { tipo?: "producto" | "servicio"; categories?: { slug: string }[] },
+  ctx: z.RefinementCtx,
+) {
+  if (!data.tipo || !data.categories) return;
+
+  data.categories.forEach((elegida, i) => {
+    const cat = CATEGORIES.find((c) => c.slug === elegida.slug);
+    if (!cat || cat.type === "otro") return;
+
+    if (cat.type !== data.tipo) {
+      const esperado = cat.type === "servicio" ? "servicio" : "producto";
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["categories", i, "slug"],
+        message: `"${cat.name}" es una categoría de ${esperado}. Cambia el tipo de tu publicación o elige otra categoría.`,
+      });
+    }
+  });
+}
+
 export const createProductSchema = baseProductSchema.superRefine((data, ctx) => {
   if (data.modo_precio === "precio") {
     if (data.precio == null) {
@@ -85,9 +118,16 @@ export const createProductSchema = baseProductSchema.superRefine((data, ctx) => 
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["precio"],
       message: "En modo Cotización o Reservación no se envía precio" });
   }
+
+  validarCoherenciaTipoCategoria(data, ctx);
 });
 
-export const updateProductSchema = baseProductSchema.partial();
+// El .partial() deja tipo y categories opcionales, asi que la comprobacion solo
+// aplica cuando la edicion manda los dos. Editar solo el titulo no tiene por que
+// arrastrar una validacion de categorias.
+export const updateProductSchema = baseProductSchema
+  .partial()
+  .superRefine(validarCoherenciaTipoCategoria);
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

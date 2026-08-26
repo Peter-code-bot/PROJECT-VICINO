@@ -351,7 +351,11 @@ export function SaleConfirmationCard({
           </div>
           <div className={cn("font-display text-[22px] font-bold tracking-tight mt-1 leading-none",
             rejected ? "text-[color:var(--fg-muted)] line-through" : "text-[color:var(--fg)]")}>
-            ${Number(sc.precio_acordado).toLocaleString("es-MX")}{" "}
+            {/* formatPrice ya estaba importado pero sin usar, mientras el precio
+                se formateaba a mano justo aqui. Dos formatos divergentes para lo
+                mismo, y el manual no maneja un importe invalido: Number(null)
+                da 0 y pintaba "$0" en la tarjeta de una venta. */}
+            {formatPrice(sc.precio_acordado) ?? "Sin precio"}{" "}
             <span className="text-[11px] font-medium text-[color:var(--fg-muted)] tracking-normal no-underline">
               MXN
             </span>
