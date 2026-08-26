@@ -47,3 +47,14 @@ enabled = true
 # igual que en expire-confirmations y send-appointment-reminders.
 [functions.purge-verification-documents]
 verify_jwt = false
+
+# Mismo caso que purge-verification-documents: las dispara pg_cron vía pg_net
+# (20260531000001_pg_cron_schedules.sql) con `Bearer <cron_secret>`, que no es
+# un JWT de Supabase. Estaban en verify_jwt = false en el servidor pero sin
+# respaldo aquí, así que un deploy sin estas entradas las flipeaba al default
+# del CLI (true) y el gateway habría devuelto 401 antes de entrar a la función.
+[functions.expire-confirmations]
+verify_jwt = false
+
+[functions.send-appointment-reminders]
+verify_jwt = false
