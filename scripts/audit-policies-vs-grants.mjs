@@ -49,6 +49,25 @@ const token = (() => {
   return line.slice('SUPABASE_ACCESS_TOKEN='.length).trim().replace(/^["']|["']$/g, '');
 })();
 
+/**
+ * Desalineaciones conocidas y justificadas. Cada una lleva su motivo, y el motivo
+ * es parte del contrato: si alguien quita la razon, tiene que quitar la excepcion.
+ *
+ * No es una alfombra bajo la que barrer. Una entrada aqui significa "la policy
+ * existe pero nadie la ejerce, porque esa escritura pasa por un RPC". Si el
+ * codigo vuelve a escribir directo, el fallo reaparece en runtime — y por eso
+ * cada excepcion nombra la funcion que hace el trabajo.
+ */
+const EXCEPCIONES = new Map([
+  [
+    'user_roles',
+    'Las escrituras pasan por admin_set_user_role (SECURITY DEFINER, valida admin ' +
+      'dentro de la funcion). Es deliberado no dar el GRANT: user_roles reparte ' +
+      'admin, y un privilegio suelto ahi seria catastrofico el dia que la policy ' +
+      'se caiga. Ver 20260826200000.',
+  ],
+]);
+
 const sql = async (query) => {
   const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
     method: 'POST',
@@ -119,11 +138,23 @@ const main = async () => {
       and c.relkind = 'r' and c.relrowsecurity = true
     order by 1, 2`);
 
+  const reales = sinPrivilegio.filter((r) => !EXCEPCIONES.has(r.tabla));
+  const justificadas = sinPrivilegio.filter((r) => EXCEPCIONES.has(r.tabla));
+
   console.log(`\nA) POLICY SIN PRIVILEGIO — fallan con 42501 al ejercerlas`);
-  if (sinPrivilegio.length === 0) {
+  if (reales.length === 0) {
     console.log('   ninguna.');
   } else {
-    for (const r of sinPrivilegio) console.log(`   ${r.tabla} · ${r.comando}`);
+    for (const r of reales) console.log(`   ${r.tabla} · ${r.comando}`);
+  }
+
+  if (justificadas.length > 0) {
+    console.log(`\n   Conocidas y justificadas (no cuentan como fallo):`);
+    for (const tabla of new Set(justificadas.map((r) => r.tabla))) {
+      const verbos = justificadas.filter((r) => r.tabla === tabla).map((r) => r.comando).join(', ');
+      console.log(`   · ${tabla} [${verbos}]`);
+      console.log(`     ${EXCEPCIONES.get(tabla)}`);
+    }
   }
 
   console.log(`\nB) PRIVILEGIO SIN POLICY — UPDATE y DELETE fallan EN SILENCIO (204, 0 filas)`);
@@ -136,8 +167,8 @@ const main = async () => {
   }
 
   console.log('');
-  if (sinPrivilegio.length > 0) {
-    console.error(`FALLA: ${sinPrivilegio.length} combinacion(es) con policy y sin privilegio.`);
+  if (reales.length > 0) {
+    console.error(`FALLA: ${reales.length} combinacion(es) con policy y sin privilegio.`);
     process.exit(1);
   }
   console.log('Sin policies huerfanas de privilegio.');
