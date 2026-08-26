@@ -129,18 +129,20 @@ export async function getNearbyVendorCount(
   const snappedRadius = Math.ceil(radius / 100) * 100 + 100;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("search_nearby_products_v4", {
+  // count_nearby_vendors devuelve un entero. Antes se pedian hasta CIEN filas
+  // completas al RPC del feed —cada una con su objeto de perfil y su agregado
+  // de categorias— para contar en el cliente, y ademas se contaba por NOMBRE:
+  // dos vendedores homonimos contaban como uno, y con mas de cien productos en
+  // el radio la cuenta se quedaba corta en silencio. El RPC del feed no
+  // devuelve el identificador del vendedor, asi que desde aqui no habia forma
+  // de contarlo bien: era la herramienta equivocada.
+  const { data, error } = await supabase.rpc("count_nearby_vendors", {
     user_lat: snapped.lat,
     user_lng: snapped.lng,
     radius_meters: snappedRadius,
-    result_limit: 100,
-    sort_by_distance: true,
   });
 
   if (error) return { count: 0, error: error.message };
 
-  const names = new Set(
-    (data ?? []).map((p: any) => p.profiles?.nombre).filter(Boolean)
-  );
-  return { count: names.size };
+  return { count: typeof data === "number" ? data : 0 };
 }

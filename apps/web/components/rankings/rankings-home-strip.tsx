@@ -116,10 +116,19 @@ export async function RankingsHomeStripSection() {
   const period = currentPeriodInMexicoCity();
 
   try {
-    const [allCategories, activeCategoryIds] = await Promise.all([
-      getCategories(),
-      getActiveCategoryIdsForPeriod(period),
-    ]);
+    // Las dos iban en paralelo, y eso desperdiciaba una en cada carga del home:
+    // si no hay ninguna categoria con ranking del periodo, la lista de las 42
+    // categorias no se usa para nada y esta seccion devuelve null igual.
+    //
+    // No es un caso raro: seller_rankings esta VACIA desde el lanzamiento. El
+    // cron que deberia poblarla esta declarado en vercel.json y no existe en
+    // pg_cron, asi que hoy esta consulta desperdiciada ocurre en el 100 % de
+    // las cargas. Primero se pregunta si hay algo que pintar; solo entonces se
+    // pide el catalogo.
+    const activeCategoryIds = await getActiveCategoryIdsForPeriod(period);
+    if (activeCategoryIds.length === 0) return null;
+
+    const allCategories = await getCategories();
     categories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
   } catch {
     return null;

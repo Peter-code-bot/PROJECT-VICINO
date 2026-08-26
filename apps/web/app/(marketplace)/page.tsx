@@ -87,29 +87,83 @@ export default async function HomePage({ searchParams }: Props) {
   }
   const hasLocation = userLat !== null && userLng !== null;
 
-  let viewerIsVendedor = false;
-  let viewerUniversity: string | null = null;
-  if (user) {
-    const { data: viewerProfile } = await supabase
-      .from("profiles")
-      .select("es_vendedor")
-      .eq("id", user.id)
-      .single();
-    viewerIsVendedor = viewerProfile?.es_vendedor ?? false;
-
-    // Obtener si es universitario verificado
-    const { data: viewerVerification } = await supabase
-      .from("seller_verification")
-      .select("university_name")
-      .eq("user_id", user.id)
-      .eq("status", "approved")
-      .eq("document_type", "Credencial Universitaria")
-      .maybeSingle();
-    
-    if (viewerVerification?.university_name) {
-      viewerUniversity = viewerVerification.university_name;
+  // Estas TRES consultas son independientes entre si y se esperaban una detras
+  // de otra. El feed no mira `user` en ningun punto —solo hasLocation, las
+  // coordenadas y el radio, todos resueltos arriba— y el perfil y la
+  // verificacion solo miran user.id. Para un usuario autenticado eran tres
+  // idas de red en serie donde cabe una.
+  //
+  // Promise.all y no allSettled a proposito: los constructores de postgrest-js
+  // NUNCA rechazan mientras no se llame a .throwOnError(), que aqui no se
+  // llama. Un fallo de cualquiera de las tres llega como valor resuelto con
+  // { data: null, error }, no como excepcion. El feed va ademas envuelto en su
+  // propia funcion, que ya captura su error y lo reporta.
+  const feedPromise = (async (): Promise<{
+    products: FeedProduct[] | null;
+    fallo: boolean;
+  }> => {
+    if (hasLocation) {
+      const { data, error } = await supabase.rpc("search_nearby_products_v4", {
+        user_lat: userLat!,
+        user_lng: userLng!,
+        radius_meters: validRadius,
+        result_limit: 150,
+      });
+      if (error) {
+        Sentry.captureException(error, {
+          tags: { action: "feed_nearby_products", section: "para_ti" },
+        });
+        return { products: null, fallo: true };
+      }
+      return { products: data as FeedProduct[], fallo: false };
     }
-  }
+
+    const { data } = await supabase
+      .from("products_services")
+      .select(
+        `
+        id,
+        titulo,
+        precio,
+        imagen_principal,
+        categoria,
+        slug,
+        created_at,
+        precio_negociable,
+        modo_precio,
+        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+        product_categories(is_primary, categories(slug, nombre))
+      `
+      )
+      .eq("estatus", "disponible")
+      .order("created_at", { ascending: false })
+      .limit(150);
+    return { products: data as FeedProduct[] | null, fallo: false };
+  })();
+
+  const perfilPromise = user
+    ? supabase.from("profiles").select("es_vendedor").eq("id", user.id).single()
+    : Promise.resolve(null);
+
+  const verificacionPromise = user
+    ? supabase
+        .from("seller_verification")
+        .select("university_name")
+        .eq("user_id", user.id)
+        .eq("status", "approved")
+        .eq("document_type", "Credencial Universitaria")
+        .maybeSingle()
+    : Promise.resolve(null);
+
+  const [feedResultado, perfilResultado, verificacionResultado] = await Promise.all([
+    feedPromise,
+    perfilPromise,
+    verificacionPromise,
+  ]);
+
+  const viewerIsVendedor = perfilResultado?.data?.es_vendedor ?? false;
+  const viewerUniversity: string | null =
+    verificacionResultado?.data?.university_name ?? null;
 
   // F10: IIFE so TypeScript infers universityProducts directly from the
   // Supabase SELECT result. Single source of truth; if the SELECT shape
@@ -170,47 +224,9 @@ export default async function HomePage({ searchParams }: Props) {
     return uProducts ?? [];
   })();
 
-  // Fetch "Para ti" data
-  let products: FeedProduct[] | null = null;
-  let feedRpcFailed = false;
-  if (hasLocation) {
-    const { data, error } = await supabase.rpc("search_nearby_products_v4", {
-      user_lat: userLat!,
-      user_lng: userLng!,
-      radius_meters: validRadius,
-      result_limit: 150,
-    });
-    if (error) {
-      Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "para_ti" } });
-      feedRpcFailed = true;
-    } else {
-      products = data as FeedProduct[];
-    }
-  }
-  
-  if (!hasLocation) {
-    const { data } = await supabase
-      .from("products_services")
-      .select(
-        `
-        id,
-        titulo,
-        precio,
-        imagen_principal,
-        categoria,
-        slug,
-        created_at,
-        precio_negociable,
-        modo_precio,
-        profiles!inner(nombre, trust_level, average_rating, reviews_count),
-        product_categories(is_primary, categories(slug, nombre))
-      `
-      )
-      .eq("estatus", "disponible")
-      .order("created_at", { ascending: false })
-      .limit(150);
-    products = data as FeedProduct[] | null;
-  }
+  // El feed ya se resolvio arriba, en paralelo con perfil y verificacion.
+  const products = feedResultado.products;
+  const feedRpcFailed = feedResultado.fallo;
 
   const showGeoEmptyState = hasLocation;
 
