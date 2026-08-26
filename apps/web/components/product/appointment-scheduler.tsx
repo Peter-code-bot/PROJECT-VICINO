@@ -35,19 +35,51 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
   const [month, setMonth] = useState(new Date());
   const supabase = createClient();
 
-  // Generate slots with labels
+  // Genera los horarios disponibles a partir de la ventana del vendedor.
+  //
+  // Dos trampas que este bucle tenia:
+  //
+  //   1. Duracion 0 congelaba la pestaña. `?? 60` solo cubre null y undefined,
+  //      no el cero, y la columna es un integer sin CHECK. Con dur = 0, `cur`
+  //      nunca avanza, la condicion sigue siendo cierta, y el while empuja al
+  //      array hasta agotar la memoria. La migracion 20260826210000 lo prohibe
+  //      en la base; esta guarda cubre los datos que ya existieran.
+  //
+  //   2. Una ventana que cruza medianoche daba CERO horarios. 20:00 -> 02:00
+  //      calcula end = 120 y cur = 1200, asi que el bucle no entra nunca. Es el
+  //      caso natural de un antro, y estaba en la lista de pendientes.
+  //
+  // El tercer caso es ambiguo y se trata aparte: inicio == fin. Puede querer
+  // decir "24 horas" o "sin configurar", y hoy en produccion hay un servicio
+  // ("Reservaciones para Dorothy") con 00:00 -> 00:00, que casi seguro es un
+  // formulario enviado vacio. Generar 48 huecos ahi seria inventar
+  // disponibilidad que el vendedor nunca ofrecio, asi que se devuelve vacio y la
+  // interfaz lo dice.
   function getSlots() {
     const result: { start: string; label: string }[] = [];
     const [sh, sm] = (product.appointment_start_time ?? "09:00").split(":").map(Number);
     const [eh, em] = (product.appointment_end_time ?? "18:00").split(":").map(Number);
-    const dur = product.appointment_duration_minutes ?? 60;
-    let cur = (sh ?? 9) * 60 + (sm ?? 0);
-    const end = (eh ?? 18) * 60 + (em ?? 0);
+
+    const rawDur = product.appointment_duration_minutes;
+    const dur = Number.isFinite(rawDur) && (rawDur ?? 0) > 0 ? (rawDur as number) : 60;
+
+    const start = (sh ?? 9) * 60 + (sm ?? 0);
+    const rawEnd = (eh ?? 18) * 60 + (em ?? 0);
+
+    if (rawEnd === start) return result;
+
+    let cur = start;
+    const end = rawEnd < start ? rawEnd + 24 * 60 : rawEnd;
+
     while (cur + dur <= end) {
-      const h = Math.floor(cur / 60);
+      // El %24 es lo que hace utilizable el cruce de medianoche: pasada la
+      // medianoche `cur` supera los 1440 minutos, y sin normalizar saldria una
+      // hora "25:00" —invalida para la columna `time` de appointment_start— y
+      // fmt12 la etiquetaria como PM cuando es la 1 de la mañana.
+      const h = Math.floor(cur / 60) % 24;
       const m = cur % 60;
       const endMin = cur + dur;
-      const eH = Math.floor(endMin / 60);
+      const eH = Math.floor(endMin / 60) % 24;
       const eM = endMin % 60;
       result.push({
         start: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
@@ -225,6 +257,16 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
                 <div className="px-5 py-4">
                   <h3 className="font-bold text-foreground mb-1">Franjas horarias disponibles</h3>
                   <p className="text-xs text-muted-foreground mb-4 capitalize">({selectedDayLabel})</p>
+                  {slots.length === 0 && (
+                    // Antes esto era un hueco mudo: la rejilla quedaba vacia sin
+                    // explicar nada. Pasa cuando el vendedor no dejo configurado
+                    // su horario (inicio == fin), que hoy le ocurre a un servicio
+                    // real en produccion.
+                    <p className="text-sm text-muted-foreground">
+                      Este servicio todavía no tiene horarios configurados. Escríbele al
+                      vendedor para acordar una hora.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-2.5">
                     {slots.map((slot) => {
                       const isBooked = bookedSlots.includes(slot.start);
