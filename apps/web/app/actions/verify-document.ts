@@ -1,6 +1,7 @@
 "use server";
 
 import OpenAI from "openai";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 
 export async function verifyDocument(
@@ -104,7 +105,14 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     }
 
     // Save to DB
-    const { error: dbError } = await supabase
+    // user_id NO es unico en seller_verification: la tabla solo tiene PK sobre
+    // id y un indice NO unico sobre user_id, y la pagina lee con
+    // `.order("created_at", desc).limit(1)` porque el historial multi-fila es el
+    // diseno. Un `.eq("user_id")` a secas escribiria el veredicto en TODAS las
+    // filas del vendedor, incluida la vieja ya rechazada. `path` es el
+    // ine_front_url que el cliente acaba de guardar, asi que ancla el UPDATE al
+    // documento que realmente analizamos.
+    const { data: updated, error: dbError } = await supabase
       .from("seller_verification")
       .update({
         status: finalStatus,
@@ -113,10 +121,37 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
         ai_confidence_score: analysis.confianza_porcentaje,
         ai_analysis_raw: analysis
       })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("ine_front_url", path)
+      .select("id");
 
     if (dbError) {
-      throw new Error("No se pudo guardar el análisis en la base de datos.");
+      // Sentry SIEMPRE antes del return: el `details` de Postgres es donde el
+      // motor nombra la columna o la policy que rechazo, y perderlo es lo que
+      // encarecio los diagnosticos anteriores.
+      Sentry.captureException(dbError, {
+        tags: { action: "verifyDocument", step: "update_seller_verification" },
+        contexts: {
+          verification: { userId, documentType, finalStatus },
+          supabase: { code: dbError.code },
+        },
+      });
+      return { success: false, error: "No se pudo guardar el resultado de la revisión. Intenta de nuevo en un momento." };
+    }
+
+    // Un UPDATE de 0 filas no es un error en PostgREST (204 sin cuerpo): sin
+    // este chequeo la interfaz anunciaba "verificado" con la base intacta.
+    if (!updated || updated.length === 0) {
+      Sentry.captureException(
+        new Error("verifyDocument: el UPDATE de seller_verification afecto 0 filas"),
+        {
+          tags: { action: "verifyDocument", step: "update_seller_verification" },
+          contexts: {
+            verification: { userId, documentType, finalStatus, path },
+          },
+        },
+      );
+      return { success: false, error: "No encontramos el documento que acabas de subir. Vuélvelo a subir para completar tu verificación." };
     }
 
     return { success: true, status: finalStatus, analysis };

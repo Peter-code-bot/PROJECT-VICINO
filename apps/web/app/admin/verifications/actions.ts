@@ -43,42 +43,58 @@ export async function approveVerification(verificationId: string, userId: string
     return { error: rpcError.message ?? "Error al aprobar verificacion" };
   }
 
-  // Notification INSERT outside the atomic RPC: not part of canonical
-  // mutable state, failure here does not cause divergence. Wrap in
-  // try/catch so a notifications-table outage cannot mask a successful
-  // verification approval (caveat P4 of the playbook).
-  try {
-    await supabase.from("notifications").insert({
-      user_id: parsed.data.user_id,
-      tipo: "trust_upgrade",
-      titulo: "¡Identidad verificada!",
-      mensaje: "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
-      data: { verification_id: parsed.data.verification_id },
-    });
-  } catch (notifError) {
+  // Notificacion fuera del RPC atomico: no es estado canonico mutable, un
+  // fallo aqui no causa divergencia. Va por notify_user_as_staff (SECURITY
+  // DEFINER, valida admin o moderator con has_role) porque notifications NO
+  // tiene policy de INSERT: el insert directo moria con 42501 y el vendedor
+  // nunca se enteraba. Migracion: 20260826080000_lock_down_create_notification.
+  // supabase-js no lanza en error de PostgREST — el try/catch anterior era
+  // codigo muerto, hay que leer `error`.
+  const { error: notifError } = await supabase.rpc("notify_user_as_staff", {
+    p_user_id: parsed.data.user_id,
+    p_tipo: "trust_upgrade",
+    p_titulo: "¡Identidad verificada!",
+    p_mensaje:
+      "Tu identidad ha sido verificada. Ganaste 30 puntos de confianza.",
+    p_data: { verification_id: parsed.data.verification_id },
+  });
+
+  if (notifError) {
     Sentry.captureException(notifError, {
       tags: { action: "approveVerification", step: "post_rpc_notification" },
-      contexts: { verification: { id: parsed.data.verification_id } },
+      contexts: {
+        verification: { id: parsed.data.verification_id },
+        supabase: {
+          code: (notifError as { code?: string }).code,
+          details: (notifError as { details?: string }).details,
+        },
+      },
     });
     // NO abortar — el approval ya fue atomico en el RPC.
   }
 
-  // audit_log INSERT outside the atomic RPC: legal trail post-hoc, the
-  // canonical proof of approval is seller_verification.reviewed_at written
-  // by the RPC. A failure here is observable via Sentry without rolling
-  // back the verification approval.
-  try {
-    await supabase.from("audit_log").insert({
-      actor_id: user.id,
-      action: "approve_verification",
-      target_type: "verification",
-      target_id: verificationId,
-      metadata: { userId },
-    });
-  } catch (auditError) {
+  // audit_log fuera del RPC atomico: rastro legal post-hoc, la prueba canonica
+  // de la aprobacion es seller_verification.reviewed_at que escribe el RPC.
+  // La policy admins_insert_audit si permite esta escritura, pero supabase-js
+  // no lanza en error de PostgREST: sin leer `error` un fallo se perdia entero.
+  const { error: auditError } = await supabase.from("audit_log").insert({
+    actor_id: user.id,
+    action: "approve_verification",
+    target_type: "verification",
+    target_id: parsed.data.verification_id,
+    metadata: { userId: parsed.data.user_id },
+  });
+
+  if (auditError) {
     Sentry.captureException(auditError, {
       tags: { action: "approveVerification", step: "post_rpc_audit_log" },
-      contexts: { verification: { id: parsed.data.verification_id } },
+      contexts: {
+        verification: { id: parsed.data.verification_id },
+        supabase: {
+          code: (auditError as { code?: string }).code,
+          details: (auditError as { details?: string }).details,
+        },
+      },
     });
     // NO abortar — audit_log es trazabilidad post-hoc, no estado canonico.
   }
@@ -118,7 +134,9 @@ export async function rejectVerification(verificationId: string, note: string) {
 
   if (error) return { error: error.message };
 
-  await supabase.from("audit_log").insert({
+  // La policy admins_insert_audit permite esta escritura, pero supabase-js no
+  // lanza en error de PostgREST: sin leer `error` un fallo se pierde entero.
+  const { error: auditError } = await supabase.from("audit_log").insert({
     actor_id: user.id,
     action: "reject_verification",
     target_type: "verification",
@@ -126,17 +144,56 @@ export async function rejectVerification(verificationId: string, note: string) {
     metadata: { note: parsed.data.note ?? null },
   });
 
-  // Notify seller
-  if (ver?.user_id) {
-    await supabase.from("notifications").insert({
-      user_id: ver.user_id,
-      tipo: "trust_upgrade",
-      titulo: "Verificación rechazada",
-      mensaje: parsed.data.note
+  if (auditError) {
+    Sentry.captureException(auditError, {
+      tags: { action: "rejectVerification", step: "audit_log" },
+      contexts: {
+        verification: { id: parsed.data.verification_id },
+        supabase: {
+          code: (auditError as { code?: string }).code,
+          details: (auditError as { details?: string }).details,
+        },
+      },
+    });
+    // NO abortar — audit_log es trazabilidad post-hoc, no estado canonico.
+  }
+
+  // Avisar al vendedor. Via notify_user_as_staff (SECURITY DEFINER, valida
+  // admin o moderator) porque notifications NO tiene policy de INSERT: el
+  // insert directo moria con 42501 y el rechazo nunca llegaba a quien lo
+  // recibio. Migracion: 20260826080000_lock_down_create_notification.
+  if (!ver?.user_id) {
+    Sentry.captureException(
+      new Error("rejectVerification: verificacion sin user_id, no se notifico"),
+      {
+        tags: { action: "rejectVerification", step: "notification_skipped" },
+        contexts: { verification: { id: parsed.data.verification_id } },
+      },
+    );
+  } else {
+    const { error: notifError } = await supabase.rpc("notify_user_as_staff", {
+      p_user_id: ver.user_id,
+      p_tipo: "trust_upgrade",
+      p_titulo: "Verificación rechazada",
+      p_mensaje: parsed.data.note
         ? `Tu verificación fue rechazada: ${parsed.data.note}. Puedes intentar de nuevo.`
         : "Tu verificación fue rechazada. Puedes intentar de nuevo.",
-      data: { verification_id: parsed.data.verification_id },
+      p_data: { verification_id: parsed.data.verification_id },
     });
+
+    if (notifError) {
+      Sentry.captureException(notifError, {
+        tags: { action: "rejectVerification", step: "notification" },
+        contexts: {
+          verification: { id: parsed.data.verification_id },
+          supabase: {
+            code: (notifError as { code?: string }).code,
+            details: (notifError as { details?: string }).details,
+          },
+        },
+      });
+      // NO abortar — el rechazo ya quedo escrito en seller_verification.
+    }
   }
 
   return { success: true };
