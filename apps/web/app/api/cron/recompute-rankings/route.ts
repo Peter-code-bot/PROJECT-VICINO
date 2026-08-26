@@ -3,7 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+/**
+ * Vercel Cron invoca sus rutas por GET. Esta solo exportaba POST, asi que cada
+ * disparo diario moria con 405 y `seller_rankings` seguia vacia: el ranking nunca
+ * se ha calculado desde que se agendo. Se exportan ambos verbos porque el POST ya
+ * existia y puede haber quien lo invoque a mano.
+ *
+ * Vercel adjunta `Authorization: Bearer ${CRON_SECRET}` a sus crons solo si la
+ * variable CRON_SECRET esta definida en el proyecto. Tiene que valer lo mismo que
+ * el CRON_SECRET de las Edge Functions de Supabase, porque este handler reenvia
+ * ese mismo bearer a /functions/v1/recompute-rankings.
+ */
+async function recomputeRankings(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
@@ -49,3 +60,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const GET = recomputeRankings;
+export const POST = recomputeRankings;
