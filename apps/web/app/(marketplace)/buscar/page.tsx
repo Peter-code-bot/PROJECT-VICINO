@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -6,7 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
-import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { parseRadiusCookie } from "@/lib/geo/radius";
 
 const PAGE_SIZE = 20;
@@ -362,17 +363,12 @@ export default async function SearchPage({ searchParams }: Props) {
             {topUsers.map((user) => (
               <Link
                 key={user.id}
-                href={`/tienda/${user.id}`}
+                href={`/vendedor/${user.id}`}
                 className="flex items-center gap-4 p-3 rounded-2xl bg-[color:var(--card-2)] hover:bg-[color:var(--card)] border border-[color:var(--border)] transition-all group"
               >
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
-                  {user.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.avatar_url} alt={user.nombre ?? "Usuario"} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
+                {/* Mismo motivo que en /buscar/usuarios: los avatares de
+                    Google caducan y <img> dejaba el icono de imagen rota. */}
+                <UserAvatar src={user.avatar_url} name={user.nombre ?? "Usuario"} size="md" className="w-12 h-12" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-semibold text-sm text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)] transition-colors truncate">

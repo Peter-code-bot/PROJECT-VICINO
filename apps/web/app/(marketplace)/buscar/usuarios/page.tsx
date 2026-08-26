@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { SearchFilters } from "../search-filters";
 
 const PAGE_SIZE = 20;
@@ -98,21 +99,14 @@ export default async function UserSearchPage({ searchParams }: Props) {
           {users.map((user) => (
             <Link
               key={user.id}
-              href={`/tienda/${user.id}`}
+              href={`/vendedor/${user.id}`}
               className="flex items-center gap-4 p-4 rounded-2xl bg-[color:var(--card-2)] hover:bg-[color:var(--card)] border border-[color:var(--border)] transition-all group"
             >
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
-                {user.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={user.avatar_url}
-                    alt={user.nombre ?? "Usuario"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-6 h-6 text-muted-foreground" />
-                )}
-              </div>
+              {/* UserAvatar en vez de <img> crudo: cae a la inicial cuando la
+                  imagen falla. 3 de los 11 perfiles tienen avatar de Google, y
+                  esas URL caducan — hoy hay una muerta en produccion. Con <img>
+                  el usuario veia el icono de imagen rota. */}
+              <UserAvatar src={user.avatar_url} name={user.nombre ?? "Usuario"} size="lg" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-base text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)] transition-colors truncate">
