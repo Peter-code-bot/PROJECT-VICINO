@@ -23,6 +23,32 @@ export function useLogout() {
 
   return async (): Promise<{ error?: string }> => {
     const supabase = createClient();
+
+    // Soltar el token de push ANTES de cerrar sesion: despues ya no hay permiso
+    // para escribir en el perfil.
+    //
+    // El token de FCM es por dispositivo, no por persona. Si no se limpia, el
+    // perfil del que se va sigue apuntando a ESTE telefono, y cuando otra
+    // persona entra, las notificaciones del anterior aterrizan en su pantalla.
+    // Ya hay dos cuentas compartiendo token en produccion, asi que no es
+    // hipotetico.
+    //
+    // Es best-effort a proposito: que falle no puede impedir cerrar sesion. Pero
+    // se registra, que es justo lo que faltaba en todo lo demas que aparecio hoy.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error: tokenError } = await supabase
+        .from("profiles")
+        .update({ fcm_token: null })
+        .eq("id", user.id);
+      if (tokenError) {
+        Sentry.captureException(tokenError, {
+          tags: { hook: "useLogout", step: "clear_fcm_token" },
+          level: "warning",
+        });
+      }
+    }
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       Sentry.captureException(error, {

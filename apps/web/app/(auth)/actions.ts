@@ -60,6 +60,26 @@ export async function requestPasswordReset(email: string, redirectTo: string) {
 
 export async function signOut() {
   const supabase = await createClient();
+
+  // Mismo motivo que en useLogout: el token de push es por dispositivo, asi que
+  // si no se suelta al salir, las notificaciones de quien se va aterrizan en la
+  // pantalla de quien entre despues en ese telefono. Va ANTES del signOut, que
+  // es cuando todavia hay permiso para escribir en el perfil, y es best-effort:
+  // que falle no puede impedir cerrar sesion.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { error: tokenError } = await supabase
+      .from("profiles")
+      .update({ fcm_token: null })
+      .eq("id", user.id);
+    if (tokenError) {
+      Sentry.captureException(tokenError, {
+        tags: { action: "signOut", step: "clear_fcm_token" },
+        level: "warning",
+      });
+    }
+  }
+
   const { error } = await supabase.auth.signOut();
   // auth-js sale de _signOut() ANTES de _removeSession() cuando el fallo no es
   // 401/403/404, asi que la cookie de sesion sobrevive. Redirigir igual mandaria
