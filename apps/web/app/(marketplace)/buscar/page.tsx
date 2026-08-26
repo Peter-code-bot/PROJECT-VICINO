@@ -280,10 +280,20 @@ export default async function SearchPage({ searchParams }: Props) {
   // el mismo sort. Devuelve siempre una funcion (default = created_at desc).
   const sortFn = (sort?: string) => (a: ProductRow, b: ProductRow): number => {
     switch (sort) {
+      // Las publicaciones sin precio van SIEMPRE al final, en los dos
+      // sentidos. Antes Number(null) las convertia en 0, asi que en "menor a
+      // mayor" encabezaban la lista como si fueran las mas baratas — y no son
+      // baratas, es que no tienen precio. Una cotizacion no compite en un
+      // orden por importe.
       case "price_asc":
-        return Number(a.precio) - Number(b.precio);
-      case "price_desc":
-        return Number(b.precio) - Number(a.precio);
+      case "price_desc": {
+        const pa = a.precio == null ? null : Number(a.precio);
+        const pb = b.precio == null ? null : Number(b.precio);
+        if (pa === null && pb === null) return 0;
+        if (pa === null) return 1;
+        if (pb === null) return -1;
+        return sort === "price_asc" ? pa - pb : pb - pa;
+      }
       case "most_sold":
         return Number(b.ventas_count ?? 0) - Number(a.ventas_count ?? 0);
       default:
@@ -437,7 +447,11 @@ export default async function SearchPage({ searchParams }: Props) {
                 key={product.id}
                 id={product.id}
                 titulo={product.titulo}
-                precio={Number(product.precio)}
+                // Sin Number(): convertia null en 0 y la tarjeta pintaba
+                // "$0" en vez de "Cotización" o "Reservación". La prop ya
+                // acepta number | string | null, y PriceDisplay cae al
+                // fallback solo cuando de verdad no hay precio.
+                precio={product.precio}
                 imagen={product.imagen_principal}
                 categoria={product.categoria}
                 slug={product.slug ?? product.id}

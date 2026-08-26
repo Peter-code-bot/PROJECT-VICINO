@@ -1,4 +1,6 @@
 import { redirect, notFound } from "next/navigation";
+import { PriceDisplay } from "@/components/shared/price-display";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import Link from "next/link";
 import {
   Calendar,
@@ -50,7 +52,7 @@ export default async function CitaDetailPage({ params }: PageProps) {
     .select(`
       id, appointment_date, appointment_start, appointment_end,
       status, notes, buyer_id, seller_id, created_at,
-      products_services(id, titulo, imagen_principal, precio, categoria, slug, ubicacion, product_categories(is_primary, categories(slug))),
+      products_services(id, titulo, imagen_principal, precio, modo_precio, categoria, slug, ubicacion, product_categories(is_primary, categories(slug))),
       buyer:profiles!buyer_id(id, nombre, foto),
       seller:profiles!seller_id(id, nombre, foto)
     `)
@@ -124,11 +126,17 @@ export default async function CitaDetailPage({ params }: PageProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-foreground truncate">{product.titulo}</p>
-              {product.precio !== null && (
-                <p className="text-sm text-muted-foreground">
-                  ${Number(product.precio).toLocaleString("es-MX")} MXN
-                </p>
-              )}
+              {/* Antes: si precio era null NO se pintaba nada, y el hueco
+                  quedaba mudo justo en la pantalla de una cita, donde el modo
+                  suele ser precisamente "reservacion". Ahora se usa el mismo
+                  componente que el resto y el fallback lo decide modo_precio.
+                  El formateo manual tampoco manejaba un importe invalido. */}
+              <PriceDisplay
+                amount={product.precio}
+                size="sm"
+                className="text-sm font-normal text-muted-foreground"
+                fallback={priceFallbackLabel(product.modo_precio)}
+              />
               <p className="text-xs text-primary mt-0.5">Ver publicación →</p>
             </div>
           </Link>

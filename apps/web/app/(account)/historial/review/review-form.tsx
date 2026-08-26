@@ -38,11 +38,35 @@ export function ReviewForm({
       setError("Máximo 3 archivos");
       return;
     }
+    // El bucket review-media admite UNICAMENTE image/jpeg, image/png y
+    // image/webp, y su tope es de 5 MB. Comprobado en storage.buckets, no
+    // supuesto. El formulario ofrecia ademas video/mp4, video/webm y
+    // video/quicktime con un tope de 50 MB: toda subida de video fallaba, y lo
+    // hacia con el mensaje crudo de Supabase, en ingles, despues de que el
+    // usuario ya hubiera grabado y elegido el archivo.
+    //
+    // Se rechaza AQUI, antes de gastar la subida, y con un mensaje que dice que
+    // hacer. Se admiten heic y heif porque es lo que produce un iPhone.
+    const TIPOS_ADMITIDOS = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ];
+    const MAX_BYTES = 5 * 1024 * 1024;
+
     for (const file of files) {
-      const isVideo = file.type.startsWith("video/");
-      const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        setError(`${file.name} excede el límite (${isVideo ? "50MB" : "5MB"})`);
+      if (!TIPOS_ADMITIDOS.includes(file.type)) {
+        setError(
+          file.type.startsWith("video/")
+            ? "Por ahora las reseñas solo admiten fotos, no videos."
+            : "Ese archivo no es una imagen. Sube una foto en JPG, PNG o WEBP.",
+        );
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        setError(`${file.name} pesa más de 5 MB. Sube una foto más ligera.`);
         return;
       }
     }
@@ -67,6 +91,7 @@ export function ReviewForm({
   async function uploadMedia(): Promise<string[]> {
     if (media.length === 0) return [];
     const urls: string[] = [];
+    const subidas: string[] = [];
     const ts = Date.now();
     for (let i = 0; i < media.length; i++) {
       const m = media[i]!;
@@ -75,7 +100,18 @@ export function ReviewForm({
       const { error: err } = await supabase.storage
         .from("review-media")
         .upload(path, m.file, { cacheControl: CACHE_INMUTABLE });
-      if (err) throw new Error(`Error subiendo archivo: ${err.message}`);
+
+      if (err) {
+        // Retirar lo que ya subio. Sin esto, un fallo a mitad deja archivos en
+        // el bucket que ninguna resena referencia y que nadie va a encontrar:
+        // asi es como aparecieron los huerfanos que hay hoy en produccion.
+        if (subidas.length > 0) {
+          await supabase.storage.from("review-media").remove(subidas);
+        }
+        throw new Error("No se pudo subir una de las fotos. Intenta de nuevo.");
+      }
+
+      subidas.push(path);
       const { data } = supabase.storage.from("review-media").getPublicUrl(path);
       urls.push(data.publicUrl);
     }
@@ -205,7 +241,7 @@ export function ReviewForm({
       {/* Media upload */}
       <div className="space-y-2">
         <label className="text-sm font-medium">
-          Fotos o videos{" "}
+          Fotos{" "}
           <span className="text-muted-foreground font-normal">(opcional, máx. 3)</span>
         </label>
         <div className="flex gap-2 flex-wrap">
@@ -244,7 +280,7 @@ export function ReviewForm({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,video/mp4,video/webm,video/quicktime"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
           multiple
           className="hidden"
           onChange={handleFileSelect}

@@ -118,8 +118,27 @@ serve(async (req) => {
         }
       };
 
-      const borrarCarpeta = async (bucket: string, carpeta: string) => {
-        const { data: files, error: listError } = await adminClient.storage
+      // RECURSIVA a proposito.
+      //
+      // El list() de Supabase devuelve solo los hijos INMEDIATOS. Una subcarpeta
+      // aparece como una entrada con id null, y sus archivos no vienen. Si se
+      // le pasa esa entrada a remove(), no borra nada y tampoco falla: es
+      // exactamente el fallo silencioso que esta funcion viene a quitar.
+      //
+      // Hoy todas las convenciones de este proyecto son planas ({user_id}/
+      // archivo), asi que la recursion no cambia nada. Pero la de chat-media va
+      // a dejar de serlo en cuanto se construyan las fotos de chat —la ruta
+      // natural es {user_id}/{chat_id}/archivo— y entonces el borrado de cuenta
+      // dejaria las fotos dentro sin que nada lo dijera.
+      const borrarCarpeta = async (bucket: string, carpeta: string, nivel = 0) => {
+        // Tope de profundidad: sin el, una estructura inesperada podria dejar
+        // la funcion dando vueltas y la cuenta a medio borrar.
+        if (nivel > 5) {
+          await anotarFallo(bucket, `${carpeta}/`, "demasiada profundidad");
+          return;
+        }
+
+        const { data: entradas, error: listError } = await adminClient.storage
           .from(bucket)
           .list(carpeta, { limit: 1000 });
 
@@ -127,9 +146,19 @@ serve(async (req) => {
           await anotarFallo(bucket, `${carpeta}/`, `list: ${listError.message}`);
           return;
         }
-        if (!files || files.length === 0) return;
+        if (!entradas || entradas.length === 0) return;
 
-        const paths = files.map((f) => `${carpeta}/${f.name}`);
+        // Una entrada sin id es una subcarpeta, no un archivo.
+        const archivos = entradas.filter((e) => e.id !== null);
+        const subcarpetas = entradas.filter((e) => e.id === null);
+
+        for (const sub of subcarpetas) {
+          await borrarCarpeta(bucket, `${carpeta}/${sub.name}`, nivel + 1);
+        }
+
+        if (archivos.length === 0) return;
+
+        const paths = archivos.map((f) => `${carpeta}/${f.name}`);
         const { error: removeError } = await adminClient.storage
           .from(bucket)
           .remove(paths);

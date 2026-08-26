@@ -52,7 +52,8 @@ export default async function FavoritosPage() {
                 key={fav.id}
                 id={product.id}
                 titulo={product.titulo}
-                precio={Number(product.precio)}
+                // Sin Number(): ver la nota en buscar/page.tsx.
+                precio={product.precio}
                 imagen={product.imagen_principal}
                 categoria={product.categoria}
                 slug={product.slug ?? product.id}
