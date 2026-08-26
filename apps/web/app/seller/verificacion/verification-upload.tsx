@@ -127,26 +127,31 @@ export function VerificationUpload({
     if (key === "ine_back") updates.ine_back_url = path;
 
     // Actualizamos DB inicialmente como pending
-    if (sellerVerification) {
-      await supabase
-        .from("seller_verification")
-        .update({ 
-          ...updates, 
-          status: "pending", 
-          document_type: docType,
-          university_name: docType === "Credencial Universitaria" ? university : null,
-          submitted_at: new Date().toISOString() 
-        })
-        .eq("user_id", userId);
-    } else {
-      await supabase.from("seller_verification").insert({
-        user_id: userId,
-        ...updates,
-        status: "pending",
-        document_type: docType,
-        university_name: docType === "Credencial Universitaria" ? university : null,
-        submitted_at: new Date().toISOString(),
-      });
+    const payload = {
+      ...updates,
+      status: "pending",
+      document_type: docType,
+      university_name: docType === "Credencial Universitaria" ? university : null,
+      submitted_at: new Date().toISOString(),
+    };
+
+    const { error: dbError } = sellerVerification
+      ? await supabase
+          .from("seller_verification")
+          .update(payload)
+          .eq("user_id", userId)
+      : await supabase.from("seller_verification").insert({
+          user_id: userId,
+          ...payload,
+        });
+
+    if (dbError) {
+      // La base no quedo actualizada: retiramos el archivo recien subido para
+      // que storage y DB no diverjan. Si no, el admin veria una URL rota.
+      await supabase.storage.from("verification-documents").remove([path]);
+      setError("No se pudo guardar el documento. Intenta de nuevo.");
+      setUploading(null);
+      return;
     }
 
     // Si es la foto frontal, lanzamos la IA
@@ -176,22 +181,52 @@ export function VerificationUpload({
     setError("");
     setUploading(key); // Reusamos el estado de uploading para bloquear el UI
 
-    // Borramos físicamente del storage
-    const parts = path.split("verification-documents/");
-    const cleanPath = (parts.length > 1 && parts[1]
-      ? parts[1].split("?")[0]
-      : path) as string;
-      
-    await supabase.storage.from("verification-documents").remove([cleanPath]);
+    // Solo podemos borrar el archivo si la fila que lo referencia es la de
+    // seller_verification: es la unica tabla que este componente puede escribir.
+    const ownedDocs: Record<string, string | null | undefined> = {
+      selfie: sellerVerification?.selfie_url,
+      ine_front: sellerVerification?.ine_front_url,
+      ine_back: sellerVerification?.ine_back_url,
+    };
 
-    // Borramos de la DB
+    if (!ownedDocs[key]) {
+      setError("Este documento no se puede eliminar desde aquí. Sube uno nuevo para reemplazarlo.");
+      setUploading(null);
+      return;
+    }
+
+    // Primero la referencia en la base. Si el borrado físico falla después,
+    // solo queda un archivo huérfano en storage — nunca una URL rota en admin.
     const updates: Record<string, null> = {};
     if (key === "selfie") updates.selfie_url = null;
     if (key === "ine_front") updates.ine_front_url = null;
     if (key === "ine_back") updates.ine_back_url = null;
 
-    if (sellerVerification) {
-      await supabase.from("seller_verification").update(updates).eq("user_id", userId);
+    const { error: dbError } = await supabase
+      .from("seller_verification")
+      .update(updates)
+      .eq("user_id", userId);
+
+    if (dbError) {
+      setError("No se pudo eliminar el documento. Intenta de nuevo.");
+      setUploading(null);
+      return;
+    }
+
+    // Borramos físicamente del storage
+    const parts = path.split("verification-documents/");
+    const cleanPath = (parts.length > 1 && parts[1]
+      ? parts[1].split("?")[0]
+      : path) as string;
+
+    const { error: storageError } = await supabase.storage
+      .from("verification-documents")
+      .remove([cleanPath]);
+
+    if (storageError) {
+      // La referencia ya se borró: el archivo huérfano no rompe el panel de
+      // admin, pero avisamos al vendedor de que la limpieza quedó a medias.
+      setError("El documento se eliminó de tu perfil, pero el archivo no pudo borrarse del almacenamiento.");
     }
 
     setPreviews(prev => ({ ...prev, [key]: null }));

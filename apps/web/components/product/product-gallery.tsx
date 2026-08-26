@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Play, Pencil, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { derivedThumbnailUrl, isVideoUrl as isVideo } from "@/lib/video-thumbnail";
@@ -79,6 +81,7 @@ export function ProductGallery({
   const [originalSizes, setOriginalSizes] = useState<ImageSize[]>(sizes);
   const [editMode, setEditMode] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const router = useRouter();
 
   function swapImages(from: number, to: number) {
     const ni = [...editImages];
@@ -125,11 +128,20 @@ export function ProductGallery({
   async function handleSave() {
     if (productId) {
       const supabase = createClient();
-      await supabase.from("products_services").update({
+      const { error } = await supabase.from("products_services").update({
         gallery_sizes: sizes,
         galeria_imagenes: editImages,
         imagen_principal: editImages[0] ?? null,
       }).eq("id", productId);
+      if (error) {
+        // No salimos de edit mode: el reacomodo y la portada siguen vivos en
+        // `editImages`/`sizes` y el vendedor puede reintentar Guardar.
+        toast.error("No se pudo guardar el diseño de la galería. Intenta de nuevo.");
+        return;
+      }
+      // Fuera de edit mode el grid pinta la prop `images` (server), no
+      // `editImages`. Sin refresh el reacomodo recién guardado se ve revertido.
+      router.refresh();
     }
     setEditMode(false);
   }
