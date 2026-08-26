@@ -726,14 +726,26 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
-  const { error } = await supabase
+  // .neq("estatus","eliminado") impide reanimar una publicacion borrada en
+  // suave: sin el, pausar y despublicar una eliminada la devolvia al feed.
+  // Y el .select() es lo que distingue "no se pudo" de "no habia nada que
+  // cambiar": un UPDATE de 0 filas no es error en PostgREST, asi que sin esto
+  // un id ajeno o ya eliminado devolvia exito.
+  const { data: updated, error } = await supabase
     .from("products_services")
     .update({ estatus: newStatus })
     .eq("id", id)
-    .eq("creador_id", user.id);
+    .eq("creador_id", user.id)
+    .neq("estatus", "eliminado")
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (!updated) {
+    return { error: "Esa publicación ya no está disponible." };
   }
 
   // Sync the seller listings page so navigating back from elsewhere shows

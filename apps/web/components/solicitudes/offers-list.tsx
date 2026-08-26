@@ -286,7 +286,10 @@ export function OffersList({
       {/* Login prompt */}
       {isOpen && !userId && (
         <Link
-          href="/login?next=/solicitudes"
+          // /solicitudes no existe como ruta: la carpeta solo tiene [id]. El
+          // enlace anterior mandaba a un 404 justo despues de iniciar sesion.
+          // Se vuelve a ESTA solicitud, que ademas es donde el usuario estaba.
+          href={`/login?next=${encodeURIComponent(`/solicitudes/${requestId}`)}`}
           className="block w-full rounded-xl border border-border py-3 text-center text-sm font-semibold text-foreground transition-colors hover:bg-muted"
         >
           Inicia sesión para hacer una oferta

@@ -1,1 +1,5 @@
 apps/web/types/database.types.ts text eol=lf
+
+# Las migraciones se aplican con el CLI de Supabase, que espera LF. Sin esto,
+# git avisa "LF will be replaced by CRLF" en cada commit que toque una.
+*.sql text eol=lf

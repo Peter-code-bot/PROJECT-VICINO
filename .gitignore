@@ -58,3 +58,8 @@ apps/web/playwright/.cache/
 
 # Config local del dev server (Claude Code). Es por maquina, no se comparte.
 .claude/launch.json
+
+# Generados por el build del service worker de Workbox. Se regeneran en cada
+# build, asi que trackearlos solo produce ruido en cada diff.
+apps/web/public/workbox-*.js
+apps/web/public/workbox-*.js.map
