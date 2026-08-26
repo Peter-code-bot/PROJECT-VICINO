@@ -1,0 +1,46 @@
+{
+  "enabledMcpjsonServers": ["supabase", "sentry"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__supabase__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/pedro/Projects/startup-marketplace/.claude/hooks/guard-db.js\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Read(./**/.env.*.local)"
+    ],
+    "allow": [
+      "Bash(pnpm build)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm type-check)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(node .claude/hooks/guard-db.test.js)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__search_docs",
+      "mcp__sentry__find_issues",
+      "mcp__sentry__get_issue_details",
+      "mcp__sentry__search_events"
+    ]
+  }
+}

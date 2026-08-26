@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=oxxdkwywprkfghhbnoto",
+        "--features=database,debugging,development,docs,functions,branching"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${VICINO_SUPABASE_PAT}"
+      }
+    },
+    "sentry": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sentry/mcp-server@latest",
+        "--organization-slug=vicino-5r",
+        "--project-slug=vicino-web",
+        "--disable-skills=seer,project-management"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${VICINO_SENTRY_TOKEN}"
+      }
+    }
+  }
+}
