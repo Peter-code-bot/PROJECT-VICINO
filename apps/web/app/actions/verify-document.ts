@@ -3,6 +3,7 @@
 import OpenAI from "openai";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function verifyDocument(
   path: string, 
@@ -112,7 +113,23 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     // filas del vendedor, incluida la vieja ya rechazada. `path` es el
     // ine_front_url que el cliente acaba de guardar, asi que ancla el UPDATE al
     // documento que realmente analizamos.
-    const { data: updated, error: dbError } = await supabase
+    // El veredicto se escribe con el cliente ADMIN, no con la sesion del
+    // usuario, y no es un detalle de implementacion: es lo que impide que el
+    // vendedor se apruebe solo.
+    //
+    // La policy "Users can update own verification" tiene USING pero no
+    // WITH CHECK, y `status` era escribible por `authenticated`. Comprobado
+    // contra produccion en una transaccion revertida: un usuario normal podia
+    // hacer UPDATE ... SET status='approved' sobre su propia fila y quedarse con
+    // la insignia de verificado sin presentar documento valido. La migracion
+    // 20260826150000 revoca esas columnas.
+    //
+    // Un RPC no habria servido: el veredicto lo decide un modelo externo, asi
+    // que la base no puede recomputarlo ni distinguir "lo calculo el servidor"
+    // de "lo mando el cliente". La unica frontera real es que la escritura
+    // ocurra con una credencial que el navegador nunca ve.
+    const admin = createAdminClient();
+    const { data: updated, error: dbError } = await admin
       .from("seller_verification")
       .update({
         status: finalStatus,
