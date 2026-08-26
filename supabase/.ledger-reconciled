@@ -1,0 +1,42 @@
+Ledger de migraciones reconciliado el 2026-08-25.
+
+Mientras este archivo exista, .claude/hooks/guard-db.js permite `supabase db push`.
+Borralo si el ledger vuelve a divergir.
+
+Estado al terminar:
+  91 migraciones alineadas entre repo y produccion
+   0 pendientes de aplicar
+   0 versiones solo en produccion
+
+Que se hizo:
+  - 4 backfills de datos marcados como aplicados tras verificar en produccion que
+    su efecto ya estaba presente y que hoy son no-ops:
+      20260429120002  0 reviews en total, nada que migrar
+      20260501000002  0 perfiles con rating desviado
+      20260511000002  0 notificaciones 'message' sin leer
+      20260529000004  0 productos con categoria huerfana
+  - 2 archivos con timestamp duplicado renombrados a version libre y marcados
+    como aplicados, tras verificar que sus objetos existen en produccion:
+      20260528000001_media_assets_rls_tighten_and_backfill -> 20260528000004
+      20260528000003_store_follows                         -> 20260528000005
+  - 2 migraciones muertas eliminadas: ningun .rpc() del codigo las llama y sus
+    funciones no existen en produccion. El feed usa search_nearby_products_v4.
+      20260616225328_feed_nearby_products
+      20260618041718_get_nearby_product_ids
+  - 1 migracion peligrosa eliminada y reescrita con sus GRANT por columna, y
+    aplicada a produccion:
+      20260530000001_product_sort_order -> 20260825120000_products_services_sort_order
+
+  - 2 filas huerfanas del ledger marcadas como reverted:
+      20260825000001, 20260825000002
+    Sin nombre, sin statements, y sin archivo en ningun punto de la historia de
+    git. Casi seguro entradas manuales de `migration repair`. El CLI se niega a
+    hacer push mientras existan versiones remotas sin archivo local, asi que
+    bloqueaban todo. Quitarlas es seguro: no hay archivo local con esas
+    versiones, de modo que nada se re-aplica.
+
+RIESGO RESIDUAL, no verificado:
+  Si esas 2 filas representaban SQL aplicado a mano el 25-ago, ese cambio existe
+  en produccion pero no tiene archivo en el repo, y el repo no podria reproducir
+  produccion desde cero. Confirmarlo exige un diff de esquema prod-vs-repo, que
+  necesita Docker (no instalado en esta maquina) o una rama de Supabase.
