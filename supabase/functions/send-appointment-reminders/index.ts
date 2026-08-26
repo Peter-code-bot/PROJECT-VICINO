@@ -80,14 +80,45 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Marcar reminder_*_sent sin comprobar el INSERT era perdida permanente y en
+  // silencio: esas citas ya no vuelven a entrar en la consulta nunca, el aviso
+  // no se envia jamas y la funcion respondia ok:true con los contadores como si
+  // hubiera salido. Abortamos sin marcar nada; las banderas siguen en false y la
+  // corrida de dentro de 30 minutos recoge las mismas citas.
   if (notifications.length > 0) {
-    await supabase.from("notifications").insert(notifications);
+    const { error: insertError } = await supabase
+      .from("notifications")
+      .insert(notifications);
+    if (insertError) {
+      return new Response(
+        JSON.stringify({ ok: false, step: "notifications_insert", error: insertError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
   if (update1d.length > 0) {
-    await supabase.from("appointments").update({ reminder_1d_sent: true }).in("id", update1d);
+    const { error: flag1dError } = await supabase
+      .from("appointments")
+      .update({ reminder_1d_sent: true })
+      .in("id", update1d);
+    if (flag1dError) {
+      return new Response(
+        JSON.stringify({ ok: false, step: "flag_1d", error: flag1dError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
   if (update1h.length > 0) {
-    await supabase.from("appointments").update({ reminder_1h_sent: true }).in("id", update1h);
+    const { error: flag1hError } = await supabase
+      .from("appointments")
+      .update({ reminder_1h_sent: true })
+      .in("id", update1h);
+    if (flag1hError) {
+      return new Response(
+        JSON.stringify({ ok: false, step: "flag_1h", error: flag1hError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   return new Response(

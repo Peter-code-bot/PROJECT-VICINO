@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -60,7 +61,18 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    await supabase.auth.signOut();
+    // Cuando llegamos aqui la cuenta YA se borro. Si cerrar la sesion local
+    // falla, el catch de abajo devolveria 500 y delete-account-section.tsx le
+    // diria al usuario que su borrado fallo, empujandolo a reintentar algo que
+    // ya se completo. Se registra el fallo; la respuesta sigue siendo exito.
+    try {
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) throw signOutError;
+    } catch (signOutErr) {
+      Sentry.captureException(signOutErr, {
+        tags: { route: "account/delete", step: "sign_out" },
+      });
+    }
 
     return NextResponse.json({
       success: true,

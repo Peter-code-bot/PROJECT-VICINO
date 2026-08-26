@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { assignRole, removeRole } from "./actions";
 import { Shield, ShieldCheck } from "lucide-react";
 
@@ -17,26 +18,28 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
   const isAdmin = currentRoles.includes("admin");
   const isMod = currentRoles.includes("moderator");
 
-  async function handleToggleAdmin() {
+  async function toggleRole(role: "admin" | "moderator", tieneRol: boolean) {
     setLoading(true);
-    if (isAdmin) {
-      await removeRole(userId, "admin");
-    } else {
-      await assignRole(userId, "admin");
+    const res = tieneRol
+      ? await removeRole(userId, role)
+      : await assignRole(userId, role);
+    setLoading(false);
+    // Descartar el retorno hacia que un fallo (rate limit, RLS) se viera igual
+    // que un exito: la pantalla se refrescaba con los mismos roles y no habia
+    // forma de saber si el cambio no se aplico o si ya estaba asi.
+    if (res && "error" in res && res.error) {
+      toast.error(res.error);
+      return;
     }
     router.refresh();
-    setLoading(false);
+  }
+
+  async function handleToggleAdmin() {
+    await toggleRole("admin", isAdmin);
   }
 
   async function handleToggleMod() {
-    setLoading(true);
-    if (isMod) {
-      await removeRole(userId, "moderator");
-    } else {
-      await assignRole(userId, "moderator");
-    }
-    router.refresh();
-    setLoading(false);
+    await toggleRole("moderator", isMod);
   }
 
   return (

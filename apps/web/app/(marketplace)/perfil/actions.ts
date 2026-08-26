@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { updateProfileSchema } from "@vicino/shared";
@@ -95,7 +96,19 @@ export async function updateProductsOrder(updates: { id: string; sort_order: num
   );
 
   const error = results.find((r) => r.error)?.error;
-  if (error) return { error: error.message };
+  if (error) {
+    // El `details` de Postgres es donde el motor nombra la columna o la policy
+    // que rechazo; se va a Sentry ANTES del return, que es donde sirve. Al
+    // usuario le llega una frase, no un mensaje de PostgREST en ingles.
+    Sentry.captureException(error, {
+      tags: { action: "updateProductsOrder" },
+      contexts: {
+        order: { items: updates.length },
+        supabase: { code: error.code },
+      },
+    });
+    return { error: "No se pudo guardar el nuevo orden. Intenta de nuevo." };
+  }
 
   revalidatePath("/perfil");
   return { success: true };

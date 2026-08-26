@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { fileToDataURL } from "@/lib/crop-image";
 
@@ -35,14 +36,28 @@ export function AvatarWithUpload({
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    if (file.size > 10 * 1024 * 1024) return;
-
-    const dataUrl = await fileToDataURL(file);
-    setImageSrc(dataUrl);
-    setCropperOpen(true);
-
+    // Limpiamos el input antes de cualquier salida: si no, rechazar una foto y
+    // volver a elegir LA MISMA no vuelve a disparar el evento y la pantalla se
+    // queda muerta sin que nadie entienda por qué.
     if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Ese archivo no es una imagen. Elige una foto JPG o PNG.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La foto pesa más de 10 MB. Elige una más ligera.");
+      return;
+    }
+
+    try {
+      const dataUrl = await fileToDataURL(file);
+      setImageSrc(dataUrl);
+      setCropperOpen(true);
+    } catch {
+      toast.error("No pudimos abrir esa foto. Intenta con otra.");
+    }
   }
 
   async function handleSaveCropped(blob: Blob) {
@@ -70,6 +85,7 @@ export function AvatarWithUpload({
       router.refresh();
     } catch (err) {
       console.error("Avatar upload failed:", err);
+      toast.error("No se pudo guardar tu foto. Revisa tu conexión e intenta de nuevo.");
     }
     setUploading(false);
   }

@@ -105,19 +105,38 @@ export function OAuthUrlListener() {
       }, 50);
     }
 
+    // handleUrl pinta el overlay de "Completando inicio de sesión..." y es el
+    // unico que lo apaga. Con `void`, una excepcion a mitad (fetch caido durante
+    // el intercambio del code, plugin sin responder) se pierde y el overlay se
+    // queda encima de la app para siempre: es fixed y a pantalla completa, no
+    // hay nada debajo que tocar y solo se sale matando el APK. Lo apagamos aqui
+    // y mandamos al login, que si tiene salida.
+    function startHandleUrl(url: string) {
+      handleUrl(url).catch(() => {
+        if (unmounted) return;
+        setIsProcessing(false);
+        router.push("/login?error=auth_callback_failed");
+      });
+    }
+
     // Cold-launch: app fue iniciada POR el deep link.
-    App.getLaunchUrl().then((res) => {
-      if (res?.url) void handleUrl(res.url);
-    });
+    App.getLaunchUrl()
+      .then((res) => {
+        if (res?.url) startHandleUrl(res.url);
+      })
+      .catch(() => {
+        // Sin launch url no hay nada que procesar; el listener de abajo sigue
+        // cubriendo el hot-launch.
+      });
 
     // Hot-launch: app ya estaba corriendo cuando el deep link llego.
     const subPromise = App.addListener("appUrlOpen", (event: URLOpenListenerEvent) => {
-      void handleUrl(event.url);
+      startHandleUrl(event.url);
     });
 
     return () => {
       unmounted = true;
-      void subPromise.then((s) => s.remove());
+      void subPromise.then((s) => s.remove()).catch(() => {});
     };
   }, [router]);
 

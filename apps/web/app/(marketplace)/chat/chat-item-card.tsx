@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Trash2, MoreVertical } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatRelativeTime } from "@vicino/shared";
+import { toast } from "sonner";
 import { hideChat } from "./actions";
 import {
   DropdownMenu,
@@ -42,7 +43,11 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
     setDeleting(true);
     const result = await hideChat(chat.id);
     if (result.error) {
+      // El detalle crudo viene de PostgREST y no le sirve a nadie en pantalla:
+      // se queda en consola. Lo que faltaba era decir que el toque no hizo nada;
+      // hasta ahora el menú se quedaba igual y en silencio tras confirmar.
       console.error(result.error);
+      toast.error("No se pudo eliminar el chat. Intenta de nuevo.");
       setDeleting(false);
       setConfirming(false);
     } else {

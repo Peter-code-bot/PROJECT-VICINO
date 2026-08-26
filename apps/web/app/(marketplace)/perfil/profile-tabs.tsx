@@ -26,6 +26,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import { updateProductsOrder } from "./actions";
 import { posterUrl } from "@/lib/video-thumbnail";
 
@@ -182,9 +183,14 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
     const res = await updateProductsOrder(updates);
     setIsSaving(false);
     if (res?.error) {
-      console.error("No se pudo guardar el orden (¿Falta la migración de sort_order?):", res.error);
+      // Salir de edición aquí dejaba el orden arrastrado pintado en pantalla sin
+      // haberse guardado: localProducts es estado local y no se re-sincroniza
+      // con la prop, así que el vendedor se iba convencido de que quedó y al
+      // recargar volvía el orden viejo. Nos quedamos en edición: su arreglo
+      // sigue en pantalla y reintentar es un toque.
+      toast.error(res.error);
+      return;
     }
-    // Siempre salir del modo de edición, incluso si hay error temporal en la BD
     router.push(pathname, { scroll: false });
   };
 
