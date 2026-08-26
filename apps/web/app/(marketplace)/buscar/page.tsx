@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -82,7 +83,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // the shape is single-sourced.
   const sellersTypeRef = supabase
     .from("profiles")
-    .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count");
+    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count");
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
@@ -93,11 +94,21 @@ export default async function SearchPage({ searchParams }: Props) {
     unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
-    const { data: sellers } = await supabase
+    const { data: sellers, error: sellersError } = await supabase
       .from("profiles")
-      .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count")
+      .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count")
       .ilike("nombre", `%${unaccentedLike}%`)
       .limit(4);
+
+    // El error se reporta en vez de descartarse. Esta consulta pedia una
+    // columna avatar_url que no existe en profiles (es foto), asi que
+    // PostgREST devolvia 42703, data llegaba null y la seccion de
+    // vendedores salia vacia SIEMPRE, sin que nada lo dijera.
+    if (sellersError) {
+      Sentry.captureException(sellersError, {
+        tags: { surface: "buscar", query: "sellers" },
+      });
+    }
 
     if (sellers) {
       topUsers = sellers;

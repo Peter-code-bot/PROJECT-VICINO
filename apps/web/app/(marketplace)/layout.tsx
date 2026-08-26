@@ -6,6 +6,7 @@ import { PageSwipeWrapper } from "@/components/layout/page-swipe-wrapper";
 import { PullToRefreshWrapper } from "@/components/layout/pull-to-refresh-wrapper";
 import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { NotificationUnreadProvider } from "@/components/layout/notification-unread-provider";
+import { FavoritesProvider } from "@/components/layout/favorites-provider";
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
@@ -25,6 +26,7 @@ export default async function MarketplaceLayout({
   let isAdmin = false;
   let unreadNotifications = 0;
   let unreadChatMessages = 0;
+  let favoriteIds: string[] = [];
 
   if (user) {
     // F3 + fault-isolation (optimize-auth-session-hydration): the 5 DB queries
@@ -39,6 +41,7 @@ export default async function MarketplaceLayout({
       notifResult,
       buyerChatsResult,
       sellerChatsResult,
+      favoritesResult,
     ] = await Promise.allSettled([
       supabase
         .from("profiles")
@@ -64,6 +67,9 @@ export default async function MarketplaceLayout({
         .from("chats")
         .select("no_leidos_vendedor")
         .eq("vendedor_id", user.id),
+      // Solo los ids: es lo unico que necesita el corazon de la tarjeta, y
+      // mantiene la consulta barata aunque el usuario tenga muchos guardados.
+      supabase.from("favorites").select("producto_id").eq("usuario_id", user.id),
     ]);
 
     profile =
@@ -88,6 +94,10 @@ export default async function MarketplaceLayout({
           ) ?? 0
         : 0;
     unreadChatMessages = buyerCount + sellerCount;
+    favoriteIds =
+      favoritesResult.status === "fulfilled"
+        ? (favoritesResult.value.data ?? []).map((f) => f.producto_id)
+        : [];
   }
 
   const isVendedor = profile?.es_vendedor ?? false;
@@ -106,6 +116,7 @@ export default async function MarketplaceLayout({
         userId={user?.id ?? ""}
         initialCount={unreadNotifications}
       >
+        <FavoritesProvider initialIds={favoriteIds}>
         <div className="flex min-h-screen">
           <Sidebar
             user={user ? { id: user.id } : null}
@@ -127,6 +138,7 @@ export default async function MarketplaceLayout({
             <BottomNav isVendedor={isVendedor} />
           </div>
         </div>
+        </FavoritesProvider>
       </NotificationUnreadProvider>
     </ChatUnreadProvider>
   );

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -799,6 +799,7 @@ export type Database = {
           precio_negociable: boolean
           search_vector: unknown
           slug: string | null
+          sort_order: number
           tipo: Database["public"]["Enums"]["listing_type"]
           tipo_entrega: string | null
           titulo: string
@@ -836,6 +837,7 @@ export type Database = {
           precio_negociable?: boolean
           search_vector?: unknown
           slug?: string | null
+          sort_order?: number
           tipo?: Database["public"]["Enums"]["listing_type"]
           tipo_entrega?: string | null
           titulo: string
@@ -873,6 +875,7 @@ export type Database = {
           precio_negociable?: boolean
           search_vector?: unknown
           slug?: string | null
+          sort_order?: number
           tipo?: Database["public"]["Enums"]["listing_type"]
           tipo_entrega?: string | null
           titulo?: string
@@ -1772,6 +1775,45 @@ export type Database = {
           },
         ]
       }
+      verification_document_purge_log: {
+        Row: {
+          created_at: string
+          deleted_count: number
+          deleted_paths: string[]
+          error: string | null
+          id: number
+          phase: string
+          run_at: string
+          storage_prefix: string
+          user_id: string | null
+          verification_status: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_count?: number
+          deleted_paths?: string[]
+          error?: string | null
+          id?: never
+          phase: string
+          run_at: string
+          storage_prefix: string
+          user_id?: string | null
+          verification_status?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_count?: number
+          deleted_paths?: string[]
+          error?: string | null
+          id?: never
+          phase?: string
+          run_at?: string
+          storage_prefix?: string
+          user_id?: string | null
+          verification_status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       geography_columns: {
@@ -2044,6 +2086,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      admin_set_user_role: {
+        Args: {
+          p_grant: boolean
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
       }
       approve_verification_atomic: {
         Args: { p_user_id: string; p_verification_id: string }
@@ -2368,6 +2418,16 @@ export type Database = {
           vendedor_reviews: number
           vendedor_trust: string
         }[]
+      }
+      notify_user_as_staff: {
+        Args: {
+          p_data?: Json
+          p_mensaje: string
+          p_tipo: string
+          p_titulo: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }

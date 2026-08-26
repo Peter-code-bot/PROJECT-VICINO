@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
@@ -24,7 +25,7 @@ export default async function UserSearchPage({ searchParams }: Props) {
 
   let query = supabase
     .from("profiles")
-    .select("id, nombre, avatar_url, trust_level, average_rating, reviews_count", { count: "exact" });
+    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count", { count: "exact" });
 
   if (params.q) {
     // Reemplaza vocales con '_' para hacer coincidencia ignore-case e ignore-accents en Postgres
@@ -32,9 +33,18 @@ export default async function UserSearchPage({ searchParams }: Props) {
     query = query.ilike("nombre", `%${unaccentedLike}%`);
   }
 
-  const { data: users, count: totalCount } = await query
+  const { data: users, count: totalCount, error: usersError } = await query
     .order("average_rating", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
+
+  // Mismo fallo que en /buscar: pedia avatar_url, que no existe. Esta
+  // pagina ni siquiera exige termino de busqueda, asi que salia vacia
+  // entrara como entrara.
+  if (usersError) {
+    Sentry.captureException(usersError, {
+      tags: { surface: "buscar/usuarios" },
+    });
+  }
 
   const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE);
 

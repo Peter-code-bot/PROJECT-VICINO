@@ -15,6 +15,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { posterUrl } from "@/lib/video-thumbnail";
+import { useFavorites } from "@/components/layout/favorites-provider";
 
 interface ProductCardProps {
   id: string;
@@ -29,6 +30,8 @@ interface ProductCardProps {
   };
   rating: number;
   reviewsCount: number;
+  // Solo lo pasan /favoritos y el detalle movil, que ya saben la respuesta.
+  // El resto de superficies la toma del FavoritesProvider del layout.
   isFavorite?: boolean;
   precioNegociable?: boolean;
   // 4c-2: sin este prop la card cae al default "Consultar" de
@@ -59,7 +62,16 @@ export function ProductCard({
   categories = [],
   priority = false,
 }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(initialFavorite);
+  // El estado vive en el proveedor del layout, no en la tarjeta: el mismo
+  // producto puede salir en dos carruseles del home a la vez y los dos
+  // corazones tienen que moverse juntos. El estado local es el respaldo para
+  // una tarjeta montada fuera del layout, donde no hay proveedor.
+  const favorites = useFavorites();
+  const [localFavorite, setLocalFavorite] = useState(initialFavorite);
+  const isFavorite = favorites.ready ? favorites.has(id) : localFavorite;
+  const setIsFavorite = favorites.ready
+    ? (value: boolean) => favorites.setFavorite(id, value)
+    : setLocalFavorite;
 
   // A5.3: just-in-time view-transition-name. Applied imperatively on the
   // image wrapper at the moment of click so only the CLICKED card
