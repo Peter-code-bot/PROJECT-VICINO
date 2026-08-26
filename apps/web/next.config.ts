@@ -28,6 +28,39 @@ const withBundleAnalyzer = bundleAnalyzer({
 // worker-src 'self' blob: is required by @ducanh2912/next-pwa, which can
 // register the SW from a blob URL during hot-reload.
 // manifest-src 'self' keeps the PWA manifest fetchable for "Add to Home".
+/**
+ * Endpoint de reportes de CSP, derivado del DSN de Sentry.
+ *
+ * La politica lleva meses en Report-Only con la intencion de "monitorear la
+ * consola del navegador 1-2 dias y luego promoverla a enforce". Nunca se
+ * promovio, y no por descuido: sin un destino donde reportar, las violaciones
+ * solo aparecen en la consola de quien casualmente tenga las DevTools abiertas.
+ * No hay forma de saber si es seguro promoverla.
+ *
+ * Con esto las violaciones llegan a Sentry y la decision pasa a tener datos.
+ * Anadir report-uri no puede romper nada: los reportes de CSP no estan sujetos a
+ * la propia CSP, asi que no hace falta tocar connect-src.
+ *
+ * Se usa report-uri y no el Report-To moderno a proposito: es lo que documenta
+ * Sentry y lo que entienden todos los navegadores hoy.
+ */
+function sentryCspReportUri(): string | null {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (!dsn) return null;
+
+  try {
+    const u = new URL(dsn);
+    const projectId = u.pathname.replace(/^\//, "");
+    if (!projectId || !u.username) return null;
+    return `${u.protocol}//${u.host}/api/${projectId}/security/?sentry_key=${u.username}`;
+  } catch {
+    // Un DSN mal formado no puede tumbar el build: se queda sin reportes y ya.
+    return null;
+  }
+}
+
+const cspReportUri = sentryCspReportUri();
+
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -40,6 +73,7 @@ const cspDirectives = [
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  ...(cspReportUri ? [`report-uri ${cspReportUri}`] : []),
 ].join("; ");
 
 const securityHeaders = [
@@ -69,6 +103,23 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ["image/avif", "image/webp"],
+    // Sin estas dos listas, Next usa sus defaults: 8 deviceSizes + 8 imageSizes,
+    // o sea hasta 16 anchos distintos por imagen, cada uno en avif y webp. Eso
+    // no es un problema de velocidad, es de CUOTA: el plan Hobby de Vercel tiene
+    // topes duros de optimizacion de imagenes y al superarlos pausa el proyecto
+    // hasta el siguiente ciclo. Con un marketplace donde cada publicacion lleva
+    // galeria, se llega antes de lo que parece.
+    //
+    // Se recortan los extremos que VICINO no usa:
+    //   - 2048 y 3840 son pantallas 4K/5K. La app es movil primero y su vista
+    //     mas ancha en escritorio es una tarjeta dentro de una rejilla.
+    //   - de los imageSizes se quitan 16, 32 y 64: los avatares mas pequeños
+    //     del producto son de 48 px, y por debajo de eso no hay nada.
+    //
+    // Degrada con gracia: si un componente pide un ancho que ya no esta, Next
+    // sirve el siguiente mayor. Se ve igual, pesa un poco mas, no se rompe nada.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [48, 96, 128, 256, 384],
     remotePatterns: [
       {
         protocol: "https",
