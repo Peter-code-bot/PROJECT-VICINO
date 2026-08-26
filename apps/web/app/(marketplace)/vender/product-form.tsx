@@ -1,3 +1,4 @@
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
 import { useState, useRef } from "react";
@@ -395,7 +396,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
       pendingIdx++;
       const { error: uploadErr } = await supabase.storage
         .from("product-media")
-        .upload(path, item.file);
+        .upload(path, item.file, { cacheControl: CACHE_INMUTABLE });
       if (uploadErr) {
         setUploading(false);
         throw new Error(`Error subiendo imagen ${i + 1}: ${uploadErr.message}`);
@@ -449,7 +450,10 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           const thumbPath = `${userId}/${timestamp}-${pendingIdx - 1}_thumb.jpg`;
           const { error: thumbErr } = await supabase.storage
             .from("product-media")
-            .upload(thumbPath, thumbBlob, { contentType: "image/jpeg" });
+            .upload(thumbPath, thumbBlob, {
+              contentType: "image/jpeg",
+              cacheControl: CACHE_INMUTABLE,
+            });
           if (thumbErr) {
             // Diagnostic only — product upload already succeeded.
             console.warn(`thumbnail upload failed for video ${i + 1}: ${thumbErr.message}`);

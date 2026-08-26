@@ -1,3 +1,4 @@
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
 import { useState, useRef } from "react";
@@ -73,7 +74,7 @@ export function ReviewForm({
       const path = `${saleConfirmationId}/${ts}-${i}.${ext}`;
       const { error: err } = await supabase.storage
         .from("review-media")
-        .upload(path, m.file);
+        .upload(path, m.file, { cacheControl: CACHE_INMUTABLE });
       if (err) throw new Error(`Error subiendo archivo: ${err.message}`);
       const { data } = supabase.storage.from("review-media").getPublicUrl(path);
       urls.push(data.publicUrl);

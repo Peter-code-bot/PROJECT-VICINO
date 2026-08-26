@@ -1,3 +1,4 @@
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
 import { useState, useRef } from "react";
@@ -68,7 +69,11 @@ export function AvatarWithUpload({
 
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+        .upload(path, blob, {
+          contentType: "image/jpeg",
+          upsert: true,
+          cacheControl: CACHE_INMUTABLE,
+        });
       if (upErr) throw upErr;
 
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);

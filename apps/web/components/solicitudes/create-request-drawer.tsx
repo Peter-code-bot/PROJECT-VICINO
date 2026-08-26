@@ -1,3 +1,4 @@
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -104,7 +105,10 @@ export function CreateRequestDrawer({
         const filePath = `${user.id}/solicitudes-${Date.now()}-${rand}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
-          .upload(filePath, imageFile, { contentType: imageFile.type });
+          .upload(filePath, imageFile, {
+            contentType: imageFile.type,
+            cacheControl: CACHE_INMUTABLE,
+          });
         if (uploadError) {
           setError(`Error subiendo imagen: ${uploadError.message}`);
           setSubmitting(false);

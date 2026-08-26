@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
-import { updateProfileSchema } from "@vicino/shared";
+import { updateProfileSchema, usernameSchema } from "@vicino/shared";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -71,6 +71,47 @@ export async function updateProfile(formData: FormData) {
   revalidatePath("/perfil");
   revalidatePath("/seller/listings");
   return { success: true };
+}
+
+/**
+ * Cambia el @ publico del usuario.
+ *
+ * Va por su propio RPC y no por update_profile_and_pause_products porque sus
+ * fallos son distintos y la interfaz tiene que poder distinguirlos: "ya esta
+ * en uso" y "esta reservado" piden que el usuario escriba otra cosa, no que
+ * reintente. Los mensajes vienen ya redactados desde la base, asi que se
+ * pasan tal cual en vez de traducir codigos aqui y alla.
+ */
+export async function setUsername(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = usernameSchema.safeParse(formData.get("username") ?? "");
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Nombre de usuario invalido" };
+  }
+
+  const { data, error } = await supabase.rpc("set_username", {
+    p_username: parsed.data,
+  });
+
+  if (error) {
+    // 22023 (formato o reservado) y 23505 (en uso) son del usuario, no fallos:
+    // no ensucian Sentry. Cualquier otro codigo si es un fallo de verdad.
+    if (error.code !== "22023" && error.code !== "23505") {
+      Sentry.captureException(error, { tags: { action: "setUsername" } });
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/perfil");
+  return { success: true, username: data as string };
 }
 
 export async function updateProductsOrder(updates: { id: string; sort_order: number }[]) {

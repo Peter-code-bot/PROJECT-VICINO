@@ -17,6 +17,7 @@ interface ProfileHeaderProps {
     foto: string | null;
     bio: string | null;
     user_id: string | null;
+    username?: string | null;
     ubicacion: string | null;
     es_vendedor: boolean;
     seller_type: string | null;
@@ -90,14 +91,14 @@ export function ProfileHeader({
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
                 <Store className="w-3 h-3" />
                 <span>{profile.nombre}</span>
-                {profile.user_id && <span>· @{profile.user_id}</span>}
+                {profile.username && <span>· @{profile.username}</span>}
               </div>
             </>
           ) : (
             <>
               <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
-              {profile.user_id && (
-                <p className="text-xs text-muted-foreground mb-3">@{profile.user_id}</p>
+              {profile.username && (
+                <p className="text-xs text-muted-foreground mb-3">@{profile.username}</p>
               )}
             </>
           )}

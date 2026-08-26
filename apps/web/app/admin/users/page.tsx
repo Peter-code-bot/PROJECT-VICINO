@@ -27,7 +27,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   let query = supabase
     .from("profiles")
-    .select("id, nombre, user_id, es_vendedor, trust_level, average_rating, total_sales, created_at")
+    .select("id, nombre, user_id, username, es_vendedor, trust_level, average_rating, total_sales, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -113,7 +113,10 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                   ))}
                 </div>
                 <div className="flex gap-3 text-xs text-muted-foreground">
-                  <span>{u.user_id}</span>
+                  <span>@{u.username ?? u.user_id}</span>
+                  {u.username && u.username !== u.user_id && (
+                    <span className="font-mono text-muted-foreground/70">{u.user_id}</span>
+                  )}
                   <span>{u.total_sales} ventas</span>
                 </div>
               </div>

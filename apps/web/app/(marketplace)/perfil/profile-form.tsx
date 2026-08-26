@@ -1,9 +1,11 @@
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile } from "./actions";
+import { UsernameField } from "./username-field";
 import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown } from "lucide-react";
 
 const METODOS_PAGO = [
@@ -32,6 +34,7 @@ interface ProfileFormProps {
     metodos_pago_aceptados: string | null;
     trust_level: string;
     user_id: string | null;
+    username?: string | null;
   } | null;
   /**
    * Phase 9: number of products with `estatus='disponible'` for this user. Used
@@ -131,9 +134,10 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
       <div className="space-y-4 p-5 rounded-3xl bg-card border border-border/40 shadow-sm animate-scale-in">
         <div className="flex items-center justify-between pb-2 border-b border-border/40">
           <h2 className="font-heading font-semibold text-lg">Información Personal</h2>
-          <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-md">
-            ID: {profile?.user_id?.split('-')[0] ?? "—"}
-          </span>
+          {/* El .split('-') de antes era herencia de cuando user_id era un
+              UUID. Con 'U8769877' no hay guiones que cortar, asi que llevaba
+              meses mostrando la cadena entera y aparentando recortarla. */}
+          <UsernameField inicial={profile?.username} userId={profile?.user_id} />
         </div>
 
         <div className="space-y-2">
@@ -200,7 +204,7 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
                     if (!user) throw new Error("No autenticado");
                     const ext = file.name.split(".").pop() ?? "jpg";
                     const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-                    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+                    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: CACHE_INMUTABLE });
                     if (upErr) throw upErr;
                     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
                     setAvatarUrl(urlData.publicUrl);

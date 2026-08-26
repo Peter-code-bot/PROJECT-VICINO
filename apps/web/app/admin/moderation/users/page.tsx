@@ -28,7 +28,7 @@ export default async function UsersModerationPage() {
   const { data: profiles } = targetIds.length > 0
     ? await supabase
         .from("profiles")
-        .select("id, nombre, user_id, foto, es_vendedor, nombre_negocio, is_hidden, trust_level, created_at")
+        .select("id, nombre, user_id, username, foto, es_vendedor, nombre_negocio, is_hidden, trust_level, created_at")
         .in("id", targetIds)
     : { data: [] };
 
@@ -75,8 +75,16 @@ export default async function UsersModerationPage() {
                       <span className="text-sm font-medium">
                         {profile.nombre_negocio ?? profile.nombre}
                       </span>
-                      {profile.user_id && (
-                        <span className="text-xs text-muted-foreground">@{profile.user_id}</span>
+                      {/* El @ puede cambiar; user_id no. Se ensenan los dos
+                          para que un reporte que cite cualquiera de ellos
+                          siga apuntando a la persona correcta. */}
+                      {profile.username && (
+                        <span className="text-xs text-muted-foreground">@{profile.username}</span>
+                      )}
+                      {profile.user_id && profile.user_id !== profile.username && (
+                        <span className="text-[10px] font-mono text-muted-foreground/70">
+                          {profile.user_id}
+                        </span>
                       )}
                       <Link
                         href={`/vendedor/${profile.id}`}
