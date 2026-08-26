@@ -4,14 +4,21 @@ import { ChatWindow } from "./chat-window";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ intentFailed?: string }>;
 }
 
 export async function generateMetadata({ params }: Props) {
   return { title: "Chat" };
 }
 
-export default async function ChatDetailPage({ params }: Props) {
+export default async function ChatDetailPage({ params, searchParams }: Props) {
   const { id: chatId } = await params;
+  // chat/page.tsx redirige aqui con ?intentFailed=1 cuando el mensaje
+  // automatico de "quiere comprar" no se pudo insertar. El aviso tiene que
+  // vivir DENTRO de ChatWindow: chat/[id]/layout.tsx es un flex column de
+  // altura fija con overflow-hidden y ChatWindow monta con h-full, asi que
+  // un hermano encima lo desbordaria y quedaria recortado.
+  const { intentFailed } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -106,6 +113,7 @@ export default async function ChatDetailPage({ params }: Props) {
       product={product ?? null}
       initialMessages={messages ?? []}
       initialSaleConfirmations={saleConfirmations ?? []}
+      buyIntentFailed={intentFailed === "1"}
     />
   );
 }

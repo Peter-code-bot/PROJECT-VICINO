@@ -58,6 +58,7 @@ interface ChatWindowProps {
   } | null;
   initialMessages: Message[];
   initialSaleConfirmations: SaleConfirmation[];
+  buyIntentFailed?: boolean;
 }
 
 export function ChatWindow({
@@ -68,6 +69,7 @@ export function ChatWindow({
   product,
   initialMessages,
   initialSaleConfirmations,
+  buyIntentFailed = false,
 }: ChatWindowProps) {
   // A5.1: cursor-based load-older via the shared hook. The hook owns
   // the messages buffer; setItems is exposed for the FIFO temp-id
@@ -551,6 +553,20 @@ export function ChatWindow({
           </button>
         )}
       </div>
+
+      {/* Aviso de intencion de compra no enviada. El comprador llego desde
+          el CTA de "quiere comprar" pero el mensaje automatico no se pudo
+          insertar (o el producto ya no es visible para el). Sin este aviso
+          creeria que el vendedor ya fue notificado. shrink-0 para no comerle
+          altura al scroll de mensajes dentro del flex column h-full. */}
+      {buyIntentFailed && (
+        <div
+          role="status"
+          className="mx-4 mb-2 shrink-0 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]"
+        >
+          No pudimos avisarle al vendedor que te interesa. Escríbele tú aquí abajo para que se entere.
+        </div>
+      )}
 
       {/* Sale confirmation form */}
       {showSaleForm && (
