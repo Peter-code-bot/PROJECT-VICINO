@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { authRateLimit, enforce, getClientIp } from "@/lib/rate-limit";
 
@@ -59,6 +60,16 @@ export async function requestPasswordReset(email: string, redirectTo: string) {
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  // auth-js sale de _signOut() ANTES de _removeSession() cuando el fallo no es
+  // 401/403/404, asi que la cookie de sesion sobrevive. Redirigir igual mandaria
+  // a /login a alguien que sigue autenticado, creyendo que cerro sesion.
+  if (error) {
+    Sentry.captureException(error, {
+      tags: { action: "signOut" },
+      contexts: { auth: { name: error.name, status: error.status ?? null } },
+    });
+    return { error: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
+  }
   redirect("/login");
 }

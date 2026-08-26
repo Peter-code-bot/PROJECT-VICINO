@@ -3,6 +3,7 @@ import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from "@capacitor/push-notifications";
 import { createClient } from "@/lib/supabase/client";
+import * as Sentry from "@sentry/nextjs";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
@@ -14,25 +15,53 @@ import { FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
  */
 async function saveTokenToProfile(tokenValue: string, retries = 3) {
   const supabase = createClient();
+  let lastError: Error | null = null;
+  let lastContext: { code: string | null; details: string | null; hint: string | null } = {
+    code: null,
+    details: null,
+    hint: null,
+  };
   for (let i = 0; i < retries; i++) {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const { error } = await supabase
+      // Un UPDATE de 0 filas no es error en PostgREST (204 sin cuerpo): sin
+      // .select() un perfil inexistente o una fila filtrada por la policy
+      // pasaria como exito y el usuario dejaria de recibir push en silencio.
+      // Pedimos "id" y no "*" a proposito: authenticated tiene GRANT de SELECT
+      // sobre id, pero NO sobre fcm_token, asi que un .select() a secas daria
+      // 42501 en cada guardado.
+      const { data, error } = await supabase
         .from("profiles")
         .update({ fcm_token: tokenValue })
-        .eq("id", session.user.id);
-      if (!error) {
+        .eq("id", session.user.id)
+        .select("id");
+      if (!error && data && data.length > 0) {
         console.log("Push token saved to profile successfully");
         return;
       }
-      console.error("Error saving push token:", error.message);
+      lastError = error ?? new Error("El UPDATE de fcm_token afecto 0 filas");
+      lastContext = error
+        ? { code: error.code, details: error.details, hint: error.hint }
+        : { code: null, details: null, hint: "0 filas: el perfil no existe o la policy de UPDATE lo filtro" };
+      console.error("Error saving push token:", lastError.message);
     }
     // Esperar 1s antes de reintentar (sesion puede no estar lista)
     if (i < retries - 1) {
       await new Promise(r => setTimeout(r, 1000));
     }
   }
-  console.error("Failed to save push token after retries - no active session");
+  // Sin este reporte el fallo solo vive en la consola del dispositivo y el
+  // usuario deja de recibir mensajes, ofertas y recordatorios sin que nadie se
+  // entere. El `details` del PostgrestError es donde Postgres nombra la columna
+  // o la policy que rechazo, por eso viaja entero en el contexto.
+  Sentry.captureException(
+    lastError ?? new Error("No hubo sesion activa para guardar el token de push"),
+    {
+      tags: { hook: "usePushNotifications", platform: Capacitor.getPlatform() },
+      contexts: { supabase: lastContext },
+    }
+  );
+  console.error("Failed to save push token after retries");
 }
 
 export function usePushNotifications() {

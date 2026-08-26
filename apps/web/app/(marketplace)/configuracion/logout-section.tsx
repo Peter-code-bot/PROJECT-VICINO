@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useLogout } from "@/hooks/use-logout";
 import { LogOut } from "lucide-react";
 
@@ -11,7 +12,11 @@ export function LogoutSection() {
 
   async function handleConfirm() {
     setLoading(true);
-    await logout();
+    const result = await logout();
+    if (result.error) {
+      toast.error(result.error);
+      setLoading(false);
+    }
   }
 
   if (confirming) {

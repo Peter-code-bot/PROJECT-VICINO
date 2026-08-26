@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import { useLogout } from "@/hooks/use-logout";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,13 +13,15 @@ interface LogoutButtonProps {
 
 export function LogoutButton({ variant = "default", className }: LogoutButtonProps) {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const logout = useLogout();
 
   async function handleLogout() {
     setLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    const result = await logout();
+    if (result.error) {
+      toast.error(result.error);
+      setLoading(false);
+    }
   }
 
   if (variant === "sidebar") {
