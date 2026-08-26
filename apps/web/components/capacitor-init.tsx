@@ -175,7 +175,29 @@ export function CapacitorInit() {
       const updateStatusBarTheme = () => {
         const isDark = document.documentElement.classList.contains("dark");
         void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
-        void StatusBar.setBackgroundColor({ color: isDark ? "#0D0D1A" : "#EDE0D4" });
+
+        // El color sale del MISMO token que pinta el fondo de la app, leido de
+        // los estilos calculados. Antes estaba escrito a mano aqui
+        // (#0D0D1A / #EDE0D4) y no coincidia con los tokens de globals.css
+        // (#050907 / #FFF8F0): la barra de estado y el fondo eran colores
+        // distintos, y esa es la costura que se ve al abrir.
+        //
+        // Leerlo en vez de copiarlo lo vuelve imposible de desincronizar. Es
+        // ademas la leccion del dia: habia un ThemeProvider MUERTO en el repo
+        // que si tenia los colores correctos, y el vivo era el que no. Dos
+        // copias siempre acaban divergiendo; la unica salida es que no haya
+        // copia.
+        const token = getComputedStyle(document.documentElement)
+          .getPropertyValue("--bg")
+          .trim();
+        // Reserva por si el token no esta disponible todavia. No se inventa un
+        // color nuevo: son los mismos valores de globals.css.
+        const color = /^#[0-9a-fA-F]{3,8}$/.test(token)
+          ? token
+          : isDark
+            ? "#050907"
+            : "#FFF8F0";
+        void StatusBar.setBackgroundColor({ color });
       };
 
       // Initial apply
