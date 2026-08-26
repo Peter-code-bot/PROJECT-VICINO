@@ -42,14 +42,26 @@ interface ProfileFormProps {
    * by the server action.
    */
   activeProductCount: number;
+  /** Llega de ?prompt=seller-mode: la persona acaba de decir que quiere vender. */
+  vieneAVender?: boolean;
 }
 
-export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
+export function ProfileForm({
+  profile,
+  activeProductCount,
+  vieneAVender = false,
+}: ProfileFormProps) {
   const initialEsVendedor = profile?.es_vendedor ?? false;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [esVendedor, setEsVendedor] = useState(initialEsVendedor);
+  // Si llega desde "Quiero vender" y todavia no lo es, la casilla nace
+  // marcada. Honra lo que acaba de pedir, y el aviso de arriba lo dice en
+  // voz alta para que no sea un cambio a sus espaldas: sigue pudiendo
+  // desmarcarla antes de guardar.
+  const [esVendedor, setEsVendedor] = useState(
+    initialEsVendedor || (vieneAVender && !initialEsVendedor),
+  );
   // Phase 9: hold the FormData while the user confirms turning off seller mode
   // with active products. Mirror of the cancel-appointment-button.tsx pattern
   // (state-based inline confirmation, no modal lib).
@@ -117,6 +129,26 @@ export function ProfileForm({ profile, activeProductCount }: ProfileFormProps) {
   return (
     <>
     <form action={handleSubmit} className="space-y-6">
+      {/* El aviso que cierra el item 7. Quien llega desde "Quiero vender" se
+          encontraba el titulo "Editar perfil" y nada mas, con la casilla que
+          tenia que marcar desmarcada, colapsada y por debajo de seis campos.
+          Aqui se le dice que ya esta marcada y que solo falta guardar. */}
+      {vieneAVender && !initialEsVendedor && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm animate-fade-in"
+        >
+          <Store className="w-5 h-5 shrink-0 text-primary mt-0.5" />
+          <div>
+            <p className="font-medium">Ya casi eres vendedor</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Activamos el <strong>Modo Vendedor</strong> más abajo. Completa tu
+              nombre y tu ubicación, guarda los cambios y podrás publicar.
+            </p>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
           <ShieldAlert className="w-5 h-5 shrink-0" />

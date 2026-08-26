@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Construida, no escrita: escapar una barra invertida dentro de un literal
+// es facil de equivocar y el error no falla, solo cambia lo que casa.
+const BARRA_INVERTIDA = String.fromCharCode(92);
+
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
   const forwardHeaders = new Headers(request.headers);
@@ -40,10 +44,28 @@ export async function updateSession(request: NextRequest, nonce?: string) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages.
+  //
+  // Se respeta el ?next=, que este mismo middleware pone en siete sitios. Antes
+  // se mandaba a "/" siempre, asi que quien ya tenia sesion y caia en /login
+  // perdia el destino igual que lo perdia el formulario.
+  //
+  // Solo se acepta una ruta interna simple: barra inicial, sin doble barra
+  // (seria otro dominio), sin barra invertida (algunos navegadores la
+  // normalizan a barra) y sin ? ni #, porque aqui solo se asigna el pathname y
+  // esos caracteres acabarian codificados dentro de la ruta.
   if (user && pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const next = request.nextUrl.searchParams.get("next");
+    const destinoValido =
+      !!next &&
+      next.startsWith("/") &&
+      !next.startsWith("//") &&
+      !next.includes(BARRA_INVERTIDA) &&
+      !next.includes("?") &&
+      !next.includes("#");
+    url.pathname = destinoValido ? next! : "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

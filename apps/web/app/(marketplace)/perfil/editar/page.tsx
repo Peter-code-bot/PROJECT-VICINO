@@ -6,7 +6,25 @@ import Link from "next/link";
 
 export const metadata = { title: "Editar perfil — VICINO" };
 
-export default async function EditarPerfilPage() {
+/**
+ * `?prompt=seller-mode` lo escriben tres sitios y no lo leia NADIE.
+ *
+ *   app/(onboarding)/bienvenida/onboarding-options.tsx:20  ("Quiero vender")
+ *   app/seller/layout.tsx:32
+ *   lib/supabase/middleware.ts:127-129
+ *
+ * Los tres mandan aqui a alguien que acaba de decir que quiere vender, y aqui
+ * se le pintaba "Editar perfil" y nada mas. La casilla que tenia que marcar
+ * estaba desmarcada, colapsada y por debajo de foto, nombre, arroba, correo,
+ * bio y ubicacion. Eso es el item 7: una pantalla muda.
+ */
+export default async function EditarPerfilPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prompt?: string }>;
+}) {
+  const { prompt } = await searchParams;
+  const vieneAVender = prompt === "seller-mode";
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,7 +35,7 @@ export default async function EditarPerfilPage() {
   const { data: profileData, error } = await supabase
     .from("profiles")
     .select(
-      "nombre, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id"
+      "nombre, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id, username"
     )
     .eq("id", user.id)
     .single();
@@ -47,7 +65,11 @@ export default async function EditarPerfilPage() {
         </Link>
         <h1 className="text-xl font-heading font-bold">Editar perfil</h1>
       </div>
-      <ProfileForm profile={profile} activeProductCount={activeProductCount ?? 0} />
+      <ProfileForm
+        profile={profile}
+        activeProductCount={activeProductCount ?? 0}
+        vieneAVender={vieneAVender}
+      />
     </div>
   );
 }

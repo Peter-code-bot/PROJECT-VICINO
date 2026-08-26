@@ -12,12 +12,17 @@ export function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  // Separado de `error` a proposito: "revisa tu correo" es el final FELIZ
+  // del alta por email, y se pintaba en la misma caja roja que un fallo.
+  // Toda alta por email pasaba por ahi, porque la confirmacion esta activa.
+  const [aviso, setAviso] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setAviso("");
 
     if (password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres");
@@ -53,7 +58,9 @@ export function RegisterForm() {
       router.push("/");
       router.refresh();
     } else {
-      setError("Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.");
+      setAviso(
+        "Te enviamos un correo para confirmar tu cuenta. Ábrelo y sigue el enlace para entrar.",
+      );
       setLoading(false);
     }
   }
@@ -73,8 +80,21 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+        <div
+          role="alert"
+          className="rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]"
+        >
           {error}
+        </div>
+      )}
+
+      {aviso && (
+        <div
+          role="status"
+          className="rounded-xl bg-[rgba(52,199,89,0.10)] p-3 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_rgba(52,199,89,0.30)]"
+        >
+          <p className="font-medium">Cuenta creada</p>
+          <p className="mt-0.5 text-[color:var(--fg-dim)]">{aviso}</p>
         </div>
       )}
 

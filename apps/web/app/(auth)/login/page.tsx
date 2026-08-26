@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,7 +30,13 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">Tu mercado de confianza</p>
           </div>
           
-          <LoginForm />
+          <Suspense
+            fallback={
+              <div className="h-64 animate-pulse rounded-2xl bg-muted/40" aria-hidden />
+            }
+          >
+            <LoginForm />
+          </Suspense>
         </div>
         
         {/* Trust badge below card */}

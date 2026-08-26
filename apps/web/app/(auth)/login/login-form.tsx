@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
+import { destinoSeguro } from "@/lib/auth/destino-seguro";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
 import { hapticLight } from "@/lib/haptics";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -14,6 +15,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +39,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    router.push(destinoSeguro(searchParams.get("next")));
     router.refresh();
   }
 
