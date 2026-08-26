@@ -133,12 +133,27 @@ export default async function ProductDetailPage({ params }: Props) {
     isFavorite = !!fav;
   }
 
-  // Increment view count (fire and forget).
-  supabase
-    .from("products_services")
-    .update({ vistas_count: (product.vistas_count ?? 0) + 1 })
-    .eq("id", product.id)
-    .then();
+  // p1-8: el UPDATE directo de vistas_count nunca funciono. Ni anon ni
+  // authenticated tienen privilegio de columna UPDATE sobre vistas_count (los
+  // GRANT de products_services son columna por columna y ADD COLUMN nunca los
+  // hereda), asi que PostgREST respondia 42501 y el `.then()` sin catch se lo
+  // tragaba: 0 productos con vistas > 0 en produccion. increment_product_view
+  // es SECURITY DEFINER (owner postgres, search_path fijado) con EXECUTE para
+  // anon y authenticated, incrementa de forma atomica (vistas_count + 1, sin el
+  // read-modify-write que perdia incrementos concurrentes) y solo cuenta si el
+  // producto sigue disponible y no oculto -- de paso el preview del dueno sobre
+  // su propio listing pausado deja de inflar el contador.
+  const { error: viewError } = await supabase.rpc("increment_product_view", {
+    p_id: product.id,
+  });
+  if (viewError) {
+    Sentry.captureException(viewError, {
+      tags: { action: "productDetailPage", step: "increment_product_view" },
+      contexts: {
+        product: { id: product.id, slug: product.slug },
+      },
+    });
+  }
 
   const deliveryLabel =
     product.tipo_entrega === "pickup"
