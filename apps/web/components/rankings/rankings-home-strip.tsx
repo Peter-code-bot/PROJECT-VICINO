@@ -10,6 +10,7 @@ import {
 } from "@/lib/rankings/queries";
 import type { Category, RankedSeller } from "@/lib/rankings/types";
 import { cookies } from "next/headers";
+import { parseRadiusCookie } from "@/lib/geo/radius";
 const MEDAL_COLORS = {
   gold: {
     text: "text-gold",
@@ -132,7 +133,6 @@ export async function RankingsHomeStripSection() {
 
   let userLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
   let userLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
-  let radius = 10000;
 
   if (locationCookie) {
     const [latStr, lngStr] = locationCookie.split(",");
@@ -144,12 +144,8 @@ export async function RankingsHomeStripSection() {
     }
   }
 
-  if (radiusCookie) {
-    const parsedRadius = parseInt(radiusCookie, 10);
-    if (!Number.isNaN(parsedRadius)) {
-      radius = parsedRadius;
-    }
-  }
+  // Antes tomaba el valor de la cookie tal cual, sin acotarlo a [1000, 50000].
+  const radius = parseRadiusCookie(radiusCookie);
 
   let bestCategory: Category | null = null;
   let bestTop3: RankedSeller[] = [];

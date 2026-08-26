@@ -6,6 +6,7 @@ import { SearchFilters } from "./search-filters";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, User, Star, ShieldCheck } from "lucide-react";
+import { parseRadiusCookie } from "@/lib/geo/radius";
 
 const PAGE_SIZE = 20;
 
@@ -48,7 +49,10 @@ export default async function SearchPage({ searchParams }: Props) {
     }
   }
 
-  const validRadius = radiusCookie ? Math.min(Math.max(parseInt(radiusCookie, 10), 1000), 50000) : 10000;
+  // Antes: `radiusCookie ? Math.min(Math.max(parseInt(...)))` — comprobaba que
+  // la cookie existiera, no que fuera un numero, asi que una corrupta daba NaN
+  // y viajaba hasta el RPC.
+  const validRadius = parseRadiusCookie(radiusCookie);
 
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;

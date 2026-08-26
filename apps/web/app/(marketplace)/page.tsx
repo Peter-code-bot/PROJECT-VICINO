@@ -110,6 +110,7 @@ interface Props {
 }
 
 import type { FeedProduct } from "@/types/feed";
+import { parseRadiusCookie } from "@/lib/geo/radius";
 
 export default async function HomePage({ searchParams }: Props) {
   const { feed: feedParam } = await searchParams;
@@ -124,10 +125,11 @@ export default async function HomePage({ searchParams }: Props) {
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
   const radiusCookie = cookieStore.get("vicino_radius")?.value;
-  const parsedRadius = radiusCookie ? parseInt(radiusCookie, 10) : NaN;
-  const validRadius = Number.isFinite(parsedRadius)
-    ? Math.min(Math.max(parsedRadius, 1000), 50000)
-    : 10000;
+  // Esta era la unica de las cuatro lecturas del radio que estaba bien. Ahora
+  // las cuatro comparten la misma funcion, para que no vuelvan a divergir: el P0
+  // del feed de agosto fue exactamente eso, un `validRadius = 2000` en una
+  // pagina contra los 50 km que el usuario tenia configurados.
+  const validRadius = parseRadiusCookie(radiusCookie);
 
   let userLat: number | null = null;
   let userLng: number | null = null;

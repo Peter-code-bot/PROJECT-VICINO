@@ -13,6 +13,7 @@ import {
   getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { RankedSeller } from "@/lib/rankings/types";
+import { parseRadiusCookie } from "@/lib/geo/radius";
 
 export const dynamic = "force-dynamic";
 
@@ -93,13 +94,8 @@ async function RankingsContent({
     }
   }
 
-  let searchRadius = 10000; // 10km default
-  if (radiusCookie) {
-    const parsedRadius = parseInt(radiusCookie, 10);
-    if (!Number.isNaN(parsedRadius)) {
-      searchRadius = parsedRadius;
-    }
-  }
+  // Antes tomaba el valor de la cookie tal cual, sin acotarlo a [1000, 50000].
+  const searchRadius = parseRadiusCookie(radiusCookie);
   
   const isLocationActive = !!geo || !!locationCookie;
 
