@@ -18,5 +18,5 @@ export interface Category {
   id: string;
   nombre: string;
   slug: string;
-  icono: string | null;
+  // `icono` se quito del SELECT: nada lo pintaba. Ver lib/rankings/queries.ts.
 }

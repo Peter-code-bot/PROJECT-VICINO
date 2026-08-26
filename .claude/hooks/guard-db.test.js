@@ -8,6 +8,7 @@
  */
 
 const { execFileSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 const HOOK = path.join(__dirname, 'guard-db.js');
@@ -18,7 +19,6 @@ const sql = (query) => ({ tool_name: 'mcp__supabase__execute_sql', tool_input: {
 
 const CASES = [
   // --- deben bloquearse ---
-  ['DENY', 'db push contra prod', bash('npx supabase db push --linked')],
   ['DENY', 'db reset', bash('npx supabase db reset')],
   ['DENY', 'drop table', sql('DROP TABLE public.products;')],
   ['DENY', 'drop function', sql('drop function search_nearby_products_v4;')],
@@ -65,7 +65,10 @@ const verdictFor = (event) => {
 };
 
 let failed = 0;
+let total = 0;
+
 for (const [expected, label, event] of CASES) {
+  total += 1;
   let actual;
   try {
     actual = verdictFor(event);
@@ -77,9 +80,56 @@ for (const [expected, label, event] of CASES) {
   console.log(`${ok ? '  ok  ' : '  FALLA'} [${actual}] esperaba ${expected} — ${label}`);
 }
 
+// ---------------------------------------------------------------------------
+// `db push` es CONDICIONAL: se bloquea solo mientras el ledger tenga drift.
+//
+// El caso viejo afirmaba DENY a secas y empezo a fallar el dia que el ledger
+// quedo reconciliado — o sea, la prueba fallaba por que la regla funcionaba.
+// Una prueba que hay que ignorar es peor que no tenerla, asi que ahora se
+// comprueba el contrato de verdad, moviendo el marcador y devolviendolo.
+// ---------------------------------------------------------------------------
+const MARCADOR = path.join(__dirname, '..', '..', 'supabase', '.ledger-reconciled');
+const APARTADO = MARCADOR + '.prueba';
+
+const escenario = (etiqueta, esperado, preparar, restaurar) => {
+  let actual;
+  preparar();
+  try {
+    actual = verdictFor(bash('npx supabase db push --linked'));
+  } catch (error) {
+    actual = `ERROR(${error.message.split(String.fromCharCode(10))[0]})`;
+  } finally {
+    // finally, no al final del try: si la comprobacion revienta, el repo NO
+    // puede quedarse sin su marcador.
+    restaurar();
+  }
+  total += 1;
+  const ok = actual === esperado;
+  if (!ok) failed += 1;
+  console.log(`${ok ? '  ok  ' : '  FALLA'} [${actual}] esperaba ${esperado} — ${etiqueta}`);
+};
+
+if (fs.existsSync(MARCADOR)) {
+  escenario(
+    'db push CON el ledger reconciliado',
+    'ALLOW',
+    () => {},
+    () => {},
+  );
+  escenario(
+    'db push SIN el marcador de ledger reconciliado',
+    'DENY',
+    () => fs.renameSync(MARCADOR, APARTADO),
+    () => { if (fs.existsSync(APARTADO)) fs.renameSync(APARTADO, MARCADOR); },
+  );
+} else {
+  escenario('db push sin marcador (no habia que apartar nada)', 'DENY', () => {}, () => {});
+  console.log('  nota  no se pudo probar el caso ALLOW: falta supabase/.ledger-reconciled');
+}
+
 console.log(
   failed === 0
-    ? `\n${CASES.length}/${CASES.length} casos pasan.`
-    : `\n${failed} de ${CASES.length} casos FALLAN.`
+    ? `\n${total}/${total} casos pasan.`
+    : `\n${failed} de ${total} casos FALLAN.`
 );
 process.exit(failed === 0 ? 0 : 1);

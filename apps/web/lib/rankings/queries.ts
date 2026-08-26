@@ -77,7 +77,10 @@ export async function getCategories(): Promise<Category[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, nombre, slug, icono")
+    // Sin `icono`: la columna existe y esta poblada en las 42 filas, pero no la
+    // consume nadie. El icono de una categoria sale de lib/categories/icons.ts,
+    // derivado del catalogo. Pedirla aqui insinuaba una quinta fuente de verdad.
+    .select("id, nombre, slug")
     .eq("activo", true)
     .order("orden", { ascending: true })
     .order("nombre", { ascending: true });

@@ -15,6 +15,12 @@
  * prohibido sintacticamente. No es una heuristica sobre que verbos parecen
  * peligrosos: es que no existe camino a disco.
  *
+ * Limitacion conocida y deliberada: END se prohibe aunque en PL/pgSQL sea el
+ * cierre de un bloque y no un COMMIT. O sea, un DO $$ ... END $$ no pasa por
+ * aqui. Se prefiere ese falso rechazo, que es ruidoso e inofensivo, a la
+ * alternativa de intentar distinguir los dos usos y equivocarse en el sentido
+ * que si escribe a disco. Para varios casos de prueba, una invocacion por caso.
+ *
  * Patron canonico para probar bajo un rol real, segun CLAUDE.md:
  *
  *   SET LOCAL ROLE authenticated;

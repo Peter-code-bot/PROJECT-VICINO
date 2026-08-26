@@ -46,3 +46,55 @@ jobs:
 
       - name: Type check
         run: cd apps/web && pnpm type-check
+
+  # Nadie vigilaba si apps/web/types/database.types.ts seguia describiendo el
+  # esquema real. Llevaba meses sin regenerarse — le faltaba sort_order, entre
+  # otras — y ademas no lo importaba nadie, asi que eran 100 KB que aparentaban
+  # vigilancia del esquema sin darla.
+  #
+  # NO bloquea a proposito. Las migraciones se aplican a mano con
+  # `supabase db push`, asi que entre que se mergea una migracion y se aplica hay
+  # una ventana en la que la divergencia es CORRECTA. Un fallo duro ahi seria
+  # ruido, y el ruido acaba en "ignora ese check en rojo", que es peor que no
+  # tenerlo.
+  #
+  # Corre solo en master: en un PR la divergencia casi siempre es legitima.
+  schema-drift:
+    name: Deriva de tipos vs produccion
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Sin el secreto el trabajo no puede comprobar nada. Se avisa en voz alta
+      # en vez de pasar en verde: un check que aprueba sin mirar es exactamente
+      # el fallo silencioso que este trabajo viene a evitar.
+      - name: Comprobar que hay credencial
+        id: credencial
+        run: |
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "::warning title=Deriva de tipos sin comprobar::Falta el secreto SUPABASE_ACCESS_TOKEN, asi que este trabajo NO comprobo nada. Anadelo en Settings > Secrets and variables > Actions."
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comparar tipos con el esquema de produccion
+        if: steps.credencial.outputs.hay == 'si'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if ! node scripts/gen-types.mjs --check; then
+            echo "::warning title=Tipos desfasados::apps/web/types/database.types.ts no coincide con el esquema de produccion. Corre: node scripts/gen-types.mjs"
+          fi
