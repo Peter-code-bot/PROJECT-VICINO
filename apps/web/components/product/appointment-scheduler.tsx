@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { avisarCitaEnChat } from "@/app/(marketplace)/chat/actions";
 import { X, ChevronLeft, ChevronRight, Check, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -156,6 +157,29 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
     // tiene policy de INSERT: moria con 42501 en cada agendamiento, descartado
     // por un `await` sin comprobar. Nadie se entero nunca de una cita.
     void newAppt;
+
+    // Item 99: dejar constancia en el chat. Va DESPUES y aparte a proposito.
+    // La cita ya esta guardada y el trigger ya mando los avisos, asi que si
+    // esto falla la persona no pierde nada: solo se queda sin el mensaje. Por
+    // eso no se toca setSuccess ni setErrorMsg segun su resultado.
+    //
+    // No se hace en el trigger de la base aunque parezca el sitio natural: su
+    // `SET search_path TO ''` lo heredan los triggers anidados y el INSERT en
+    // messages fallaria siempre. La razon larga esta en avisarCitaEnChat.
+    try {
+      const aviso = await avisarCitaEnChat({
+        sellerId: product.creador_id,
+        productId: product.id,
+        tituloProducto: product.titulo,
+        fecha: selectedDate,
+        hora: selectedSlot,
+      });
+      if (aviso?.error) {
+        console.warn("[citas] no se pudo avisar en el chat:", aviso.error);
+      }
+    } catch (e) {
+      console.warn("[citas] no se pudo avisar en el chat:", e);
+    }
 
     setErrorMsg(null);
     setSuccess(true);

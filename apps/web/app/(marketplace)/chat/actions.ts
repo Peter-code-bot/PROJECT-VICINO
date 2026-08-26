@@ -182,6 +182,56 @@ export async function sendMessage(chatId: string, texto: string) {
   return { success: true as const, data: { id: inserted.id } };
 }
 
+/**
+ * Deja constancia en el chat de que se agendo una cita (item 99).
+ *
+ * Se hace desde el servidor y NO desde el trigger de la base, aunque el
+ * trigger parezca el sitio natural. Tres razones concretas, comprobadas:
+ *
+ *   - notify_appointment_created lleva `SET search_path TO ''`, y las
+ *     funciones anidadas que no traen SET propio lo HEREDAN. El primer
+ *     trigger que dispararia un INSERT en messages moriria por referencias
+ *     sin cualificar. Fallaria siempre, no a veces.
+ *   - Su cuerpo es un unico BEGIN ... EXCEPTION, que en PL/pgSQL es una
+ *     subtransaccion. Si el codigo de chat anadido despues fallara, se
+ *     revertiria tambien el INSERT en notifications que ya habia funcionado:
+ *     por anadir una comodidad se perderia el aviso que si servia.
+ *   - get_or_create_chat resuelve el comprador con auth.uid(), asi que desde
+ *     un trigger con service_role no hay actor y desde una cita creada por el
+ *     vendedor colocaria el chat al reves.
+ *
+ * Es ADITIVO a proposito: la cita ya esta guardada y los avisos ya se
+ * mandaron cuando esto corre. Si falla, no se deshace nada y la persona no
+ * pierde su cita — solo se queda sin el mensaje en el chat.
+ *
+ * El texto se compone AQUI y no llega del cliente: asi el mensaje de "cita
+ * agendada" dice siempre lo mismo y no puede usarse para colar texto ajeno
+ * con la apariencia de un aviso del sistema.
+ */
+export async function avisarCitaEnChat(params: {
+  sellerId: string;
+  productId: string;
+  tituloProducto: string;
+  fecha: string; // YYYY-MM-DD
+  hora: string;  // HH:MM
+}) {
+  const chat = await getOrCreateChat(params.sellerId, params.productId);
+  // getOrCreateChat devuelve { chatId } o { error }. Comprobado leyendo su
+  // return, no deducido de como se llama en otros sitios.
+  if ("error" in chat || !chat.chatId) {
+    return { error: "error" in chat ? chat.error : "No se pudo abrir el chat" };
+  }
+
+  const [anio, mes, dia] = params.fecha.split("-");
+  const cuando = dia && mes ? `${dia}/${mes}` : params.fecha;
+  void anio;
+
+  const texto =
+    `Agende una cita para "${params.tituloProducto}" el ${cuando} a las ${params.hora}.`;
+
+  return sendMessage(chat.chatId, texto);
+}
+
 export async function markAsRead(chatId: string) {
   const supabase = await createClient();
   const {
