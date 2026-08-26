@@ -1,6 +1,6 @@
-import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES } from "@vicino/shared";
@@ -346,9 +346,15 @@ export function CreateRequestDrawer({
                       (c) =>
                         c.type === type &&
                         !categories.some((sel) => sel.slug === c.slug) &&
-                        c.name
+                        // Mismo criterio que el formulario de publicar: se
+                        // busca en el nombre Y en los ejemplos, porque quien
+                        // pide algo tampoco escribe el nombre del cajon.
+                        (c.name
                           .toLowerCase()
-                          .includes(categorySearch.toLowerCase())
+                          .includes(categorySearch.toLowerCase()) ||
+                          c.ejemplos
+                            .toLowerCase()
+                            .includes(categorySearch.toLowerCase()))
                     );
                     if (cats.length === 0) return null;
                     return (
@@ -368,9 +374,12 @@ export function CreateRequestDrawer({
                               setCategoryOpen(false);
                               setCategorySearch("");
                             }}
-                            className="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted"
+                            className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-muted"
                           >
-                            {cat.name}
+                            <span className="block text-sm">{cat.name}</span>
+                            <span className="block text-[11px] text-muted-foreground truncate">
+                              {cat.ejemplos}
+                            </span>
                           </button>
                         ))}
                       </div>

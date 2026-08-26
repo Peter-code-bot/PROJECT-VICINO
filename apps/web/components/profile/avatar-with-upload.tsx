@@ -1,6 +1,6 @@
-import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";

@@ -1,6 +1,6 @@
-import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 "use client";
 
+import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -338,11 +338,43 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     advanceCropQueue();
   }
 
-  /** Called when the user skips crop — the file is NOT added */
-  function handleCropCancel() {
-    // Revoke the object URL for the skipped item to avoid memory leaks
+  /**
+   * El usuario decide no recortar: el archivo se anade TAL CUAL.
+   *
+   * Antes se descartaba, sin aviso y sin vuelta atras. El boton decia
+   * "Omitir", que se lee como "saltate el recorte", no como "tira la foto".
+   */
+  function handleCropSkip() {
     const item = cropQueue[cropIndex];
-    if (item?.isVideo) URL.revokeObjectURL(item.src);
+    if (!item) {
+      advanceCropQueue();
+      return;
+    }
+
+    if (item.isVideo) {
+      const preview = URL.createObjectURL(item.file);
+      setMedia((prev) => [
+        ...prev,
+        { id: preview, kind: "pending", file: item.file, preview, isVideo: true },
+      ]);
+      // Sin area de recorte, la miniatura sale del primer fotograma completo.
+      const thumbPromise: Promise<Blob | null> = generateVideoThumbnail(item.file).catch(
+        (err) => {
+          console.warn("video thumbnail generation failed", item.file.name, err);
+          return null;
+        },
+      );
+      pendingThumbsRef.current.set(item.file, thumbPromise);
+      // La src del modal ya no se usa; el preview de la rejilla es otro objeto.
+      URL.revokeObjectURL(item.src);
+    } else {
+      const preview = URL.createObjectURL(item.file);
+      setMedia((prev) => [
+        ...prev,
+        { id: preview, kind: "pending", file: item.file, preview, isVideo: false },
+      ]);
+    }
+
     advanceCropQueue();
   }
 
@@ -938,7 +970,14 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                     c.type === type
                     && !c.hidden_in_form
                     && !categories.some((sel) => sel.slug === c.slug)
-                    && c.name.toLowerCase().includes(categorySearch.toLowerCase())
+                    && (
+                      // Se busca tambien en los ejemplos. Sin esto, teclear
+                      // "gomitas" no devolvia nada aunque "Dulces y Postres"
+                      // estuviera ahi: el vendedor no busca el nombre del
+                      // cajon, busca su producto.
+                      c.name.toLowerCase().includes(categorySearch.toLowerCase())
+                      || c.ejemplos.toLowerCase().includes(categorySearch.toLowerCase())
+                    )
                   );
                   if (cats.length === 0) return null;
                   return (
@@ -957,9 +996,12 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
                             setCategoryOpen(false);
                             setCategorySearch("");
                           }}
-                          className="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors hover:bg-[color:var(--bg-elev-2)]"
+                          className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-[color:var(--bg-elev-2)]"
                         >
-                          {cat.name}
+                          <span className="block text-sm">{cat.name}</span>
+                          <span className="block text-[11px] text-muted-foreground truncate">
+                            {cat.ejemplos}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1135,7 +1177,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
         mediaSrc={currentCropItem?.src ?? null}
         mediaType={currentCropItem?.isVideo ? "video" : "image"}
         originalFile={currentCropItem?.file}
-        onCancel={handleCropCancel}
+        onSkip={handleCropSkip}
         onCropComplete={handleCropResult}
       />
 

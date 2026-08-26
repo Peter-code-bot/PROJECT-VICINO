@@ -21,7 +21,15 @@ interface ProductMediaCropperProps {
   mediaType: "image" | "video";
   /** Original File — needed for the video passthrough */
   originalFile?: File;
-  onCancel: () => void;
+  /**
+   * Salir del recortador SIN recortar. El archivo se usa tal cual.
+   *
+   * Antes se llamaba onCancel y descartaba el archivo en silencio, que es lo
+   * contrario de lo que promete el boton: quien pulsa "omitir" quiere saltarse
+   * el RECORTE, no perder la foto que acaba de elegir. Y perderla no se
+   * deshace — hay que volver a buscarla en el telefono.
+   */
+  onSkip: () => void;
   onCropComplete: (result: CropResult) => void;
 }
 
@@ -34,7 +42,7 @@ export function ProductMediaCropper({
   mediaSrc,
   mediaType,
   originalFile,
-  onCancel,
+  onSkip,
   onCropComplete,
 }: ProductMediaCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -106,12 +114,12 @@ export function ProductMediaCropper({
     }
   }
 
-  function handleCancel() {
+  function handleSkip() {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(null);
     setSaving(false);
-    onCancel();
+    onSkip();
   }
 
   function handleReset() {
@@ -130,7 +138,10 @@ export function ProductMediaCropper({
   return createPortal(
     <div
       className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={handleCancel}
+      // Pulsar fuera tampoco pierde el archivo. Un toque accidental que anade
+      // una foto se arregla quitandola de la rejilla; uno que la borra obliga
+      // a buscarla otra vez en el telefono.
+      onClick={handleSkip}
     >
       <div
         className="bg-card w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border"
@@ -203,11 +214,11 @@ export function ProductMediaCropper({
         {/* Footer */}
         <div className="px-6 pb-5 pt-2 flex gap-3">
           <button
-            onClick={handleCancel}
+            onClick={handleSkip}
             disabled={saving}
             className="flex-1 rounded-full py-3 border border-border text-foreground font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
-            Omitir
+            Usar sin recortar
           </button>
           <button
             onClick={handleApply}

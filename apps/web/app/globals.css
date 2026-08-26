@@ -250,9 +250,22 @@ body {
   }
 }
 
-img, video {
-  max-width: 100%;
-  height: auto;
+/* Dentro de @layer base A PROPOSITO.
+ *
+ * Esta regla estaba fuera de toda capa, y en la cascada moderna lo no-encapado
+ * gana a TODAS las capas sin importar la especificidad. Tailwind v4 mete sus
+ * utilidades en @layer utilities, asi que un `img` fuera de capa pisaba
+ * h-full, h-6, max-h-... en cada <img> y <video> del proyecto: unos trece.
+ *
+ * El sintoma mas visible era el vídeo, donde object-cover no podia llenar su
+ * contenedor porque la altura volvia a auto. Metida en base, la regla sigue
+ * haciendo su trabajo (imagenes fluidas por defecto) y deja de ganarle a las
+ * utilidades, que es justo el orden que se espera. */
+@layer base {
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 ::selection {
