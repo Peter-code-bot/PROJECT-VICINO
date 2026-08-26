@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { iconoDeCategoria } from "@/lib/categories/icons";
 import Link from "next/link";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -18,7 +19,6 @@ import {
   Heart,
   Calendar,
   Bell,
-  User,
   Store,
   ShieldAlert,
   Settings,
@@ -26,53 +26,10 @@ import {
   Trophy,
   ChevronDown,
   ChevronRight,
-  UtensilsCrossed,
-  Shirt,
-  Smartphone,
-  Sparkles,
-  HeartPulse,
-  Dumbbell,
-  PawPrint,
-  Baby,
-  Car,
-  BookOpen,
-  Gamepad2,
-  Palette,
-  Armchair,
-  Wrench,
-  GraduationCap,
-  PartyPopper,
-  Truck,
-  Code,
-  Stethoscope,
-  Camera,
-  Building,
-  Briefcase,
-  MoreHorizontal,
-  Warehouse,
-  Mountain,
-  Ticket,
-  Cake,
-  Refrigerator,
-  Hammer,
-  Gift,
-  Gem,
   type LucideIcon,
 } from "lucide-react";
 
-const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
-  comida: UtensilsCrossed, postres: Cake, ropa: Shirt, joyeria: Gem,
-  tecnologia: Smartphone, hogar: Home, electrodomesticos: Refrigerator,
-  belleza: Sparkles, salud: HeartPulse, deportes: Dumbbell, mascotas: PawPrint,
-  bebes: Baby, vehiculos: Car, libros: BookOpen, juguetes: Gamepad2,
-  "proveedores-mayoreo": Warehouse,
-  arte: Palette, regalos: Gift, muebles: Armchair, herramientas: Hammer,
-  "servicios-hogar": Wrench,
-  educacion: GraduationCap, "deportes-aventura": Mountain,
-  eventos: PartyPopper, entretenimiento: Ticket, transporte: Truck,
-  "diseno-tech": Code, "salud-terapias": Stethoscope, fotografia: Camera,
-  inmuebles: Building, empleos: Briefcase, otros: MoreHorizontal,
-};
+
 
 interface SidebarProps {
   user: { id: string } | null;
@@ -140,7 +97,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
           <div className="ml-4 pl-4 border-l border-border/30 space-y-0.5 py-1">
             <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Productos</p>
             {productCategories.map((cat) => {
-              const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
+              const Icon = iconoDeCategoria(cat.slug);
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">
@@ -151,7 +108,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             })}
             <p className="mt-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Servicios</p>
             {serviceCategories.map((cat) => {
-              const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
+              const Icon = iconoDeCategoria(cat.slug);
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">
@@ -161,7 +118,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               );
             })}
             {otherCategories.map((cat) => {
-              const Icon = CATEGORY_ICON_MAP[cat.slug] ?? MoreHorizontal;
+              const Icon = iconoDeCategoria(cat.slug);
               return (
                 <Link key={cat.slug} href={`/buscar?category=${cat.slug}`}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)]">

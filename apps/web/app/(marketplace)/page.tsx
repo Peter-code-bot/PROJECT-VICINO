@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { iconoDeCategoria } from "@/lib/categories/icons";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
@@ -18,84 +19,19 @@ import { UNIVERSITY_COLORS, getContrastYIQ, cn } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import { makeFeedCursor } from "@/lib/feed-cursor";
 import {
-  UtensilsCrossed,
-  Shirt,
-  Smartphone,
-  Home,
-  Sparkles,
-  HeartPulse,
   GraduationCap,
-  Car,
-  PartyPopper,
-  PawPrint,
-  Briefcase,
-  MoreHorizontal,
   ArrowRight,
   Search,
-  Dumbbell,
-  Baby,
-  BookOpen,
-  Gamepad2,
-  Palette,
-  Armchair,
-  Wrench,
-  Truck,
-  Code,
-  Stethoscope,
-  Camera,
-  Building,
-  Warehouse,
-  Mountain,
   Heart,
   Store,
   MapPin,
-  Ticket,
-  Cake,
-  Refrigerator,
-  Hammer,
-  Gift,
-  Gem,
-  type LucideIcon,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 /* ─── Category icon mapping ─────────────────────────────── */
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  comida: UtensilsCrossed,
-  postres: Cake,
-  ropa: Shirt,
-  joyeria: Gem,
-  tecnologia: Smartphone,
-  hogar: Home,
-  electrodomesticos: Refrigerator,
-  belleza: Sparkles,
-  salud: HeartPulse,
-  deportes: Dumbbell,
-  mascotas: PawPrint,
-  bebes: Baby,
-  vehiculos: Car,
-  libros: BookOpen,
-  juguetes: Gamepad2,
-  arte: Palette,
-  regalos: Gift,
-  muebles: Armchair,
-  herramientas: Hammer,
-  "servicios-hogar": Wrench,
-  educacion: GraduationCap,
-  "deportes-aventura": Mountain,
-  eventos: PartyPopper,
-  entretenimiento: Ticket,
-  transporte: Truck,
-  "diseno-tech": Code,
-  "salud-terapias": Stethoscope,
-  fotografia: Camera,
-  inmuebles: Building,
-  "proveedores-mayoreo": Warehouse,
-  empleos: Briefcase,
-  otros: MoreHorizontal,
-};
+
 
 function RankingSkeleton() {
   return (
@@ -453,7 +389,7 @@ export default async function HomePage({ searchParams }: Props) {
 
               <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
                 {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat, i) => {
-                  const IconComponent = CATEGORY_ICONS[cat.slug] || MoreHorizontal;
+                  const IconComponent = iconoDeCategoria(cat.slug);
                   const isFeatured = i === 0;
 
                   return (

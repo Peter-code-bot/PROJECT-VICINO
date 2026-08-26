@@ -1,31 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { iconoDeCategoria } from "@/lib/categories/icons";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES } from "@vicino/shared";
 import { RequestCard, type RequestCardData } from "./request-card";
 import { CreateRequestDrawer } from "./create-request-drawer";
-import { 
-  Plus, Inbox, MoreHorizontal,
-  UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
-  Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
-  Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
-  Stethoscope, Camera, Building, Warehouse, Briefcase, Mountain,
-  Ticket, Cake, Refrigerator, Hammer, Gift, Gem, LucideIcon
+import {
+  Plus,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  comida: UtensilsCrossed, postres: Cake, ropa: Shirt, joyeria: Gem,
-  tecnologia: Smartphone, hogar: Home, electrodomesticos: Refrigerator,
-  belleza: Sparkles, salud: HeartPulse, deportes: Dumbbell, mascotas: PawPrint,
-  bebes: Baby, vehiculos: Car, libros: BookOpen, juguetes: Gamepad2,
-  arte: Palette, regalos: Gift, muebles: Armchair, herramientas: Hammer,
-  "servicios-hogar": Wrench, educacion: GraduationCap, "deportes-aventura": Mountain,
-  eventos: PartyPopper, entretenimiento: Ticket, transporte: Truck, "diseno-tech": Code, "salud-terapias": Stethoscope,
-  fotografia: Camera, inmuebles: Building, "proveedores-mayoreo": Warehouse, empleos: Briefcase,
-  otros: MoreHorizontal,
-};
+
 
 interface SolicitudesFeedProps {
   userLat: number | null;
@@ -89,7 +76,7 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
             Todas
           </button>
           {visibleCategories.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.slug] ?? MoreHorizontal;
+            const Icon = iconoDeCategoria(cat.slug);
             return (
               <button
                 key={cat.slug}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ogImageUrl } from "@/lib/og-image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronRight } from "lucide-react";
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // loggea Sentry sobre ese edge si dispara.
   const { data: product } = await supabase
     .from("products_services")
-    .select("titulo, descripcion, imagen_principal, precio, slug, categoria, product_categories(is_primary, categories(slug))")
+    .select("titulo, descripcion, imagen_principal, galeria_imagenes, precio, slug, categoria, product_categories(is_primary, categories(slug))")
     .eq("slug", slug)
     .single();
 
@@ -53,9 +54,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${product.titulo} — VICINO`,
       description: product.descripcion?.slice(0, 160),
-      // Un .mp4 aquí rompe la preview al compartir (WhatsApp/OG no rasterizan
-      // video): posterUrl lo cambia por el _thumb.jpg y deja las imágenes intactas.
-      images: product.imagen_principal ? [posterUrl(product.imagen_principal)] : [],
+      // Antes: posterUrl(imagen_principal) y lista vacia si no habia. Eso
+      // dejaba sin previsualizacion a los productos cuyo _thumb.jpg no llego
+      // a generarse (la generacion es best-effort y solo deja un console.warn)
+      // y a los que no tienen imagen principal. ogImageUrl prefiere una imagen
+      // real de la galeria y cae al logotipo del sitio: nunca queda vacio.
+      images: [ogImageUrl(product.imagen_principal, product.galeria_imagenes, SITE_URL)],
       url: canonical,
     },
   };

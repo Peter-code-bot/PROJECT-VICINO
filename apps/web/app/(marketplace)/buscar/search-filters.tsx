@@ -1,15 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { iconoDeCategoria } from "@/lib/categories/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Search, SlidersHorizontal, X, Navigation, Loader2,
-  type LucideIcon,
-  UtensilsCrossed, Shirt, Smartphone, Home, Sparkles, HeartPulse,
-  Dumbbell, PawPrint, Baby, Car, BookOpen, Gamepad2, Palette,
-  Armchair, Wrench, GraduationCap, PartyPopper, Truck, Code,
-  Stethoscope, Camera, Building, Warehouse, Briefcase, Mountain, MoreHorizontal,
-  Ticket, Cake, Refrigerator, Hammer, Gift, Gem,
+  Search,
+  SlidersHorizontal,
+  X,
+  Navigation,
+  Loader2,
 } from "lucide-react";
 import { CATEGORIES } from "@vicino/shared";
 import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
@@ -19,40 +18,7 @@ import { useSearchHistory } from "@/hooks/use-search-history";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  comida: UtensilsCrossed,
-  postres: Cake,
-  ropa: Shirt,
-  joyeria: Gem,
-  tecnologia: Smartphone,
-  hogar: Home,
-  electrodomesticos: Refrigerator,
-  belleza: Sparkles,
-  salud: HeartPulse,
-  deportes: Dumbbell,
-  mascotas: PawPrint,
-  bebes: Baby,
-  vehiculos: Car,
-  libros: BookOpen,
-  juguetes: Gamepad2,
-  arte: Palette,
-  regalos: Gift,
-  muebles: Armchair,
-  herramientas: Hammer,
-  "servicios-hogar": Wrench,
-  educacion: GraduationCap,
-  "deportes-aventura": Mountain,
-  eventos: PartyPopper,
-  entretenimiento: Ticket,
-  transporte: Truck,
-  "diseno-tech": Code,
-  "salud-terapias": Stethoscope,
-  fotografia: Camera,
-  inmuebles: Building,
-  "proveedores-mayoreo": Warehouse,
-  empleos: Briefcase,
-  otros: MoreHorizontal,
-};
+
 
 interface SearchFiltersProps {
   initialQuery?: string;
@@ -235,7 +201,7 @@ export function SearchFilters({
           Todos
         </button>
         {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat) => {
-          const Icon = CATEGORY_ICONS[cat.slug] ?? MoreHorizontal;
+          const Icon = iconoDeCategoria(cat.slug);
           const isActive = initialCategory === cat.slug;
           return (
             <button
