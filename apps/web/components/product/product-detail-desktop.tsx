@@ -78,7 +78,9 @@ export function ProductDetailDesktop({
   const reviewsCount = Number(seller.reviews_count ?? reviews.length);
 
   const previewUrl = `${pathname}?preview=visitor`;
-  const loginRedirect = `/login?redirect=${encodeURIComponent(pathname)}`;
+  // `next`, no `redirect`: ver la nota en sticky-cta.tsx. Nadie leia
+  // ?redirect=, asi que el comprador perdia el producto al iniciar sesion.
+  const loginRedirect = `/login?next=${encodeURIComponent(pathname)}`;
   const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy`;
   const contactHref = `/chat?seller=${seller.id}&product=${product.id}`;
 

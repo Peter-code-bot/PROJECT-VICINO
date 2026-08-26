@@ -38,13 +38,15 @@ test.describe("Producto detalle - matriz visitor/owner", () => {
       // exacta depende de la variante activa.
       await expect(anonPage.getByText(/\$\s?\d/).first()).toBeAttached();
 
-      // El sticky-cta anonimo renderiza /login?redirect=<pathname>; verificar
+      // El sticky-cta anonimo renderiza /login?next=<pathname>; verificar
       // el atributo href es la prueba directa de la decision de render (mas
       // robusto que click + navegacion runtime, que dependeria de la session).
       const cta = anonPage.getByRole("link", { name: /quiero comprarlo/i }).first();
       await expect(cta).toBeVisible();
       const href = await cta.getAttribute("href");
-      expect(href).toMatch(/^\/login\?redirect=/);
+      // Antes esta prueba exigia ?redirect=, que no lo leia nadie: fijaba el
+      // bug en vez de detectarlo. El parametro que el login entiende es next.
+      expect(href).toMatch(/^\/login\?next=/);
     } finally {
       await anonContext.close();
     }

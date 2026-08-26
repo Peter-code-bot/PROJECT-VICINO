@@ -51,11 +51,16 @@ export function StickyCta({
 
   // Visitor variant: anonymous (no session) -> single primary CTA to login.
   if (!hasSession) {
+    // `next`, no `redirect`. Se escribia ?redirect= aqui y en el detalle de
+    // escritorio, y NO LO LEIA NADIE: el middleware pone ?next= en siete
+    // sitios y el formulario de login lee ?next=. Un visitante anonimo que
+    // pulsaba "Quiero comprarlo" —el momento de mayor intencion de compra que
+    // hay en la app— iniciaba sesion y aterrizaba en el home, sin el producto.
     const redirectTarget = encodeURIComponent(pathname);
     return (
       <div className={SHELL} style={{ paddingBottom: SAFE_PAD }}>
         <Link
-          href={`/login?redirect=${redirectTarget}`}
+          href={`/login?next=${redirectTarget}`}
           className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
         >
           <ShoppingBag className="h-4 w-4" />
