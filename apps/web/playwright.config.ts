@@ -43,6 +43,26 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    // El viewport movil que exige la regla de CLAUDE.md y que llevaba varios
+    // pushes sin correrse. Nace de que ProductDetailDesktop fue un stub TODO
+    // que llego a produccion porque la fase que flipeo el flag solo valido
+    // movil: la regla pide los DOS, y hasta hoy la suite solo tenia uno.
+    //
+    // Pixel 7 y no iPhone 13 a proposito: los descriptores de iPhone traen
+    // defaultBrowserType "webkit", y aqui solo se instala chromium
+    // (`test:e2e:setup` es `playwright install chromium`). Con iPhone 13 esto
+    // no probaria mas, fallaria por binario ausente.
+    {
+      name: "mobile",
+      testIgnore: /seed\.spec\.ts/,
+      use: {
+        ...devices["Pixel 7"],
+        // Pixel 7 trae 412x915; la regla pide exactamente 375x812.
+        viewport: { width: 375, height: 812 },
+        storageState: STORAGE_STATE,
+      },
+      dependencies: ["setup"],
+    },
   ],
 
   webServer: {

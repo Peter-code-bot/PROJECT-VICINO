@@ -44,6 +44,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # El guard de stubs TODO ya esta encadenado al build (package.json:7),
+      # pero eso solo dispara en Vercel, o sea DESPUES del push a master. Aqui
+      # se adelanta al PR reutilizando el checkout y el install de este job,
+      # sin anadir un job ni un build completo.
+      - name: Guard de stubs TODO
+        run: cd apps/web && node scripts/check-no-todo.mjs
+
       - name: Type check
         run: cd apps/web && pnpm type-check
 

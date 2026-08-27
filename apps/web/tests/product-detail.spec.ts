@@ -67,7 +67,11 @@ test.describe("Producto detalle - matriz visitor/owner", () => {
     expect(buyHref).toMatch(/intent=buy/);
 
     await expect(
-      page.getByRole("link", { name: /contactar vendedor/i }).first(),
+      // El mismo control se llama distinto segun el viewport: "Contactar
+      // Vendedor" en escritorio y "Contactar al vendedor" (aria-label del
+      // boton solo-icono) en movil. El test acepta los dos; unificar la
+      // redaccion es cambio de copy y lo revisa Alejandro.
+      page.getByRole("link", { name: /contactar (al )?vendedor/i }).first(),
     ).toBeVisible();
   });
 
@@ -102,7 +106,15 @@ test.describe("Producto detalle - matriz visitor/owner", () => {
 
     // PreviewBanner no expone testid; nos apoyamos en texto del banner.
     await expect(
-      page.getByText(/preview|visitante|cómo te ven|asi te ven/i).first(),
+      // filter({ visible: true }) es lo que hacia falta: getByText NO salta
+      // los ocultos (getByRole si, por eso los asserts de al lado pasaban), y
+      // el banner se monta en las DOS variantes del detalle. .first() a secas
+      // agarraba la de movil, oculta por md:hidden en escritorio. Con esto el
+      // assert mira el banner que de verdad se ve, en cualquier viewport.
+      page
+        .getByText(/preview|visitante|cómo te ven|asi te ven/i)
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /quiero comprarlo/i }).first(),
@@ -155,9 +167,14 @@ test.describe("Producto detalle - matriz visitor/owner", () => {
   //    pagina renderiza en desktop y que, si hay reviews, el drawer
   //    abre del lado correcto. Si no hay reviews, validamos solo el
   //    layout desktop.
-  test("#7 desktop 1280 renderiza layout 2-col y abre drawer en reviews", async ({
-    page,
-  }) => {
+  test("#7 desktop 1280 renderiza layout 2-col y abre drawer en reviews", async (
+    { page },
+    testInfo,
+  ) => {
+    // Este test es de escritorio por definicion: fuerza 1280x800 y comprueba
+    // el layout de dos columnas. En el proyecto movil no aporta nada y su
+    // setViewportSize contradiria el viewport del proyecto.
+    test.skip(testInfo.project.name === "mobile", "el layout 2-col es de escritorio");
     await page.setViewportSize({ width: 1280, height: 800 });
 
     const slug = await findVisitorProductSlug(page);

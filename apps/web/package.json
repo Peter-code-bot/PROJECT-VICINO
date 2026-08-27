@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
-    "test:e2e": "playwright test --project=chromium",
+    "test:e2e": "playwright test --project=chromium --project=mobile",
     "test:e2e:setup": "playwright install chromium"
   },
   "dependencies": {
