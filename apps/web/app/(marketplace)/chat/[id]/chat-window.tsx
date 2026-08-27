@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice, formatRelativeTime } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
@@ -17,6 +17,11 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { posterUrl } from "@/lib/video-thumbnail";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { leerAdjuntos, subirAdjuntos } from "@/lib/chat/attachments";
+import { useFirmasAdjuntos } from "@/hooks/use-firmas-adjuntos";
+import { MessagePhotos } from "./message-photos";
+import { PhotoPickerButton, PhotoTray, admitirFotos } from "./photo-tray";
+import { MAX_ADJUNTOS_POR_MENSAJE, type ChatAttachment } from "@vicino/shared";
 
 // Window for the realtime fallback to reclaim an in-flight optimistic
 // message. 3s is firmed as the safe upper bound: shorter risks legitimate
@@ -106,6 +111,11 @@ export function ChatWindow({
   );
   const [input, setInput] = useState("");
   const [sendError, setSendError] = useState("");
+  /** Fotos elegidas y aun sin mandar. Se vacia al enviar o al fallar. */
+  const [fotos, setFotos] = useState<File[]>([]);
+  /** Subiendo al bucket. Estado aparte de "enviando" porque es la parte lenta
+   *  y la unica que conviene bloquear. */
+  const [subiendo, setSubiendo] = useState(false);
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
@@ -169,16 +179,21 @@ export function ChatWindow({
   const router = useRouter();
 
   const sendMutation = useOptimisticMutation(
-    ({ text }: { tempId: string; text: string }) => sendMessage(chatId, text),
+    ({ text, attachments }: { tempId: string; text: string; attachments: ChatAttachment[] }) =>
+      sendMessage(chatId, text, attachments),
     {
-      onMutate: ({ tempId, text }) => {
+      onMutate: ({ tempId, text, attachments }) => {
         trackTempId(text, tempId);
         const optimisticMsg: Message = {
           id: tempId,
           chat_id: chatId,
           autor_id: currentUserId,
           texto: text,
-          attachments: [],
+          // El optimista lleva ya los adjuntos: si aqui fuera [], la foto
+          // desapareceria un instante y reapareceria al llegar el eco de
+          // realtime, que es justo el parpadeo que el optimista existe para
+          // evitar.
+          attachments,
           created_at: new Date().toISOString(),
           leido_por_comprador: isBuyer,
           leido_por_vendedor: !isBuyer,
@@ -503,20 +518,65 @@ export function ChatWindow({
     return () => observer.disconnect();
   }, [hasOlder, loadOlder]);
 
+  // Todas las rutas visibles, firmadas de una sola vez. El hook compara por
+  // contenido para no pedir firmas nuevas en cada repintado.
+  const rutasVisibles = useMemo(
+    () => messages.flatMap((m) => leerAdjuntos(m.attachments).map((a) => a.path)),
+    [messages],
+  );
+  const firmas = useFirmasAdjuntos(supabase, rutasVisibles);
+
+  function elegirFotos(nuevas: File[]) {
+    const { fotos: siguientes, aviso } = admitirFotos(fotos, nuevas);
+    setFotos(siguientes);
+    setSendError(aviso);
+  }
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (subiendo) return;
+    // Una foto sola ya es un mensaje. El texto deja de ser obligatorio.
+    if (!input.trim() && fotos.length === 0) return;
 
     void hapticMedium();
     const text = input.trim();
+    const porSubir = fotos;
     setInput("");
+    setFotos([]);
     setSendError("");
 
     // Unique temp id per send so rapid consecutive optimistic messages
     // do not collide. Math.random suffix guards against same-millisecond
     // multiple sends from a fast user.
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    void sendMutation.mutate({ tempId, text });
+
+    if (porSubir.length === 0) {
+      void sendMutation.mutate({ tempId, text, attachments: [] });
+      return;
+    }
+
+    // Con fotos, la subida va ANTES del optimista. Pintar el mensaje y subir
+    // despues obligaria a deshacerlo en pantalla si la subida falla, y eso es
+    // peor que esperar: el mensaje ya publicado con la foto sin llegar.
+    void (async () => {
+      setSubiendo(true);
+      try {
+        const adjuntos = await subirAdjuntos(supabase, chatId, currentUserId, porSubir);
+        await sendMutation.mutate({ tempId, text, attachments: adjuntos });
+      } catch (error) {
+        // Se devuelven las fotos a la tira para que reintentar sea un toque y
+        // no volver a buscarlas en la galeria.
+        setFotos(porSubir);
+        setInput(text);
+        setSendError(
+          error instanceof Error && error.message
+            ? `No se pudieron enviar las fotos: ${error.message}`
+            : "No se pudieron enviar las fotos",
+        );
+      } finally {
+        setSubiendo(false);
+      }
+    })();
   }
 
   return (
@@ -725,7 +785,16 @@ export function ChatWindow({
                     : "rounded-bl-md bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]"
                 )}
               >
-                <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
+                <MessagePhotos
+                  adjuntos={leerAdjuntos(msg.attachments)}
+                  firmas={firmas}
+                  esPropio={isOwn}
+                />
+                {/* Una foto sola viaja con texto vacio: pintar el parrafo
+                    igual dejaria una linea en blanco bajo la imagen. */}
+                {msg.texto.trim() !== "" && (
+                  <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
+                )}
                 <div
                   className={cn(
                     "mt-1 flex items-center justify-end gap-1",
@@ -751,7 +820,7 @@ export function ChatWindow({
                 <ReportMenuButton
                   targetType="message"
                   targetId={msg.id}
-                  targetLabel={msg.texto.slice(0, 60)}
+                  targetLabel={msg.texto.trim().slice(0, 60) || "Foto enviada en el chat"}
                   iconSize={14}
                   ariaLabel="Reportar mensaje"
                   className="opacity-40 group-hover:opacity-100 transition-opacity"
@@ -771,10 +840,20 @@ export function ChatWindow({
       )}
 
       {/* Input */}
+      <PhotoTray
+        fotos={fotos}
+        onQuitar={(i) => setFotos((prev) => prev.filter((_, j) => j !== i))}
+        ocupado={subiendo}
+      />
       <form
         onSubmit={handleSend}
         className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 bg-card supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3 shadow-[inset_0_1px_0_0_var(--border)]"
       >
+        <PhotoPickerButton
+          onElegir={elegirFotos}
+          restantes={MAX_ADJUNTOS_POR_MENSAJE - fotos.length}
+          disabled={subiendo}
+        />
         <input
           type="text"
           value={input}
@@ -784,10 +863,10 @@ export function ChatWindow({
         />
         <button
           type="submit"
-          disabled={!input.trim()}
+          disabled={(!input.trim() && fotos.length === 0) || subiendo}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
         >
-          <Send className="h-4 w-4" />
+          {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
       </form>
     </div>

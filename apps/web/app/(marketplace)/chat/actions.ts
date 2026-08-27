@@ -12,6 +12,7 @@ import {
   confirmSaleSchema,
   cancelSaleSchema,
   formatPrice,
+  type ChatAttachment,
 } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
@@ -146,11 +147,31 @@ export async function getMessagesBefore(
   return { items, nextCursor };
 }
 
-export async function sendMessage(chatId: string, texto: string) {
-  if (!texto || typeof texto !== "string") return { error: "Mensaje inválido" };
+/**
+ * Manda un mensaje, con texto, con fotos, o con las dos cosas.
+ *
+ * LOS ADJUNTOS VIAJAN EN EL MISMO INSERT, A PROPOSITO. La tentacion es insertar
+ * el mensaje y despues actualizarlo con las fotos, y seria un fallo mudo:
+ * messages NO TIENE NINGUNA POLICY DE UPDATE, asi que ese segundo paso afecta a
+ * cero filas y PostgREST lo devuelve sin error. El mensaje quedaria publicado
+ * sin sus fotos y nadie se enteraria.
+ *
+ * Las rutas se comprueban aqui Y en la base. La de aqui existe para dar un
+ * mensaje legible; la que obliga de verdad es el constraint
+ * messages_attachments_validos, porque la policy de INSERT de messages permite
+ * escribir directamente desde el navegador con la llave anon — esta accion es
+ * el camino normal, no el unico.
+ */
+export async function sendMessage(
+  chatId: string,
+  texto: string,
+  attachments: ChatAttachment[] = [],
+) {
+  if (typeof texto !== "string") return { error: "Mensaje inválido" };
   // Strip HTML tags without entity-encoding: chat renders as plain text so React handles XSS
   const safeTexto = texto.trim().replace(/<[^>]*>/g, "");
-  if (!safeTexto || safeTexto.length > 2000) return { error: "Mensaje inválido" };
+  if (safeTexto.length > 2000) return { error: "Mensaje inválido" };
+  if (!safeTexto && attachments.length === 0) return { error: "Mensaje inválido" };
 
   const supabase = await createClient();
   const {
@@ -162,9 +183,20 @@ export async function sendMessage(chatId: string, texto: string) {
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
-  const parsed = sendMessageSchema.safeParse({ chat_id: chatId, texto });
+  const parsed = sendMessageSchema.safeParse({
+    chat_id: chatId,
+    texto: safeTexto,
+    attachments,
+  });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
+  }
+
+  // Cada foto tiene que vivir bajo <chat>/<autor>/. Se comprueba con el chatId
+  // ya validado y el user.id de la sesion, nunca con nada que venga del cliente.
+  const prefijo = `${parsed.data.chat_id}/${user.id}/`;
+  if (parsed.data.attachments.some((a) => !a.path.startsWith(prefijo))) {
+    return { error: "Adjunto inválido" };
   }
 
   const { data: inserted, error } = await supabase
@@ -173,11 +205,18 @@ export async function sendMessage(chatId: string, texto: string) {
       chat_id: parsed.data.chat_id,
       autor_id: user.id,
       texto: parsed.data.texto,
+      attachments: parsed.data.attachments,
     })
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    // 23514 es uno de los dos constraints de arriba rechazando la fila. Es lo
+    // unico que separa "te falta algo" de "la base esta rota", y sin traducirlo
+    // el usuario veria el texto crudo de Postgres.
+    if (error.code === "23514") return { error: "El mensaje o sus fotos no son válidos" };
+    return { error: error.message };
+  }
   if (!inserted) return { error: "No se pudo enviar el mensaje" };
   return { success: true as const, data: { id: inserted.id } };
 }

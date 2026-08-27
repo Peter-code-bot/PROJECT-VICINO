@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { ReportRowActions } from "../report-row-actions";
+import { firmarAdjuntos, leerAdjuntos } from "@/lib/chat/attachments";
 
 export const metadata = { title: "Admin — Mensajes reportados" };
 
@@ -34,13 +35,30 @@ export default async function MessagesModerationPage() {
     ? await supabase
         .from("messages")
         .select(`
-          id, texto, chat_id, autor_id, is_hidden, created_at,
+          id, texto, chat_id, autor_id, is_hidden, created_at, attachments,
           autor:profiles!autor_id(nombre, user_id)
         `)
         .in("id", targetIds)
     : { data: [] };
 
   const messageById = new Map((messages ?? []).map((m) => [m.id, m]));
+
+  // Las fotos del mensaje reportado, firmadas para que el panel pueda
+  // verlas. Sin esto se moderaba a ciegas: la pagina leia `texto` y nada
+  // mas, asi que una foto denunciada llegaba aqui como un mensaje en
+  // blanco y la decision se tomaba sobre algo que no se habia visto.
+  //
+  // La firma sale del cliente con la sesion de quien modera, NO de una
+  // clave de servicio: la policy de chat-media autoriza a admin y a
+  // moderator explicitamente. Asi el acceso queda atado al rol real de la
+  // persona y no a un permiso global del servidor.
+  const adjuntosPorMensaje = new Map(
+    (messages ?? []).map((m) => [m.id, leerAdjuntos(m.attachments)]),
+  );
+  const firmas = await firmarAdjuntos(
+    supabase,
+    [...adjuntosPorMensaje.values()].flat().map((a) => a.path),
+  );
 
   return (
     <div className="space-y-4">
@@ -52,7 +70,8 @@ export default async function MessagesModerationPage() {
       </Link>
       <h1 className="text-xl font-bold">Mensajes reportados</h1>
       <p className="text-xs text-muted-foreground">
-        El contenido se muestra solo aquí. No se incluye en alertas por email.
+        El contenido —texto y fotos— se muestra solo aquí. No se incluye en
+        alertas por email. Los enlaces de las fotos caducan en una hora.
       </p>
 
       {!reports || reports.length === 0 ? (
@@ -86,7 +105,42 @@ export default async function MessagesModerationPage() {
                     <div className="text-xs text-muted-foreground">
                       De: {autor?.nombre ?? "?"} · {formatDate(message.created_at)}
                     </div>
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.texto}</p>
+                    {message.texto.trim() !== "" && (
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.texto}</p>
+                    )}
+                    {(adjuntosPorMensaje.get(message.id) ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {(adjuntosPorMensaje.get(message.id) ?? []).map((a) => {
+                          const url = firmas.get(a.path);
+                          return url ? (
+                            // Se abre en pestana nueva y no en un visor propio:
+                            // moderar suele necesitar el original a tamano completo,
+                            // y la URL caduca en una hora igual.
+                            <a
+                              key={a.path}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={url}
+                                alt="Foto adjunta al mensaje reportado"
+                                className="h-24 w-24 rounded-md object-cover"
+                              />
+                            </a>
+                          ) : (
+                            <span
+                              key={a.path}
+                              className="flex h-24 w-24 items-center justify-center rounded-md bg-muted text-[10px] text-muted-foreground"
+                            >
+                              Foto no disponible
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     <span
                       className={`inline-block text-xs px-2 py-0.5 rounded-full ${message.is_hidden ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}`}
                     >
