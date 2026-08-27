@@ -335,27 +335,46 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
             ¡Listo{nombre ? `, ${nombre.split(" ")[0]}` : ""}! Ya eres vendedor en VICINO.
           </h1>
 
+          {/* El texto de esta pantalla se corrigio tras comprobar la premisa.
+              El borrador decia "registra tu colonia: sin ella no apareces en el
+              feed de nadie", y ES FALSO: el feed filtra por la ubicacion de
+              CADA PUBLICACION (ps.ubicacion_geo), no por la colonia del perfil
+              — comprobado leyendo search_nearby_products_v4, que ni siquiera
+              mira pr.ubicacion. La colonia del perfil solo se muestra en el
+              perfil (profile-header.tsx:171).
+
+              Por eso el paso que de verdad hace aparecer a alguien es PUBLICAR,
+              y esa pasa a ser la accion principal. Es ademas lo que distingue a
+              un marketplace de Instagram: Instagram termina en un perfil, un
+              marketplace tiene que terminar en una publicacion. */}
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p className="text-foreground">Te faltan 2 cosas para que la gente te encuentre:</p>
-            <ol className="space-y-2">
-              <li>
-                <strong className="text-foreground">1. Registrar tu colonia</strong>
-                <span className="block">sin ella no apareces en el feed de nadie</span>
-              </li>
-              <li>
-                <strong className="text-foreground">2. Publicar tu primera cosa</strong>
-                <span className="block">un perfil vacío no sale en las búsquedas</span>
-              </li>
-            </ol>
+            <p className="text-foreground">Te falta una cosa para que la gente te encuentre:</p>
+            <p>
+              <strong className="text-foreground">Publica algo.</strong> Al publicar
+              eliges en el mapa dónde estás, y es esa ubicación —la de cada
+              publicación, no la de tu perfil— la que hace que aparezcas cuando alguien
+              busca cerca. Un perfil sin publicaciones no sale en ninguna búsqueda.
+            </p>
+            <p className="pt-1">
+              Aparte, puedes escribir tu colonia en tu perfil para que se vea junto a
+              tu nombre. Eso es solo para que te reconozcan; no afecta a dónde apareces.
+            </p>
           </div>
 
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => router.push("/perfil/editar")}
+              onClick={() => router.push("/vender")}
               className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98]"
             >
-              Registrar mi colonia
+              Publicar mi primera cosa
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/perfil/editar")}
+              className="w-full rounded-xl bg-card py-2.5 text-sm font-medium shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-[color:var(--bg-elev-2)]"
+            >
+              Escribir mi colonia en el perfil
             </button>
             <button
               type="button"

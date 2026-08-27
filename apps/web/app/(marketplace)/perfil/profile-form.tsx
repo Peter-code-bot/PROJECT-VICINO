@@ -271,8 +271,16 @@ export function ProfileForm({
 
         <div className="space-y-2">
           <label htmlFor="ubicacion" className="text-sm font-medium text-foreground/80">
-            Ubicación principal <span className="text-muted-foreground font-normal">(opcional)</span>
+            Colonia o zona <span className="text-muted-foreground font-normal">(opcional)</span>
           </label>
+          {/* Se dice para que sirve, porque "Ubicacion principal" invitaba a
+              creer que decide donde apareces. No lo decide: el feed filtra por
+              la ubicacion de CADA publicacion, no por esta. Comprobado leyendo
+              search_nearby_products_v4, que ni siquiera mira pr.ubicacion. */}
+          <p className="text-xs text-muted-foreground">
+            Se muestra junto a tu nombre para que te reconozcan. Dónde apareces en
+            las búsquedas lo decide la ubicación que eliges en cada publicación.
+          </p>
           <input
             id="ubicacion"
             name="ubicacion"
