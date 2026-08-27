@@ -291,7 +291,10 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
     }
     for (const f of files) {
       const isVid = f.type.startsWith("video/");
-      if (isVid && f.size > 20 * 1024 * 1024) { setError(`${f.name} excede 20MB`); return; }
+      // 50 MB = file_size_limit del bucket product-media (migracion
+      // 20260521000010). Si se sube este numero hay que subir el bucket ANTES:
+      // al reves, el archivo viaja entero y muere al llegar.
+      if (isVid && f.size > 50 * 1024 * 1024) { setError(`${f.name} excede 50MB`); return; }
       if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
     }
     setError("");

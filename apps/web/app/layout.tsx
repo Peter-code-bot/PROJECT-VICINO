@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Inter, Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { ThemeColorSync } from "@/components/shared/theme-color-sync";
 import { CapacitorInit } from "@/components/capacitor-init";
 import { CapacitorSentryInit } from "@/components/capacitor-sentry-init";
 import { PushNotificationInit } from "@/components/push-notification-init";
@@ -58,7 +59,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FFF8F0" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A0F0E" },
+    // Los dos valores son los de --bg en globals.css (:33 y :83). El oscuro
+    // decia #0A0F0E y el fondo oscuro real es #050907: una costura visible
+    // entre la barra del navegador y la pagina.
+    //
+    // Estas dos entradas siguen al SISTEMA y solo sirven para el instante
+    // anterior a que corra theme-init.js. A partir de ahi manda el meta sin
+    // `media` que inyecta ese script, y que ThemeColorSync mantiene al dia
+    // cuando la persona cambia de tema.
+    { media: "(prefers-color-scheme: dark)", color: "#050907" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -100,6 +109,7 @@ export default function RootLayout({
           storageKey="vicino-theme"
           disableTransitionOnChange
         >
+          <ThemeColorSync />
           <CapacitorInit />
           <CapacitorSentryInit />
           <PushNotificationInit />

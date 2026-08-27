@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* En Tailwind v4 el variant `dark:` es por media query POR DEFECTO, y este
+   proyecto no tiene tailwind.config ni @config ni darkMode en ningun sitio.
+   Sin esta linea, las 54 utilidades `dark:` del codigo compilan dentro de
+   @media (prefers-color-scheme:dark) y siguen al SISTEMA, mientras los tokens
+   de abajo siguen a la clase .dark que conmutan theme-init.js y next-themes.
+   O sea: con el telefono en oscuro y la app en claro se activaban igual.
+   Esto las reengancha a la misma clase que todo lo demas. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── VICINO DESIGN TOKENS — V2 Green Quiet Luxury ────────── */
 
 :root {

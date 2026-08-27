@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPrice, primaryCategorySlug, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { ReportRowActions } from "../report-row-actions";
 
 export const metadata = { title: "Admin — Productos reportados" };
@@ -31,7 +32,7 @@ export default async function ListingsModerationPage() {
     ? await supabase
         .from("products_services")
         .select(`
-          id, titulo, precio, slug, categoria, is_hidden, estatus, imagen_principal,
+          id, titulo, precio, modo_precio, slug, categoria, is_hidden, estatus, imagen_principal,
           creador:profiles!creador_id(nombre, user_id),
           product_categories(is_primary, categories(slug))
         `)
@@ -90,7 +91,7 @@ export default async function ListingsModerationPage() {
                       </Link>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatPrice(listing.precio)}</span>
+                      <span>{formatPrice(listing.precio) ?? priceFallbackLabel(listing.modo_precio)}</span>
                       <span className="hidden sm:inline">·</span>
                       <span className="truncate flex-1 min-w-0">Vendedor: {creador?.nombre ?? "?"}</span>
                     </div>

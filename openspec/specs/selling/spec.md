@@ -146,15 +146,23 @@ Anchored at `supabase/migrations/20260320000017_storage_buckets.sql:44-54`.
 
 ### Requirement: product-media bucket caps file size and mime types
 
-The `product-media` bucket SHALL enforce a 20 MB per-object size limit and SHALL accept only the mime types: `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `video/webm`, `video/quicktime`.
+The `product-media` bucket SHALL enforce a 50 MB per-object size limit and SHALL accept only the mime types: `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `video/webm`, `video/quicktime`.
 
-Anchored at `supabase/migrations/20260320000017_storage_buckets.sql:4-11`.
+Anchored at `supabase/migrations/20260521000010_fix_bucket_size_50mb.sql`, which raised the original 20 MB of `20260320000017_storage_buckets.sql`.
 
-#### Scenario: Object above 20 MB is rejected
+The client form is stricter on purpose for images: 5 MB. For video it matches the bucket at 50 MB. Anchored at `apps/web/app/(marketplace)/vender/product-form.tsx`. Keeping this section pinned to the ORIGINAL migration is what caused commit 18772386 to lower the form back to 20 MB a week after the bucket had been raised.
 
-- GIVEN a client attempts to upload a 25 MB JPEG to `product-media`
+#### Scenario: Object above 50 MB is rejected
+
+- GIVEN a client attempts to upload a 60 MB MP4 to `product-media`
 - WHEN the storage layer evaluates the request
 - THEN the upload is rejected because the object exceeds the bucket `file_size_limit`
+
+#### Scenario: Oversized video never leaves the device
+
+- GIVEN a seller selects a 60 MB MP4 in the publish form
+- WHEN the file is chosen
+- THEN the form rejects it on selection with a visible message naming the file and the limit, before any network transfer
 
 #### Scenario: Unsupported mime type is rejected
 

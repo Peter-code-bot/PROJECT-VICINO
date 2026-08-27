@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { ListingActions } from "./listing-actions";
 
 export const metadata = { title: "Mis publicaciones" };
@@ -67,7 +68,7 @@ export default async function ListingsPage() {
                   <span className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}>
                     {p.estatus}
                   </span>
-                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio)}</span>
+                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}</span>
                   <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
               </div>

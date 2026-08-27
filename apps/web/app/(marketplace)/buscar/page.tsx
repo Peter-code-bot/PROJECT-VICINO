@@ -305,10 +305,17 @@ export default async function SearchPage({ searchParams }: Props) {
   if (orderedIds === null) {
     switch (params.sort) {
       case "price_asc":
-        query = query.order("precio", { ascending: true });
+        // nullsFirst explicito en las DOS ramas. En ASC coincide con el
+        // default de Postgres, pero se declara igual para que las dos digan lo
+        // mismo y no dependa de recordar cual es el default de cada una.
+        query = query.order("precio", { ascending: true, nullsFirst: false });
         break;
       case "price_desc":
-        query = query.order("precio", { ascending: false });
+        // Aqui SI cambia el comportamiento: en DESC el default de Postgres es
+        // NULLS FIRST, asi que "mayor a menor" encabezaba con las publicaciones
+        // SIN precio. Contradecia el comentario de arriba y lo que ya hacia
+        // bien la rama con filtro de categoria.
+        query = query.order("precio", { ascending: false, nullsFirst: false });
         break;
       case "most_sold":
         query = query.order("ventas_count", { ascending: false });

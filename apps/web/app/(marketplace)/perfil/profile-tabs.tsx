@@ -8,6 +8,7 @@ import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
 import { Grid3X3, Star, GripVertical, Check, X, Loader2 } from "lucide-react";
+import { priceFallbackLabel } from "@/lib/price-mode";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
@@ -71,7 +72,7 @@ function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: 
       {!isEditing && (
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <span className="text-white font-heading font-bold text-sm">
-            {formatPrice(p.precio)}
+            {formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}
           </span>
         </div>
       )}
@@ -103,7 +104,8 @@ interface ProfileTabsProps {
   products: Array<{
     id: string;
     titulo: string;
-    precio: number;
+    precio: number | null;
+    modo_precio?: string | null;
     imagen_principal: string | null;
     categoria: string;
     slug: string;
