@@ -140,4 +140,93 @@ test.describe("Navegacion - ningun boton lleva a 404", () => {
       expect(res.status(), `${destino} desde la barra inferior`).not.toBe(404);
     }
   });
+
+  // Los otros dos estados que pidio Pedro: registrado y vendedor. El proyecto
+  // trae sesion (storageState del seed), asi que aqui se recorren las paginas
+  // que SOLO existen con cuenta, que son justo las que el caso anonimo no
+  // puede alcanzar.
+  const PAGINAS_CON_SESION = [
+    "/",
+    "/perfil",
+    "/chat",
+    "/favoritos",
+    "/historial",
+    "/notificaciones",
+    "/citas",
+    "/solicitudes/nueva",
+  ];
+
+  const PAGINAS_DE_VENDEDOR = [
+    "/seller",
+    "/seller/listings",
+    "/seller/ventas",
+    "/seller/reviews",
+    "/seller/cupones",
+    "/seller/verificacion",
+    "/vender",
+  ];
+
+  async function enlacesRotos(
+    pagina: import("@playwright/test").Page,
+    rutas: string[],
+    baseURL: string | undefined,
+  ) {
+    // Cache COMPARTIDA entre las paginas del recorrido. Sin ella el test
+    // agotaba su tiempo: las siete paginas del panel comparten menu lateral y
+    // barra inferior, asi que los mismos veinte enlaces se pedian siete veces.
+    const vistos = new Map<string, number>();
+    const rotos: string[] = [];
+    for (const ruta of rutas) {
+      const respuesta = await pagina.goto(ruta);
+      // Si la propia pagina no existe o rebota a login, no es su turno: este
+      // test mira los ENLACES que pinta, no el muro, que ya se prueba aparte.
+      if (!respuesta || respuesta.status() >= 400) continue;
+      if (new URL(pagina.url()).pathname.startsWith("/login")) continue;
+
+      const hrefs = await pagina
+        .locator("a[href]")
+        .evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+
+      const porRuta = new Map<string, string>();
+      for (const href of hrefs.filter(esInterna)) {
+        const solo = href.split("?")[0]!;
+        if (!porRuta.has(solo)) porRuta.set(solo, href);
+      }
+
+      const nuevos = [...porRuta.values()].filter((h) => !vistos.has(h.split("?")[0]!));
+      const respuestas = await Promise.all(
+        nuevos.map(async (href) => ({
+          href,
+          status: (await pagina.request.get(new URL(href, baseURL).toString())).status(),
+        })),
+      );
+      for (const r of respuestas) vistos.set(r.href.split("?")[0]!, r.status);
+
+      for (const href of porRuta.values()) {
+        if (vistos.get(href.split("?")[0]!) === 404) rotos.push(`${ruta} -> ${href} (404)`);
+      }
+    }
+    return rotos;
+  }
+
+  test("#4 con sesion: ningun enlace de las paginas de cuenta da 404", async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+    const rotos = await enlacesRotos(page, PAGINAS_CON_SESION, baseURL);
+    expect(rotos, "enlaces rotos en las paginas con sesion").toEqual([]);
+  });
+
+  test("#5 como vendedor: ningun enlace del panel da 404", async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+    // Si la cuenta del seed no es vendedora, cada pagina rebota a login o al
+    // home y enlacesRotos las salta sola. El test no miente: no afirma haber
+    // probado lo que no pudo alcanzar.
+    const rotos = await enlacesRotos(page, PAGINAS_DE_VENDEDOR, baseURL);
+    expect(rotos, "enlaces rotos en el panel de vendedor").toEqual([]);
+  });
 });
