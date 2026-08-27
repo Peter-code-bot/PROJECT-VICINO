@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforce, verificacionRateLimit } from "@/lib/rate-limit";
 
 export async function verifyDocument(
   path: string, 
@@ -27,6 +28,22 @@ export async function verifyDocument(
     throw new Error("No autenticado");
   }
   const userId = userResponse.user.id;
+
+  // Freno ANTES de gastar. Todo lo que hay debajo termina en una llamada de
+  // vision de OpenAI, que cuesta dinero de la cuenta del proyecto en cada
+  // invocacion. No habia ningun limite: un bucle autenticado vaciaba el saldo
+  // sin que nada lo parara.
+  //
+  // Va despues de comprobar la sesion para que nadie pueda gastarle la cuota a
+  // otro, y antes del consentimiento para que ni siquiera se consulte la base
+  // en el caso abusivo.
+  const cuota = await enforce(verificacionRateLimit, `verificacion:${userId}`);
+  if (!cuota.ok) {
+    return {
+      success: false,
+      error: "Has hecho demasiados intentos de verificación. Vuelve a intentarlo en una hora.",
+    };
+  }
 
   // Sin consentimiento expreso registrado, no se procesa nada.
   //

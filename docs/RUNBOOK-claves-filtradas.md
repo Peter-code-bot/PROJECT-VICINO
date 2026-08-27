@@ -144,6 +144,56 @@ copiado a otro sitio antes de la rotación.
 
 ---
 
+## Lo que solo puede desbloquear el soporte de Supabase
+
+Tres superficies tienen permisos concedidos a `PUBLIC` o a `anon` que **no se
+pueden revocar desde aquí**: sus dueños son `supabase_admin` y
+`supabase_storage_admin`, no `postgres`.
+
+El detalle que las hace peligrosas es cómo fallan. Un `REVOKE` sobre ellas
+**no da error: simplemente no hace nada.** Comprobado el 27 de agosto —
+ejecuté el revoke dentro de un `ROLLBACK` y `has_table_privilege` seguía
+devolviendo `true` después. Es exactamente el modo de fallo que dejó
+`delete_user_data` abierta cinco meses con una línea en el ledger diciendo que
+estaba cerrada.
+
+| Superficie | Qué tiene concedido | ¿Alcanzable hoy? |
+|---|---|---|
+| `public.spatial_ref_sys` | `anon` tiene `DELETE` y `TRUNCATE` | **Sí.** `GET /rest/v1/spatial_ref_sys` responde **200** con la clave pública |
+| `net.http_request_queue`, `net._http_response` | `PUBLIC` tiene **todos** los privilegios | No — el esquema `net` no está expuesto (406) |
+| `storage.objects`, `storage.buckets` | `anon` y `authenticated` tienen `TRUNCATE` | No — el esquema `storage` no está expuesto (406) |
+
+**La urgente es la primera.** Un `DELETE` anónimo sobre el SRID 4326 rompe todo
+cálculo de PostGIS: el feed de cercanía, `search_nearby_products_v4`, el ranking
+por ubicación y el mapa. `TRUNCATE` además no obedece a la RLS, así que ninguna
+policy lo detendría aunque la hubiera.
+
+**Mitigación en pie, y verificada.** El cron `restore-spatial-ref-sys-hourly`
+(minuto 23 de cada hora) llama a `vicino_guard.restore_spatial_ref_sys()`. Ha
+corrido 33 veces sin fallar. Y funciona de verdad, no solo "reporta éxito":
+borré el SRID 4326 dentro de un `ROLLBACK`, llamé a la función, y `ST_Distance`
+volvió a calcular. Aun así es una tirita — deja una ventana de hasta una hora
+con el feed caído.
+
+Las otras dos son deuda, no urgencia, pero conviene cerrarlas: `http_request_queue`
+guarda las cabeceras `Authorization: Bearer <service_role_key>` de las peticiones
+en vuelo, así que el día que alguien exponga el esquema `net` eso es una fuga de
+credencial servida por la API.
+
+**Qué pedirle a soporte**, en un solo ticket:
+
+```
+REVOKE DELETE, TRUNCATE ON public.spatial_ref_sys FROM anon, authenticated;
+REVOKE ALL ON net.http_request_queue, net._http_response FROM PUBLIC;
+REVOKE TRUNCATE ON storage.objects, storage.buckets FROM anon, authenticated;
+```
+
+Y de paso, que corrijan el `pg_default_acl` de `supabase_admin`: es lo que hace
+que cada tabla nueva de `public` nazca con DML concedido al cliente. Sin eso, el
+problema vuelve con la siguiente tabla.
+
+---
+
 ## Los otros dos secretos que también hay que atender
 
 - **`x-webhook-secret`** quedó expuesto en la terminal el 26 de agosto. Rotar.

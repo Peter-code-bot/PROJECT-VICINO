@@ -112,6 +112,14 @@ export const readHeavyRateLimit = makeLimiter("1 m", 60, "rl:read");
 export const reportRateLimit = makeLimiter("1 h", 10, "rl:report");
 export const reportIpRateLimit = makeLimiter("1 h", 30, "rl:report-ip");
 
+// Verificacion de documento. Cada invocacion es una llamada de vision de
+// OpenAI, o sea que cada peticion cuesta dinero real de la cuenta del
+// proyecto. Sin freno, un bucle autenticado vacia el saldo.
+//
+// Cinco a la hora es holgado para el caso legitimo: una persona verifica su
+// identidad una vez, y si sale mal reintenta un par de veces con otra foto.
+export const verificacionRateLimit = makeLimiter("1 h", 5, "rl:verificacion");
+
 type EnforceResult = { ok: true } | { ok: false; error: string };
 
 /**

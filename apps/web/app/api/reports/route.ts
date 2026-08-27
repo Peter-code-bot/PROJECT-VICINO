@@ -164,6 +164,23 @@ async function checkSelfReport(
 ): Promise<SelfReportCheck> {
   if (targetType === "user") {
     if (targetId === reporterId) return "self";
+    // Esta rama devolvia "ok" sin mirar nada. Como reports.target_id es
+    // polimorfica y por eso no tiene clave foranea, un uuid inventado entraba
+    // como fila valida -- y cada fila dispara notify_report_created, que manda
+    // un correo URGENTE por Resend. O sea: basura en la tabla y una bandeja de
+    // entrada llena, con solo mandar uuids al azar.
+    //
+    // Las otras tres ramas (listing, review, message) si comprueban existencia
+    // porque necesitan el dueno para detectar el autorreporte. Esta no lo
+    // necesitaba y por eso se quedo sin comprobar; el efecto colateral era que
+    // tampoco comprobaba que la persona existiera.
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (error) return "ok"; // la lookup fallo: no se castiga al que reporta
+    if (!data) return "not_found";
     return "ok";
   }
 

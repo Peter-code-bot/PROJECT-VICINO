@@ -79,12 +79,17 @@ export async function POST(request: Request): Promise<NextResponse> {
       message: "Cuenta eliminada exitosamente.",
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    // El mensaje de la excepcion se REGISTRA, no se devuelve.
+    //
+    // Antes viajaba al cliente en `details`, y el mensaje de un error de
+    // Postgres nombra tablas, columnas y policies: le regala a quien sondea la
+    // ruta un mapa del esquema que de otro modo tendria que adivinar. Quien
+    // necesita ese detalle es quien depura, y para eso esta Sentry.
+    Sentry.captureException(err, {
+      tags: { route: "account/delete", step: "catch_final" },
+    });
     return NextResponse.json(
-      {
-        error: "Error interno del servidor.",
-        details: message,
-      },
+      { error: "Error interno del servidor." },
       { status: 500 }
     );
   }
