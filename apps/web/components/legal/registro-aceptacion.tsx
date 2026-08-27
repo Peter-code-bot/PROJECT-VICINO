@@ -37,7 +37,12 @@ export function RegistroAceptacionLegal() {
     if (yaRegistrado) return;
 
     void registrarAceptacionLegal()
-      .then(() => {
+      .then((resultado) => {
+        // Solo se marca si de verdad se registro. La accion devuelve { error }
+        // en vez de lanzar, asi que marcar en el then a secas convertia un
+        // fallo en "ya esta hecho" para el resto de la sesion — y el registro
+        // legal se perdia sin que nadie lo reintentara.
+        if (!resultado || "error" in resultado) return;
         try {
           window.sessionStorage.setItem(CLAVE, "1");
         } catch {

@@ -2639,6 +2639,7 @@ export type Database = {
         }
         Returns: string
       }
+      ruta_de_chat_referenciada: { Args: { p_ruta: string }; Returns: boolean }
       search_nearby_products: {
         Args: {
           radius_meters?: number
@@ -2662,70 +2663,38 @@ export type Database = {
           ventas_count: number
         }[]
       }
-      search_nearby_products_v4:
-        | {
-            Args: {
-              cursor_id?: string
-              cursor_time?: string
-              radius_meters?: number
-              restrict_seller_mode?: boolean
-              result_limit?: number
-              search_term?: string
-              seller_ids?: string[]
-              sort_by_distance?: boolean
-              user_lat: number
-              user_lng: number
-            }
-            Returns: {
-              categoria: string
-              created_at: string
-              distance_meters: number
-              id: string
-              imagen_principal: string
-              modo_precio: string
-              precio: number
-              precio_negociable: boolean
-              product_categories: Json
-              profiles: Json
-              slug: string
-              tipo: string
-              tipo_entrega: string
-              titulo: string
-              ventas_count: number
-            }[]
-          }
-        | {
-            Args: {
-              cursor_id?: string
-              cursor_time?: string
-              radius_meters?: number
-              restrict_seller_mode?: boolean
-              result_limit?: number
-              search_term?: string
-              seller_ids?: string[]
-              sin_limite?: boolean
-              sort_by_distance?: boolean
-              user_lat: number
-              user_lng: number
-            }
-            Returns: {
-              categoria: string
-              created_at: string
-              distance_meters: number
-              id: string
-              imagen_principal: string
-              modo_precio: string
-              precio: number
-              precio_negociable: boolean
-              product_categories: Json
-              profiles: Json
-              slug: string
-              tipo: string
-              tipo_entrega: string
-              titulo: string
-              ventas_count: number
-            }[]
-          }
+      search_nearby_products_v4: {
+        Args: {
+          cursor_id?: string
+          cursor_time?: string
+          radius_meters?: number
+          restrict_seller_mode?: boolean
+          result_limit?: number
+          search_term?: string
+          seller_ids?: string[]
+          sin_limite?: boolean
+          sort_by_distance?: boolean
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          categoria: string
+          created_at: string
+          distance_meters: number
+          id: string
+          imagen_principal: string
+          modo_precio: string
+          precio: number
+          precio_negociable: boolean
+          product_categories: Json
+          profiles: Json
+          slug: string
+          tipo: string
+          tipo_entrega: string
+          titulo: string
+          ventas_count: number
+        }[]
+      }
       set_username: { Args: { p_username: string }; Returns: string }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }

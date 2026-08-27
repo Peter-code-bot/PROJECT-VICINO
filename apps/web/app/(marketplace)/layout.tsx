@@ -24,6 +24,12 @@ export default async function MarketplaceLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Se LANZA aqui y se espera al final. Antes era un await suelto despues del
+  // Promise.allSettled, o sea un viaje en serie extra en CADA pagina del
+  // marketplace. No entra en el allSettled porque ese bloque solo corre con
+  // sesion, y este aviso tiene que verse tambien sin ella.
+  const avisosPendientes = supabase.rpc("avisos_legales_pendientes");
+
   let profile = null;
   let isAdmin = false;
   let unreadNotifications = 0;
@@ -103,11 +109,9 @@ export default async function MarketplaceLayout({
   }
 
   // Avisos del §18: versiones sustanciales publicadas que aun no entran en
-  // vigor. Se leen tambien SIN sesion, porque lo que el Aviso obliga es a que
-  // la notificacion sea visible en la Plataforma, no solo a quien inicio
-  // sesion. Si la consulta falla, la lista queda vacia y no se anuncia nada:
-  // un fallo de lectura no puede tumbar el marketplace entero.
-  const { data: avisosLegales } = await supabase.rpc("avisos_legales_pendientes");
+  // vigor. Si la consulta falla, la lista queda vacia y no se anuncia nada: un
+  // fallo de lectura no puede tumbar el marketplace entero.
+  const { data: avisosLegales } = await avisosPendientes;
 
   const isVendedor = profile?.es_vendedor ?? false;
 

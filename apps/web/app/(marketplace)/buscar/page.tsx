@@ -338,10 +338,15 @@ export default async function SearchPage({ searchParams }: Props) {
         query = query.order("precio", { ascending: false, nullsFirst: false });
         break;
       case "most_sold":
-        query = query.order("ventas_count", { ascending: false });
+        // Mismo caso que precio: ventas_count admite nulo y en DESC el default
+        // de Postgres es NULLS FIRST, asi que "mas vendidos" encabezaria con
+        // las publicaciones que no tienen el contador puesto.
+        query = query.order("ventas_count", { ascending: false, nullsFirst: false });
         break;
       default:
-        query = query.order("created_at", { ascending: false });
+        // created_at tambien admite nulo (DEFAULT now()). Lo mas reciente no
+        // puede ser lo que no tiene fecha.
+        query = query.order("created_at", { ascending: false, nullsFirst: false });
     }
 
     const res = await query.range(offset, offset + PAGE_SIZE - 1);

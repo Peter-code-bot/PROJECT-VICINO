@@ -106,14 +106,14 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                   <span className="font-medium text-sm">{u.nombre || "Sin nombre"}</span>
                   <SellerBadge level={u.trust_level ?? "nuevo"} size="sm" />
                   {u.es_vendedor && (
-                    <span className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">
                       Vendedor
                     </span>
                   )}
                   {roles.map((r) => (
                     <span
                       key={r}
-                      className="text-xs bg-red-50 dark:bg-red-950/50 text-red-600 px-2 py-0.5 rounded-full"
+                      className="text-xs bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 px-2 py-0.5 rounded-full"
                     >
                       {r}
                     </span>

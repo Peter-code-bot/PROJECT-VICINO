@@ -17,7 +17,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { posterUrl } from "@/lib/video-thumbnail";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { leerAdjuntos, subirAdjuntos } from "@/lib/chat/attachments";
+import { CHAT_BUCKET, leerAdjuntos, subirAdjuntos } from "@/lib/chat/attachments";
 import { useFirmasAdjuntos } from "@/hooks/use-firmas-adjuntos";
 import { MessagePhotos } from "./message-photos";
 import { PhotoPickerButton, PhotoTray, admitirFotos } from "./photo-tray";
@@ -118,6 +118,15 @@ export function ChatWindow({
   /** Subiendo al bucket. Estado aparte de "enviando" porque es la parte lenta
    *  y la unica que conviene bloquear. */
   const [subiendo, setSubiendo] = useState(false);
+  /**
+   * Fotos de cada envio en vuelo, por tempId.
+   *
+   * Hace falta porque el fallo del INSERT no llega como excepcion: mutate
+   * NUNCA rechaza (su unica salida es resolve() en el finally), asi que el
+   * try/catch de handleSend no lo ve y el error aterriza en onError. Y para
+   * ese momento la bandeja ya se vacio y los File originales se perdieron.
+   */
+  const fotosPorTempRef = useRef<Map<string, File[]>>(new Map());
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
@@ -225,12 +234,33 @@ export function ChatWindow({
         // Release the tempId from the FIFO tracker regardless of whether
         // realId is available. The temp is no longer in flight.
         releaseTempId(text, tempId);
+        fotosPorTempRef.current.delete(tempId);
         if (!realId) return;
         setMessages((prev) =>
           prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m)),
         );
       },
-      onError: (err) => {
+      onError: (err, { tempId, text, attachments }) => {
+        // Las fotos YA estan en el bucket y el mensaje no existe: sin esto se
+        // quedan ahi para siempre, que es como se juntaron los 31 huerfanos de
+        // esta manana en otros buckets. Best-effort: si la limpieza falla no
+        // hay nada mas que hacer desde aqui, y tapar el error original con el
+        // de la limpieza dejaria a la persona sin saber por que no se envio.
+        if (attachments.length > 0) {
+          void supabase.storage
+            .from(CHAT_BUCKET)
+            .remove(attachments.map((a) => a.path))
+            .catch(() => {});
+        }
+        // Y se devuelve lo escrito a la bandeja: reintentar tiene que costar un
+        // toque, no volver a buscar las fotos en la galeria.
+        const fotosDelEnvio = fotosPorTempRef.current.get(tempId);
+        if (fotosDelEnvio && fotosDelEnvio.length > 0) {
+          setFotos(fotosDelEnvio);
+          setInput(text);
+        }
+        fotosPorTempRef.current.delete(tempId);
+
         // Caveat-1 of item #14 firma: the rollback returned by onMutate
         // already calls releaseTempId, so the FIFO tracker stays in sync
         // with the visible messages list even on offline send failures.
@@ -577,6 +607,9 @@ export function ChatWindow({
       setSubiendo(true);
       try {
         const adjuntos = await subirAdjuntos(supabase, chatId, currentUserId, porSubir);
+        // Se anota ANTES de mandar: si el INSERT falla, onError es quien tiene
+        // que poder deshacer, y para entonces porSubir ya no esta a su alcance.
+        fotosPorTempRef.current.set(tempId, porSubir);
         await sendMutation.mutate({ tempId, text, attachments: adjuntos });
       } catch (error) {
         // Se devuelven las fotos a la tira para que reintentar sea un toque y
@@ -873,6 +906,7 @@ export function ChatWindow({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          maxLength={2000}
           placeholder="Escribe un mensaje..."
           className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-[color:var(--fg-dim)] focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
         />
