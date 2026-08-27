@@ -16,9 +16,8 @@ import { createClient } from "@/lib/supabase/client";
 import { hapticMedium } from "@/lib/haptics";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generateVideoThumbnail, generateCroppedVideoThumbnail } from "@/lib/video-thumbnail";
+import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
-import type { CropArea } from "@/lib/crop-image";
 import * as Sentry from "@sentry/nextjs";
 import type { CropResult } from "@/components/product/product-media-cropper";
 
@@ -93,7 +92,7 @@ function toHHMM(t: string | null | undefined, fallback: string): string {
 }
 
 type ExistingMedia = { id: string; kind: "existing"; url: string; isVideo: boolean };
-type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean; videoCropArea?: CropArea };
+type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean };
 type MediaItem = ExistingMedia | PendingMedia;
 
 /** Item queued for cropping before being added to media[] */
@@ -327,15 +326,17 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
           file: result.file,
           preview,
           isVideo: true,
-          videoCropArea: result.cropArea,
         },
       ]);
-      // Generate a cropped thumbnail in the background
-      const thumbPromise: Promise<Blob | null> = generateCroppedVideoThumbnail(
+      // La portada sale del fotograma que eligio el vendedor, no del segundo
+      // 0,1 fijo de antes. Y no se recorta: el recorte de video nunca existio
+      // —el archivo se subia intacto— asi que recortar solo la miniatura hacia
+      // que la portada no se pareciera al video.
+      const thumbPromise: Promise<Blob | null> = generateVideoThumbnail(
         result.file,
-        result.cropArea,
+        result.segundoPortada,
       ).catch((err) => {
-        console.warn("cropped video thumbnail generation failed", result.file.name, err);
+        console.warn("video thumbnail generation failed", result.file.name, err);
         return null;
       });
       pendingThumbsRef.current.set(result.file, thumbPromise);

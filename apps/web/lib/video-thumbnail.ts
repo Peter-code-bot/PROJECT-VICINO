@@ -17,7 +17,6 @@
  * fallback so the user still sees the first frame.
  */
 
-import type { CropArea } from "@/lib/crop-image";
 
 // Exported so server actions can reuse the same video detection regex
 // when classifying URLs into media_assets.type (image vs video) at insert
@@ -25,6 +24,15 @@ import type { CropArea } from "@/lib/crop-image";
 // (~* '\.(mp4|webm|mov)(\?.*)?$').
 export const VIDEO_EXT_RE = /\.(mp4|webm|mov)(\?[^#]*)?(#.*)?$/i;
 const MAX_THUMB_WIDTH = 1080;
+/**
+ * Instante por defecto del que se saca la portada de un video.
+ *
+ * 0,1 s y no 0 a proposito: en el fotograma cero muchos codecs devuelven negro
+ * o basura porque el decodificador aun no tiene datos.
+ *
+ * Es solo el DEFECTO. Desde el selector de portada el vendedor elige el
+ * instante: antes no podia, y se quedaba con la portada que saliera.
+ */
 const THUMB_SEEK_TIME_SEC = 0.1;
 const THUMB_JPEG_QUALITY = 0.85;
 
@@ -78,7 +86,11 @@ export function posterUrl(url: string): string {
  * Limits the canvas to MAX_THUMB_WIDTH (1080) preserving aspect ratio
  * to keep memory reasonable on 4K source videos.
  */
-export function generateVideoThumbnail(file: File): Promise<Blob> {
+export function generateVideoThumbnail(
+  file: File,
+  /** Segundo del que sacar la portada. Se acota a la duracion real del video. */
+  segundo: number = THUMB_SEEK_TIME_SEC,
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const video = document.createElement("video");
@@ -113,7 +125,15 @@ export function generateVideoThumbnail(file: File): Promise<Blob> {
       // Seek to a slightly-non-zero timestamp because some codecs return
       // a black frame at exactly 0s.
       try {
-        video.currentTime = THUMB_SEEK_TIME_SEC;
+        // Acotado a la duracion real: pedir un instante mas alla del final
+        // deja el evento "seeked" sin disparar y la promesa colgada para
+        // siempre. El isFinite cubre los videos cuya duracion llega como NaN
+        // mientras el navegador aun no la sabe.
+        const dur = Number.isFinite(video.duration) ? video.duration : 0;
+        video.currentTime =
+          dur > 0
+            ? Math.min(Math.max(segundo, 0), Math.max(dur - 0.05, 0))
+            : THUMB_SEEK_TIME_SEC;
       } catch (err) {
         fail(err instanceof Error ? err : new Error("seek failed"));
       }
@@ -146,103 +166,6 @@ export function generateVideoThumbnail(file: File): Promise<Blob> {
         );
       } catch (err) {
         fail(err instanceof Error ? err : new Error("thumbnail draw failed"));
-      }
-    });
-
-    video.addEventListener("error", () => {
-      fail(new Error("video element error event"));
-    });
-
-    video.src = objectUrl;
-  });
-}
-
-/**
- * Generate a JPEG thumbnail blob from the first frame of a video file,
- * drawing ONLY the user-selected crop area. This produces a thumbnail
- * that visually matches what the user chose in the cropper.
- *
- * Same error contract as `generateVideoThumbnail` — callers must
- * treat failure as best-effort.
- */
-export function generateCroppedVideoThumbnail(
-  file: File,
-  cropArea: CropArea,
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    let settled = false;
-
-    function cleanup() {
-      URL.revokeObjectURL(objectUrl);
-      video.removeAttribute("src");
-      video.load();
-    }
-
-    function fail(err: Error) {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(err);
-    }
-
-    function done(blob: Blob) {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(blob);
-    }
-
-    video.crossOrigin = "anonymous";
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-
-    video.addEventListener("loadeddata", () => {
-      try {
-        video.currentTime = THUMB_SEEK_TIME_SEC;
-      } catch (err) {
-        fail(err instanceof Error ? err : new Error("seek failed"));
-      }
-    });
-
-    video.addEventListener("seeked", () => {
-      try {
-        const { x, y, width, height } = cropArea;
-        if (!width || !height) {
-          throw new Error("crop area dimensions invalid");
-        }
-        const scale = Math.min(1, MAX_THUMB_WIDTH / width);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(width * scale);
-        canvas.height = Math.round(height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("canvas context unavailable");
-        ctx.drawImage(
-          video,
-          x,
-          y,
-          width,
-          height,
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              done(blob);
-            } else {
-              fail(new Error("toBlob returned null"));
-            }
-          },
-          "image/jpeg",
-          THUMB_JPEG_QUALITY,
-        );
-      } catch (err) {
-        fail(err instanceof Error ? err : new Error("cropped thumbnail draw failed"));
       }
     });
 

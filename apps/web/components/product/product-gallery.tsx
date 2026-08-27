@@ -229,7 +229,19 @@ export function ProductGallery({
             <X className="w-8 h-8" />
           </button>
           {isVideo(images[lightbox]!) ? (
-            <video src={images[lightbox]} controls autoPlay className="max-w-full max-h-[90vh]" onClick={(e) => e.stopPropagation()} />
+            /* object-contain, igual que su hermano <img> de la linea de abajo.
+               Era la unica de las cuatro superficies de galeria sin object-fit
+               declarado: la regla acordada es cover en rejillas y tarjetas,
+               contain en detalle y lightbox, y la misma para <video> que para
+               <img>. Sin declararlo, un video con proporciones distintas de las
+               de la caja se estiraba en vez de encajar. */
+            <video
+              src={images[lightbox]}
+              controls
+              autoPlay
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
           ) : (
             <img src={images[lightbox]} alt={title} className="max-w-full max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
           )}

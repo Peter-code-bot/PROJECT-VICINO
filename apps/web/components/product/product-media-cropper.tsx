@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2, Crop } from "lucide-react";
@@ -12,7 +12,16 @@ import { getCroppedProductBlob, type CropArea } from "@/lib/crop-image";
 
 export type CropResult =
   | { type: "image"; blob: Blob }
-  | { type: "video"; file: File; cropArea: CropArea };
+  /**
+   * El video NUNCA se recorto de verdad: este componente devolvia el archivo
+   * original intacto y el area de recorte solo servia para recortar la
+   * MINIATURA. O sea, le prometia al vendedor un recorte que no ocurria.
+   *
+   * Ahora hace lo que si puede hacer y ademas es lo que hacia falta: elegir
+   * QUE FOTOGRAMA queda de portada. Antes se tomaba siempre el del segundo 0,1
+   * y al vendedor le tocaba lo que saliera.
+   */
+  | { type: "video"; file: File; segundoPortada: number };
 
 interface ProductMediaCropperProps {
   open: boolean;
@@ -53,6 +62,9 @@ export function ProductMediaCropper({
   // Sin esto el fallo de crop era mudo: el catch solo hacia console.error y el
   // usuario veia el modal volver a "Aplicar crop" sin explicacion.
   const [error, setError] = useState<string | null>(null);
+  // Selector de portada del video. Solo se usa cuando mediaType es "video".
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [segundoPortada, setSegundoPortada] = useState(0);
 
   // Portal mount gate — avoids SSR hydration mismatch
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -99,7 +111,7 @@ export function ProductMediaCropper({
         onCropComplete({
           type: "video",
           file: originalFile,
-          cropArea: croppedArea,
+          segundoPortada: videoRef.current?.currentTime ?? segundoPortada,
         });
       }
     } catch (err) {
@@ -156,27 +168,55 @@ export function ProductMediaCropper({
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
 
-        {/* Cropper area */}
-        <div className="relative w-full aspect-square bg-black">
-          <Cropper
-            {...(mediaType === "video"
-              ? { video: mediaSrc }
-              : { image: mediaSrc })}
-            crop={crop}
-            zoom={zoom}
-            aspect={1}
-            cropShape="rect"
-            showGrid={true}
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={onCropDone}
-            minZoom={1}
-            maxZoom={3}
-          />
-        </div>
+        {/* Video: selector de portada. Imagen: recortador.
+            Para video se usan los controles NATIVOS a proposito: funcionan en
+            movil, el vendedor ya sabe usarlos, y quitan de en medio el velo
+            oscuro de react-easy-crop, que con un video vertical dentro de una
+            caja cuadrada pintaba franjas oscuras arriba y abajo. Eso es lo que
+            se reportaba como "banda negra arriba", y desaparece solo. */}
+        {mediaType === "video" ? (
+          <div className="relative w-full bg-black">
+            <video
+              ref={videoRef}
+              src={mediaSrc ?? undefined}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full max-h-[60vh] object-contain bg-black"
+              onTimeUpdate={(e) => setSegundoPortada(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setSegundoPortada(e.currentTarget.currentTime)}
+            />
+          </div>
+        ) : (
+          <div className="relative w-full aspect-square bg-black">
+            <Cropper
+              image={mediaSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="rect"
+              showGrid={true}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropDone}
+              minZoom={1}
+              maxZoom={3}
+            />
+          </div>
+        )}
 
         {/* Controls */}
         <div className="px-6 py-4 space-y-3 bg-card">
+          {mediaType === "video" && (
+            <p className="text-xs text-muted-foreground">
+              Adelanta el video hasta el momento que quieras como portada y pulsa
+              «Usar este fotograma». El video se publica completo, sin recortar.
+            </p>
+          )}
+
+          {/* Zoom slider — solo para imagen: en video no hay recorte que ajustar */}
+          {mediaType === "image" && (
+          <>
           {/* Zoom slider */}
           <div className="flex items-center gap-3">
             <ZoomOut className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -200,6 +240,8 @@ export function ProductMediaCropper({
           >
             <RotateCcw className="w-3 h-3" /> Restablecer
           </button>
+          </>
+          )}
         </div>
 
         {/* Error — el modal ya no se queda mudo cuando el crop falla */}
@@ -231,7 +273,7 @@ export function ProductMediaCropper({
                 Procesando...
               </>
             ) : (
-              "Aplicar crop"
+              mediaType === "video" ? "Usar este fotograma" : "Aplicar crop"
             )}
           </button>
         </div>
