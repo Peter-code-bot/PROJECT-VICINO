@@ -42,6 +42,19 @@ async function signOrNull(
   return data.signedUrl;
 }
 
+/**
+ * ai_analysis_raw es `Json` en los tipos generados: puede ser objeto, array,
+ * cadena, numero o nulo, porque asi lo guarda la columna. Leerlo con
+ * `as any` afirmaba que era un objeto con ese campo exacto, y si algun dia
+ * el analisis devuelve otra forma eso revienta en el render, del lado del
+ * servidor, en una pagina de admin.
+ */
+function motivoDeRechazo(bruto: unknown): string | null {
+  if (typeof bruto !== "object" || bruto === null || Array.isArray(bruto)) return null;
+  const motivo = (bruto as Record<string, unknown>).motivo_rechazo_o_duda;
+  return typeof motivo === "string" && motivo.trim() !== "" ? motivo : null;
+}
+
 export default async function VerificationsPage() {
   const supabase = await createClient();
   // SECURITY: adminSupabase (service-role) is LOAD-BEARING for the signed-URL
@@ -104,9 +117,9 @@ export default async function VerificationsPage() {
                   </span>
                 </div>
 
-                {v.ai_analysis_raw && (v.ai_analysis_raw as any).motivo_rechazo_o_duda && (
+                {motivoDeRechazo(v.ai_analysis_raw) && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
-                    <span className="font-bold">🤖 Gemini dice:</span> {(v.ai_analysis_raw as any).motivo_rechazo_o_duda}
+                    <span className="font-bold">🤖 Gemini dice:</span> {motivoDeRechazo(v.ai_analysis_raw)}
                   </div>
                 )}
 

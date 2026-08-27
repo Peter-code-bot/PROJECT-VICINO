@@ -77,6 +77,7 @@ export function PhotoTray({
 
   useEffect(() => {
     const urls = fotos.map((f) => URL.createObjectURL(f));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- los object URL exigen el File en mano y revocarse al desmontar
     setPreviews(urls);
     // Cada objectURL retiene el archivo en memoria hasta que se revoca. En un
     // chat donde se eligen y descartan fotos varias veces, no revocarlas es una

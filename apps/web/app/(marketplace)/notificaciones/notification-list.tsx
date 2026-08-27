@@ -152,6 +152,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
   // revalidatePath fires on return navigation). Server is the source of truth;
   // the local copy only exists to host the optimistic flip until that happens.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resincronizar con el servidor cuando el padre RSC trae una copia fresca
     setLocalNotifs(notifications);
   }, [notifications]);
 

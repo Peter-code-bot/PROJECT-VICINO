@@ -54,6 +54,7 @@ export function BottomSheet({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- maquina de estados de entrada y salida: montar y animar son dos pasos
       setMounted(true);
       const raf = requestAnimationFrame(() => setEntered(true));
       return () => cancelAnimationFrame(raf);

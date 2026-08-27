@@ -26,7 +26,7 @@ async function fixProducts() {
 
   for (const p of products) {
     let needsUpdate = false;
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
 
     // 1. Fix missing categoria_id
     if (!p.categoria_id && p.categoria) {

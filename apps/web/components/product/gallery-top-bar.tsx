@@ -156,7 +156,7 @@ export function GalleryTopBar({
               ) : (
                 <>
                   <DropdownMenuItem
-                    onSelect={(e: any) => {
+                    onSelect={(e: Event) => {
                       e.preventDefault();
                       // El aviso llega ANTES de escribir, no despues. Sin
                       // sesion, el modal se abria, dejaba elegir motivo y
@@ -173,7 +173,7 @@ export function GalleryTopBar({
                     Reportar producto
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e: any) => {
+                    onSelect={(e: Event) => {
                       e.preventDefault();
                       void handleShare();
                     }}

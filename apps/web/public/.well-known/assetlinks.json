@@ -5,7 +5,6 @@
       "namespace": "android_app",
       "package_name": "com.vicino.mx",
       "sha256_cert_fingerprints": [
-        "<<<GOOGLE_APP_SIGNING_SHA256>>>",
         "2C:81:C7:8C:89:E1:0A:3B:68:F3:B5:B7:5F:DA:30:C1:E4:CA:F2:EE:5F:42:E8:33:6B:0B:F4:78:21:2A:E0:B3"
       ]
     }

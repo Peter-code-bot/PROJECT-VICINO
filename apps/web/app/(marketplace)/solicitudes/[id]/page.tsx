@@ -119,7 +119,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
   };
 
   const catList = (categories ?? [])
-    .map((c: any) => c.categories)
+    .map((c) => c.categories)
     .filter(Boolean) as Array<{ slug: string; nombre: string }>;
 
   return (

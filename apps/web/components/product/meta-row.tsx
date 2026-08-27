@@ -96,6 +96,7 @@ export function MetaRow({
 
   useEffect(() => {
     if (typeof sellerLat !== "number" || typeof sellerLng !== "number") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpiar la distancia cuando el producto deja de traer coordenadas
       setDistanceLabel(null);
       return;
     }

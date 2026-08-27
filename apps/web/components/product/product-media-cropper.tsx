@@ -73,6 +73,7 @@ export function ProductMediaCropper({
   // Reset state when a new media source is presented
   useEffect(() => {
     if (mediaSrc) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reiniciar el recorte cuando entra un medio nuevo
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedArea(null);

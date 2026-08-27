@@ -186,7 +186,13 @@ export default async function SearchPage({ searchParams }: Props) {
         },
         { count: "exact" }
       )
-      .select(rpcSelectFields) as any as typeof queryTypeRef;
+      // `as unknown as` y no `as any`: los dos constructores son tipos
+      // realmente distintos -- .rpc().select() no es .from().select() -- y no
+      // existe un tipo generado que los una, asi que aqui hay una afirmacion
+      // sin comprobar y no hay forma de evitarla. La diferencia importa: `any`
+      // apagaba el chequeo de todo lo que tocara `query` despues, mientras que
+      // esto afirma exactamente una conversion y deja lo demas vigilado.
+      .select(rpcSelectFields) as unknown as typeof queryTypeRef;
   } else {
     query = supabase
       .from("products_services")

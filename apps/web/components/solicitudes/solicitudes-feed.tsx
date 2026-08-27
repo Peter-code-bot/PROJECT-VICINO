@@ -103,6 +103,7 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
   }, [userLat, userLng, radiusMeters, activeCategory]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- disparo de la carga inicial; el estado lo pone fetchRequests, no el efecto
     fetchRequests();
   }, [fetchRequests]);
 

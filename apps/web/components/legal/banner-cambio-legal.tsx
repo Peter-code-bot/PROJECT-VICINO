@@ -56,6 +56,7 @@ export function BannerCambioLegal({ avisos }: { avisos: AvisoLegal[] }) {
       // Modo privado o almacenamiento bloqueado: se muestran todos. Preferimos
       // ensenar de mas un aviso legal que ocultarlo por no poder leer una marca.
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage solo existe en el navegador
     setCerrados(vistos);
     setListo(true);
   }, [avisos]);

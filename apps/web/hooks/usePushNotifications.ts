@@ -138,8 +138,15 @@ export function usePushNotifications() {
         });
 
         // 2b. Error de registro
-        await PushNotifications.addListener('registrationError', (error: any) => {
-          console.error('Error en el registro de push: ' + JSON.stringify(error));
+        await PushNotifications.addListener('registrationError', (error: unknown) => {
+          // Dato externo: viene del puente nativo, no del tipo de nadie.
+          const detalle =
+            error instanceof Error
+              ? error.message
+              : typeof error === 'object' && error !== null && 'error' in error
+                ? String((error as { error: unknown }).error)
+                : JSON.stringify(error);
+          console.error('Error en el registro de push: ' + detalle);
         });
 
         // 2c. Notificacion recibida en primer plano (foreground)

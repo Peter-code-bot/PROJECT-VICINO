@@ -171,6 +171,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const openRef = useRef(open);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
     setMounted(true);
   }, []);
 

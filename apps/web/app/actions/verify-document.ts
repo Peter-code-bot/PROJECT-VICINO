@@ -224,8 +224,9 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     }
 
     return { success: true, status: finalStatus, analysis };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("OpenAI Verification Error:", error);
-    return { success: false, error: error.message || "Error al analizar la credencial." };
+    const detalle = error instanceof Error ? error.message : null;
+    return { success: false, error: detalle || "Error al analizar la credencial." };
   }
 }

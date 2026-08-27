@@ -61,6 +61,26 @@ jobs:
       - name: Type check
         run: cd apps/web && pnpm type-check
 
+      # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
+      # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
+      # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba
+      # meses sin actualizar una sola fila), once setState dentro de efectos que
+      # son patrones correctos, y cuatro cosmeticos.
+      #
+      # Se anade AHORA y no antes porque una compuerta que nace en rojo no es
+      # una compuerta: es ruido que se aprende a ignorar, y entonces deja de
+      # avisar el dia que tiene razon. Eso ya paso aqui con `npm audit`, que
+      # llevaba quince pushes en rojo por un `tar` que solo vive en
+      # herramientas de build mientras cuatro fallos HIGH de Next -- dos SSRF y
+      # un DoS por Server Actions, con veinte archivos usandolas -- viajaban en
+      # ese mismo informe sin que nadie los viera.
+      #
+      # Los 161 avisos que quedan NO rompen el job, a proposito: son deuda
+      # visible, no una alarma. Si algun dia se limpian, esto puede pasar a
+      # --max-warnings=0.
+      - name: Lint
+        run: cd apps/web && pnpm lint
+
   # Nadie vigilaba si apps/web/types/database.types.ts seguia describiendo el
   # esquema real. Llevaba meses sin regenerarse — le faltaba sort_order, entre
   # otras — y ademas no lo importaba nadie, asi que eran 100 KB que aparentaban

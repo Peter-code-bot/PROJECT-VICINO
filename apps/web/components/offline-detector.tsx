@@ -8,6 +8,7 @@ export function OfflineDetector() {
 
   useEffect(() => {
     if (typeof navigator !== "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronizacion inicial con navigator, que solo existe en el navegador
       setIsOffline(!navigator.onLine);
     }
     const goOffline = () => setIsOffline(true);

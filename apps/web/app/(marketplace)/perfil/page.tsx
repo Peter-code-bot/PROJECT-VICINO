@@ -64,13 +64,19 @@ export default async function PerfilPage() {
   // SortableProductCard esta DIFERIDO a 5c-4-bis: ese componente es
   // image-only (overlay con precio hover + badge PAUSADO existente) y
   // requiere diseno de overlay propio para no colisionar.
-  let { data: products, error: productsError } = await supabase
+  const productsQuery = await supabase
     .from("products_services")
     .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
+
+  // `products` sigue siendo let porque el respaldo de mas abajo lo reasigna;
+  // `productsError` no se reasigna nunca, y estaba compartiendo el let solo por
+  // venir del mismo destructuring.
+  const productsError = productsQuery.error;
+  let products = productsQuery.data;
 
   // Fallback si la migración de sort_order aún no se ha aplicado en la BD
   if (productsError && productsError.code === "42703") {

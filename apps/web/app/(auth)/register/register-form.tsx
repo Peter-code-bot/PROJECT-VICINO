@@ -156,7 +156,7 @@ export function RegisterForm() {
       </div>
 
       <p className="text-xs text-muted-foreground/80 mt-4 leading-relaxed">
-        Al hacer clic en "Crear cuenta" o continuar con Google o Apple, aceptas nuestros{" "}
+        Al hacer clic en “Crear cuenta” o continuar con Google o Apple, aceptas nuestros{" "}
         <Link href="/terminos" className="text-primary hover:underline" target="_blank">
           Términos y Condiciones
         </Link>{" "}

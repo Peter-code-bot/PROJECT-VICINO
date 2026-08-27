@@ -2,14 +2,22 @@
  * POST /api/reports — crear un reporte de contenido user-generated.
  *
  * Flujo:
- *   1. Rate limit aplicado por middleware.ts (10/hora/IP).
- *   2. Verifica sesión autenticada.
+ *   1. Verifica sesión autenticada.
+ *   2. Rate limit: 10/hora por cuenta y 30/hora por IP, aplicado AQUÍ.
+ *      Antes esta línea decía "aplicado por middleware.ts" y era falso: en
+ *      Next 16 el middleware es proxy.ts, y proxy.ts solo cubre
+ *      /auth/callback-server. La ruta llevaba desde su primer día sin ningún
+ *      límite, con el comentario asegurando que sí lo tenía.
  *   3. Valida payload con zod.
  *   4. Verifica que no es self-report (lookup en tabla del target).
  *   5. INSERT en public.reports con auth.uid() como reporter_id.
  *   6. La RLS users_can_create_reports valida que reporter_id = auth.uid().
  *   7. Trigger trg_reports_auto_hide auto-oculta el target a 3+ reports.
- *   8. Trigger trg_reports_child_safety oculta + audit-trail si CSAM.
+ *   8. Trigger trg_reports_child_safety: si es CSAM, oculta el CONTENIDO
+ *      (anuncio, reseña o mensaje) al primer reporte y encola en
+ *      critical_reports. No oculta perfiles enteros, y deja de auto-ocultar
+ *      a partir del cuarto reporte de la misma cuenta en 24h — encolando
+ *      igual, para que ninguna denuncia se pierda.
  *   9. Database Webhook dispara el email al admin (si configurado).
  *
  * Errors:
@@ -23,6 +31,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { enforce, getClientIp, reportRateLimit, reportIpRateLimit } from "@/lib/rate-limit";
 
 const REPORT_TARGET_TYPES = ["listing", "user", "message", "review"] as const;
 
@@ -56,6 +65,24 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json(
       { error: "Debes iniciar sesión para reportar contenido." },
       { status: 401 }
+    );
+  }
+
+  // El limite de peticiones, que hasta hoy solo existia en el docstring de
+  // arriba. Decia "aplicado por middleware.ts (10/hora/IP)" y no habia tal:
+  // middleware.ts no existe en Next 16 (es proxy.ts) y proxy.ts solo protege
+  // /auth/callback-server. Se aplica aqui, en la propia ruta, que es donde no
+  // se puede perder de vista.
+  //
+  // Va DESPUES de comprobar la sesion a proposito: sin sesion se sale con 401
+  // sin gastar cuota, asi que nadie puede agotarle el cupo a otro.
+  const ip = getClientIp(request.headers);
+  const porCuenta = await enforce(reportRateLimit, `report:${user.id}`);
+  const porIp = await enforce(reportIpRateLimit, `report-ip:${ip}`);
+  if (!porCuenta.ok || !porIp.ok) {
+    return NextResponse.json(
+      { error: "Has enviado demasiados reportes. Espera un momento e intenta de nuevo." },
+      { status: 429 }
     );
   }
 

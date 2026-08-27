@@ -185,6 +185,7 @@ export function CreateRequestDrawer({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
     setMounted(true);
     // Lock body scroll when drawer is open
     document.body.style.overflow = "hidden";

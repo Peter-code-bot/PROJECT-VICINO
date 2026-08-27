@@ -316,7 +316,13 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   function handleCropResult(result: CropResult) {
     if (result.type === "image") {
       const preview = URL.createObjectURL(result.blob);
-      const file = new File([result.blob], `cropped-${Date.now()}.jpg`, { type: "image/jpeg" });
+      // El discriminante sale del propio object URL, que ya lleva un uuid
+      // dentro, en vez de Date.now(). Da lo mismo para la unicidad y ademas
+      // quita la llamada impura que el compilador de React marcaba aqui: esta
+      // funcion vive en el cuerpo del componente y el compilador no puede
+      // demostrar que solo se llama desde un manejador de eventos.
+      // Del nombre solo se lee la extension (el split(".").pop() de mas abajo).
+      const file = new File([result.blob], `cropped-${preview.slice(-12)}.jpg`, { type: "image/jpeg" });
       setMedia((prev) => [...prev, { id: preview, kind: "pending", file, preview, isVideo: false }]);
     } else {
       // Video: keep the original file, store crop area for thumbnail generation

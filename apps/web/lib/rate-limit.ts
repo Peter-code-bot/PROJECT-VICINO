@@ -30,6 +30,46 @@ const hasUpstash = Boolean(
 
 const redis = hasUpstash ? Redis.fromEnv() : null;
 
+// Que la ausencia se oiga.
+//
+// La estrategia de arranque de arriba es correcta -- no romperle el entorno a
+// nadie por una dependencia ausente -- pero tenia un agujero: en produccion, sin
+// las credenciales, TODOS los limites de este archivo se vuelven un no-op y no
+// lo dice nadie. El login queda sin freno contra fuerza bruta, las escrituras
+// sin freno contra scripts, la busqueda sin freno contra scraping, y la unica
+// senal es que no pasa nada.
+//
+// Comprobado el 27-ago-2026 contra vicinomarket.com: 48 peticiones seguidas a
+// /auth/callback-server, cuyo limite declarado es 20/min por IP, devolvieron
+// las 48 un 200. O sea que hoy esto es exactamente lo que describe el parrafo
+// anterior.
+//
+// Se avisa desde dentro de enforce/check, no aqui arriba, a proposito: en el
+// arranque de un modulo de Edge puede no haber Sentry inicializado todavia, y
+// un aviso que se emite donde nadie lo recoge es el mismo problema otra vez.
+let yaAvisado = false;
+
+function avisarSiNoHayFreno(): void {
+  if (hasUpstash || yaAvisado) return;
+  if (process.env.NODE_ENV !== "production") return;
+  yaAvisado = true;
+  const mensaje =
+    "[rate-limit] NO HAY LIMITE DE PETICIONES EN PRODUCCION: faltan " +
+    "UPSTASH_REDIS_REST_URL y/o UPSTASH_REDIS_REST_TOKEN. Todos los limitadores " +
+    "de lib/rate-limit.ts estan inactivos: login, escrituras, busqueda y reportes " +
+    "aceptan peticiones sin freno.";
+  console.error(mensaje);
+  // Sentry se carga de forma perezosa para no atarlo al grafo del modulo, que
+  // tambien se importa desde proxy.ts (runtime Edge).
+  void import("@sentry/nextjs")
+    .then((Sentry) => {
+      Sentry.captureMessage(mensaje, "error");
+    })
+    .catch(() => {
+      // Si Sentry no esta disponible el console.error de arriba ya salio.
+    });
+}
+
 function makeLimiter(window: Parameters<typeof Ratelimit.slidingWindow>[1], count: number, prefix: string) {
   if (!redis) return null;
   return new Ratelimit({
@@ -58,6 +98,20 @@ export const writeRateLimit = makeLimiter("1 m", 30, "rl:write");
 // reasonable UI cadence; below scraping speeds.
 export const readHeavyRateLimit = makeLimiter("1 m", 60, "rl:read");
 
+// Reportes de contenido. Dos limitadores para dos abusos distintos.
+//
+// Por cuenta: un reporte de child_safety oculta el anuncio reportado al
+// instante, asi que la cuenta que reporta muchas cosas seguidas puede barrer
+// el catalogo. El trigger de la base ya corta el auto-ocultado al cuarto en
+// 24h; esto corta las peticiones antes de llegar ahi. Diez a la hora es lo
+// que el docstring de /api/reports llevaba prometiendo desde el principio sin
+// que nadie lo aplicara.
+//
+// Por IP: la cuota por cuenta no sirve de nada contra quien se registra veinte
+// veces. Mas holgada porque una IP puede ser un cafe entero.
+export const reportRateLimit = makeLimiter("1 h", 10, "rl:report");
+export const reportIpRateLimit = makeLimiter("1 h", 30, "rl:report-ip");
+
 type EnforceResult = { ok: true } | { ok: false; error: string };
 
 /**
@@ -74,7 +128,10 @@ export async function enforce(
   limit: Ratelimit | null,
   identifier: string,
 ): Promise<EnforceResult> {
-  if (!limit) return { ok: true };
+  if (!limit) {
+    avisarSiNoHayFreno();
+    return { ok: true };
+  }
   try {
     const { success } = await limit.limit(identifier);
     if (!success) {
@@ -95,7 +152,10 @@ export async function check(
   limit: Ratelimit | null,
   identifier: string,
 ): Promise<{ success: boolean }> {
-  if (!limit) return { success: true };
+  if (!limit) {
+    avisarSiNoHayFreno();
+    return { success: true };
+  }
   try {
     return await limit.limit(identifier);
   } catch (err) {

@@ -10,6 +10,7 @@ export function useSearchSuggestions(query: string) {
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- vaciar las sugerencias cuando la consulta baja de dos caracteres
       setSuggestions([]);
       setLoading(false);
       return;

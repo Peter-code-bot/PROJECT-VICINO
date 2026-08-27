@@ -2,6 +2,29 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
+// SEGURO, anadido el 27-ago-2026 durante la auditoria.
+//
+// Este script corre con SUPABASE_SERVICE_ROLE_KEY, que brinca la RLS entera, y
+// su primer bloque borra filas de products_services y de profiles por patron de
+// titulo. Dos de esos patrones son peligrosamente anchos para un marketplace en
+// espanol: "Servicio de%" y "Especial de%" casan con anuncios perfectamente
+// legitimos de cualquier vendedor real.
+//
+// Vivia en la raiz de apps/web, trackeado, a un `tsx clean-and-seed-real.ts` de
+// distancia. Un autocompletado desafortunado se llevaba datos de produccion sin
+// preguntar. Ahora hay que decirlo a proposito:
+//
+//   VICINO_CONFIRMO_BORRADO=si npx tsx clean-and-seed-real.ts
+if (process.env.VICINO_CONFIRMO_BORRADO !== "si") {
+  console.error("Este script BORRA filas de products_services y profiles en la base");
+  console.error("que apunte NEXT_PUBLIC_SUPABASE_URL, con service_role y sin RLS.");
+  console.error("Los patrones 'Servicio de%' y 'Especial de%' casan con anuncios reales.");
+  console.error("");
+  console.error("Si de verdad es lo que quieres:");
+  console.error("  VICINO_CONFIRMO_BORRADO=si npx tsx clean-and-seed-real.ts");
+  process.exit(1);
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl!, supabaseKey!);
@@ -40,7 +63,11 @@ async function cleanAndSeedReal() {
   // 4. Fetch real products that have creators
   const { data: realProducts, error: pError } = await supabase
     .from("products_services")
-    .select("creador_id, categoria, categoria_id, ubicacion_geo")
+    // `id` faltaba en este select, y mas abajo se usaba `p.id` en tres
+    // sitios. O sea que el id era undefined y esas operaciones no tocaban una
+    // sola fila. El `as any` era lo unico que impedia que el compilador lo
+    // dijera en voz alta.
+    .select("id, creador_id, categoria, categoria_id, ubicacion_geo")
     .eq("estatus", "disponible");
     
   if (!realProducts || realProducts.length === 0) {
@@ -62,7 +89,7 @@ async function cleanAndSeedReal() {
     if (!p.ubicacion_geo) {
       await supabase.from("products_services")
         .update({ ubicacion_geo: 'SRID=4326;POINT(-98.2063 19.0414)' })
-        .eq("id", (p as any).id);
+        .eq("id", p.id);
     }
     
     let catId = p.categoria_id;
@@ -72,7 +99,7 @@ async function cleanAndSeedReal() {
       if (catId) {
          await supabase.from("products_services")
            .update({ categoria_id: catId })
-           .eq("id", (p as any).id);
+           .eq("id", p.id);
       }
     }
     
