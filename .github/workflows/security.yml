@@ -98,3 +98,16 @@ jobs:
           if ! node scripts/gen-types.mjs --check; then
             echo "::warning title=Tipos desfasados::apps/web/types/database.types.ts no coincide con el esquema de produccion. Corre: node scripts/gen-types.mjs"
           fi
+
+      # Las versiones legales viven en DOS sitios desde que existe la tabla
+      # legal_documents: la constante de packages/shared y la fila de la base.
+      # La pagina muestra la constante y el registro guarda la fila, asi que si
+      # se separan se le ensena a la persona una version y se le registra otra
+      # — y un registro que no coincide con lo que se mostro no acredita nada.
+      # Ninguna restriccion de la base puede vigilar el codigo, asi que se
+      # vigila aqui. Este SI es error y no aviso: no hay divergencia legitima.
+      - name: Comprobar versiones legales contra produccion
+        if: steps.credencial.outputs.hay == 'si'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/check-legal-versions.mjs

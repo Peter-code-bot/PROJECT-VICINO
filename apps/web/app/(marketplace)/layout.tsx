@@ -10,6 +10,8 @@ import { FavoritesProvider } from "@/components/layout/favorites-provider";
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
+import { RegistroAceptacionLegal } from "@/components/legal/registro-aceptacion";
+import { BannerCambioLegal, type AvisoLegal } from "@/components/legal/banner-cambio-legal";
 import { redirect } from "next/navigation";
 
 export default async function MarketplaceLayout({
@@ -100,6 +102,13 @@ export default async function MarketplaceLayout({
         : [];
   }
 
+  // Avisos del §18: versiones sustanciales publicadas que aun no entran en
+  // vigor. Se leen tambien SIN sesion, porque lo que el Aviso obliga es a que
+  // la notificacion sea visible en la Plataforma, no solo a quien inicio
+  // sesion. Si la consulta falla, la lista queda vacia y no se anuncia nada:
+  // un fallo de lectura no puede tumbar el marketplace entero.
+  const { data: avisosLegales } = await supabase.rpc("avisos_legales_pendientes");
+
   const isVendedor = profile?.es_vendedor ?? false;
 
   // Only a profile that explicitly has not seen onboarding goes to /bienvenida.
@@ -127,6 +136,8 @@ export default async function MarketplaceLayout({
             <div className="md:hidden">
               <Header isAdmin={isAdmin} />
             </div>
+            {user && <RegistroAceptacionLegal />}
+            <BannerCambioLegal avisos={(avisosLegales ?? []) as AvisoLegal[]} />
             <MainWrapper>
               <PullToRefreshWrapper>
                 <PageSwipeWrapper isVendedor={isVendedor}>{children}</PageSwipeWrapper>
