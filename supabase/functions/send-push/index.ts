@@ -15,10 +15,75 @@ interface WebhookPayload {
   old_record: null | any;
 }
 
+/**
+ * Comparacion en tiempo constante.
+ *
+ * Comparar secretos con === se rinde en el primer byte distinto, y esa
+ * diferencia de tiempo es medible desde fuera. Aqui el atacante controla el
+ * bearer y puede pedir todas las veces que quiera, que es justo el escenario
+ * donde eso deja de ser teorico.
+ */
+function igualEnTiempoConstante(a: string, b: string): boolean {
+  const ba = new TextEncoder().encode(a);
+  const bb = new TextEncoder().encode(b);
+  if (ba.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i] ^ bb[i];
+  return diff === 0;
+}
+
 serve(async (req) => {
   // Manejar solicitudes CORS (preflight)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // LA PUERTA, QUE NO EXISTIA.
+  //
+  // Esta funcion esta desplegada con verify_jwt apagado, asi que la pasarela
+  // no comprueba nada, y el cuerpo tampoco comprobaba nada: leia el JSON y
+  // pasaba directo a consultar la base con la llave service_role.
+  //
+  // Comprobado contra produccion el 27-ago-2026, sin ninguna cabecera de
+  // autorizacion:
+  //
+  //   POST /functions/v1/send-push  ->  500 {"error":"Chat not found"}
+  //   POST /functions/v1/expire-confirmations -> 401 {"error":"unauthorized"}
+  //
+  // Ese "Chat not found" solo se puede generar DESPUES de consultar
+  // public.chats con la service_role. O sea que la peticion anonima ejecuto el
+  // cuerpo entero. Quien conozca un chat_id y un autor_id reales -- y los
+  // conoce cualquiera de los dos participantes de un chat -- podia mandar una
+  // notificacion push con el texto que quisiera a la pantalla de bloqueo de la
+  // otra persona. Es un vector de phishing, no solo ruido.
+  //
+  // Se valida contra el mismo bearer que ya mandan los triggers: las funciones
+  // call_send_push_* envian 'Bearer ' || vault.decrypted_secrets.service_role_key
+  // (ver migracion 20260826090000). PUSH_WEBHOOK_SECRET es la salida por si se
+  // prefiere un secreto propio en vez de reutilizar la llave de servicio.
+  //
+  // NO falla abierto si no hay secreto configurado. Un guardian que se aparta
+  // cuando no sabe que hacer no es un guardian, y de eso ya hubo bastante hoy:
+  // delete_user_data borraba cuentas de cualquiera exactamente por eso.
+  const esperados = [
+    Deno.env.get("PUSH_WEBHOOK_SECRET"),
+    Deno.env.get("SB_SECRET_KEY"),
+  ].filter((s): s is string => typeof s === "string" && s.length > 0);
+
+  if (esperados.length === 0) {
+    console.error("send-push: ni PUSH_WEBHOOK_SECRET ni SB_SECRET_KEY configurados");
+    return new Response(JSON.stringify({ error: "not configured" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!bearer || !esperados.some((s) => igualEnTiempoConstante(bearer, s))) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 401,
+    });
   }
 
   try {
