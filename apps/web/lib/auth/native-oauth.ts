@@ -12,11 +12,38 @@ import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
 import { OAUTH_DEEP_LINK_CALLBACK } from "@/lib/auth/deep-link-constants";
+import { guardarDestinoPendiente } from "@/lib/auth/destino-pendiente";
 
-export async function signInWithGoogle(): Promise<{ error?: string }> {
+/**
+ * A donde volver despues de identificarse.
+ *
+ * Hasta ahora NINGUNO de los dos caminos de OAuth llevaba destino: el
+ * redirectTo era el callback pelado, asi que quien pulsaba "Quiero comprarlo"
+ * sin sesion, entraba con Google y aterrizaba en la portada, sin el producto.
+ * Es el mismo agujero que ya se cerro para el login por email.
+ *
+ * Los dos caminos NO pueden resolverlo igual:
+ *   - Web: el destino viaja en la query del redirectTo. Es el patron que este
+ *     repo YA usa en forgot-password, asi que se sabe que la lista de
+ *     direcciones permitidas de Supabase lo acepta.
+ *   - Nativo: NO puede. El retorno es el deep link vicino://auth/callback, y
+ *     esa direccion tiene que coincidir EXACTAMENTE con la registrada en
+ *     Supabase y en el intent-filter del AndroidManifest; anadirle una query
+ *     la rompe. Por eso ahi el destino se esconde antes de salir y
+ *     OAuthUrlListener lo recoge al volver.
+ */
+function destinoWeb(destino?: string): string {
+  const base = `${window.location.origin}/auth/callback-server`;
+  return destino && destino !== "/"
+    ? `${base}?next=${encodeURIComponent(destino)}`
+    : base;
+}
+
+export async function signInWithGoogle(destino?: string): Promise<{ error?: string }> {
   const supabase = createClient();
 
   if (Capacitor.isNativePlatform()) {
+    if (destino) guardarDestinoPendiente(destino);
     // APK path: Supabase devuelve el URL sin redirigir (skipBrowserRedirect),
     // lo abrimos en Custom Tab. El retorno cae en OAuthUrlListener via
     // intent-filter vicino:// (AndroidManifest.xml:32-38).
@@ -45,7 +72,7 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/auth/callback-server`,
+      redirectTo: destinoWeb(destino),
     },
   });
   if (error) return { error: "Error al conectar con Google. Intenta de nuevo." };
@@ -56,10 +83,11 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
 // el mismo OAUTH_DEEP_LINK_CALLBACK; el OAuthUrlListener lo procesa indistintamente
 // del provider (exchangeCodeForSession es PKCE-genérico). Email relay
 // `@privaterelay.appleid.com` se trata como email válido (no rechazarlo).
-export async function signInWithApple(): Promise<{ error?: string }> {
+export async function signInWithApple(destino?: string): Promise<{ error?: string }> {
   const supabase = createClient();
 
   if (Capacitor.isNativePlatform()) {
+    if (destino) guardarDestinoPendiente(destino);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: {
@@ -80,7 +108,7 @@ export async function signInWithApple(): Promise<{ error?: string }> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "apple",
     options: {
-      redirectTo: `${window.location.origin}/auth/callback-server`,
+      redirectTo: destinoWeb(destino),
     },
   });
   if (error) return { error: "Error al conectar con Apple. Intenta de nuevo." };

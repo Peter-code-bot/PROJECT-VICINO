@@ -51,6 +51,13 @@ jobs:
       - name: Guard de stubs TODO
         run: cd apps/web && node scripts/check-no-todo.mjs
 
+      # Un href a una ruta que no existe es un 404 en la cara del usuario, y no
+      # lo atrapa ni tsc ni el build de Next. Ya pasó tres veces: /ingresar,
+      # /registro, /producto/<id> y /resenar/<id>, dos de ellas en los únicos
+      # botones que el home ofrece a quien no tiene sesión.
+      - name: Guard de rutas enlazadas
+        run: node scripts/check-rutas.mjs
+
       - name: Type check
         run: cd apps/web && pnpm type-check
 

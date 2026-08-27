@@ -11,6 +11,17 @@ import { priceFallbackLabel } from "@/lib/price-mode";
 
 export interface StorePostProps {
   id: string;
+  /**
+   * Ruta del detalle, ya construida. `null` cuando la publicacion no tiene
+   * slug: sin slug NO HAY pagina de detalle, porque esa ruta resuelve solo
+   * por slug. En ese caso la tarjeta se pinta sin envolver, en vez de
+   * ofrecer un boton que lleva a un 404.
+   *
+   * Se recibe hecha y no se calcula aqui: los datos que hacen falta —la
+   * categoria primaria del pivote y el slug— viven en la consulta, no en las
+   * props que este componente pinta.
+   */
+  href: string | null;
   storeId: string;
   store: string;
   letter: string;
@@ -36,8 +47,33 @@ export interface StorePostProps {
   priority?: boolean;
 }
 
+/**
+ * Envuelve en enlace SOLO si hay a donde ir.
+ *
+ * Sin esto habria que repetir el mismo ternario en los tres sitios donde la
+ * tarjeta enlaza al detalle, y basta con olvidarlo en uno para volver a
+ * ofrecer un enlace roto.
+ */
+function ConEnlace({
+  href,
+  className,
+  children,
+}: {
+  href: string | null;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (!href) return <div className={className}>{children}</div>;
+  return (
+    <Link href={href} className={className} prefetch={false}>
+      {children}
+    </Link>
+  );
+}
+
 export function StorePost({
   id,
+  href,
   storeId,
   store,
   letter,
@@ -108,10 +144,9 @@ export function StorePost({
       )}
 
       {/* 3. Imagen del producto */}
-      <Link
-        href={`/producto/${id}`}
+      <ConEnlace
+        href={href}
         className="block relative aspect-[4/3] bg-[var(--bg-elev-2)] overflow-hidden"
-        prefetch={false}
       >
         {imgUrl ? (
           <Image
@@ -137,15 +172,15 @@ export function StorePost({
         <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-[12px] font-bold text-[15px] tracking-tight shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
           <PriceDisplay amount={price} fallback={priceFallbackLabel(modoPrecio)} className="text-white" />
         </div>
-      </Link>
+      </ConEnlace>
 
       {/* 4. Body */}
       <div className="px-4 pt-3 pb-2">
-        <Link href={`/producto/${id}`} className="block" prefetch={false}>
+        <ConEnlace href={href} className="block">
           <h3 className="font-display text-[15.5px] leading-snug font-medium product-card-text mb-1.5 line-clamp-2">
             {title}
           </h3>
-        </Link>
+        </ConEnlace>
         {rating > 0 && count > 0 && (
           <RatingStars rating={rating} count={count} size="sm" />
         )}
@@ -167,14 +202,16 @@ export function StorePost({
             Mensaje
           </Link>
         </div>
-        <Link
-          href={`/producto/${id}`}
-          className="flex items-center justify-center h-9 px-4 rounded-full product-card-btn text-[13.5px] font-medium hover:opacity-90 transition-colors"
-          prefetch={false}
-        >
-          Ver producto
-          <ArrowRight className="w-4 h-4 ml-1.5" />
-        </Link>
+        {href && (
+          <Link
+            href={href}
+            className="flex items-center justify-center h-9 px-4 rounded-full product-card-btn text-[13.5px] font-medium hover:opacity-90 transition-colors"
+            prefetch={false}
+          >
+            Ver producto
+            <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Link>
+        )}
       </footer>
     </article>
   );

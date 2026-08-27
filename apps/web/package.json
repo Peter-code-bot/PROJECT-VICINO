@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-no-todo.mjs && next build --webpack",
+    "build": "node scripts/check-no-todo.mjs && node ../../scripts/check-rutas.mjs && next build --webpack",
     "analyze": "cross-env ANALYZE=true next build --webpack",
     "start": "next start",
     "lint": "eslint",

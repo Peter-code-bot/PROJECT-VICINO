@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { tomarDestinoPendiente } from "@/lib/auth/destino-pendiente";
 import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
@@ -92,7 +93,10 @@ export function OAuthUrlListener() {
       router.refresh();
       setTimeout(() => {
         if (!unmounted) {
-          router.replace("/");
+          // Volver a donde se queria ir, no a la portada. Sin esto, entrar con
+          // Google desde "Quiero comprarlo" dejaba a la persona en el home y sin
+          // el producto, justo en el momento de mayor intencion de compra.
+          router.replace(tomarDestinoPendiente());
           // En Next.js, la navegación cliente no desmonta el Root Layout.
           // Debemos limpiar explícitamente el estado de carga después
           // de un breve periodo para permitir que la navegación termine.

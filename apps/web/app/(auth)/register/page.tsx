@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { RegisterForm } from "./register-form";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,7 +30,14 @@ export default function RegisterPage() {
             <p className="text-sm text-muted-foreground">Crea tu cuenta para empezar</p>
           </div>
           
-          <RegisterForm />
+          {/* Mismo limite que /login. Hace falta desde que el formulario lee
+              ?next= con useSearchParams: sin el, el build falla al prerenderizar
+              esta pagina, que es estatica. Lo atrapo el build, no el tipado. */}
+          <Suspense
+            fallback={<div className="h-[420px] animate-pulse rounded-2xl bg-muted/40" />}
+          >
+            <RegisterForm />
+          </Suspense>
         </div>
         
         {/* Trust badge below card */}

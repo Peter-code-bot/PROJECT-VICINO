@@ -16,6 +16,10 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const destino = searchParams.get("next");
+  const hrefRegistro = destino
+    ? `/register?next=${encodeURIComponent(destino)}`
+    : "/register";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,21 +43,21 @@ export function LoginForm() {
       return;
     }
 
-    router.push(destinoSeguro(searchParams.get("next")));
+    router.push(destinoSeguro(destino));
     router.refresh();
   }
 
   async function handleGoogleLogin() {
     void hapticLight();
     setError("");
-    const result = await signInWithGoogle();
+    const result = await signInWithGoogle(destino ?? undefined);
     if (result.error) setError(result.error);
   }
 
   async function handleAppleLogin() {
     void hapticLight();
     setError("");
-    const result = await signInWithApple();
+    const result = await signInWithApple(destino ?? undefined);
     if (result.error) setError(result.error);
   }
 
@@ -155,7 +159,8 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿No tienes cuenta?{" "}
-        <Link href="/register" className="font-semibold text-primary hover:underline">
+        {/* Conserva el destino al saltar a registro. */}
+        <Link href={hrefRegistro} className="font-semibold text-primary hover:underline">
           Regístrate gratis
         </Link>
       </p>

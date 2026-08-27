@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { destinoSeguro } from "@/lib/auth/destino-seguro";
 import Link from "next/link";
 import { signUp } from "../actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
@@ -18,6 +19,13 @@ export function RegisterForm() {
   const [aviso, setAviso] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // El destino acompana a la persona por los CUATRO caminos de entrada:
+  // email, Google, Apple, y el salto a iniciar sesion.
+  const destino = searchParams.get("next");
+  const hrefLogin = destino
+    ? `/login?next=${encodeURIComponent(destino)}`
+    : "/login";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +63,10 @@ export function RegisterForm() {
     }
 
     if (result.hasSession) {
-      router.push("/");
+      // Antes era router.push("/") a secas: quien llegaba aqui desde un
+      // "Quiero comprarlo" o desde un corazon acababa en la portada, sin lo
+      // que habia ido a hacer. El login por email ya lo respetaba; esto no.
+      router.push(destinoSeguro(destino));
       router.refresh();
     } else {
       setAviso(
@@ -67,13 +78,13 @@ export function RegisterForm() {
 
   async function handleGoogleSignup() {
     setError("");
-    const result = await signInWithGoogle();
+    const result = await signInWithGoogle(destino ?? undefined);
     if (result.error) setError(result.error);
   }
 
   async function handleAppleSignup() {
     setError("");
-    const result = await signInWithApple();
+    const result = await signInWithApple(destino ?? undefined);
     if (result.error) setError(result.error);
   }
 
@@ -208,7 +219,9 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="font-semibold text-primary hover:underline">
+        {/* Conserva el destino al saltar a iniciar sesion: sin esto, quien se
+            equivoca de pestana pierde a donde iba. */}
+        <Link href={hrefLogin} className="font-semibold text-primary hover:underline">
           Inicia sesión
         </Link>
       </p>

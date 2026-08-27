@@ -47,6 +47,13 @@ export default async function CitaDetailPage({ params }: PageProps) {
   // MP#08 #4 Fase 1B: SELECT del producto incluye product_categories embed
   // (solo slug) para derivar el href via primaryCategorySlug. nombre no
   // necesario porque citas no muestra label de categoria.
+  // La resena NO cuelga de la cita, cuelga de una VENTA CONFIRMADA: la pagina
+  // /historial/review exige un sale_confirmation en estado completed y sin
+  // resena previa (historial/review/page.tsx:35-56). Una cita no lo es.
+  //
+  // Por eso hay que buscar si existe esa venta antes de ofrecer el boton. El
+  // enlace anterior iba a /resenar/<producto>, una ruta que NO EXISTE en todo
+  // el arbol: 404 seguro para quien terminaba una cita y queria resenar.
   const { data: cita } = await supabase
     .from("appointments")
     .select(`
@@ -87,6 +94,34 @@ export default async function CitaDetailPage({ params }: PageProps) {
     (cita.appointment_date === today && cita.appointment_end < nowTime);
   const isUpcoming = cita.status === "confirmed" && !isPast;
   const isCompleted = cita.status === "completed";
+
+  // El destino de "Dejar resena", si es que existe algo que resenar.
+  //
+  // Solo se busca cuando la cita esta completada: en cualquier otro estado el
+  // boton no se pinta y la consulta seria trabajo tirado en cada visita.
+  //
+  // Si NO hay venta confirmada, hrefResena queda null y el boton NO se pinta.
+  // Es lo honesto: sin venta, /historial/review rebota al historial, asi que
+  // ensenar el boton seria prometer algo que no ocurre. El caso normal es real
+  // — se agenda una cita y la venta se confirma en el chat despues.
+  let hrefResena: string | null = null;
+  if (isCompleted && product) {
+    const esComprador = user.id === cita.buyer_id;
+    const tipoResena = esComprador ? "buyer_to_seller" : "seller_to_buyer";
+    const { data: venta } = await supabase
+      .from("sale_confirmations")
+      .select("id")
+      .eq("product_id", product.id)
+      .eq("buyer_id", cita.buyer_id)
+      .eq("seller_id", cita.seller_id)
+      .eq("status", "completed")
+      .maybeSingle();
+    if (venta) {
+      hrefResena =
+        `/historial/review?sale=${venta.id}` +
+        `&type=${tipoResena}&product=${product.id}`;
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -214,9 +249,9 @@ export default async function CitaDetailPage({ params }: PageProps) {
       <div className="space-y-3">
         {isUpcoming && <CancelAppointmentButton appointmentId={cita.id} />}
 
-        {isCompleted && product && (
+        {isCompleted && product && hrefResena && (
           <Link
-            href={`/resenar/${product.id}?cita=${cita.id}`}
+            href={hrefResena}
             className="w-full inline-flex items-center justify-center gap-2 rounded-full py-3 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
           >
             Dejar reseña

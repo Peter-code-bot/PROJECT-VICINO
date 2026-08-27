@@ -536,7 +536,11 @@ export default async function HomePage({ searchParams }: Props) {
                       </Link>
                     ) : (
                       <Link
-                        href="/registro"
+                        // Era "/registro", que NO EXISTE: 404 comprobado en
+                        // produccion. La ruta de alta es /register, y desde aqui
+                        // la intencion es crear tienda, asi que el destino de
+                        // vuelta es el alta de vendedor.
+                        href="/register?next=%2Fempezar-a-vender"
                         className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background shadow-sm transition-all hover:opacity-90"
                       >
                         Crear tienda
@@ -679,13 +683,17 @@ export default async function HomePage({ searchParams }: Props) {
                 </p>
                 <div className="flex flex-col gap-3">
                   <Link
-                    href="/ingresar"
+                    // Era "/ingresar", que NO EXISTE: 404 comprobado en
+                    // produccion. La ruta es /login. Lleva ?next= para volver
+                    // aqui, que es donde la persona queria estar.
+                    href="/login?next=%2F"
                     className="flex items-center justify-center h-12 rounded-xl bg-[color:var(--brand)] font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
                   >
                     Iniciar sesión
                   </Link>
                   <Link
-                    href="/registro"
+                    // Era "/registro", que tampoco existe. Es /register.
+                    href="/register?next=%2F"
                     className="flex items-center justify-center h-12 rounded-xl bg-[color:var(--card-2)] font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
                   >
                     Crear cuenta
@@ -772,6 +780,16 @@ export default async function HomePage({ searchParams }: Props) {
                     <StorePost
                       key={post.id}
                       id={post.id}
+                      // La ruta del detalle se arma AQUI, que es donde estan el
+                      // slug y la categoria primaria. La tarjeta enlazaba a
+                      // /producto/<id>, que no existe: 404 en los TRES enlaces
+                      // de cada post. Y sin slug no se enlaza nada, porque el
+                      // detalle resuelve solo por slug.
+                      href={
+                        post.slug
+                          ? `/${primaryCategorySlug(post.product_categories) ?? post.categoria}/${post.slug}`
+                          : null
+                      }
                       storeId={post.creador_id}
                       store={post.profiles.nombre}
                       letter={post.profiles.nombre.charAt(0).toUpperCase()}
