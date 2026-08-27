@@ -1,196 +1,206 @@
-# Runbook — la clave de servicio filtrada, y por qué no basta con apagar el interruptor
+# Runbook — la clave de servicio filtrada
 
-**Estado: ABIERTO.** Escrito el 27 de agosto de 2026 durante la auditoría de backend.
-Todo lo de aquí está comprobado contra producción, no deducido.
+**Estado: ABIERTO.** Escrito el 27 de agosto de 2026 y **corregido el mismo día**
+tras una segunda verificación que encontró un error grave en la primera versión.
+Ver la nota al final: seguir la versión anterior habría dejado sin servicio a las
+seis Edge Functions.
 
----
-
-## Qué pasa
-
-La clave `service_role` del proyecto está en el historial de git, en
-`8416eee:apps/web/check_grants.js` (y en `check_grants2.js`, `check_policies.js`,
-`check_profiles.js` del mismo commit). Sigue siendo válida.
-
-- **sha256:** `4c7efdff…`
-- **Alcance:** salta la RLS en todas las tablas, lista y borra usuarios de Auth,
-  acceso completo a Storage. Sobre producción.
-- **Alcanzable desde:** `origin/master` y al menos cinco ramas más. Cada clon de
-  cada colaborador, cada runner de CI y la integración de Vercel la tienen.
-- **Válida hasta:** 2036.
-
-Borrar los archivos en `9a88580` los sacó del árbol, no del historial. Lo único
-que mata esta clave es **apagar las claves legacy** en Settings → API.
+Todo lo de aquí está comprobado ejerciéndolo contra producción.
 
 ---
 
-## Por qué no se puede apagar el interruptor sin más
+## La clave está en TRES sitios, no en uno
 
-Comprobado el 27 de agosto: `GET /v1/projects/<ref>/api-keys/legacy` devuelve
-`{"enabled": true}`. Y **dos cosas vivas dependen de las claves legacy**:
+La `service_role` legacy (`sha256 4c7efdff9273…`, JWT, válida hasta 2036) da
+bypass total de RLS, administración de Auth y acceso completo a Storage. Vive en:
 
-| Quién | Qué clave usa | Si se apaga legacy sin preparar |
+| Dónde | Quién la usa | Cómo se descubrió |
 |---|---|---|
-| El cliente web (`vicinomarket.com`) | anon legacy, `sha256 065202c5…`, servida en el bundle | La web deja de funcionar entera |
-| Los triggers `call_send_push_*` | `vault.service_role_key`, que **es la clave filtrada** `4c7efdff…` | Las push mueren **en silencio** |
+| Historial de git, `8416eee:apps/web/check_grants.js` | nadie, pero cualquiera con el repo la tiene | escaneo del historial |
+| `vault.service_role_key` | los 4 triggers `call_send_push_*` | sha256 idéntico |
+| `SB_SECRET_KEY` en los secretos de Edge Functions | **las 6 Edge Functions** | sha256 idéntico |
 
-Lo del silencio no es una figura retórica: `call_send_push_*` captura con
-`EXCEPTION WHEN OTHERS` y solo emite un `RAISE WARNING`. Nadie se enteraría
-hasta que alguien preguntara por qué ya no llegan notificaciones.
+**Los nombres mienten.** `SB_SECRET_KEY` suena a formato nuevo `sb_secret_` y
+contiene el JWT legacy. `SB_PUBLISHABLE_KEY` contiene la `anon` legacy. Solo los
+nombres se migraron en julio; los valores no. Y la descripción del secreto en el
+vault dice literalmente *«sb_secret para triggers pg_net → send-push (rotado
+2026-07)»* — ni es `sb_secret`, ni está rotada.
 
-Lo que **no** depende de legacy, comprobado una por una:
+Lo que Supabase inyecta por su cuenta (`SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY` dentro de las Edge Functions) **sí** son las claves
+nuevas. La plataforma migró lo suyo; lo que quedó atrás es lo que se puso a mano.
 
-- Las 6 Edge Functions usan `SB_SECRET_KEY`, que es del formato nuevo.
-- Los cron jobs usan `vault.cron_secret`, que es un secreto aparte.
-- En el bundle del navegador solo viaja la clave `anon` (`role: anon`
-  verificado decodificando el payload). La de servicio **no** está ahí.
+---
+
+## No hay forma de matar solo la de servicio
+
+Comprobado contra la Management API:
+
+- `GET /api-keys/legacy` expone **un único booleano** que gobierna `anon` y
+  `service_role` a la vez.
+- Las rutas por clave (`DELETE /api-keys/{id}`) validan el id como UUID, y los
+  ids legacy son las cadenas `anon` y `service_role`. No se pueden borrar
+  individualmente.
+- Revocar la clave de firma HS256 invalida **las dos** legacy a la vez, y
+  Supabase exige apagarlas antes de revocarla.
+- No existe lista de revocación ni forma de que la pasarela rechace un JWT
+  concreto.
+
+Así que apagar las legacy es todo o nada, y hay que preparar antes cada
+consumidor.
+
+---
+
+## Lo que se rompe si apagas legacy hoy
+
+| Consumidor | Clave que usa | Consecuencia |
+|---|---|---|
+| Cliente web + SSR (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, los 3 entornos de Vercel) | anon legacy | **el sitio entero deja de funcionar** |
+| Las 6 Edge Functions (`SB_SECRET_KEY`) | service_role legacy | borrado de cuenta, rankings, recordatorios, purga de documentos y push, todo caído |
+| `delete-account`, además, vía `SB_PUBLISHABLE_KEY` | anon legacy | el borrado de cuenta que exigen Apple y Google |
+| Los 4 triggers de push (`vault.service_role_key`) | service_role legacy | las notificaciones mueren **en silencio** |
+| `SUPABASE_SERVICE_ROLE_KEY` en Vercel | **sin verificar** | desconocido — es el hueco del plan |
+
+**Lo que NO se rompe**, comprobado uno por uno:
+
+- Las **sesiones de usuario**: el JWKS anuncia únicamente ES256 y las claves de
+  firma están `HS256=previously_used` / `ES256=in_use`. Los tokens de usuario ya
+  se firman con la asimétrica. **Nadie se desloguea.**
+- Las **apps nativas** de iOS y Android: son un envoltorio Capacitor que carga
+  `https://vicinomarket.com` por `server.url` y no llevan ninguna clave horneada.
+  Un solo despliegue web las cubre. **No hay que republicar en las tiendas.**
+- Dos de los cron (`restore-spatial-ref-sys`, `expire-purchase-requests`), que
+  son SQL puro.
+- GitHub Actions, que solo usa el PAT `sbp_` de la Management API.
+- Sentry y Resend, que tienen sus propias claves.
+
+---
+
+## La clave publicable es un reemplazo directo, y está probado
+
+No es una suposición. Se comparó la `anon` legacy contra las cuatro claves
+publicables del proyecto:
+
+- **18 de 18 pruebas** con el mismo código de estado y el mismo número de filas:
+  el RPC del feed, `count_nearby_vendors`, `SELECT` sobre `products_services`,
+  `categories`, `/auth/v1/settings`, Storage y el WebSocket de Realtime.
+- El cuerpo del RPC del feed es **byte-idéntico**: 792 bytes con las dos.
+- **Mapea al rol `anon`**, probado con discriminador: en las cuatro tablas donde
+  `authenticated` tiene `SELECT` y `anon` no (`notifications`, `user_roles`,
+  `seller_verification`, `legal_acceptances`), ambas devuelven `42501`. Si
+  mapeara a `authenticated` habría devuelto 200.
+- Probado con el cliente real `@supabase/supabase-js 2.99.3` del propio repo, no
+  con `curl`: feed, count, selects, `getSession`, `getUser` y Realtime
+  `SUBSCRIBED`, idéntico con las dos.
+
+Única diferencia encontrada, y es benigna: `GET /auth/v1/user` sin sesión
+devuelve `403 bad_jwt` con la legacy y `401 no_authorization` con la publicable,
+porque la legacy *es* un JWT y GoTrue intenta parsearla. `supabase-js` normaliza
+las dos a `Auth session missing!`, y no hay código en `apps/web/lib/supabase` que
+se bifurque por esos estados.
 
 ---
 
 ## El orden correcto
 
-Cada paso deja el sistema funcionando. No se apaga nada hasta el paso 6.
+Cada paso deja el sistema funcionando. El interruptor es lo último.
 
-### 1. Clave publicable nueva para la web
+1. **Verificar el formato de `SUPABASE_SERVICE_ROLE_KEY` en Vercel.** Es el
+   único consumidor sin comprobar. Si es legacy, hay que migrarlo también.
 
-En Settings → API ya existen cuatro claves `publishable`. Elige una (o crea
-otra) y ponla en Vercel como `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. **`NEXT_PUBLIC_SUPABASE_ANON_KEY` → una clave publicable**, en los tres
+   entornos de Vercel. Una sola variable, sin cambio de código: `client.ts`,
+   `server.ts` y el proxy la leen de `process.env`.
 
-### 2. Redesplegar la web y comprobar por contenido
+3. **Redesplegar y comprobar por contenido**, no por código de estado:
 
-```bash
-node scripts/smoke-produccion.mjs
-```
+   ```bash
+   node scripts/smoke-produccion.mjs
+   ```
 
-Las 8 comprobaciones tienen que salir en verde. **Un 200 no prueba nada** —
-ese fue exactamente el P0 del 26 de agosto, con el sitio respondiendo 200 y el
-feed vacío.
+   Las 8 comprobaciones en verde, y que el bundle servido ya traiga
+   `sb_publishable_` y ningún `eyJ`.
 
-### 3. Cambiar el secreto que usan los triggers de push
+4. **`SB_SECRET_KEY` → una clave secreta nueva** (`sb_secret_…`) en los secretos
+   de Edge Functions, y **`SB_PUBLISHABLE_KEY` → la publicable**. Después
+   redesplegar las seis funciones y comprobar que responden.
 
-`vault.service_role_key` guarda hoy la clave filtrada. Hay que sustituirlo por
-una clave `secret` del formato nuevo:
+5. **`vault.service_role_key` → la misma clave secreta nueva**, desde el SQL
+   Editor del panel (no desde la terminal: tu shell es PowerShell y PSReadLine
+   guarda el historial).
 
-```sql
-SELECT vault.update_secret(
-  (SELECT id FROM vault.secrets WHERE name = 'service_role_key'),
-  '<la clave sb_secret_ nueva>'
-);
-```
+   ```sql
+   SELECT vault.update_secret(
+     (SELECT id FROM vault.secrets WHERE name = 'service_role_key'),
+     '<la clave sb_secret_ nueva>'
+   );
+   ```
 
-Ejecútalo desde el SQL Editor del panel, **no** desde la terminal: tu shell es
-PowerShell y PSReadLine guarda el historial de la línea de comandos.
+6. **Alinear el secreto de `send-push` y desplegarlo:**
 
-### 4. Alinear el secreto de la Edge Function
+   ```bash
+   node scripts/alinear-secreto-push.mjs --escribir
+   npx supabase functions deploy send-push --project-ref oxxdkwywprkfghhbnoto
+   ```
 
-```bash
-node scripts/alinear-secreto-push.mjs           # mira y reporta
-node scripts/alinear-secreto-push.mjs --escribir # iguala PUSH_WEBHOOK_SECRET al del vault
-```
+   Y comprobar que sin autorización devuelve **401** — hoy devuelve 500 «Chat
+   not found», lo que significa que ejecuta el cuerpo entero sin credencial.
 
-El valor no pasa por la línea de comandos ni se imprime: se lee del vault y se
-escribe por la Management API dentro del mismo proceso. Lo único que sale por
-pantalla es formato, longitud y los primeros doce caracteres del sha256.
+7. **Comprobar que ya nada usa legacy**: manda un mensaje de prueba entre dos
+   cuentas y que llegue la push; borra una cuenta de prueba; corre
+   `node scripts/check-fallos-silenciosos.mjs`.
 
-### 5. Desplegar `send-push` con su puerta
+8. **Ahora sí: apagar las claves legacy.** Settings → API. Ese es el momento en
+   que la clave filtrada deja de servir para nada.
 
-El arreglo ya está en el repo (`supabase/functions/send-push/index.ts`), **sin
-desplegar a propósito**: desplegarlo antes del paso 4 haría que los triggers
-recibieran 401 y las push murieran en silencio.
+9. **Comprobar que está muerta:**
 
-```bash
-npx supabase functions deploy send-push --project-ref oxxdkwywprkfghhbnoto
-```
+   ```bash
+   node -e "
+   const k = require('child_process').execSync('git show 8416eee:apps/web/check_grants.js',{encoding:'utf8'}).match(/eyJ[\w-]+\.[\w-]+\.[\w-]+/)[0];
+   fetch('https://oxxdkwywprkfghhbnoto.supabase.co/auth/v1/admin/users?page=1&per_page=1',
+     {headers:{apikey:k, Authorization:'Bearer '+k}})
+     .then(r => console.log('la clave filtrada devuelve HTTP', r.status, r.status===401?'-> MUERTA':'-> SIGUE VIVA'));
+   "
+   ```
 
-Comprobar las dos direcciones:
-
-```bash
-# Sin autorización: tiene que dar 401
-curl -s -o /dev/null -w "%{http_code}\n" -X POST \
-  https://oxxdkwywprkfghhbnoto.supabase.co/functions/v1/send-push \
-  -H "Content-Type: application/json" -d '{}'
-```
-
-Y que una push real siga llegando: manda un mensaje de chat de prueba entre dos
-cuentas y comprueba que llega al teléfono. Si no llega, mira
-`net._http_response` — es la única evidencia, y se autoborra a las 6 horas.
-
-### 6. Ahora sí: apagar las claves legacy
-
-Settings → API → desactivar legacy. Ese es el momento en que la clave filtrada
-deja de servir para nada.
-
-### 7. Comprobar que la clave vieja está muerta
-
-```bash
-node -e "
-const k = require('child_process').execSync('git show 8416eee:apps/web/check_grants.js',{encoding:'utf8'}).match(/eyJ[\w-]+\.[\w-]+\.[\w-]+/)[0];
-fetch('https://oxxdkwywprkfghhbnoto.supabase.co/auth/v1/admin/users?page=1&per_page=1',
-  {headers:{apikey:k, Authorization:'Bearer '+k}})
-  .then(r => console.log('la clave filtrada devuelve HTTP', r.status, r.status===401?'-> MUERTA':'-> SIGUE VIVA'));
-"
-```
-
-Tiene que dar **401**.
+   Tiene que dar **401**.
 
 ---
 
-## Lo que queda después, y es opcional
+## Purgar el historial de git es secundario
 
-Purgar el historial de git con `git filter-repo` y forzar que todos vuelvan a
-clonar. **Es secundario**: una vez apagadas las legacy, la clave del historial
-es una cadena inútil. Reescribir el historial rompe los clones de todo el
-mundo, así que solo tiene sentido si además os preocupa que alguien la haya
-copiado a otro sitio antes de la rotación.
+Se puede hacer con `git filter-repo`, pero conviene saber lo que cuesta y lo que
+no da:
+
+- **No desactiva la clave.** Ya se borró del árbol en `9a88580` y sigue viva.
+- Reescribe todas las referencias y obliga a `push --force`. **Rompe los clones
+  de Alejandro y de Javier**, que tienen que volver a clonar.
+- La clave lleva meses ahí: quien haya clonado ya la tiene en su disco.
+
+Una vez apagadas las legacy, la cadena del historial es inútil. Purgar solo tiene
+sentido si además preocupa que alguien la copiara antes de la rotación.
+
+Mitigante de contexto: el repo es **privado**, con 2 colaboradores y 0 forks.
 
 ---
 
-## Lo que solo puede desbloquear el soporte de Supabase
+## Corrección de la primera versión de este documento
 
-Tres superficies tienen permisos concedidos a `PUBLIC` o a `anon` que **no se
-pueden revocar desde aquí**: sus dueños son `supabase_admin` y
-`supabase_storage_admin`, no `postgres`.
+La versión de esta mañana decía:
 
-El detalle que las hace peligrosas es cómo fallan. Un `REVOKE` sobre ellas
-**no da error: simplemente no hace nada.** Comprobado el 27 de agosto —
-ejecuté el revoke dentro de un `ROLLBACK` y `has_table_privilege` seguía
-devolviendo `true` después. Es exactamente el modo de fallo que dejó
-`delete_user_data` abierta cinco meses con una línea en el ledger diciendo que
-estaba cerrada.
+> «Lo que **no** depende de legacy, comprobado una por una: las 6 Edge Functions
+> usan `SB_SECRET_KEY`, que es del formato nuevo.»
 
-| Superficie | Qué tiene concedido | ¿Alcanzable hoy? |
-|---|---|---|
-| `public.spatial_ref_sys` | `anon` tiene `DELETE` y `TRUNCATE` | **Sí.** `GET /rest/v1/spatial_ref_sys` responde **200** con la clave pública |
-| `net.http_request_queue`, `net._http_response` | `PUBLIC` tiene **todos** los privilegios | No — el esquema `net` no está expuesto (406) |
-| `storage.objects`, `storage.buckets` | `anon` y `authenticated` tienen `TRUNCATE` | No — el esquema `storage` no está expuesto (406) |
+**Era falso, y seguirlo habría dejado sin servicio a las seis Edge Functions.**
+El error fue mío y de método: comprobé qué *nombre* de variable lee cada función
+y di por hecho que el nombre describía el valor. No lo abrí. Un segundo pase que
+comparó el `sha256` del valor encontró que `SB_SECRET_KEY` contiene exactamente
+la clave filtrada.
 
-**La urgente es la primera.** Un `DELETE` anónimo sobre el SRID 4326 rompe todo
-cálculo de PostGIS: el feed de cercanía, `search_nearby_products_v4`, el ranking
-por ubicación y el mapa. `TRUNCATE` además no obedece a la RLS, así que ninguna
-policy lo detendría aunque la hubiera.
-
-**Mitigación en pie, y verificada.** El cron `restore-spatial-ref-sys-hourly`
-(minuto 23 de cada hora) llama a `vicino_guard.restore_spatial_ref_sys()`. Ha
-corrido 33 veces sin fallar. Y funciona de verdad, no solo "reporta éxito":
-borré el SRID 4326 dentro de un `ROLLBACK`, llamé a la función, y `ST_Distance`
-volvió a calcular. Aun así es una tirita — deja una ventana de hasta una hora
-con el feed caído.
-
-Las otras dos son deuda, no urgencia, pero conviene cerrarlas: `http_request_queue`
-guarda las cabeceras `Authorization: Bearer <service_role_key>` de las peticiones
-en vuelo, así que el día que alguien exponga el esquema `net` eso es una fuga de
-credencial servida por la API.
-
-**Qué pedirle a soporte**, en un solo ticket:
-
-```
-REVOKE DELETE, TRUNCATE ON public.spatial_ref_sys FROM anon, authenticated;
-REVOKE ALL ON net.http_request_queue, net._http_response FROM PUBLIC;
-REVOKE TRUNCATE ON storage.objects, storage.buckets FROM anon, authenticated;
-```
-
-Y de paso, que corrijan el `pg_default_acl` de `supabase_admin`: es lo que hace
-que cada tabla nueva de `public` nazca con DML concedido al cliente. Sin eso, el
-problema vuelve con la siguiente tabla.
+Es la misma forma de error que este documento persigue: **dar por cierta la
+etiqueta en vez de ejercer la cosa.** Dejo la corrección escrita en vez de
+borrarla, porque el modo de fallo importa más que el dato.
 
 ---
 
@@ -198,5 +208,5 @@ problema vuelve con la siguiente tabla.
 
 - **`x-webhook-secret`** quedó expuesto en la terminal el 26 de agosto. Rotar.
 - **`apps/web/tests/storage-state.json`** contuvo una cookie de sesión de la
-  cuenta de pruebas. El archivo **nunca llegó a git** (comprobado: cero commits
-  lo tocan, y está en `.gitignore:54`), pero la sesión conviene regenerarla.
+  cuenta de pruebas. El archivo **nunca llegó a git** (cero commits lo tocan, y
+  está en `.gitignore:54`), pero la sesión conviene regenerarla.
