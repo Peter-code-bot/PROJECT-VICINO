@@ -7,6 +7,7 @@ import { PullToRefreshWrapper } from "@/components/layout/pull-to-refresh-wrappe
 import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { NotificationUnreadProvider } from "@/components/layout/notification-unread-provider";
 import { FavoritesProvider } from "@/components/layout/favorites-provider";
+import { MuroSesionProvider } from "@/components/auth/muro-sesion";
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
@@ -130,6 +131,10 @@ export default async function MarketplaceLayout({
         initialCount={unreadNotifications}
       >
         <FavoritesProvider initialIds={favoriteIds}>
+        {/* El muro envuelve TODO el marketplace, no cada superficie: asi
+            cualquier control que necesite sesion la puede pedir sin que haya
+            que pasarle el usuario por props desde media docena de padres. */}
+        <MuroSesionProvider haySesion={!!user}>
         <div className="flex min-h-screen">
           <Sidebar
             user={user ? { id: user.id } : null}
@@ -166,6 +171,7 @@ export default async function MarketplaceLayout({
             <BottomNav isVendedor={isVendedor} />
           </div>
         </div>
+        </MuroSesionProvider>
         </FavoritesProvider>
       </NotificationUnreadProvider>
     </ChatUnreadProvider>

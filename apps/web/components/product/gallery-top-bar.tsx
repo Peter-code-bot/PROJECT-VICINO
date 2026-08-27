@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/shared/favorite-button";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { ReportModal } from "@/components/moderation/report-modal";
 import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
 import {
@@ -41,6 +42,7 @@ export function GalleryTopBar({
 }: GalleryTopBarProps) {
   const router = useRouter();
   const [reportOpen, setReportOpen] = useState(false);
+  const { pedirSesion } = useMuroSesion();
 
   const isPaused = estatus === "pausado";
 
@@ -156,6 +158,14 @@ export function GalleryTopBar({
                   <DropdownMenuItem
                     onSelect={(e: any) => {
                       e.preventDefault();
+                      // El aviso llega ANTES de escribir, no despues. Sin
+                      // sesion, el modal se abria, dejaba elegir motivo y
+                      // redactar, y al enviar moria en un toast de 401 sin
+                      // salida a login: se pedia el trabajo y luego se
+                      // rechazaba. Es el unico de los 6 puntos de reporte que
+                      // se pintaba sin sesion, y es el de la ficha movil, que
+                      // es la que ve la app.
+                      if (!pedirSesion("Inicia sesión para reportar contenido")) return;
                       setReportOpen(true);
                     }}
                   >

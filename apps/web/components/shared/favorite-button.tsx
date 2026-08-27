@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Heart } from "lucide-react";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
@@ -24,6 +25,7 @@ export function FavoriteButton({
 }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
 
+  const { pedirSesion } = useMuroSesion();
   const { mutate, isPending } = useOptimisticMutation(toggleFavorite, {
     onMutate: () => {
       const previous = isFavorite;
@@ -58,6 +60,9 @@ export function FavoriteButton({
     e.preventDefault();
     e.stopPropagation();
     void hapticLight();
+    // Mismo caso que el corazon de la tarjeta: sin sesion, esto acababa en
+    // un error que nadie pintaba.
+    if (!pedirSesion("Inicia sesión para guardar tus favoritos")) return;
     void mutate(productId);
   }
 

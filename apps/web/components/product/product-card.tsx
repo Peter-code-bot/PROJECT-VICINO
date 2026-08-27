@@ -7,6 +7,7 @@ import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { NegociablePill } from "@/components/product/negociable-pill";
 import { CategoryBadge } from "@/components/product/category-badge";
@@ -151,6 +152,7 @@ export function ProductCard({
     return () => clearTimeout(t);
   }, [id]);
 
+  const { pedirSesion } = useMuroSesion();
   const { mutate: toggleFav, isPending } = useOptimisticMutation(
     toggleFavorite,
     {
@@ -234,6 +236,10 @@ export function ProductCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Antes esto llamaba a la accion sin mas. Sin sesion, la accion
+            // contestaba { error: "No autenticado" } y NADIE lo leia: el
+            // corazon se ponia rojo por el optimista y volvia a gris solo.
+            if (!pedirSesion("Inicia sesión para guardar tus favoritos")) return;
             void toggleFav(id);
           }}
           aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
