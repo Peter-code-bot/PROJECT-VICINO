@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { InvitacionVendedor } from "./invitacion-vendedor";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileHeader } from "./profile-header";
 import { ProfileTabs } from "./profile-tabs";
@@ -19,7 +20,7 @@ export default async function PerfilPage() {
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at"
+      "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at, alta_vendedor_paso"
     )
     .eq("id", user.id)
     .single();
@@ -138,6 +139,17 @@ export default async function PerfilPage() {
         followersCount={followersCount ?? 0}
         followingCount={followingCount ?? 0}
       />
+      {/* La cuarta puerta al alta de vendedor, y la unica que no depende de
+          que la persona se tropiece con ella. Las otras tres se cruzan por
+          accidente: al registrarse, o al ser rebotado de una zona de vendedor.
+          Quien decide un dia que quiere vender no tenia donde pulsar. */}
+      <div className="mt-4">
+        <InvitacionVendedor
+          esVendedor={profile?.es_vendedor ?? false}
+          altaPaso={profile?.alta_vendedor_paso ?? null}
+        />
+      </div>
+
       <ProfileTabs
         products={products ?? []}
         reviewsAsSeller={reviewsAsSeller ?? []}

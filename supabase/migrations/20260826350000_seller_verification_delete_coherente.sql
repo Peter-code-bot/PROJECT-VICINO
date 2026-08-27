@@ -1,0 +1,31 @@
+-- La policy de admin promete borrar y el privilegio lo niega. Se hacen coincidir.
+--
+-- Lo detecto scripts/audit-policies-vs-grants.mjs, que es justo para lo que
+-- existe, y senalando una migracion de HOY: la 20260826301000 revoco DELETE
+-- sobre seller_verification a authenticated, razonando que ningun camino del
+-- producto borra filas de esa tabla — quitar un documento hace UPDATE poniendo
+-- la URL a NULL.
+--
+-- Ese razonamiento era correcto para el SOLICITANTE y se me escapo el otro
+-- lado: la policy "Admin can manage verifications" es de tipo ALL, o sea que
+-- tambien cubre DELETE. Y un admin no deja de ser `authenticated`: usa el mismo
+-- rol de base de datos. Asi que tras aquel REVOKE, un administrador que
+-- intentara borrar una verificacion recibiria 42501 pese a que la policy se lo
+-- permite. Una policy que promete lo que el privilegio niega.
+--
+-- Se devuelve el GRANT en vez de recortar la policy porque es el cambio mas
+-- pequeno y no toca las reglas de acceso. Que solo los admin puedan borrar
+-- sigue garantizado por las policies, no por el privilegio: las del solicitante
+-- solo cubren SELECT, INSERT y UPDATE, asi que un DELETE suyo no encuentra
+-- ninguna fila.
+--
+-- Lo que NO se devuelve es TRUNCATE, y esa es la parte que de verdad importaba
+-- de aquella migracion: TRUNCATE no esta sujeto a RLS, asi que un privilegio
+-- ahi no lo contiene ninguna policy.
+
+GRANT DELETE ON TABLE public.seller_verification TO authenticated;
+
+-- VERIFY:
+--   node scripts/audit-policies-vs-grants.mjs   -- sin categoria A
+--   SELECT has_table_privilege('authenticated','public.seller_verification','TRUNCATE');
+--   -- esperado: false, sigue cerrado

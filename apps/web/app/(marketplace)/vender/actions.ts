@@ -376,6 +376,24 @@ export async function createProduct(formData: FormData) {
     mode: "create",
   });
 
+  // El alta de vendedor termina AQUI, al publicar.
+  //
+  // Publicar es lo unico que hace aparecer a alguien en el feed —el RPC filtra
+  // por ubicacion_geo de cada publicacion— asi que es el paso que de verdad
+  // cierra el alta, y por eso es el boton principal de la ultima pantalla del
+  // asistente.
+  //
+  // Va ANTES del redirect a proposito: redirect() lanza una excepcion de Next,
+  // asi que cualquier cosa despues de esa linea no se ejecuta nunca.
+  //
+  // Y su fallo no puede tumbar una publicacion que ya esta guardada: el
+  // marcador es una comodidad, la publicacion es el trabajo.
+  try {
+    await supabase.rpc("avanzar_alta_vendedor", { p_paso: null });
+  } catch (e) {
+    console.warn("[alta] no se pudo cerrar el alta de vendedor:", e);
+  }
+
   // MP#08 #4 Fase 1B: redirect usa la local `primaryCategoria` (derivada del
   // input validado por zod en L252), NO `data.categoria` (TEXT espejo del
   // INSERT RETURNING). Cuando 1C deje de escribir el espejo, `data.categoria`
