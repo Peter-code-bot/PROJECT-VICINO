@@ -76,7 +76,7 @@ export type Database = {
           reminder_1d_sent: boolean
           reminder_1h_sent: boolean
           seller_id: string
-          status: string | null
+          status: string
         }
         Insert: {
           appointment_date: string
@@ -90,7 +90,7 @@ export type Database = {
           reminder_1d_sent?: boolean
           reminder_1h_sent?: boolean
           seller_id: string
-          status?: string | null
+          status?: string
         }
         Update: {
           appointment_date?: string
@@ -104,7 +104,7 @@ export type Database = {
           reminder_1d_sent?: boolean
           reminder_1h_sent?: boolean
           seller_id?: string
-          status?: string | null
+          status?: string
         }
         Relationships: [
           {
