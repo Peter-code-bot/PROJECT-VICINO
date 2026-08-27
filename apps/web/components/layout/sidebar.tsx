@@ -181,7 +181,10 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             <div className="my-2 h-px bg-[color:var(--border)]" />
 
             <Link
-              href="/login"
+              // Conserva la pagina actual. Antes era "/login" pelado: quien
+              // pulsaba desde una publicacion iniciaba sesion y aterrizaba en la
+              // portada, sin la publicacion. Lo destapo la prueba E2E nueva.
+              href={`/login?next=${encodeURIComponent(pathname)}`}
               className="inline-flex items-center gap-3 rounded-xl bg-[color:var(--brand)] px-3 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)]"
             >
               <LogIn className="h-5 w-5" />
@@ -211,12 +214,22 @@ function NavItem({
   badge?: number;
   disabled?: boolean;
 }) {
+  // Sin sesion, estos items NO se apagan: llevan a identificarse y vuelven
+  // aqui. Antes eran un <span> gris con un title, o sea un callejon sin
+  // salida: la regla de producto que pidio Alejandro es que cualquier
+  // interaccion mande a inicio de sesion o registro, y un texto que no se
+  // puede pulsar no manda a ningun sitio. Las otras siete puertas del
+  // middleware ya hacen exactamente esto.
   if (disabled) {
     return (
-      <span className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--fg-dim)]" title="Inicia sesión para usar esta función">
+      <Link
+        href={`/login?next=${encodeURIComponent(href)}`}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--fg-dim)] transition-colors hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)]"
+        title="Inicia sesión para usar esta función"
+      >
         <Icon className="h-5 w-5" />
         {label}
-      </span>
+      </Link>
     );
   }
 

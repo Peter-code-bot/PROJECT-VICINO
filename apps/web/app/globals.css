@@ -331,6 +331,96 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(10,10,10,0.8);
   border: 1px solid rgba(255,255,255,0.06);
 }
+/* ─── LIQUID NAVIGATION ──────────────────────────────────────
+   La barra inferior del movil. Ver openspec/changes/2026-08-27-liquid-navigation.
+
+   Las cuatro capas van SEPARADAS a proposito, porque cada una hace un trabajo
+   distinto y se pueden leer una por una:
+     1. difusion  -> backdrop-filter
+     2. cuerpo    -> el gradiente, para que no se lea plano
+     3. canto     -> las dos sombras interiores, que es lo que lo vuelve vidrio
+                     y no plastico: el borde de arriba recoge luz, el de abajo
+                     la pierde
+     4. contacto  -> la sombra exterior, que la separa del contenido
+
+   NINGUNA depende de filtros SVG, asi que las cuatro renderizan igual en el
+   WebView de iOS (WebKit) y en el de Android (Chromium). Es la decision de
+   fondo de este cambio: backdrop-filter: url(#svg) NO existe en WebKit, y las
+   librerias de "liquid glass" que circulan construyen el efecto encima de eso.
+   Aqui la refraccion es un matiz opcional, no el diseno. */
+.liquid-nav {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.82),
+    rgba(255, 255, 255, 0.68)
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 12px 32px -8px rgba(0, 0, 0, 0.28);
+}
+
+.dark .liquid-nav {
+  background: linear-gradient(
+    to bottom,
+    rgba(28, 30, 29, 0.86),
+    rgba(14, 16, 15, 0.78)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.40),
+    0 1px 0 rgba(0, 0, 0, 0.30),
+    0 14px 36px -8px rgba(0, 0, 0, 0.55);
+}
+
+/* El anillo que separa el boton central de la pildora.
+
+   Se dibuja con un box-shadow del color del FONDO DE PAGINA, no con un
+   clip-path con muesca sobre la barra: recortar el elemento que lleva el
+   backdrop-filter deja el borde del desenfoque mordido, y se nota en cuanto
+   hay algo con contraste por detras. */
+.liquid-nav-fab {
+  box-shadow:
+    0 0 0 5px var(--bg),
+    0 8px 20px -4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+/* El indicador del item activo. Se DESPLAZA en vez de aparecer y desaparecer:
+   una sola propiedad compuesta, que es lo barato en movil. */
+.liquid-nav-indicador {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-nav-indicador {
+    transition: none;
+  }
+}
+
+/* NO HAY MEJORA PROGRESIVA POR DESPLAZAMIENTO, y se explica porque la
+   tentacion es obvia y la trampa tambien.
+
+   Aqui habia un @supports con backdrop-filter: url(#un-filtro-svg) para
+   anadir refraccion donde el navegador la soporta. Se quito por dos motivos,
+   el primero comprobado en el navegador y no razonado:
+
+   1. Referenciaba un filtro que no existia. Chromium acepto la regla —el
+      computed style pasaba a url("#...") blur(20px) saturate(1.8)— y con la
+      referencia rota el filtro entero deja de aplicarse: el desenfoque
+      DESAPARECE en Android. Un @supports que dice 'lo soporto' y luego apunta
+      a nada es peor que no tenerlo.
+   2. Aunque se creara el filtro, WebKit ignora url() en backdrop-filter. O
+      sea que el iPhone y el Android de la misma app se verian distintos, y
+      esa diferencia la nota cualquiera que ponga los dos telefonos juntos.
+
+   Las cuatro capas de arriba ya son el acabado completo y son IDENTICAS en
+   los dos motores. Si algun dia se quiere la refraccion, hace falta crear el
+   filtro SVG de verdad y asumir que es un adorno solo-Android. */
+
 .glass-dark {
   background: rgba(23,23,23,0.8);
   backdrop-filter: blur(16px) saturate(180%);
