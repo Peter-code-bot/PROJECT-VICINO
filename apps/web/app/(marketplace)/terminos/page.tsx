@@ -48,7 +48,19 @@ export default function TerminosPage() {
 
         <section>
           <h2 className="text-lg font-heading font-bold">7. Sistema de Confianza y Rankings</h2>
-          <p>VICINO implementa un sistema de niveles de confianza basado en la actividad, verificación de identidad y calificaciones de los usuarios. La verificación de identidad (INE, selfie) es voluntaria pero recomendada para acceder a niveles superiores.</p>
+          <p>
+            VICINO implementa un sistema de niveles de confianza basado en la actividad,
+            la verificación de identidad y las calificaciones de los usuarios. La
+            verificación de identidad es voluntaria pero recomendada para acceder a
+            niveles superiores, y se realiza mediante una identificación oficial
+            vigente —como la Credencial para Votar emitida por el INE o, cuando el
+            Usuario así lo elija, una credencial o carnet de estudiante vigente emitido
+            por una institución educativa reconocida— junto con una selfie para
+            comparación facial automatizada. VICINO podrá habilitar otros tipos de
+            identificación oficial o institucional como medios válidos de verificación;
+            el tipo aceptado en cada momento se indica dentro del flujo de verificación
+            de la Plataforma, sin que ello requiera modificar estos Términos.
+          </p>
           <p>Adicionalmente, VICINO genera automáticamente <strong>rankings hiperlocales</strong> de vendedores con base en un algoritmo transparente que evalúa puntos de confianza, ventas, reseñas y proximidad. La posición en dichos rankings se determina mediante procesos algorítmicos automatizados. VICINO no garantiza una posición específica y estar en un ranking no constituye un aval, garantía o patrocinio por parte de VICINO hacia el vendedor o sus productos.</p>
         </section>
 

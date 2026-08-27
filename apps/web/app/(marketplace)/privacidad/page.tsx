@@ -58,7 +58,18 @@ export default function PrivacidadPage() {
           <h3 className="text-base font-semibold mt-4">4.2. Datos personales sensibles (verificación voluntaria de identidad)</h3>
           <p>Cuando el Usuario decide acceder a niveles superiores del sistema de confianza de VICINO, podrá proporcionar de forma <strong>voluntaria y bajo consentimiento expreso</strong>:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Imagen de identificación oficial vigente (Credencial para Votar emitida por el INE) por anverso y reverso.</li>
+            <li>
+              Imagen de una identificación oficial vigente que acredite su identidad,
+              por anverso y reverso. VICINO acepta para este fin la <strong>Credencial
+              para Votar</strong> emitida por el Instituto Nacional Electoral (INE), así
+              como otras identificaciones oficiales o institucionales que la Plataforma
+              habilite de tiempo en tiempo para ampliar las opciones de verificación
+              disponibles para el Usuario — por ejemplo, la <strong>credencial o carnet
+              de estudiante vigente</strong> emitido por una institución educativa
+              reconocida, en cuyo caso VICINO recaba adicionalmente el nombre de dicha
+              institución. El tipo de identificación efectivamente aceptado en cada
+              momento se muestra dentro del flujo de verificación de la Plataforma.
+            </li>
             <li><strong>Fotografía facial (selfie)</strong> y <strong>datos biométricos derivados del rostro</strong> utilizados para comparación facial automatizada con la identificación oficial.</li>
           </ul>
           <p>
