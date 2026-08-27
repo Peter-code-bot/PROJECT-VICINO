@@ -1,0 +1,53 @@
+name: Fallos silenciosos
+
+# Por que existe este workflow, y por que en un archivo aparte.
+#
+# pg_cron marca un trabajo como 'succeeded' en cuanto consigue ENCOLAR el POST.
+# No lee la respuesta. Un endpoint que devuelva 401, 500 o que agote el tiempo
+# de espera aparece como exito en cron.job_run_details, y no salta ninguna
+# alerta. Este proyecto ya lo pago: los avisos de citas y los push llevaban
+# tiempo sin llegar mientras el panel decia que todo iba bien.
+#
+# La unica evidencia real vive en net._http_response y SE AUTOBORRA A LAS 6
+# HORAS. De ahi el cada-3-horas: con esa cadencia no se pierde ninguna ventana.
+# Una vez al dia veria como mucho las ultimas 6 horas y perderia las otras 18.
+#
+# Va en su propio archivo para que el cron no arrastre a los cuatro jobs de
+# security.yml, que solo tienen sentido sobre un push.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+jobs:
+  respuestas-salientes:
+    name: Respuestas de las llamadas salientes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Sin el secreto no se puede comprobar nada. Se avisa en voz alta y se
+      # sale con error, no en verde: un check que aprueba sin mirar es
+      # exactamente el fallo silencioso que este workflow viene a cazar. Es la
+      # misma decision que el job schema-drift de security.yml, pero al reves
+      # de estricta a proposito: alli la divergencia puede ser legitima
+      # mientras una migracion espera; aqui una respuesta 500 nunca lo es.
+      - name: Comprobar que hay credencial
+        run: |
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "::error title=No se comprobo nada::Falta el secreto SUPABASE_ACCESS_TOKEN. Anadelo en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Leer net._http_response
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/check-fallos-silenciosos.mjs

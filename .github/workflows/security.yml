@@ -7,6 +7,67 @@ on:
     branches: [master]
 
 jobs:
+  # Nada detecto la fuga de julio, cuando una clave service_role entro al repo
+  # en 8416eee dentro de cuatro scripts de comprobacion. Ahi sigue: borrarla del
+  # arbol en 9a88580 la saco del working tree, no del historial. Y nada habria
+  # detectado la siguiente tampoco.
+  #
+  # ESTE JOB MIRA LOS COMMITS NUEVOS, NO TODO EL HISTORIAL, y es deliberado.
+  #
+  # Escanear el historial completo lo dejaria en rojo permanente por 8416eee
+  # hasta que la clave este rotada y las legacy apagadas. Un rojo que no se
+  # puede apagar con el trabajo del dia deja de leerse en una semana, y
+  # entonces no avisa el dia que tiene razon. En este mismo repo ya paso: el
+  # job de npm audit llevaba quince pushes en rojo por un `tar` de herramientas
+  # de build, y por debajo viajaban cuatro fallos HIGH de Next -- dos SSRF y un
+  # DoS -- que nadie miro.
+  #
+  # La fuga historica NO queda perdonada: esta documentada en
+  # docs/RUNBOOK-claves-filtradas.md con los siete pasos para cerrarla, y sigue
+  # abierta hasta que se hagan. Lo que este job impide es la SIGUIENTE, que es
+  # justo lo que no habia. Y si alguien reintroduce esa misma clave en un
+  # commit nuevo, la caza igual, porque ese commit si esta en el rango.
+  #
+  # Binario y no gitleaks-action: este repo es privado y la accion pide
+  # licencia; el binario es MIT.
+  secretos:
+    name: Escaneo de secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Instalar gitleaks
+        run: |
+          VERSION=8.28.0
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Determinar el rango a escanear
+        id: rango
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DESDE="${{ github.event.pull_request.base.sha }}"
+          else
+            DESDE="${{ github.event.before }}"
+          fi
+          # En el primer push de una rama, github.event.before son todo ceros y
+          # no existe como commit. Ahi se escanea solo el commit de cabeza: es
+          # el unico rango que tiene sentido y no falla.
+          if [ -z "$DESDE" ] || [ "$DESDE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$DESDE^{commit}" 2>/dev/null; then
+            echo "opts=--no-merges -1 ${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "opts=--no-merges $DESDE..${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Buscar secretos en los commits nuevos
+        run: |
+          gitleaks detect --source . --redact --verbose --exit-code 1 \
+            --log-opts="${{ steps.rango.outputs.opts }}"
+
   audit:
     name: npm audit
     runs-on: ubuntu-latest
