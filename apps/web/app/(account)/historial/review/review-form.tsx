@@ -88,7 +88,21 @@ export function ReviewForm({
     });
   }
 
-  async function uploadMedia(): Promise<string[]> {
+  /**
+   * La ruta EMPIEZA por el uid de quien sube, y no por el id de la venta.
+   *
+   * La policy "Owner upload review media" de storage.objects exige
+   * (storage.foldername(name))[1] = auth.uid()::text, o sea que el primer
+   * segmento tiene que ser el uid. Aqui se construia
+   * `${saleConfirmationId}/...`, y el id de una confirmacion de venta no es
+   * el uid de nadie: TODA subida moria con 42501 y ninguna resena con foto se
+   * podia publicar. Comprobado ejerciendo las dos rutas contra produccion
+   * dentro de un ROLLBACK: la vieja da 42501, la nueva entra.
+   *
+   * El id de la venta se conserva como segundo segmento para no perder la
+   * asociacion entre el archivo y la resena a la que pertenece.
+   */
+  async function uploadMedia(userId: string): Promise<string[]> {
     if (media.length === 0) return [];
     const urls: string[] = [];
     const subidas: string[] = [];
@@ -96,7 +110,7 @@ export function ReviewForm({
     for (let i = 0; i < media.length; i++) {
       const m = media[i]!;
       const ext = m.file.name.split(".").pop() ?? "jpg";
-      const path = `${saleConfirmationId}/${ts}-${i}.${ext}`;
+      const path = `${userId}/${saleConfirmationId}/${ts}-${i}.${ext}`;
       const { error: err } = await supabase.storage
         .from("review-media")
         .upload(path, m.file, { cacheControl: CACHE_INMUTABLE });
@@ -143,7 +157,7 @@ export function ReviewForm({
         return;
       }
 
-      const mediaUrls = await uploadMedia();
+      const mediaUrls = await uploadMedia(user.id);
 
       const { error: insertError } = await supabase.from("reviews").insert({
         sale_confirmation_id: saleConfirmationId,
