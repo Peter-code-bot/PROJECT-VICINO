@@ -107,7 +107,15 @@ export function ProfileForm({
     // profile UPDATE.
     const submittingEsVendedor = formData.get("es_vendedor") === "on";
     const turningSellerOff = initialEsVendedor && !submittingEsVendedor;
-    if (turningSellerOff && activeProductCount > 0) {
+    // Sale SIEMPRE que se desactive, no solo con publicaciones activas.
+    //
+    // Antes la condicion era `turningSellerOff && activeProductCount > 0`, asi
+    // que un vendedor con cero publicaciones desmarcaba la casilla, guardaba, y
+    // no veia ningun aviso — pese a que desactivar tambien devuelve el tipo a
+    // "casual" y le quita el permiso de publicar. Un cambio de estado que la
+    // persona no puede deshacer sin volver a pasar por aqui merece que se le
+    // pregunte, tenga cero publicaciones o veinte.
+    if (turningSellerOff) {
       setPendingDeactivation(formData);
       return;
     }
@@ -462,15 +470,34 @@ export function ProfileForm({
       {pendingDeactivation ? (
         <div className="sticky bottom-20 md:bottom-4 z-10 space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           <p className="font-semibold text-amber-900 dark:text-amber-200">
-            Desactivar modo vendedor
+            Desactivar Modo Vendedor
           </p>
-          <p className="text-amber-800/90 dark:text-amber-200/80">
-            Tienes {activeProductCount}{" "}
-            {activeProductCount === 1 ? "producto publicado" : "productos publicados"}.
-            Al desactivar, se pausarán automáticamente y dejarán de aparecer en
-            búsqueda. Podrás reactivarlos manualmente si vuelves a activar el
-            modo vendedor.
-          </p>
+          <div className="space-y-2 text-amber-800/90 dark:text-amber-200/80">
+            <p>Al desactivarlo:</p>
+            <ul className="space-y-1 pl-4">
+              {activeProductCount > 0 && (
+                <li className="list-disc">
+                  Tus {activeProductCount}{" "}
+                  {activeProductCount === 1
+                    ? "publicación activa se pausa"
+                    : "publicaciones activas se pausan"}{" "}
+                  y {activeProductCount === 1 ? "deja" : "dejan"} de aparecer en las
+                  búsquedas. No se {activeProductCount === 1 ? "borra" : "borran"}.
+                </li>
+              )}
+              <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
+              <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
+              <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
+            </ul>
+            {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
+                desactivar ponia a NULL el nombre del negocio, su descripcion y
+                los metodos de pago, y este mismo recuadro decia "podras
+                reactivarlos", dando a entender que se recuperaba todo. */}
+            <p className="pt-1">
+              No se borra nada: el nombre de tu negocio, su descripción y tus métodos
+              de pago se guardan, y vuelven tal cual si lo reactivas.
+            </p>
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -486,7 +513,10 @@ export function ProfileForm({
               disabled={loading}
               className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Desactivar y pausar"}
+              {/* La confirmacion REPITE la etiqueta de la accion, como hace Instagram,
+                  en vez de un "Aceptar" ambiguo. Y ya no dice "y pausar": con cero
+                  publicaciones no habia nada que pausar y el boton mentia. */}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Desactivar Modo Vendedor"}
             </button>
           </div>
         </div>
