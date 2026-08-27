@@ -29,7 +29,8 @@ export default async function SellerLayout({
   // es_vendedor, but the layout-level redirect is a backstop in case
   // middleware is bypassed (e.g., direct server-side render in dev).
   if (!profile?.es_vendedor) {
-    redirect("/perfil/editar?prompt=seller-mode");
+    // Ruta dedicada del alta, no la pantalla generica de editar perfil.
+    redirect("/empezar-a-vender");
   }
 
   const storeName =

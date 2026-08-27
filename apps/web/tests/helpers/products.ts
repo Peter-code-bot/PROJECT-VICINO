@@ -35,7 +35,8 @@ export async function findVisitorProductSlug(page: Page): Promise<string> {
  *
  * Failure modes for the skip:
  *  - Seed account is NOT es_vendedor -> seller layout redirige a
- *    /perfil/editar?prompt=seller-mode; el helper no encuentra product
+ *    /empezar-a-vender (la ruta dedicada del alta; antes era
+ *    /perfil/editar?prompt=seller-mode); el helper no encuentra product
  *    links y skip-ea con el URL final como pista.
  *  - Seed account es vendedor pero NO tiene listings -> /seller/listings
  *    renderiza el empty state; mismo skip con razon distinta.

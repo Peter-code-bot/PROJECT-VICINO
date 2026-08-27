@@ -17,7 +17,9 @@ export function OnboardingOptions() {
         toast.error("Error al guardar: " + result.error);
         return;
       }
-      router.push("/perfil/editar?prompt=seller-mode");
+      // Ruta dedicada del alta. Antes esto mandaba a la pantalla generica de
+      // editar perfil, donde la casilla estaba por debajo de seis campos.
+      router.push("/empezar-a-vender");
     });
   };
 

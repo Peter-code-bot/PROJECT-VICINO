@@ -129,9 +129,15 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   }
 
   // Phase 9: gate /vender and /seller/* on `profiles.es_vendedor` for
-  // authenticated users. Users who haven't opted in to seller mode are
-  // redirected to /perfil/editar?prompt=seller-mode where they can activate
-  // the toggle. Defense-in-depth — seller layout also redirects.
+  // authenticated users. Defense-in-depth — seller layout also redirects.
+  //
+  // Ahora manda a /empezar-a-vender, la ruta dedicada del alta. Antes mandaba a
+  // /perfil/editar?prompt=seller-mode, y ese parametro NO LO LEIA NADIE: la
+  // persona aterrizaba en la pantalla generica de editar perfil con la casilla
+  // que tenia que marcar por debajo de seis campos. Era el item 7 del backlog.
+  //
+  // No hay bucle: /empezar-a-vender manda a /vender a quien YA es vendedor, y
+  // aqui solo entra quien no lo es.
   if (
     user &&
     (pathname === "/vender" ||
@@ -146,8 +152,8 @@ export async function updateSession(request: NextRequest, nonce?: string) {
       .single();
     if (!gateProfile?.es_vendedor) {
       const url = request.nextUrl.clone();
-      url.pathname = "/perfil/editar";
-      url.searchParams.set("prompt", "seller-mode");
+      url.pathname = "/empezar-a-vender";
+      url.search = "";
       return NextResponse.redirect(url);
     }
   }
