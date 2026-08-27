@@ -129,12 +129,26 @@ export function ReviewForm({
     setLoading(true);
 
     try {
+      // La sesion se comprueba ANTES de subir las fotos. Antes se leia
+      // `user?.id` dentro del insert: con la sesion caducada eso viajaba como
+      // undefined y la persona veia el mensaje crudo de Postgres sobre una
+      // columna NOT NULL, despues de haber escrito la resena y esperado a que
+      // subieran las fotos. Ahora se entera antes y no gasta el dato.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Tu sesión expiró. Vuelve a iniciar sesión para publicar tu reseña.");
+        setLoading(false);
+        return;
+      }
+
       const mediaUrls = await uploadMedia();
 
       const { error: insertError } = await supabase.from("reviews").insert({
         sale_confirmation_id: saleConfirmationId,
         product_id: productId,
-        reviewer_id: (await supabase.auth.getUser()).data.user?.id,
+        reviewer_id: user.id,
         reviewed_id: reviewedId,
         review_type: reviewType,
         rating,

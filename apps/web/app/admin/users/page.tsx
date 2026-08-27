@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SellerBadge } from "@/components/shared/seller-badge";
-import type { TrustLevel } from "@vicino/shared";
+import { Constants } from "@/types/database.types";
 import { RoleActions } from "./role-actions";
 
 export const metadata = { title: "Admin — Usuarios" };
@@ -35,12 +35,19 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     query = query.or(`nombre.ilike.%${params.q}%,user_id.ilike.%${params.q}%`);
   }
 
-  if (params.role) {
+  // El rol llega por la URL, no por el <select>, asi que puede ser cualquier
+  // cosa. Se contrasta contra el enum app_role de la base —unica fuente de
+  // verdad: un rol nuevo en el enum entra aqui sin tocar esta pagina— y un
+  // valor inexistente se ignora en vez de filtrar por el, que es justo lo que
+  // el <select> ensena al no encontrar su opcion.
+  const roleFilter = Constants.public.Enums.app_role.find((r) => r === params.role);
+
+  if (roleFilter) {
     const { data: roleUsers } = await supabase
       .from("user_roles")
       .select("user_id")
-      .eq("role", params.role);
-      
+      .eq("role", roleFilter);
+
     const userIds = roleUsers?.map(r => r.user_id) ?? [];
     if (userIds.length > 0) {
       query = query.in("id", userIds);
@@ -74,7 +81,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         />
         <select
           name="role"
-          defaultValue={params.role || ""}
+          defaultValue={roleFilter ?? ""}
           className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary cursor-pointer"
         >
           <option value="">Todos los roles</option>
@@ -97,7 +104,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{u.nombre || "Sin nombre"}</span>
-                  <SellerBadge level={(u.trust_level as TrustLevel) ?? "nuevo"} size="sm" />
+                  <SellerBadge level={u.trust_level ?? "nuevo"} size="sm" />
                   {u.es_vendedor && (
                     <span className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 px-2 py-0.5 rounded-full">
                       Vendedor

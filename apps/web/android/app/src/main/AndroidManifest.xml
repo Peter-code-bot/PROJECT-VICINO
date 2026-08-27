@@ -43,7 +43,8 @@
             </intent-filter>
 
             <!-- Legacy host (Play Data Safety URL). No autoVerify because
-                 vercel.app serves a 308 to vicinomarket.com and cannot
+                 vercel.app responds 200 with the full app (verified 2026-08-26;
+                 the repo docs claimed a 308 for months and it is not) and cannot
                  publish a directly-fetched assetlinks.json. App still
                  accepts the link manually via "Open with...". -->
             <intent-filter>

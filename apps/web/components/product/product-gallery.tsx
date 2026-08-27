@@ -44,10 +44,14 @@ function VideoGridThumbnail({ url }: { url: string }) {
   );
 }
 
-interface ImageSize {
+// `type` y no `interface` a proposito: gallery_sizes es una columna jsonb y
+// TypeScript solo da indice implicito a los ALIAS de tipo de objeto, no a
+// las interfaces. Con `interface`, ImageSize[] no es asignable a Json y el
+// unico arreglo seria un cast, que es justo lo que este lote prohibe.
+type ImageSize = {
   colSpan: number;
   rowSpan: number;
-}
+};
 
 const SIZE_PRESETS = [
   { label: "S", colSpan: 1, rowSpan: 1 },

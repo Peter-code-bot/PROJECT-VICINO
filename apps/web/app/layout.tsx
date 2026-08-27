@@ -23,7 +23,22 @@ const outfit = Outfit({
   display: "swap",
 });
 
+/**
+ * Dominio canonico. Sale de la variable de entorno para que un preview no
+ * se declare canonico de si mismo, con vicinomarket.com como respaldo.
+ */
+const SITIO = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
+
 export const metadata: Metadata = {
+  // Sin metadataBase, Next resuelve las rutas relativas de openGraph contra
+  // el host que sirve. Y hay DOS: startup-marketplace-web.vercel.app responde
+  // 200 con la app completa (comprobado el 26-ago-2026; la documentacion de
+  // este repo llevaba meses afirmando que era un 308, y no lo es).
+  metadataBase: new URL(SITIO),
+  // Canonical que se apunta a si mismo: cada ruta declara su propia URL bajo
+  // el dominio canonico, se sirva desde donde se sirva. Es lo que le dice a
+  // los buscadores cual de los dos hosts cuenta.
+  alternates: { canonical: "./" },
   title: {
     default: "VICINO — Tu mercado de confianza",
     template: "%s — VICINO",

@@ -38,7 +38,11 @@ export default async function DisputesPage() {
               <div key={d.id} className="rounded-lg border p-4 space-y-3 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <span className="font-medium text-sm flex-1 min-w-0 break-words">{d.motivo}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">{formatDate(d.created_at)}</span>
+                  {/* created_at no es NOT NULL en la base (solo tiene DEFAULT),
+                      asi que la fecha puede faltar: guion en vez de "Invalid Date". */}
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {d.created_at ? formatDate(d.created_at) : "—"}
+                  </span>
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>Reporta: <strong>{reporter?.nombre ?? "Usuario"}</strong></p>

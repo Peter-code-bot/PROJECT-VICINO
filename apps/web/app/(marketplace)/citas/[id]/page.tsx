@@ -227,7 +227,11 @@ export default async function CitaDetailPage({ params }: PageProps) {
   );
 }
 
-function StatusBadge({ status, isPast }: { status: string; isPast: boolean }) {
+// status admite NULL en la base (tiene DEFAULT, pero el tipo no puede afirmar
+// lo que la columna no garantiza). Una cita sin status no esta completada ni
+// cancelada: cae sola en el ultimo return, que es "Proxima" o "Vencida" segun
+// la fecha — exactamente lo que se pinta hoy para una cita confirmada.
+function StatusBadge({ status, isPast }: { status: string | null; isPast: boolean }) {
   if (status === "completed") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-trust/15 text-emerald-trust text-xs font-semibold">

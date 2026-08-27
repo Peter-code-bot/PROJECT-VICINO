@@ -7,7 +7,9 @@ const config: CapacitorConfig = {
   server: {
     // Production: canonical domain. The legacy vercel.app host stays in
     // allowNavigation because Google Play Data Safety still references it
-    // and it serves a 308 to vicinomarket.com.
+    // OJO: comprobado el 26-ago-2026, ese host NO sirve un 308 — responde 200
+    // con la aplicacion completa. Se queda en allowNavigation porque la Data
+    // Safety URL de Google Play todavia lo referencia, no porque redirija.
     url: 'https://vicinomarket.com',
     cleartext: false,
     iosScheme: 'https',

@@ -61,7 +61,11 @@ adb devices          # verificar que el celular aparece
 
 ## Notas
 
-- El APK es un **WebView wrapper** que carga `startup-marketplace-web.vercel.app`
+- El APK es un **WebView wrapper** que carga `vicinomarket.com`, el dominio
+  canónico (ver `capacitor.config.ts`). El host legado
+  `startup-marketplace-web.vercel.app` sigue en `allowNavigation` porque la
+  Data Safety URL de Google Play lo referencia. Comprobado el 26-ago-2026:
+  ese host responde **200 con la app completa**, no un 308
 - No requiere build del frontend local para el APK debug
 - Primera compilación descarga Gradle (~200 MB) + dependencias — tarda 10-20 min
 - Compilaciones posteriores son rápidas (~1-2 min con cache)

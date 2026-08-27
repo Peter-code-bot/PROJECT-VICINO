@@ -78,7 +78,11 @@ export default async function VentasPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
-                    <span className="shrink-0">{new Date(s.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    {/* created_at admite NULL: sin fecha no se pinta nada. `new Date(null)`
+                        no falla, coacciona a 0 y pintaria "01/01/70" como si fuera real. */}
+                    {s.created_at && (
+                      <span className="shrink-0">{new Date(s.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    )}
                     <span className="truncate max-w-[120px] sm:max-w-[200px]">{product?.titulo ?? "Producto"}</span>
                     {canReview && (
                       <Link

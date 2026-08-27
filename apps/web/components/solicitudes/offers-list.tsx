@@ -14,7 +14,9 @@ interface OfferData {
   message_offer: string;
   price_offer: number | null;
   linked_product_id: string | null;
-  created_at: string;
+  // La columna admite nulo (tiene DEFAULT now(), asi que en la practica
+  // nunca lo es, pero el tipo no puede afirmar lo que la base no garantiza).
+  created_at: string | null;
   profiles: {
     nombre: string;
     avatar_url: string | null;
@@ -169,7 +171,7 @@ export function OffersList({
                         </span>
                       )}
                     <span className="text-xs text-muted-foreground ml-auto">
-                      {formatRelativeTime(offer.created_at)}
+                      {offer.created_at ? formatRelativeTime(offer.created_at) : null}
                     </span>
                   </div>
 

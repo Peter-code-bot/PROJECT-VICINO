@@ -6,6 +6,7 @@ import { AVISO_PRIVACIDAD_VERSION } from "@vicino/shared";
 import { registrarConsentimientoBiometrico } from "@/app/actions/consentimiento";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
 import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
 import { verifyDocument } from "@/app/actions/verify-document";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
@@ -198,13 +199,16 @@ export function VerificationUpload({
       return;
     }
 
-    const updates: Record<string, string> = {};
+    // Record<string, string> ensanchaba todo el payload —incluido status— a
+    // string, y con el generic puesto eso ya no cuela. El tipo Update de la
+    // tabla ademas comprueba los nombres de las tres columnas de URL.
+    const updates: Database["public"]["Tables"]["seller_verification"]["Update"] = {};
     if (key === "selfie") updates.selfie_url = path;
     if (key === "ine_front") updates.ine_front_url = path;
     if (key === "ine_back") updates.ine_back_url = path;
 
     // Actualizamos DB inicialmente como pending
-    const payload = {
+    const payload: Database["public"]["Tables"]["seller_verification"]["Update"] = {
       ...updates,
       status: "pending",
       document_type: docType,

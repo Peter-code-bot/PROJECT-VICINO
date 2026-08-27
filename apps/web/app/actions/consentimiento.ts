@@ -31,16 +31,21 @@ export async function registrarConsentimientoBiometrico() {
 
   const h = await headers();
   // x-forwarded-for puede traer varias IP separadas por coma; la primera es la
-  // del cliente. Si no hay nada utilizable se manda null: la IP es un dato de
+  // del cliente. Si no hay nada utilizable no se manda: la IP es un dato de
   // apoyo, no la prueba. La prueba es la fila y su fecha.
+  //
+  // "No mandarla" es `undefined`, no `null`. El RPC declara p_user_agent y p_ip
+  // con DEFAULT NULL, asi que omitir el parametro es la forma que la propia
+  // funcion ofrece para decir "no hay dato": la clave no viaja en el cuerpo y
+  // es Postgres quien pone el NULL. La fila queda igual que antes.
   const ip =
     (h.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
     h.get("x-real-ip") ||
-    null;
+    undefined;
 
   const { data, error } = await supabase.rpc("registrar_consentimiento_biometrico", {
     p_aviso_version: AVISO_PRIVACIDAD_VERSION,
-    p_user_agent: h.get("user-agent") ?? null,
+    p_user_agent: h.get("user-agent") ?? undefined,
     p_ip: ip,
   });
 
@@ -53,5 +58,9 @@ export async function registrarConsentimientoBiometrico() {
     return { error: "No se pudo registrar tu consentimiento. Intenta de nuevo." };
   }
 
-  return { success: true as const, id: data as string };
+  // El `as string` que habia aqui no acreditaba nada: la respuesta del cliente
+  // trae `data` nullable por construccion (la union data/error se pierde al
+  // desestructurar) y el unico consumidor —el checkbox de verificacion— ni
+  // siquiera lee el id, solo mira `error`. Se devuelve tal cual lo da el RPC.
+  return { success: true as const, id: data };
 }

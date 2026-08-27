@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { Database } from "@/types/database.types";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Construida, no escrita: escapar una barra invertida dentro de un literal
@@ -14,7 +15,11 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     request: { headers: forwardHeaders },
   });
 
-  const supabase = createServerClient(
+  // El generic Database es lo que hace que tsc valide los nombres de columna
+  // de cada .select(). Sin el, un select de una columna que no existe compila
+  // y PostgREST devuelve { data: null, error }, que es como se perdieron cuatro
+  // selects en silencio. Los tipos se regeneran con: node scripts/gen-types.mjs
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

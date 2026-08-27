@@ -3,6 +3,7 @@
 import OpenAI from "openai";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function verifyDocument(
@@ -121,7 +122,11 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     const responseText = response.choices[0]?.message?.content || "{}";
     const analysis = JSON.parse(responseText);
 
-    let finalStatus = "pending";
+    // Anotado con el enum GENERADO, no con una union a mano: si la base
+    // gana un estado, este archivo deja de compilar en vez de mentir.
+    // Sin la anotacion, `let` ensancha el literal a `string` y el update
+    // deja de estar comprobado.
+    let finalStatus: Database["public"]["Enums"]["verification_status"] = "pending";
 
     // Evaluate rules
     if (analysis.confianza_porcentaje >= 90 && analysis.es_credencial_valida && analysis.vigente && analysis.el_nombre_coincide) {

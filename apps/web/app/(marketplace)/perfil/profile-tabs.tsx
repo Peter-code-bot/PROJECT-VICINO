@@ -108,35 +108,42 @@ interface ProfileTabsProps {
     modo_precio?: string | null;
     imagen_principal: string | null;
     categoria: string;
-    slug: string;
-    estatus: string;
-    ventas_count: number;
+    // slug, estatus y ventas_count admiten nulo en products_services. slug es
+    // el unico con consecuencia visible: sin el no hay URL de detalle, asi que
+    // la tarjeta se pinta sin envolver en Link (ver el map de abajo).
+    slug: string | null;
+    estatus: string | null;
+    ventas_count: number | null;
     product_categories?: unknown;
   }>;
   reviewsAsSeller: Array<{
     id: string;
     rating: number;
     comentario: string | null;
-    created_at: string;
+    // created_at admite nulo (tiene DEFAULT now(), asi que en la practica nunca
+    // lo es, pero el tipo no puede afirmar lo que la base no garantiza). Nulo
+    // se pinta como nada: `new Date(null)` es la epoca, o sea que sin el guard
+    // saldria un "1 ene 1970" con toda la pinta de fecha buena.
+    created_at: string | null;
     review_type: string;
     reviewer_id?: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   reviewsAsBuyer: Array<{
     id: string;
     rating: number;
     comentario: string | null;
-    created_at: string;
+    created_at: string | null;
     review_type: string;
     reviewer_id?: string;
     profiles: { nombre: string; foto: string | null } | { nombre: string; foto: string | null }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   isVendedor: boolean;
@@ -269,8 +276,10 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                   {...(isEditing ? { "data-no-page-swipe": "true" } : {})}
                 >
                   {localProducts.map((p) => (
-                    isEditing ? (
-                      <SortableProductCard key={p.id} p={p} isEditing={true} />
+                    // Sin slug no hay pagina de detalle: la tarjeta se pinta
+                    // igual pero sin envolver, en vez de enlazar a /categoria/null.
+                    isEditing || !p.slug ? (
+                      <SortableProductCard key={p.id} p={p} isEditing={isEditing} />
                     ) : (
                       <Link
                         key={p.id}
@@ -330,7 +339,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
                     </div>
                     <span className="text-sm font-semibold text-[color:var(--fg)]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="ml-auto text-xs text-[color:var(--fg-dim)]">{formatDate(r.created_at)}</span>
+                    <span className="ml-auto text-xs text-[color:var(--fg-dim)]">{r.created_at ? formatDate(r.created_at) : null}</span>
                     {currentUserId && !isOwnReview && (
                       <ReportMenuButton
                         targetType="review"

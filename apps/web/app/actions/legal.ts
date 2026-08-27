@@ -39,14 +39,20 @@ export async function registrarAceptacionLegal() {
   // x-forwarded-for puede traer varias IP separadas por coma; la primera es la
   // del cliente. Es un dato de apoyo, no la prueba: si viene inservible, el RPC
   // la descarta y registra igual.
+  //
+  // Cuando no hay nada utilizable va `undefined`, no `null`. El RPC declara
+  // p_user_agent y p_ip con DEFAULT NULL, asi que omitir el parametro es la
+  // forma que la propia funcion ofrece para decir "no hay dato": la clave no
+  // viaja en el cuerpo y es Postgres quien pone el NULL. La fila queda igual
+  // que antes; lo que cambia es que ahora se llama al RPC por su firma real.
   const ip =
     (h.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
     h.get("x-real-ip") ||
-    null;
+    undefined;
 
   const { data, error } = await supabase.rpc("registrar_aceptacion_legal", {
     p_modo: "uso_continuado",
-    p_user_agent: h.get("user-agent") ?? null,
+    p_user_agent: h.get("user-agent") ?? undefined,
     p_ip: ip,
   });
 

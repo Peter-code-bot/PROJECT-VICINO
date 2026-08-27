@@ -29,7 +29,34 @@ export default async function PerfilPage() {
     console.error("[perfil] Error loading profile:", profileError);
   }
 
-  const profile = profileData ? { ...profileData, email: user.email || "" } : null;
+  // Con el Database generico puesto, `profiles` confiesa lo que ya era verdad
+  // en la base: casi todas sus columnas de estado son NULLABLE. Tienen DEFAULT,
+  // pero un DEFAULT no es una promesa, asi que el valor de reposo se aplica
+  // aqui una sola vez en vez de repetirlo en cada consumidor (ProfileHeader ya
+  // lo venia haciendo por su cuenta con trust_points y trust_level).
+  //
+  // `created_at` es el unico sin valor de reposo honesto: inventar una fecha
+  // seria mentir. La cadena vacia es el sentinel que el render de ProfileHeader
+  // ya trata como ausencia — pinta "Miembro desde" dentro de un
+  // `{profile.created_at && ...}` — asi que un perfil sin fecha no pinta nada.
+  const profile = profileData
+    ? {
+        ...profileData,
+        email: user.email || "",
+        es_vendedor: profileData.es_vendedor ?? false,
+        trust_level: profileData.trust_level ?? "nuevo",
+        trust_points: profileData.trust_points ?? 0,
+        total_sales: profileData.total_sales ?? 0,
+        average_rating: profileData.average_rating ?? 0,
+        reviews_count: profileData.reviews_count ?? 0,
+        is_verified: profileData.is_verified ?? false,
+        // Sin centinela: ProfileHeader ya declara created_at nulable y guarda el
+        // bloque "Miembro desde" con `{profile.created_at && ...}`. Un "" aqui solo
+        // dejaria un valor inventado que el siguiente lector heredaria como si
+        // significara algo.
+        created_at: profileData.created_at,
+      }
+    : null;
 
   // Get user's products.
   // MP#08 #5c-4: SELECT expandido con product_categories embed para que la
@@ -56,6 +83,18 @@ export default async function PerfilPage() {
 
     products = fallback.data ? fallback.data.map(p => ({ ...p, sort_order: 0 })) : null;
   }
+
+  // slug, estatus y ventas_count tambien son NULLABLE en products_services.
+  // Las tres columnas nulables (slug, estatus, ventas_count) se pasan TAL CUAL:
+  // ProfileTabs ya las declara nulables y ya decide que hacer con cada una.
+  //
+  // Aqui hubo un `slug: p.slug ?? p.id` que habia que quitar. Anulaba la guarda
+  // del hijo —"sin slug no hay pagina de detalle, la tarjeta se pinta sin
+  // envolver"— porque con el respaldo puesto `!p.slug` nunca era cierto. El
+  // resultado no era "sin enlace": era un enlace a /categoria/<id>, y la ruta
+  // de detalle resuelve SOLO por slug, o sea un 404. El respaldo por id esta
+  // copiado en otros cuatro sitios del marketplace y no funciona en ninguno.
+  const productsForTabs = products ?? [];
 
   // Get reviews received
   const { data: reviewsAsSeller } = await supabase
@@ -120,7 +159,9 @@ export default async function PerfilPage() {
         <AccountMenuDrawer
           userName={profile?.nombre}
           userAvatar={profile?.foto}
-          userId={profile?.user_id}
+          // user_id es NULLABLE y el drawer solo distingue "hay" de "no hay"
+          // (`{userId && ...}`), asi que null y ausente valen lo mismo aqui.
+          userId={profile?.user_id ?? undefined}
           userIsVendedor={profile?.es_vendedor ?? false}
           trigger={
             <button
@@ -134,7 +175,7 @@ export default async function PerfilPage() {
       </div>
       <ProfileHeader
         profile={profile}
-        productCount={products?.length ?? 0}
+        productCount={productsForTabs.length}
         purchaseCount={purchaseCount ?? 0}
         followersCount={followersCount ?? 0}
         followingCount={followingCount ?? 0}
@@ -151,7 +192,7 @@ export default async function PerfilPage() {
       </div>
 
       <ProfileTabs
-        products={products ?? []}
+        products={productsForTabs}
         reviewsAsSeller={reviewsAsSeller ?? []}
         reviewsAsBuyer={reviewsAsBuyer ?? []}
         isVendedor={profile?.es_vendedor ?? false}

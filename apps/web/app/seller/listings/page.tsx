@@ -50,33 +50,49 @@ export default async function ListingsPage() {
 
       {products && products.length > 0 ? (
         <div className="space-y-3">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 hover:opacity-90 transition-opacity flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
-            >
-              <div className="flex flex-col min-w-0 space-y-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Link
-                    href={`/${primaryCategorySlug((p as { product_categories?: unknown }).product_categories) ?? p.categoria}/${p.slug}`}
-                    className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate"
-                  >
-                    {p.titulo}
-                  </Link>
+          {products.map((p) => {
+            // `estatus` admite NULL en la base (columna con DEFAULT
+            // 'disponible', pero sin NOT NULL). Ninguna de esas filas puede
+            // llegar hasta aqui: el `.neq("estatus", "eliminado")` del SELECT
+            // se traduce a `estatus <> 'eliminado'`, que con NULL evalua a
+            // NULL —no a TRUE— y Postgres ya las descarto. Repetimos esa misma
+            // exclusion en vez de inventar un estatus de relleno para el badge
+            // y para ListingActions.
+            const estatus = p.estatus;
+            if (estatus === null) return null;
+
+            return (
+              <div
+                key={p.id}
+                className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 hover:opacity-90 transition-opacity flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
+              >
+                <div className="flex flex-col min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      href={`/${primaryCategorySlug(p.product_categories) ?? p.categoria}/${p.slug}`}
+                      className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate"
+                    >
+                      {p.titulo}
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
+                    <span className={`shrink-0 ${statusColors[estatus] ?? ""}`}>
+                      {estatus}
+                    </span>
+                    <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}</span>
+                    {/* created_at admite NULL: sin fecha no se pinta nada. `new Date(null)`
+                        no falla, coacciona a 0 y pintaria "01/01/70" como si fuera real. */}
+                    {p.created_at && (
+                      <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
-                  <span className={`shrink-0 ${statusColors[p.estatus] ?? ""}`}>
-                    {p.estatus}
-                  </span>
-                  <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}</span>
-                  <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                <div className="shrink-0 pl-2">
+                  <ListingActions id={p.id} estatus={estatus} />
                 </div>
               </div>
-              <div className="shrink-0 pl-2">
-                <ListingActions id={p.id} estatus={p.estatus} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 space-y-2">

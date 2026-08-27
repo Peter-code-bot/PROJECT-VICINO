@@ -35,7 +35,9 @@ export async function activarModoVendedor(params: {
   if (!rate.ok) return { error: rate.error };
 
   const { error } = await supabase.rpc("activar_modo_vendedor", {
-    p_categoria_negocio: params.categoria,
+    // Omitir la categoria significa "no la cambies": el cuerpo del RPC lo
+    // resuelve con COALESCE(p_categoria_negocio, categoria_negocio).
+    p_categoria_negocio: params.categoria ?? undefined,
     p_seller_type: params.tipo,
   });
 
@@ -69,7 +71,11 @@ export async function avanzarAltaVendedor(paso: "ubicacion" | "publicacion" | nu
 
   if (!user) return { error: "No autenticado" };
 
-  const { error } = await supabase.rpc("avanzar_alta_vendedor", { p_paso: paso });
+  // paso null = el alta termino. Se omite el parametro y el DEFAULT NULL de
+  // la funcion dice lo mismo.
+  const { error } = await supabase.rpc("avanzar_alta_vendedor", {
+    p_paso: paso ?? undefined,
+  });
 
   if (error) {
     Sentry.captureException(error, { tags: { action: "avanzarAltaVendedor" } });

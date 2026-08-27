@@ -43,9 +43,11 @@ interface Message {
   autor_id: string;
   texto: string;
   attachments: unknown;
-  created_at: string;
-  leido_por_comprador: boolean;
-  leido_por_vendedor: boolean;
+  // Nulable en la base (tiene DEFAULT now(), asi que en la practica nunca lo
+  // es, pero el tipo no puede afirmar lo que la base no garantiza).
+  created_at: string | null;
+  leido_por_comprador: boolean | null;
+  leido_por_vendedor: boolean | null;
 }
 
 
@@ -294,14 +296,23 @@ export function ChatWindow({
               // is the safety net for cases where the Map is empty but
               // a matching temp is still visible in the messages array.
               // Do NOT remove this check.
-              const realTime = new Date(newMsg.created_at).getTime();
-              const tempMatch = prev.find((m) => {
-                if (!m.id.startsWith("temp-")) return false;
-                if (m.autor_id !== newMsg.autor_id) return false;
-                if (m.texto !== newMsg.texto) return false;
-                const tempTime = new Date(m.created_at).getTime();
-                return Math.abs(realTime - tempTime) < TEMP_RECLAIM_WINDOW_MS;
-              });
+              // Sin fecha no hay proximidad que medir, asi que este camino se
+              // salta. No se pierde nada: el principal es el mapa FIFO por
+              // texto de arriba, y este es solo la red de seguridad.
+              const realTime = newMsg.created_at
+                ? new Date(newMsg.created_at).getTime()
+                : null;
+              const tempMatch =
+                realTime === null
+                  ? undefined
+                  : prev.find((m) => {
+                      if (!m.id.startsWith("temp-")) return false;
+                      if (m.autor_id !== newMsg.autor_id) return false;
+                      if (m.texto !== newMsg.texto) return false;
+                      if (!m.created_at) return false;
+                      const tempTime = new Date(m.created_at).getTime();
+                      return Math.abs(realTime - tempTime) < TEMP_RECLAIM_WINDOW_MS;
+                    });
               if (tempMatch) {
                 return prev.map((m) => (m.id === tempMatch.id ? newMsg : m));
               }
@@ -385,7 +396,11 @@ export function ChatWindow({
         // `prev.some(m => m.id === newMsg.id)` guard plus the Set-based
         // dedup here cover both directions).
         if (status !== "SUBSCRIBED") return;
-        const newestKnown = messages[messages.length - 1]?.created_at;
+        // Se busca hacia atras la ultima marca disponible en vez de rendirse
+        // con el ultimo mensaje: un solo created_at ausente al final no puede
+        // dejar el chat sin recuperar los mensajes que se perdieron.
+        const newestKnown = [...messages].reverse().find((m) => m.created_at)
+          ?.created_at;
         if (!newestKnown) return;
         const { data: caughtUp } = await supabase
           .from("messages")
@@ -802,7 +817,7 @@ export function ChatWindow({
                   )}
                 >
                   <span className="text-[10px]">
-                    {formatRelativeTime(msg.created_at)}
+                    {msg.created_at ? formatRelativeTime(msg.created_at) : null}
                   </span>
                   {isOwn && (
                     isRead

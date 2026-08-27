@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
 import { CATEGORIES } from "@vicino/shared";
 import { RequestCard, type RequestCardData } from "./request-card";
 import { CreateRequestDrawer } from "./create-request-drawer";
@@ -19,6 +20,50 @@ interface SolicitudesFeedProps {
   userLng: number | null;
   radiusMeters: number;
   userId: string | null;
+}
+
+/**
+ * La fila TAL COMO la declara el RPC generado. Antes esto era un tipo escrito
+ * a mano con `[k: string]: unknown`, y ese indice borraba el tipo real de los
+ * otros once campos — con lo cual el spread de abajo necesitaba un
+ * `as unknown as` para recuperarlos. O sea que el cast que hacia falta me lo
+ * habia fabricado yo al destruir la entrada. Con el tipo generado, el spread
+ * compila solo: los campos del RPC son mas estrechos que los de la tarjeta.
+ */
+type FilaCruda =
+  Database["public"]["Functions"]["feed_nearby_requests"]["Returns"][number];
+
+/**
+ * Convierte una fila de feed_nearby_requests en una tarjeta, comprobando las
+ * dos columnas que la base entrega como jsonb.
+ *
+ * Devuelve null si la forma no encaja. Descartar una fila rara es mejor que
+ * pintarla: lo segundo revienta en `buyer_profile.nombre` a mitad del render
+ * y se lleva por delante el feed entero.
+ */
+function aSolicitud(fila: FilaCruda): RequestCardData | null {
+  const perfil = fila.buyer_profile;
+  if (!perfil || typeof perfil !== "object" || Array.isArray(perfil)) return null;
+  const p = perfil as Record<string, unknown>;
+  if (typeof p.nombre !== "string") return null;
+
+  const cats = Array.isArray(fila.categories) ? fila.categories : [];
+  const categories = cats.flatMap((c) => {
+    if (!c || typeof c !== "object" || Array.isArray(c)) return [];
+    const o = c as Record<string, unknown>;
+    return typeof o.slug === "string" && typeof o.nombre === "string"
+      ? [{ slug: o.slug, nombre: o.nombre }]
+      : [];
+  });
+
+  return {
+    ...fila,
+    buyer_profile: {
+      nombre: p.nombre,
+      avatar_url: typeof p.avatar_url === "string" ? p.avatar_url : null,
+    },
+    categories,
+  };
 }
 
 export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: SolicitudesFeedProps) {
@@ -40,11 +85,19 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
       user_lng: userLng,
       radius_meters: radiusMeters,
       result_limit: 50,
-      cat_slug: activeCategory,
+      // El RPC declara el parametro opcional, o sea `string | undefined`;
+      // activeCategory es `string | null`. null y undefined no son lo mismo
+      // para PostgREST: undefined omite el parametro y deja actuar su valor
+      // por defecto.
+      cat_slug: activeCategory ?? undefined,
     });
 
     if (!error && data) {
-      setRequests(data as RequestCardData[]);
+      // El RPC devuelve buyer_profile y categories como Json, que es lo que
+      // son en la base. Un `as` los daria por buenos sin mirarlos; esto los
+      // COMPRUEBA, y una fila con forma rara se descarta en vez de reventar
+      // la tarjeta al pintarla.
+      setRequests(data.flatMap((fila) => aSolicitud(fila) ?? []));
     }
     setLoading(false);
   }, [userLat, userLng, radiusMeters, activeCategory]);

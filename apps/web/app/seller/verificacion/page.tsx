@@ -12,15 +12,21 @@ export default async function VerificacionPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Solo las columnas que el formulario lee de verdad. El `select("*")` que
+  // habia aqui mandaba al cliente reviewer_notes y phone_number, que no pinta
+  // nadie, y arrastraba cuatro banderas (selfie_verified, id_verified,
+  // phone_verified, current_level) que el hijo declara y no usa.
   const { data: verification } = await supabase
     .from("trust_level_verification")
-    .select("*")
+    .select("selfie_url, id_front_url, id_back_url")
     .eq("user_id", user.id)
     .maybeSingle();
 
   const { data: sellerVerification } = await supabase
     .from("seller_verification")
-    .select("*")
+    .select(
+      "status, ine_front_url, ine_back_url, selfie_url, document_type, university_name",
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -48,8 +54,20 @@ export default async function VerificacionPage() {
       <VerificationUpload
         userId={user.id}
         verification={verification}
-        sellerVerification={sellerVerification}
-        yaConsintio={yaConsintio}
+        sellerVerification={
+          sellerVerification && {
+            ...sellerVerification,
+            // La columna status admite NULL, y el hijo expresa "todavia no hay
+            // dato" como ausente (luego lo traduce a "none"). Se traduce aqui
+            // para que las dos representaciones digan lo mismo.
+            status: sellerVerification.status ?? undefined,
+          }
+        }
+        // Si la RPC no devolvio nada —error, o ninguna fila de consentimiento—
+        // se asume que NO consintio y se le vuelve a preguntar. Dar por bueno
+        // un consentimiento que no consta es justo lo que el art. 8 LFPDPPP
+        // no permite.
+        yaConsintio={yaConsintio ?? false}
       />
     </div>
   );

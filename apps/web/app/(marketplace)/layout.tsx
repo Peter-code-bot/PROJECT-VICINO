@@ -129,7 +129,20 @@ export default async function MarketplaceLayout({
         <div className="flex min-h-screen">
           <Sidebar
             user={user ? { id: user.id } : null}
-            profile={profile}
+            // es_vendedor admite NULL en la base (tiene DEFAULT, pero el tipo
+            // no puede afirmar lo que la columna no garantiza). Se colapsa
+            // aqui, en la frontera, con el mismo criterio que isVendedor -- no
+            // saber si vende equivale a no vender -- y de paso el Sidebar
+            // recibe solo los tres campos que pinta.
+            profile={
+              profile
+                ? {
+                    nombre: profile.nombre,
+                    foto: profile.foto,
+                    es_vendedor: isVendedor,
+                  }
+                : null
+            }
             isAdmin={isAdmin}
           />
           <div className="flex-1 min-w-0 flex flex-col">

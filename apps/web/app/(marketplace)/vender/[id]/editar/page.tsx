@@ -65,7 +65,12 @@ export default async function EditarPublicacionPage({ params }: Props) {
 
   let initialCategories: CategorySelection[] = (pivotRows ?? [])
     .map((r) => {
-      const cat = r.categories as unknown as { slug: string } | { slug: string }[];
+      // Aqui habia un `as unknown as { slug: string } | { slug: string }[]`.
+      // Ya no hace falta: con el generic Database puesto, el cliente infiere
+      // solo `{ slug: string }` para el embed `categories!inner(slug)`. El
+      // doble cast era justo lo que impedia ver esa inferencia; el ternario de
+      // abajo se queda como defensa en runtime, pero ya no lo sostiene un cast.
+      const cat = r.categories;
       const slug = Array.isArray(cat) ? cat[0]?.slug : cat?.slug;
       return slug ? { slug, is_primary: Boolean(r.is_primary) } : null;
     })
@@ -105,7 +110,13 @@ export default async function EditarPublicacionPage({ params }: Props) {
           delivery_radius_km: product.delivery_radius_km,
           ubicacion_lat: ubicacion?.lat ?? null,
           ubicacion_lng: ubicacion?.lng ?? null,
-          tipo_entrega: product.tipo_entrega,
+          // tipo_entrega admite NULL en la tabla (filas anteriores al DEFAULT).
+          // El respaldo es 'punto_encuentro' porque es exactamente lo que ya
+          // usan los dos vecinos: el DEFAULT de la columna desde
+          // 20260411000003 y el defaultValue del propio <select> del form. Si
+          // aqui llegara null, el select abriria en su primera opcion y una
+          // edicion inocente reescribiria la entrega sin que nadie la tocara.
+          tipo_entrega: product.tipo_entrega ?? "punto_encuentro",
           estado: product.estado ?? null,
           color: product.color ?? null,
           precio_negociable: product.precio_negociable ?? false,

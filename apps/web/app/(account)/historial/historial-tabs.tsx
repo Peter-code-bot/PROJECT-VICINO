@@ -10,13 +10,20 @@ interface SaleItem {
   precio_acordado: number;
   cantidad: number;
   status: string;
-  created_at: string;
+  // sale_confirmations.created_at es NOT NULL solo de palabra: la columna tiene
+  // DEFAULT now() pero admite nulo, asi que el tipo no puede prometer lo que la
+  // base no garantiza. Los dos sitios que lo leen tratan el nulo abajo.
+  created_at: string | null;
   completed_at: string | null;
   buyer_id: string;
   seller_id: string;
   products_services: { id: string; titulo: string; imagen_principal: string | null } | { id: string; titulo: string; imagen_principal: string | null }[] | null;
-  buyer?: { nombre: string; trust_level?: string } | { nombre: string; trust_level?: string }[] | null;
-  seller?: { nombre: string; trust_level?: string } | { nombre: string; trust_level?: string }[] | null;
+  // profiles.trust_level admite nulo (el enum solo acota los valores, no obliga
+  // a que haya uno), de ahi `| null` y no `?`: ambas consultas lo piden siempre,
+  // lo que falta no es la columna sino su valor. El badge de abajo ya no pinta
+  // nada cuando viene vacio, que es justo lo que toca.
+  buyer?: { nombre: string; trust_level: string | null } | { nombre: string; trust_level: string | null }[] | null;
+  seller?: { nombre: string; trust_level: string | null } | { nombre: string; trust_level: string | null }[] | null;
 }
 
 interface HistorialTabsProps {
@@ -71,7 +78,12 @@ export function HistorialTabs({
   weekAgo.setDate(weekAgo.getDate() - 7);
   const enCurso = ventas.filter((v) => v.status === "pending_confirmation").length;
   const completadas = ventas.filter((v) => v.status === "completed").length;
-  const estaSemana = ventas.filter((v) => new Date(v.created_at) >= weekAgo).length;
+  // Una venta sin fecha no se puede afirmar que sea de esta semana, asi que no
+  // cuenta. Sin la guarda, `new Date(null)` cae en epoch 0 y la excluiria por
+  // accidente en vez de por decision.
+  const estaSemana = ventas.filter(
+    (v) => v.created_at !== null && new Date(v.created_at) >= weekAgo
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -177,7 +189,7 @@ export function HistorialTabs({
 
                 <div className="flex">
                   <span className="text-xs text-[color:var(--fg-dim)] ml-auto">
-                    {formatDate(item.created_at)}
+                    {item.created_at ? formatDate(item.created_at) : null}
                   </span>
                 </div>
 

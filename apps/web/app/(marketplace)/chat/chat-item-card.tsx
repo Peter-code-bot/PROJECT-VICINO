@@ -18,7 +18,8 @@ import {
 interface ChatItemCardProps {
   chat: {
     id: string;
-    updated_at: string;
+    // Nulable en la base (DEFAULT now()).
+    updated_at: string | null;
     otherUser: { id: string; nombre: string; foto: string | null } | null;
     unread: number;
     productoTitulo: string | null;
@@ -103,7 +104,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
               {chat.otherUser?.nombre ?? "Usuario"}
             </span>
             <span className="ml-2 whitespace-nowrap text-xs text-[color:var(--fg-dim)]">
-              {formatRelativeTime(chat.updated_at)}
+              {chat.updated_at ? formatRelativeTime(chat.updated_at) : null}
             </span>
           </div>
 

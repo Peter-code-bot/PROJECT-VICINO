@@ -19,15 +19,22 @@ export interface SaleConfirmation {
   precio_acordado: number;
   cantidad: number;
   metodo_pago: string | null;
-  tipo_entrega: string;
+  // Nulable en la base. El render ya compara con "pickup", asi que una
+  // confirmacion sin tipo cae sola en la otra rama, que es la que ya se
+  // pintaba para cualquier valor distinto.
+  tipo_entrega: string | null;
   status: string;
   initiated_by: string;
-  buyer_confirmed: boolean;
-  seller_confirmed: boolean;
+  // Nulables en la base (DEFAULT false). Se leen como "todavia no confirmo",
+  // que es como ya los trataba el codigo: myConfirmed/otherConfirmed alimentan
+  // condiciones donde null y false son indistinguibles.
+  buyer_confirmed: boolean | null;
+  seller_confirmed: boolean | null;
   cancelled_by?: string | null;
   cancel_reason?: string | null;
   cancelled_at?: string | null;
-  created_at: string;
+  // Nulable en la base (DEFAULT now()).
+  created_at: string | null;
   products_services: { titulo: string; imagen_principal?: string | null } | { titulo: string; imagen_principal?: string | null }[] | null;
 }
 
@@ -251,8 +258,10 @@ export function SaleConfirmationCard({
   const productImg = productData?.imagen_principal;
 
   const isBuyer = currentUserId === sc.buyer_id;
-  const myConfirmed = isBuyer ? sc.buyer_confirmed : sc.seller_confirmed;
-  const otherConfirmed = isBuyer ? sc.seller_confirmed : sc.buyer_confirmed;
+  // ?? false explicito: la columna admite nulo y "sin confirmar" es
+  // exactamente lo que significa un nulo aqui.
+  const myConfirmed = (isBuyer ? sc.buyer_confirmed : sc.seller_confirmed) ?? false;
+  const otherConfirmed = (isBuyer ? sc.seller_confirmed : sc.buyer_confirmed) ?? false;
   const isCompleted = sc.status === "completed";
 
   let derivedStatus: ConfirmationStatus = "pendiente";

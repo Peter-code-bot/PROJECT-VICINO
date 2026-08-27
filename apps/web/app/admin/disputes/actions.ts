@@ -36,11 +36,12 @@ export async function resolveDispute(args: ResolveDisputeArgs) {
   }
 
   // RPC transaccional: UPDATE disputes + INSERT audit_log en una sola transaccion.
-  // Cast a `any` temporal: los tipos generados por `supabase gen types` aun no
-  // contemplan resolve_dispute_admin. Follow-up: regenerar tipos cuando
-  // Supabase local este disponible.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).rpc("resolve_dispute_admin", {
+  // El `as any` que habia aqui era un TODO cumplido: decia "temporal hasta
+  // regenerar los tipos", y los tipos ya estan regenerados — resolve_dispute_admin
+  // aparece en database.types.ts con su firma. Apagar el generic para una
+  // llamada es peor que no tenerlo: quita justo la comprobacion en el sitio
+  // donde el nombre del parametro decide si la resolucion se escribe o no.
+  const { error } = await supabase.rpc("resolve_dispute_admin", {
     p_dispute_id: parsed.data.dispute_id,
     p_decision: parsed.data.decision,
     p_nota: parsed.data.nota,

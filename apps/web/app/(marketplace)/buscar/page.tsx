@@ -46,18 +46,19 @@ export default async function SearchPage({ searchParams }: Props) {
   const locationCookie = cookieStore.get("vicino_location")?.value;
   const radiusCookie = cookieStore.get("vicino_radius")?.value;
 
-  let userLat: number | undefined;
-  let userLng: number | undefined;
-  let hasLocation = false;
+  // Una sola variable para la ubicacion, no dos sueltas mas un booleano. El
+  // par lat/lng solo vale completo, y asi el compilador lo sabe: dentro del
+  // `if` de abajo las dos coordenadas ya son numeros. Antes el booleano lo
+  // sabia el lector y no el compilador, y la llamada al RPC lo afirmaba a
+  // mano con dos `!`.
+  let userLocation: { lat: number; lng: number } | null = null;
 
   if (locationCookie) {
     const [latStr, lngStr] = locationCookie.split(",");
     const parsedLat = parseFloat(latStr || "");
     const parsedLng = parseFloat(lngStr || "");
     if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
-      userLat = parsedLat;
-      userLng = parsedLng;
-      hasLocation = true;
+      userLocation = { lat: parsedLat, lng: parsedLng };
     }
   }
 
@@ -160,17 +161,27 @@ export default async function SearchPage({ searchParams }: Props) {
     .select(selectFields, { count: "exact" });
 
   let query: typeof queryTypeRef;
-  if (hasLocation) {
+  if (userLocation) {
     query = supabase
       .rpc(
         "search_nearby_products_v4",
         {
-          user_lat: userLat!,
-          user_lng: userLng!,
+          user_lat: userLocation.lat,
+          user_lng: userLocation.lng,
           radius_meters: validRadius,
-          search_term: terminoProducto || null,
-          seller_ids: sellerIds.length > 0 ? sellerIds : null,
-          result_limit: null,
+          // Estos dos se omiten en vez de mandarse nulos: su DEFAULT en la
+          // funcion ES NULL, asi que omitir y mandar null acaban en el mismo
+          // sitio, y el tipo generado solo admite omitir.
+          search_term: terminoProducto || undefined,
+          seller_ids: sellerIds.length > 0 ? sellerIds : undefined,
+          // La rama de /buscar se pide POR SU NOMBRE. Antes se seleccionaba
+          // mandando result_limit en nulo, que era demasiado listo: el nulo
+          // hacia de interruptor sobre un parametro que se llama "limite", y
+          // el tipo generado no sabe declarar un argumento nulable. Ahora la
+          // funcion tiene `sin_limite` (migracion 20260826400000) y aqui se
+          // omite result_limit, que en esta rama no se usa: el techo lo pone
+          // search_hard_cap = 500 dentro de la propia consulta.
+          sin_limite: true,
           restrict_seller_mode: false,
         },
         { count: "exact" }
@@ -296,9 +307,18 @@ export default async function SearchPage({ searchParams }: Props) {
       }
       case "most_sold":
         return Number(b.ventas_count ?? 0) - Number(a.ventas_count ?? 0);
-      default:
-        // created_at desc: el mas reciente primero.
-        return a.created_at < b.created_at ? 1 : -1;
+      default: {
+        // created_at desc: el mas reciente primero. La columna admite nulo,
+        // y una fila sin fecha no tiene antiguedad que comparar: va al final,
+        // igual que las publicaciones sin precio de arriba. Compararla a
+        // secas la colaba en cabeza, porque `null < "2026-..."` es true.
+        const fa = a.created_at;
+        const fb = b.created_at;
+        if (fa === null && fb === null) return 0;
+        if (fa === null) return 1;
+        if (fb === null) return -1;
+        return fa < fb ? 1 : -1;
+      }
     }
   };
 

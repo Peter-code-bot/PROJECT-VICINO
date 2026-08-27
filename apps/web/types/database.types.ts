@@ -510,6 +510,81 @@ export type Database = {
           },
         ]
       }
+      legal_acceptances: {
+        Row: {
+          aceptado_en: string
+          documento: string
+          id: string
+          ip: unknown
+          modo: string
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          aceptado_en?: string
+          documento: string
+          id?: string
+          ip?: unknown
+          modo: string
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          aceptado_en?: string
+          documento?: string
+          id?: string
+          ip?: unknown
+          modo?: string
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acceptances_documento_version_fkey"
+            columns: ["documento", "version"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["documento", "version"]
+          },
+          {
+            foreignKeyName: "legal_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_documents: {
+        Row: {
+          documento: string
+          publicado_en: string
+          resumen: string
+          sustancial: boolean | null
+          version: string
+          vigente_desde: string
+        }
+        Insert: {
+          documento: string
+          publicado_en?: string
+          resumen: string
+          sustancial?: boolean | null
+          version: string
+          vigente_desde: string
+        }
+        Update: {
+          documento?: string
+          publicado_en?: string
+          resumen?: string
+          sustancial?: boolean | null
+          version?: string
+          vigente_desde?: string
+        }
+        Relationships: []
+      }
       media_assets: {
         Row: {
           created_at: string | null
@@ -905,6 +980,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          alta_vendedor_paso: string | null
           average_rating: number | null
           average_rating_as_buyer: number | null
           average_rating_as_seller: number | null
@@ -939,9 +1015,11 @@ export type Database = {
           ubicacion_lng: number | null
           updated_at: string | null
           user_id: string | null
+          username: string
           verified_at: string | null
         }
         Insert: {
+          alta_vendedor_paso?: string | null
           average_rating?: number | null
           average_rating_as_buyer?: number | null
           average_rating_as_seller?: number | null
@@ -976,9 +1054,11 @@ export type Database = {
           ubicacion_lng?: number | null
           updated_at?: string | null
           user_id?: string | null
+          username: string
           verified_at?: string | null
         }
         Update: {
+          alta_vendedor_paso?: string | null
           average_rating?: number | null
           average_rating_as_buyer?: number | null
           average_rating_as_seller?: number | null
@@ -1013,6 +1093,7 @@ export type Database = {
           ubicacion_lng?: number | null
           updated_at?: string | null
           user_id?: string | null
+          username?: string
           verified_at?: string | null
         }
         Relationships: []
@@ -1600,6 +1681,36 @@ export type Database = {
         }
         Relationships: []
       }
+      storage_cleanup_pending: {
+        Row: {
+          bucket: string
+          created_at: string
+          former_user_id: string | null
+          id: string
+          motivo: string | null
+          path: string
+          resolved_at: string | null
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          former_user_id?: string | null
+          id?: string
+          motivo?: string | null
+          path: string
+          resolved_at?: string | null
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          former_user_id?: string | null
+          id?: string
+          motivo?: string | null
+          path?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
       store_follows: {
         Row: {
           created_at: string | null
@@ -1957,6 +2068,10 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      activar_modo_vendedor: {
+        Args: { p_categoria_negocio?: string; p_seller_type?: string }
+        Returns: Json
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -1998,6 +2113,7 @@ export type Database = {
       admin_get_user: {
         Args: { p_user_id: string }
         Returns: {
+          alta_vendedor_paso: string | null
           average_rating: number | null
           average_rating_as_buyer: number | null
           average_rating_as_seller: number | null
@@ -2032,6 +2148,7 @@ export type Database = {
           ubicacion_lng: number | null
           updated_at: string | null
           user_id: string | null
+          username: string
           verified_at: string | null
         }
         SetofOptions: {
@@ -2044,6 +2161,7 @@ export type Database = {
       admin_list_users: {
         Args: never
         Returns: {
+          alta_vendedor_paso: string | null
           average_rating: number | null
           average_rating_as_buyer: number | null
           average_rating_as_seller: number | null
@@ -2078,6 +2196,7 @@ export type Database = {
           ubicacion_lng: number | null
           updated_at: string | null
           user_id: string | null
+          username: string
           verified_at: string | null
         }[]
         SetofOptions: {
@@ -2099,13 +2218,31 @@ export type Database = {
         Args: { p_user_id: string; p_verification_id: string }
         Returns: Json
       }
+      avanzar_alta_vendedor: { Args: { p_paso?: string }; Returns: string }
+      avisos_legales_pendientes: {
+        Args: never
+        Returns: {
+          documento: string
+          resumen: string
+          version: string
+          vigente_desde: string
+        }[]
+      }
       cancel_sale: {
         Args: { p_reason?: string; p_sale_id: string }
         Returns: undefined
       }
+      chat_attachments_validos: {
+        Args: { p_attachments: Json; p_autor_id: string; p_chat_id: string }
+        Returns: boolean
+      }
       cleanup_old_deletion_logs: { Args: never; Returns: number }
       complete_user_onboarding: { Args: never; Returns: undefined }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
+      count_nearby_vendors: {
+        Args: { radius_meters?: number; user_lat: number; user_lng: number }
+        Returns: number
+      }
       create_notification: {
         Args: {
           p_data?: Json
@@ -2290,6 +2427,7 @@ export type Database = {
       get_my_profile: {
         Args: never
         Returns: {
+          alta_vendedor_paso: string | null
           average_rating: number | null
           average_rating_as_buyer: number | null
           average_rating_as_seller: number | null
@@ -2324,6 +2462,7 @@ export type Database = {
           ubicacion_lng: number | null
           updated_at: string | null
           user_id: string | null
+          username: string
           verified_at: string | null
         }
         SetofOptions: {
@@ -2340,6 +2479,13 @@ export type Database = {
           p_vendedor_id: string
         }
         Returns: string
+      }
+      get_product_location: {
+        Args: { p_product_id: string }
+        Returns: {
+          lat: number
+          lng: number
+        }[]
       }
       get_ranking_hiperlocal: {
         Args: {
@@ -2474,6 +2620,17 @@ export type Database = {
         Args: { p_category_id: string; p_period: string }
         Returns: undefined
       }
+      registrar_aceptacion_legal: {
+        Args: { p_ip?: string; p_modo?: string; p_user_agent?: string }
+        Returns: {
+          documento: string
+          version: string
+        }[]
+      }
+      registrar_consentimiento_biometrico: {
+        Args: { p_aviso_version: string; p_ip?: string; p_user_agent?: string }
+        Returns: string
+      }
       resolve_dispute_admin: {
         Args: {
           p_decision: Database["public"]["Enums"]["dispute_status"]
@@ -2505,37 +2662,71 @@ export type Database = {
           ventas_count: number
         }[]
       }
-      search_nearby_products_v4: {
-        Args: {
-          cursor_id?: string
-          cursor_time?: string
-          radius_meters?: number
-          restrict_seller_mode?: boolean
-          result_limit?: number
-          search_term?: string
-          seller_ids?: string[]
-          sort_by_distance?: boolean
-          user_lat: number
-          user_lng: number
-        }
-        Returns: {
-          categoria: string
-          created_at: string
-          distance_meters: number
-          id: string
-          imagen_principal: string
-          modo_precio: string
-          precio: number
-          precio_negociable: boolean
-          product_categories: Json
-          profiles: Json
-          slug: string
-          tipo: string
-          tipo_entrega: string
-          titulo: string
-          ventas_count: number
-        }[]
-      }
+      search_nearby_products_v4:
+        | {
+            Args: {
+              cursor_id?: string
+              cursor_time?: string
+              radius_meters?: number
+              restrict_seller_mode?: boolean
+              result_limit?: number
+              search_term?: string
+              seller_ids?: string[]
+              sort_by_distance?: boolean
+              user_lat: number
+              user_lng: number
+            }
+            Returns: {
+              categoria: string
+              created_at: string
+              distance_meters: number
+              id: string
+              imagen_principal: string
+              modo_precio: string
+              precio: number
+              precio_negociable: boolean
+              product_categories: Json
+              profiles: Json
+              slug: string
+              tipo: string
+              tipo_entrega: string
+              titulo: string
+              ventas_count: number
+            }[]
+          }
+        | {
+            Args: {
+              cursor_id?: string
+              cursor_time?: string
+              radius_meters?: number
+              restrict_seller_mode?: boolean
+              result_limit?: number
+              search_term?: string
+              seller_ids?: string[]
+              sin_limite?: boolean
+              sort_by_distance?: boolean
+              user_lat: number
+              user_lng: number
+            }
+            Returns: {
+              categoria: string
+              created_at: string
+              distance_meters: number
+              id: string
+              imagen_principal: string
+              modo_precio: string
+              precio: number
+              precio_negociable: boolean
+              product_categories: Json
+              profiles: Json
+              slug: string
+              tipo: string
+              tipo_entrega: string
+              titulo: string
+              ventas_count: number
+            }[]
+          }
+      set_username: { Args: { p_username: string }; Returns: string }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -3117,18 +3308,22 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      tiene_consentimiento_biometrico: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       unlockrows: { Args: { "": string }; Returns: number }
       update_profile_and_pause_products: {
         Args: {
-          p_bio: string
-          p_descripcion_negocio: string
-          p_es_vendedor: boolean
-          p_foto: string
-          p_metodos_pago_aceptados: string
+          p_bio?: string
+          p_descripcion_negocio?: string
+          p_es_vendedor?: boolean
+          p_foto?: string
+          p_metodos_pago_aceptados?: string
           p_nombre: string
-          p_nombre_negocio: string
-          p_seller_type: string
-          p_ubicacion: string
+          p_nombre_negocio?: string
+          p_seller_type?: string
+          p_ubicacion?: string
           p_user_id: string
         }
         Returns: Json

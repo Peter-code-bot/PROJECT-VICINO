@@ -44,7 +44,18 @@ export default async function EditarPerfilPage({
     console.error("[EditarPerfilPage] Error fetching profile:", error);
   }
 
-  const profile = profileData ? { ...profileData, email: user.email ?? "" } : null;
+  // Mismo caso que en /perfil: es_vendedor y trust_level son NULLABLE en la
+  // base pese a tener DEFAULT. Sin un si explicito no se asume vendedor, y
+  // "nuevo" es el nivel con el que SellerBadge ya arrancaba cuando le llegaba
+  // vacio.
+  const profile = profileData
+    ? {
+        ...profileData,
+        email: user.email ?? "",
+        es_vendedor: profileData.es_vendedor ?? false,
+        trust_level: profileData.trust_level ?? "nuevo",
+      }
+    : null;
 
   // Phase 9: count active (disponible) products so the form can warn the user
   // before turning seller mode off — those products will be auto-paused.

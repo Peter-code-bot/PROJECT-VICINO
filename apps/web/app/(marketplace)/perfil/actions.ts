@@ -56,14 +56,19 @@ export async function updateProfile(formData: FormData) {
   const { error } = await supabase.rpc("update_profile_and_pause_products", {
     p_user_id: user.id,
     p_nombre: parsed.data.nombre,
-    p_bio: parsed.data.bio,
-    p_foto: parsed.data.foto,
-    p_ubicacion: parsed.data.ubicacion,
+    // `?? undefined` y no `?? null`: JSON.stringify descarta las claves
+    // undefined, asi que PostgREST omite el parametro y Postgres aplica su
+    // DEFAULT NULL (migracion 20260826390000). Misma columna, mismo valor,
+    // sin el cast que haria falta para mandar null — el codegen de Supabase
+    // no sabe declarar un argumento nulable.
+    p_bio: parsed.data.bio ?? undefined,
+    p_foto: parsed.data.foto ?? undefined,
+    p_ubicacion: parsed.data.ubicacion ?? undefined,
     p_es_vendedor: parsed.data.es_vendedor,
-    p_seller_type: parsed.data.seller_type,
-    p_nombre_negocio: parsed.data.nombre_negocio,
-    p_descripcion_negocio: parsed.data.descripcion_negocio,
-    p_metodos_pago_aceptados: parsed.data.metodos_pago_aceptados,
+    p_seller_type: parsed.data.seller_type ?? undefined,
+    p_nombre_negocio: parsed.data.nombre_negocio ?? undefined,
+    p_descripcion_negocio: parsed.data.descripcion_negocio ?? undefined,
+    p_metodos_pago_aceptados: parsed.data.metodos_pago_aceptados ?? undefined,
   });
 
   if (error) return { error: error.message };

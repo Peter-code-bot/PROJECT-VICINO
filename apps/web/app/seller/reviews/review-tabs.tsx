@@ -15,22 +15,26 @@ interface ReviewTabsProps {
     comentario: string | null;
     respuesta: string | null;
     respuesta_fecha: string | null;
-    created_at: string;
+    // created_at admite nulo (tiene DEFAULT now(), asi que en la practica nunca
+    // lo es, pero el tipo no puede afirmar lo que la base no garantiza). Nulo
+    // se pinta como nada: `new Date(null)` es la epoca, o sea que sin el guard
+    // saldria un "1 ene 1970" con toda la pinta de fecha buena.
+    created_at: string | null;
     profiles: { nombre: string } | { nombre: string }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   given: Array<{
     id: string;
     rating: number;
     comentario: string | null;
-    created_at: string;
+    created_at: string | null;
     profiles: { nombre: string } | { nombre: string }[] | null;
     products_services:
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }
-      | { id: string; titulo: string; categoria: string; slug: string; imagen_principal: string | null; product_categories?: unknown }[]
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }
+      | { id: string; titulo: string; categoria: string; slug: string | null; imagen_principal: string | null; product_categories?: unknown }[]
       | null;
   }>;
   pending: Array<{
@@ -85,7 +89,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{reviewer?.nombre ?? "Usuario"}</span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}) : null}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   {r.respuesta ? (
@@ -121,7 +125,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
-                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                    <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}) : null}</span>
                   </div>
                   {r.comentario && <p className="text-sm text-[color:var(--fg-muted)] break-words">{r.comentario}</p>}
                   <div className="pt-2 border-t border-[color:var(--border)]">

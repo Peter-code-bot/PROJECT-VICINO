@@ -130,8 +130,12 @@ interface Notification {
   tipo: string;
   titulo: string;
   mensaje: string;
-  leida: boolean;
-  created_at: string;
+  // leida y created_at admiten NULL en la base (ambas con DEFAULT, pero el
+  // tipo no puede afirmar lo que la columna no garantiza). leida NULL cuenta
+  // como no leida en todo el archivo, que es como ya la trataban los `!n.leida`
+  // de abajo; created_at NULL se traduce en no pintar la fecha relativa.
+  leida: boolean | null;
+  created_at: string | null;
   data: Record<string, unknown>;
 }
 
@@ -264,9 +268,11 @@ export function NotificationList({ notifications }: NotificationListProps) {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{n.mensaje}</p>
-              <p className="text-[10px] text-muted-foreground/60 mt-1">
-                {formatRelativeTime(n.created_at)}
-              </p>
+              {n.created_at && (
+                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                  {formatRelativeTime(n.created_at)}
+                </p>
+              )}
             </div>
             {href && (
               <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1" />

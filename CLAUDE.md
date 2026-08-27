@@ -109,7 +109,12 @@ No se ejecuta ningún comando manual desde local para deployar.
 ### Estado del deploy
 - **Plataforma:** Vercel
 - **URL producción:** `https://vicinomarket.com` (canonical desde 2026-05-01).
-  `startup-marketplace-web.vercel.app` se mantiene como 308 -> vicinomarket.com por requisito de Google Play Data Safety URL.
+  `startup-marketplace-web.vercel.app` se mantiene por requisito de Google Play
+  Data Safety URL. **No es un 308**: comprobado el 26-ago-2026 responde 200 con
+  la app completa, o sea que hay dos dominios sirviendo lo mismo. Mitigado por
+  ahora con `metadataBase` + canonical autoreferenciado en `app/layout.tsx`.
+  Convertirlo en 308 de verdad es decision de Pedro (redirect por host en
+  Vercel); un 308 sigue cumpliendo el requisito de la Data Safety URL.
 - **CI/CD target:** master → producción | cualquier otra rama → preview automático
 
 ### Variables de entorno (configurar en Vercel Dashboard, NO en repo)

@@ -389,7 +389,9 @@ export async function createProduct(formData: FormData) {
   // Y su fallo no puede tumbar una publicacion que ya esta guardada: el
   // marcador es una comodidad, la publicacion es el trabajo.
   try {
-    await supabase.rpc("avanzar_alta_vendedor", { p_paso: null });
+    // Sin p_paso: el DEFAULT NULL de la funcion es exactamente "ya no hay
+    // paso pendiente", que es lo que significa publicar.
+    await supabase.rpc("avanzar_alta_vendedor", {});
   } catch (e) {
     console.warn("[alta] no se pudo cerrar el alta de vendedor:", e);
   }

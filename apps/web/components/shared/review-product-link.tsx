@@ -11,12 +11,16 @@ interface ReviewProductLinkProps {
         id: string;
         titulo: string;
         categoria: string;
-        slug: string;
+        // slug admite nulo en products_services. Sin slug no hay URL de
+        // detalle: la fila se sigue pintando (el producto existe y la resena
+        // habla de el) pero sin enlace, en vez de mandar a /categoria/null.
+        slug: string | null;
         imagen_principal: string | null;
         // MP#08 #9 cerrado: los 4 callers (perfil/page.tsx,
         // vendedor/[id]/page.tsx, seller/reviews/page.tsx,
         // [categoria]/[slug]/page.tsx) ya traen el embed en sus 7 SELECTs de
-        // reviews. El fallback `?? product.categoria` (L34) se queda como red
+        // reviews. El fallback `?? product.categoria` (en el calculo del href,
+        // mas abajo) se queda como red
         // hasta el DROP de Fase 2 (consistencia 1A/1B); cuando la columna
         // categoria TEXT desaparezca, el fallback queda inalcanzable y se
         // quita en la misma migracion.
@@ -34,15 +38,8 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
       </span>
     );
   }
-  const hrefSlug = primaryCategorySlug(product.product_categories) ?? product.categoria;
-  return (
-    <Link
-      href={`/${hrefSlug}/${product.slug}`}
-      className={cn(
-        "flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group min-w-0 max-w-full",
-        className,
-      )}
-    >
+  const contenido = (
+    <>
       {product.imagen_principal ? (
         <Image
           src={posterUrl(product.imagen_principal)}
@@ -56,7 +53,35 @@ export function ReviewProductLink({ product, className }: ReviewProductLinkProps
         <div className="w-10 h-10 rounded-md bg-muted shrink-0" aria-hidden="true" />
       )}
       <span className="font-medium truncate min-w-0 flex-1">{product.titulo}</span>
-      <ChevronRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
+      {product.slug && (
+        <ChevronRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
+      )}
+    </>
+  );
+
+  if (!product.slug) {
+    return (
+      <span
+        className={cn(
+          "flex items-center gap-2 text-xs text-muted-foreground min-w-0 max-w-full",
+          className,
+        )}
+      >
+        {contenido}
+      </span>
+    );
+  }
+
+  const hrefSlug = primaryCategorySlug(product.product_categories) ?? product.categoria;
+  return (
+    <Link
+      href={`/${hrefSlug}/${product.slug}`}
+      className={cn(
+        "flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group min-w-0 max-w-full",
+        className,
+      )}
+    >
+      {contenido}
     </Link>
   );
 }

@@ -96,9 +96,17 @@ export default async function UsersModerationPage() {
                       </Link>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Trust: {profile.trust_level}</span>
-                      <span>·</span>
-                      <span>Miembro desde {formatDate(profile.created_at)}</span>
+                      <span>Trust: {profile.trust_level ?? "nuevo"}</span>
+                      {/* created_at no es NOT NULL en la base (solo tiene
+                          DEFAULT). Sin fecha no hay antiguedad que ensenar, asi
+                          que se cae el dato entero con su separador en vez de
+                          dejar un "Miembro desde" colgando. */}
+                      {profile.created_at && (
+                        <>
+                          <span>·</span>
+                          <span>Miembro desde {formatDate(profile.created_at)}</span>
+                        </>
+                      )}
                     </div>
                     <span
                       className={`inline-block text-xs px-2 py-0.5 rounded-full ${profile.is_hidden ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}`}

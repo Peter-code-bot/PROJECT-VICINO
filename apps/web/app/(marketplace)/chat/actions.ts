@@ -43,14 +43,20 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
     return { error: "No puedes iniciar un chat contigo mismo" };
   }
 
+  // p_producto_id NO es nullable en la firma: es `UUID DEFAULT NULL`
+  // (20260320000009_chats_messages.sql), y el generador de tipos lo expone
+  // como argumento OPCIONAL, no como `string | null`. `undefined` hace que la
+  // clave no viaje en el JSON de PostgREST y Postgres aplique su DEFAULT, que
+  // es exactamente el NULL que mandaba antes: mismo chat, mismo
+  // ultimo_producto_id, sin afirmar un tipo que la funcion no acepta.
   const { data: chatId, error } = await supabase.rpc("get_or_create_chat", {
     p_comprador_id: user.id,
     p_vendedor_id: parsed.data.seller_id,
-    p_producto_id: parsed.data.product_id ?? null,
+    p_producto_id: parsed.data.product_id ?? undefined,
   });
 
   if (error) return { error: error.message };
-  return { chatId: chatId as string };
+  return { chatId };
 }
 
 /**
@@ -77,9 +83,12 @@ export async function getMessagesBefore(
     autor_id: string;
     texto: string;
     attachments: unknown;
-    created_at: string;
-    leido_por_comprador: boolean;
-    leido_por_vendedor: boolean;
+    // Los tres nullables salen del esquema real de `messages`: created_at y
+    // los dos leido_por_* tienen DEFAULT, no NOT NULL. En la practica nunca
+    // llegan vacios, pero el tipo no puede prometer lo que la base no obliga.
+    created_at: string | null;
+    leido_por_comprador: boolean | null;
+    leido_por_vendedor: boolean | null;
   }>;
   nextCursor: string | null;
   error?: string;
@@ -143,7 +152,10 @@ export async function getMessagesBefore(
   if (error) return { items: [], nextCursor: null, error: error.message };
 
   const items = (data ?? []).reverse();
-  const nextCursor = items.length === safeLimit ? items[0]!.created_at : null;
+  // El cursor ES un created_at: si el mensaje mas viejo de esta pagina no
+  // trae uno, no hay siguiente pagina que pedir y se corta aqui en vez de
+  // inventar una marca de tiempo que dejaria fuera mensajes reales.
+  const nextCursor = items.length === safeLimit ? items[0]?.created_at ?? null : null;
   return { items, nextCursor };
 }
 

@@ -167,9 +167,14 @@ export default async function SolicitudDetailPage({ params }: Props) {
             <p className="font-medium text-foreground text-sm">
               {buyerProfile.nombre}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {formatRelativeTime(request.created_at)}
-            </p>
+            {/* created_at admite NULL en la base. Sin fecha no se pinta la
+                linea: formatRelativeTime sobre un nulo daria "Invalid Date"
+                justo debajo del nombre del comprador. */}
+            {request.created_at && (
+              <p className="text-xs text-muted-foreground">
+                {formatRelativeTime(request.created_at)}
+              </p>
+            )}
           </div>
           {isOpen && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">

@@ -102,8 +102,12 @@ export default async function MessagesModerationPage() {
 
                 {message ? (
                   <div className="rounded-md bg-muted/40 p-3 space-y-1.5">
+                    {/* created_at no es NOT NULL en la base (solo tiene DEFAULT),
+                        asi que la fecha puede faltar: guion en vez de "Invalid
+                        Date", igual que el "?" del autor desconocido. */}
                     <div className="text-xs text-muted-foreground">
-                      De: {autor?.nombre ?? "?"} · {formatDate(message.created_at)}
+                      De: {autor?.nombre ?? "?"} ·{" "}
+                      {message.created_at ? formatDate(message.created_at) : "—"}
                     </div>
                     {message.texto.trim() !== "" && (
                       <p className="text-sm whitespace-pre-wrap break-words">{message.texto}</p>

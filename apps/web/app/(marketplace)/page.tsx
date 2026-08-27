@@ -758,9 +758,15 @@ export default async function HomePage({ searchParams }: Props) {
               <div className="px-2 sm:px-4 space-y-4">
                 {followingPosts.map((post, index) => {
                   const now = new Date();
-                  const created = new Date(post.created_at);
-                  const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
-                  const when = diffHours < 1 ? "hace poco" : diffHours < 24 ? `hace ${diffHours} h` : `hace ${Math.floor(diffHours/24)} d`;
+                  // created_at admite NULL en la base. Sin fecha no hay
+                  // antiguedad que anunciar, asi que la linea "hace X" se
+                  // queda vacia: new Date(null) daria el epoch y el post
+                  // aparecería como "hace 20000 d".
+                  const created = post.created_at ? new Date(post.created_at) : null;
+                  const diffHours = created
+                    ? Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60))
+                    : null;
+                  const when = diffHours === null ? "" : diffHours < 1 ? "hace poco" : diffHours < 24 ? `hace ${diffHours} h` : `hace ${Math.floor(diffHours/24)} d`;
 
                   return (
                     <StorePost
@@ -785,7 +791,12 @@ export default async function HomePage({ searchParams }: Props) {
                       distance="A 2.5 km"
                       rating={post.profiles.average_rating ?? 0}
                       count={post.profiles.reviews_count ?? 0}
-                      imgUrl={post.imagen_principal}
+                      imgUrl={
+                        // imagen_principal es nullable; StorePost expresa la
+                        // ausencia de imagen como undefined y ya tiene su
+                        // propio placeholder para ese caso.
+                        post.imagen_principal ?? undefined
+                      }
                       imgLabel={post.titulo}
                       priority={index === 0}
                     />

@@ -19,18 +19,24 @@ interface ProfileHeaderProps {
     user_id: string | null;
     username?: string | null;
     ubicacion: string | null;
-    es_vendedor: boolean;
+    // Las columnas de aqui abajo admiten nulo en `profiles`. Casi todas tienen
+    // DEFAULT, asi que en la practica nunca llegan nulas, pero el tipo no puede
+    // afirmar lo que la base no garantiza. No hay que tocar el render: las que
+    // se pintan ya se leian tras un guard (created_at, is_verified, es_vendedor)
+    // o con respaldo (trust_level, trust_points, average_rating), y total_sales
+    // y reviews_count no se pintan aqui. Lo unico que mentia era el tipo.
+    es_vendedor: boolean | null;
     seller_type: string | null;
     nombre_negocio: string | null;
     categoria_negocio: string | null;
     metodos_pago_aceptados: string | null;
-    trust_level: string;
-    trust_points: number;
-    total_sales: number;
-    average_rating: number;
-    reviews_count: number;
-    is_verified: boolean;
-    created_at: string;
+    trust_level: string | null;
+    trust_points: number | null;
+    total_sales: number | null;
+    average_rating: number | null;
+    reviews_count: number | null;
+    is_verified: boolean | null;
+    created_at: string | null;
   } | null;
   productCount: number;
   purchaseCount: number;

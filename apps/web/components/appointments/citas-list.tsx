@@ -11,7 +11,11 @@ interface Appointment {
   appointment_date: string;
   appointment_start: string;
   appointment_end: string;
-  status: string;
+  // status admite NULL en la base (tiene DEFAULT, pero el tipo no puede
+  // afirmar lo que la columna no garantiza). Las comparaciones de abajo son
+  // por igualdad estricta, asi que una cita sin status no cae en "canceladas"
+  // ni en "completadas" y termina agrupada por fecha, que es lo correcto.
+  status: string | null;
   notes: string | null;
   buyer_id: string;
   seller_id: string;

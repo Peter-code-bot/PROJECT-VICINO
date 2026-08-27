@@ -6,6 +6,10 @@ import { Bell } from "lucide-react";
 
 export const metadata = { title: "Notificaciones — VICINO" };
 
+// Instancia unica y congelada: la comparten todas las filas cuyo `data` no es
+// un diccionario, y nadie debe escribir en ella.
+const SIN_DATOS: Record<string, unknown> = Object.freeze({});
+
 export default async function NotificacionesPage() {
   const supabase = await createClient();
   const {
@@ -22,6 +26,18 @@ export default async function NotificacionesPage() {
     .limit(50);
 
   const unreadCount = notifications?.filter((n) => !n.leida).length ?? 0;
+
+  // `data` es una columna jsonb: la base acepta ahi un escalar, un arreglo o
+  // NULL, no solo un diccionario. La lista lee claves sueltas (chat_id,
+  // appointment_id) para armar el enlace, asi que la forma se comprueba aqui,
+  // en la frontera, y lo que no sea diccionario entra como vacio.
+  const items = (notifications ?? []).map((n) => ({
+    ...n,
+    data:
+      n.data !== null && typeof n.data === "object" && !Array.isArray(n.data)
+        ? n.data
+        : SIN_DATOS,
+  }));
 
   return (
     <div className="flex gap-6 max-w-7xl mx-auto px-4 py-6">
@@ -42,8 +58,8 @@ export default async function NotificacionesPage() {
           )}
         </div>
 
-        {notifications && notifications.length > 0 ? (
-          <NotificationList notifications={notifications} />
+        {items.length > 0 ? (
+          <NotificationList notifications={items} />
         ) : (
           <div className="py-20 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl product-card-custom">

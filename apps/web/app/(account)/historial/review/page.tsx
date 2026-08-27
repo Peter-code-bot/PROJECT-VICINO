@@ -8,6 +8,10 @@ export const metadata = {
   title: "Dejar reseña",
 };
 
+// review_type es un enum de dos valores en la base, no texto libre. Se declara
+// aqui como tupla para validar contra ella el parametro que llega por la URL.
+const REVIEW_TYPES = ["buyer_to_seller", "seller_to_buyer"] as const;
+
 interface Props {
   searchParams: Promise<{ sale?: string; type?: string; product?: string }>;
 }
@@ -22,6 +26,12 @@ export default async function ReviewPage({ searchParams }: Props) {
   if (!user) redirect("/login");
   if (!params.sale || !params.type || !params.product) redirect("/historial");
 
+  // `type` viaja en la URL, asi que puede traer cualquier cosa. Se resuelve
+  // contra los dos valores del enum antes de consultar, para que un valor
+  // inventado se vaya al historial en vez de llegar al .eq() o al formulario.
+  const reviewType = REVIEW_TYPES.find((t) => t === params.type);
+  if (!reviewType) redirect("/historial");
+
   // Verify the sale exists and is completed
   const { data: sale } = await supabase
     .from("sale_confirmations")
@@ -34,14 +44,14 @@ export default async function ReviewPage({ searchParams }: Props) {
 
   // Determine reviewed user
   const reviewedId =
-    params.type === "buyer_to_seller" ? sale.seller_id : sale.buyer_id;
+    reviewType === "buyer_to_seller" ? sale.seller_id : sale.buyer_id;
 
   // Check if already reviewed
   const { data: existingReview } = await supabase
     .from("reviews")
     .select("id")
     .eq("sale_confirmation_id", params.sale)
-    .eq("review_type", params.type)
+    .eq("review_type", reviewType)
     .single();
 
   if (existingReview) redirect("/historial");
@@ -74,7 +84,7 @@ export default async function ReviewPage({ searchParams }: Props) {
         saleConfirmationId={params.sale}
         productId={params.product}
         reviewedId={reviewedId}
-        reviewType={params.type as "buyer_to_seller" | "seller_to_buyer"}
+        reviewType={reviewType}
       />
     </div>
   );
