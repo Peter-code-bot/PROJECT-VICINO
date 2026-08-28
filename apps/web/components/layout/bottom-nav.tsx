@@ -6,6 +6,7 @@ import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatUnread } from "@/components/layout/chat-unread-provider";
 import { hapticLight } from "@/lib/haptics";
+import { CATEGORIES } from "@vicino/shared";
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
@@ -17,6 +18,11 @@ const NAV_ITEMS = [
 
 /** El ítem que sube al círculo central. Ver openspec/changes/2026-08-27-liquid-navigation. */
 const HREF_CENTRAL = "/vender";
+
+// Slugs de categoria validos en URL. A nivel de modulo para no recrear
+// el Set en cada render. Sin filtrar hidden_in_form: las ocultas
+// tambien son slugs de URL validos.
+const CATEGORY_SLUGS = new Set<string>(CATEGORIES.map((c) => c.slug));
 
 interface BottomNavProps {
   /**
@@ -38,7 +44,8 @@ interface BottomNavProps {
  *   - El badge de mensajes sin leer.
  *   - La háptica al tocar.
  *   - Que la barra desaparezca dentro del detalle de un chat, donde el teclado
- *     y la caja de escribir necesitan el sitio.
+ *     y la caja de escribir necesitan el sitio, y dentro de la ficha de
+ *     producto, donde manda el StickyCta y el circulo central se le encimaba.
  *   - `md:hidden`: en escritorio manda el Sidebar.
  */
 export function BottomNav({ isVendedor }: BottomNavProps) {
@@ -46,7 +53,10 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
   const unreadChatMessages = useChatUnread();
 
   const onChatDetail = /^\/chat\/[^/]+/.test(pathname);
-  if (onChatDetail) return null;
+  const segments = pathname.split("/").filter(Boolean);
+  const onProductDetail =
+    segments.length === 2 && CATEGORY_SLUGS.has(segments[0] ?? "");
+  if (onChatDetail || onProductDetail) return null;
 
   const esActivo = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);

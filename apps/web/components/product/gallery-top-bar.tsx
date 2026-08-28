@@ -97,7 +97,13 @@ export function GalleryTopBar({
       >
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/");
+            }
+          }}
           aria-label="Volver"
           className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus:outline-none focus:ring-2 focus:ring-white/40"
         >
