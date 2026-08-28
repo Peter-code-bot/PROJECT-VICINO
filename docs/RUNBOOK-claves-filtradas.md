@@ -9,6 +9,53 @@ Todo lo de aquí está comprobado ejerciéndolo contra producción.
 
 ---
 
+## Hecho el 28 de agosto: `send-push` ya tiene puerta
+
+Está desplegada y verificada:
+
+| Prueba | Resultado |
+|---|---|
+| POST sin autorización | **401** `{"error":"unauthorized"}` |
+| POST con un bearer falso | **401** |
+| POST con el secreto que mandan los triggers | pasa la puerta |
+
+Antes, un POST anónimo ejecutaba la función entera y consultaba la base con la
+`service_role`. Cualquiera con un `chat_id` real podía mandar una notificación
+con el texto que quisiera a la pantalla de bloqueo de otra persona.
+
+**Se creó `PUSH_WEBHOOK_SECRET`** en los secretos de Edge Functions. Contiene el
+**mismo valor que `SB_SECRET_KEY`**, o sea la clave filtrada — no añade
+exposición nueva, pero **hay que rotarlo junto con las demás** en el paso 4.
+
+### Y una equivocación mía que costó unos minutos de push caídas
+
+Antes de desplegar quise comprobar si el secreto del vault y el que espera la
+función coincidían. Leí el vault por SQL (valor crudo, 219 caracteres) y los
+secretos por la Management API (64 caracteres), concluí que eran distintos, y
+"arreglé" el vault poniéndole el valor de 64.
+
+**La API de secretos no devuelve el valor: devuelve su `sha256`.** Los 64
+caracteres eran un digest. Metí un digest en el vault, los triggers empezaron a
+mandar un bearer que no era ningún secreto, y la puerta recién desplegada los
+rechazó con 401.
+
+El despliegue por sí solo habría funcionado perfectamente. Lo que rompió las
+push fue arreglar algo que no estaba roto.
+
+Se restauró desde un respaldo tomado antes del cambio y se verificó en las tres
+direcciones. **No se perdió ninguna notificación**: `net._http_response` no
+registra ni un 401 en esa ventana, solo seis `200` del cron de recordatorios, o
+sea que no se intentó ni un envío mientras estuvo rota.
+
+Para comparar un secreto con el digest que devuelve la API, hay que hashear el
+otro lado, no comparar en crudo:
+
+```bash
+sha256(valor_del_vault) == value_que_devuelve_la_api
+```
+
+---
+
 ## La clave está en TRES sitios, no en uno
 
 La `service_role` legacy (`sha256 4c7efdff9273…`, JWT, válida hasta 2036) da
@@ -19,6 +66,7 @@ bypass total de RLS, administración de Auth y acceso completo a Storage. Vive e
 | Historial de git, `8416eee:apps/web/check_grants.js` | nadie, pero cualquiera con el repo la tiene | escaneo del historial |
 | `vault.service_role_key` | los 4 triggers `call_send_push_*` | sha256 idéntico |
 | `SB_SECRET_KEY` en los secretos de Edge Functions | **las 6 Edge Functions** | sha256 idéntico |
+| `PUSH_WEBHOOK_SECRET` (creado el 28-ago) | `send-push` | mismo valor que `SB_SECRET_KEY` |
 
 **Los nombres mienten.** `SB_SECRET_KEY` suena a formato nuevo `sb_secret_` y
 contiene el JWT legacy. `SB_PUBLISHABLE_KEY` contiene la `anon` legacy. Solo los
@@ -136,15 +184,16 @@ Cada paso deja el sistema funcionando. El interruptor es lo último.
    );
    ```
 
-6. **Alinear el secreto de `send-push` y desplegarlo:**
+6. **`send-push` ya está desplegada con su puerta** (28-ago). Lo único que
+   queda aquí es que `PUSH_WEBHOOK_SECRET` reciba la clave nueva en el paso 4,
+   igual que `SB_SECRET_KEY`, y redesplegar:
 
    ```bash
-   node scripts/alinear-secreto-push.mjs --escribir
    npx supabase functions deploy send-push --project-ref oxxdkwywprkfghhbnoto
    ```
 
-   Y comprobar que sin autorización devuelve **401** — hoy devuelve 500 «Chat
-   not found», lo que significa que ejecuta el cuerpo entero sin credencial.
+   Después comprobar las dos direcciones: sin autorización **401**, y con el
+   secreto del vault que **pase**.
 
 7. **Comprobar que ya nada usa legacy**: manda un mensaje de prueba entre dos
    cuentas y que llegue la push; borra una cuenta de prueba; corre
