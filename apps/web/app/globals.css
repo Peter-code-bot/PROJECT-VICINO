@@ -80,12 +80,17 @@
   --shadow-lg:   0 8px 30px rgba(0,0,0,0.12);
   --shadow-glow: 0 10px 24px rgba(31,90,78,0.35);
 
-  /* Shell layout (mobile bottom-nav visual height incl. safe-area margin).
+  /* Shell layout: espacio real que ocupa la bottom-nav flotante en movil.
+     12px de separacion inferior + 64px de pildora + 22px que el boton
+     central sobresale por arriba, mas la safe-area del dispositivo.
+     Los 76px anteriores contaban solo 12+64: dejaban fuera el saliente del
+     boton y la safe-area, asi que todo CTA que consumia esta variable
+     quedaba encimado por el circulo central.
      Consumed via bottom-[var(--bottom-nav-h)] in sticky CTAs that must
      sit above the floating nav. Kept in :root (NOT @theme inline) so it
      stays as an arbitrary-value CSS variable instead of a Tailwind
      utility class with a weird auto-generated name. */
-  --bottom-nav-h: 76px;
+  --bottom-nav-h: calc(env(safe-area-inset-bottom) + 98px);
 }
 
 .dark {

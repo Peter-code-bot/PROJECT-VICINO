@@ -139,7 +139,7 @@ function Grupo({
 }) {
   if (items.length === 0) return null;
   return (
-    <div className="flex items-center">
+    <div className="flex flex-1 items-center justify-around">
       {items.map(({ href, label, icon: Icon }) => {
         const activo = esActivo(href);
         return (
