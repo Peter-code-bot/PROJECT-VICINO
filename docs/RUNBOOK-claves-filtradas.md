@@ -156,6 +156,10 @@ Cada paso deja el sistema funcionando. El interruptor es lo último.
 1. **Verificar el formato de `SUPABASE_SERVICE_ROLE_KEY` en Vercel.** Es el
    único consumidor sin comprobar. Si es legacy, hay que migrarlo también.
 
+   Este paso es solo inspección y no lleva redeploy propio. Si el valor resulta
+   ser legacy, el cambio se hace junto con el paso 2 para que el redeploy del
+   paso 3 recoja los dos.
+
 2. **`NEXT_PUBLIC_SUPABASE_ANON_KEY` → una clave publicable**, en los tres
    entornos de Vercel. Una sola variable, sin cambio de código: `client.ts`,
    `server.ts` y el proxy la leen de `process.env`.
@@ -170,8 +174,15 @@ Cada paso deja el sistema funcionando. El interruptor es lo último.
    `sb_publishable_` y ningún `eyJ`.
 
 4. **`SB_SECRET_KEY` → una clave secreta nueva** (`sb_secret_…`) en los secretos
-   de Edge Functions, y **`SB_PUBLISHABLE_KEY` → la publicable**. Después
-   redesplegar las seis funciones y comprobar que responden.
+   de Edge Functions, **`SB_PUBLISHABLE_KEY` → la publicable**, y
+   **`PUSH_WEBHOOK_SECRET` → la misma clave secreta nueva que `SB_SECRET_KEY`**.
+   Los tres en la misma pasada. Después redesplegar las seis funciones y
+   comprobar que responden.
+
+   ⚠️ Desde que este paso redespliega hasta que termine el paso 5, los triggers
+   mandan el valor viejo y `send-push` espera el nuevo: las push devuelven 401.
+   Pasos 4 y 5 van seguidos. Al terminar, revisar `net._http_response` en busca
+   de 401 en esa ventana.
 
 5. **`vault.service_role_key` → la misma clave secreta nueva**, desde el SQL
    Editor del panel (no desde la terminal: tu shell es PowerShell y PSReadLine
