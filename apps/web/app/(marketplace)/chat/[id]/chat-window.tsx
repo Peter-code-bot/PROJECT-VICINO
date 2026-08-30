@@ -908,7 +908,7 @@ export function ChatWindow({
           onChange={(e) => setInput(e.target.value)}
           maxLength={2000}
           placeholder="Escribe un mensaje..."
-          className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none placeholder:text-[color:var(--fg-dim)] focus:bg-[color:var(--bg-elev-2)]"
+          className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none placeholder:text-[color:var(--fg-dim)] focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
         />
         <button
           type="submit"
