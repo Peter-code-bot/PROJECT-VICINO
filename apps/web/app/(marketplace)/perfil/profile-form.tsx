@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile, setUsername } from "./actions";
-import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown } from "lucide-react";
+import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown, ChevronLeft } from "lucide-react";
 
 const METODOS_PAGO = [
   "Efectivo",
@@ -199,8 +199,25 @@ export function ProfileForm({
   }
 
   return (
-    <>
     <form action={handleSubmit} className="space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <Link
+          href="/perfil"
+          className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center hover:bg-accent transition-colors shrink-0"
+          aria-label="Volver al perfil"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <h1 className="flex-1 text-xl font-heading font-bold">Editar perfil</h1>
+        <button
+          type="submit"
+          disabled={loading || pendingDeactivation !== null}
+          className="shrink-0 text-[15px] font-semibold text-primary dark:text-accent px-2 py-1 rounded-lg transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
+          {loading ? "Guardando…" : "Listo"}
+        </button>
+      </div>
+
       {/* El aviso que cierra el item 7. Quien llega desde "Quiero vender" se
           encontraba el titulo "Editar perfil" y nada mas, con la casilla que
           tenia que marcar desmarcada, colapsada y por debajo de seis campos.
@@ -214,8 +231,8 @@ export function ProfileForm({
           <div>
             <p className="font-medium">Ya casi eres vendedor</p>
             <p className="mt-0.5 text-muted-foreground">
-              Activamos el <strong>Modo Vendedor</strong> más abajo. Completa tu
-              nombre y tu ubicación, guarda los cambios y podrás publicar.
+              Ya lo activamos aquí debajo. Completa tu
+              nombre y tu zona, guarda, y podrás publicar.
             </p>
           </div>
         </div>
@@ -282,97 +299,6 @@ export function ProfileForm({
           </span>
         </label>
         <input type="hidden" name="foto" value={avatarUrl} />
-      </div>
-
-      {/* Basic Info Section */}
-      <div className="p-5 rounded-3xl bg-card shadow-sm animate-scale-in">
-        <div className="pb-4">
-          <h2 className="font-heading font-semibold text-[15px]">Información personal</h2>
-        </div>
-
-        <FieldRow label="Nombre" htmlFor="nombre">
-          <input
-            id="nombre"
-            name="nombre"
-            type="text"
-            required
-            maxLength={100}
-            defaultValue={profile?.nombre ?? ""}
-            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-          />
-        </FieldRow>
-
-        <FieldRow 
-          label="Usuario" 
-          htmlFor="username"
-          hint={
-            <>
-              Visible en tu perfil · ID: {profile?.user_id ?? "—"}
-              {usernameError && (
-                <span className="block text-destructive mt-1" role="alert">
-                  3 a 30 caracteres · letras, números y guion bajo
-                </span>
-              )}
-            </>
-          }
-        >
-          <div className="flex items-center">
-            <span className="text-base text-muted-foreground mr-0.5">@</span>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsernameLocal(e.target.value)}
-              maxLength={30}
-              className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-            />
-          </div>
-        </FieldRow>
-
-        <FieldRow 
-          label="Correo"
-          htmlFor="email"
-          hint="No se puede cambiar"
-        >
-          <input
-            id="email"
-            type="email"
-            disabled
-            value={profile?.email ?? ""}
-            className="w-full bg-transparent border-0 p-0 text-base text-muted-foreground outline-none focus:outline-none focus:ring-0 cursor-not-allowed opacity-80"
-          />
-        </FieldRow>
-
-        <FieldRow label="Bio" htmlFor="bio" hint="Opcional">
-          <textarea
-            id="bio"
-            name="bio"
-            ref={bioRef}
-            rows={2}
-            maxLength={500}
-            defaultValue={profile?.bio ?? ""}
-            onInput={(e) => autoGrow(e.currentTarget)}
-            placeholder="Cuéntanos sobre ti..."
-            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground resize-none overflow-hidden"
-          />
-        </FieldRow>
-
-        <FieldRow 
-          label="Zona"
-          htmlFor="ubicacion"
-          hint="Opcional · Se muestra junto a tu nombre. Dónde apareces en las búsquedas lo decide la ubicación de cada publicación."
-          last
-        >
-          <input
-            id="ubicacion"
-            name="ubicacion"
-            type="text"
-            maxLength={200}
-            defaultValue={profile?.ubicacion ?? ""}
-            placeholder="Ej: Col. Roma, CDMX"
-            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-          />
-        </FieldRow>
       </div>
 
       {/* Seller Section */}
@@ -544,7 +470,98 @@ export function ProfileForm({
         </div>
       </div>
 
-      {pendingDeactivation ? (
+      {/* Basic Info Section */}
+      <div className="p-5 rounded-3xl bg-card shadow-sm animate-scale-in">
+        <div className="pb-4">
+          <h2 className="font-heading font-semibold text-[15px]">Información personal</h2>
+        </div>
+
+        <FieldRow label="Nombre" htmlFor="nombre">
+          <input
+            id="nombre"
+            name="nombre"
+            type="text"
+            required
+            maxLength={100}
+            defaultValue={profile?.nombre ?? ""}
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+          />
+        </FieldRow>
+
+        <FieldRow 
+          label="Usuario" 
+          htmlFor="username"
+          hint={
+            <>
+              Visible en tu perfil · ID: {profile?.user_id ?? "—"}
+              {usernameError && (
+                <span className="block text-destructive mt-1" role="alert">
+                  3 a 30 caracteres · letras, números y guion bajo
+                </span>
+              )}
+            </>
+          }
+        >
+          <div className="flex items-center">
+            <span className="text-base text-muted-foreground mr-0.5">@</span>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsernameLocal(e.target.value)}
+              maxLength={30}
+              className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+            />
+          </div>
+        </FieldRow>
+
+        <FieldRow 
+          label="Correo"
+          htmlFor="email"
+          hint="No se puede cambiar"
+        >
+          <input
+            id="email"
+            type="email"
+            disabled
+            value={profile?.email ?? ""}
+            className="w-full bg-transparent border-0 p-0 text-base text-muted-foreground outline-none focus:outline-none focus:ring-0 cursor-not-allowed opacity-80"
+          />
+        </FieldRow>
+
+        <FieldRow label="Bio" htmlFor="bio" hint="Opcional">
+          <textarea
+            id="bio"
+            name="bio"
+            ref={bioRef}
+            rows={2}
+            maxLength={500}
+            defaultValue={profile?.bio ?? ""}
+            onInput={(e) => autoGrow(e.currentTarget)}
+            placeholder="Cuéntanos sobre ti..."
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground resize-none overflow-hidden"
+          />
+        </FieldRow>
+
+        <FieldRow 
+          label="Zona"
+          htmlFor="ubicacion"
+          hint="Opcional · Se muestra junto a tu nombre. Dónde apareces en las búsquedas lo decide la ubicación de cada publicación."
+          last
+        >
+          <input
+            id="ubicacion"
+            name="ubicacion"
+            type="text"
+            maxLength={200}
+            defaultValue={profile?.ubicacion ?? ""}
+            placeholder="Ej: Col. Roma, CDMX"
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+          />
+        </FieldRow>
+      </div>
+
+      {pendingDeactivation && (
         <div className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           <p className="font-semibold text-amber-900 dark:text-amber-200">
             Desactivar Modo Vendedor
@@ -590,28 +607,11 @@ export function ProfileForm({
               disabled={loading}
               className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
             >
-              {/* La confirmacion REPITE la etiqueta de la accion, como hace Instagram,
-                  en vez de un "Aceptar" ambiguo. Y ya no dice "y pausar": con cero
-                  publicaciones no habia nada que pausar y el boton mentia. */}
               {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Desactivar Modo Vendedor"}
             </button>
           </div>
         </div>
-      ) : (
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-[15px] font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-        >
-          {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            "Guardar cambios"
-          )}
-        </button>
       )}
     </form>
-
-    </>
   );
 }

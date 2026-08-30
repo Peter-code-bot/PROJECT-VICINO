@@ -43,7 +43,7 @@ interface BottomNavProps {
  *     la peor forma de romper algo.
  *   - El badge de mensajes sin leer.
  *   - La háptica al tocar.
- *   - Que la barra desaparezca dentro del detalle de un chat, donde el teclado
+ *   - Que la barra desaparezca dentro del detalle de un chat y en /perfil/editar, donde el teclado
  *     y la caja de escribir necesitan el sitio, y dentro de la ficha de
  *     producto, donde manda el StickyCta y el circulo central se le encimaba.
  *   - `md:hidden`: en escritorio manda el Sidebar.
@@ -53,10 +53,11 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
   const unreadChatMessages = useChatUnread();
 
   const onChatDetail = /^\/chat\/[^/]+/.test(pathname);
+  const onEditarPerfil = pathname === "/perfil/editar";
   const segments = pathname.split("/").filter(Boolean);
   const onProductDetail =
     segments.length === 2 && CATEGORY_SLUGS.has(segments[0] ?? "");
-  if (onChatDetail || onProductDetail) return null;
+  if (onChatDetail || onProductDetail || onEditarPerfil) return null;
 
   const esActivo = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -83,26 +84,27 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
       aria-label="Navegación principal"
     >
       <div className="relative mx-3">
-        <div
-          className={cn(
-            "liquid-nav flex h-16 items-center rounded-[26px] px-2",
-            central ? "justify-between" : "justify-around",
-          )}
-        >
-          <Grupo
-            items={izquierda}
-            esActivo={esActivo}
-            unread={unreadChatMessages}
-          />
+        <div className="liquid-nav flex h-16 items-center justify-around rounded-[26px] px-2">
+          {izquierda.map((item) => (
+            <ItemNav
+              key={item.href}
+              item={item}
+              activo={esActivo(item.href)}
+              unread={unreadChatMessages}
+            />
+          ))}
           {/* Hueco reservado para la burbuja. Se reserva en el FLUJO en vez de
               recortar la pildora: recortar el elemento que lleva el
               backdrop-filter deja el borde del desenfoque mordido. */}
           {central && <span className="w-16 shrink-0" aria-hidden />}
-          <Grupo
-            items={derecha}
-            esActivo={esActivo}
-            unread={unreadChatMessages}
-          />
+          {derecha.map((item) => (
+            <ItemNav
+              key={item.href}
+              item={item}
+              activo={esActivo(item.href)}
+              unread={unreadChatMessages}
+            />
+          ))}
         </div>
 
         {central && (
@@ -128,57 +130,49 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
   );
 }
 
-function Grupo({
-  items,
-  esActivo,
+function ItemNav({
+  item,
+  activo,
   unread,
 }: {
-  items: readonly (typeof NAV_ITEMS)[number][];
-  esActivo: (href: string) => boolean;
+  item: (typeof NAV_ITEMS)[number];
+  activo: boolean;
   unread: number;
 }) {
-  if (items.length === 0) return null;
+  const { href, label, icon: Icon } = item;
   return (
-    <div className="flex flex-1 items-center justify-around">
-      {items.map(({ href, label, icon: Icon }) => {
-        const activo = esActivo(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            aria-current={activo ? "page" : undefined}
-            id={`nav-${label.toLowerCase()}`}
-            onClick={() => void hapticLight()}
-            className="relative inline-flex h-12 w-[52px] flex-col items-center justify-center rounded-2xl"
-          >
-            {/* El indicador es un elemento aparte del icono para poder
-                animarlo sin arrastrar el icono en la transicion. */}
-            <span
-              className={cn(
-                "liquid-nav-indicador absolute inset-x-1.5 top-1 h-9 rounded-2xl bg-brand-tint",
-                activo ? "scale-100 opacity-100" : "scale-75 opacity-0",
-              )}
-              aria-hidden
-            />
-            <Icon
-              className={cn(
-                "relative h-[22px] w-[22px] transition-colors duration-150",
-                activo ? "text-brand-hi" : "text-fg-muted",
-              )}
-              strokeWidth={activo ? 2.4 : 2}
-            />
-            {href === "/chat" && unread > 0 && (
-              <span
-                className="absolute right-0.5 top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--bg)]"
-                aria-label={`${unread} mensajes sin leer`}
-              >
-                {unread > 99 ? "99+" : unread}
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </div>
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={activo ? "page" : undefined}
+      id={`nav-${label.toLowerCase()}`}
+      onClick={() => void hapticLight()}
+      className="relative inline-flex h-12 w-[52px] flex-col items-center justify-center rounded-2xl"
+    >
+      {/* El indicador es un elemento aparte del icono para poder
+          animarlo sin arrastrar el icono en la transicion. */}
+      <span
+        className={cn(
+          "liquid-nav-indicador absolute inset-x-1.5 top-1 h-9 rounded-2xl bg-brand-tint",
+          activo ? "scale-100 opacity-100" : "scale-75 opacity-0",
+        )}
+        aria-hidden
+      />
+      <Icon
+        className={cn(
+          "relative h-[22px] w-[22px] transition-colors duration-150",
+          activo ? "text-brand-hi" : "text-fg-muted",
+        )}
+        strokeWidth={activo ? 2.4 : 2}
+      />
+      {href === "/chat" && unread > 0 && (
+        <span
+          className="absolute right-0.5 top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_var(--bg)]"
+          aria-label={`${unread} mensajes sin leer`}
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }
