@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 
 export interface OptimisticMutationOpts<TArgs, TResult> {
   /**
@@ -83,6 +84,7 @@ export function useOptimisticMutation<TArgs, TResult>(
             opts.onSuccess?.(result, args);
           }
         } catch (err) {
+          if (esNavegacionDeNext(err)) throw err;
           if (typeof rollback === "function") rollback();
           const message =
             err instanceof Error && err.message ? err.message : "Algo salio mal";

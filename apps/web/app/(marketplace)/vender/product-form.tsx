@@ -17,6 +17,7 @@ import { hapticMedium } from "@/lib/haptics";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
 import * as Sentry from "@sentry/nextjs";
@@ -582,6 +583,7 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
         }
       }
     } catch (err) {
+      if (esNavegacionDeNext(err)) throw err;
       setError(err instanceof Error ? err.message : "Error al subir imágenes");
       setLoading(false);
       submittingRef.current = false;

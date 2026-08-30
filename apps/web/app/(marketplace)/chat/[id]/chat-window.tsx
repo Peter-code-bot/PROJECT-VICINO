@@ -690,7 +690,7 @@ export function ChatWindow({
       {product && (
         <Link
           href={`/buscar?q=${encodeURIComponent(product.titulo)}`}
-          className="mx-4 my-2 flex items-center gap-2.5 rounded-xl bg-[color:var(--bg-elev-2)] px-3 py-2 transition-colors hover:bg-[color:var(--card-2)]"
+          className="mx-4 my-2 flex items-center gap-2.5 rounded-xl bg-[color:var(--bg-elev-2)] dark:bg-[color:var(--card-2)] px-3 py-2 shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
             {product.imagen_principal ? (
