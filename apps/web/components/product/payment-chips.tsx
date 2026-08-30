@@ -17,7 +17,7 @@ export function PaymentChips({ metodosPagoAceptados }: PaymentChipsProps) {
         {methods.map((method) => (
           <span
             key={method}
-            className="inline-flex items-center rounded-full bg-[color:var(--brand-tint)] px-2.5 py-1 text-xs font-medium text-fg-muted"
+            className="inline-flex items-center rounded-full bg-[color:var(--brand-tint)] dark:bg-[color:var(--card-2)] px-2.5 py-1 text-xs font-medium text-fg-muted"
           >
             {method}
           </span>
