@@ -21,14 +21,31 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
   // un hermano encima lo desbordaria y quedaria recortado.
   const { intentFailed } = await searchParams;
   const supabase = await createClient();
+
+  // `getUser()` VA SOLO Y VA PRIMERO. NO LO METAS EN EL Promise.all DE ABAJO.
+  //
+  // Cuando el access token esta vencido, getUser() lo REFRESCA y reescribe la
+  // cookie. Cualquier consulta que salga a la vez que el refresco viaja con el
+  // token viejo, se come un 401 y devuelve `data: null` — o sea que un chat
+  // legitimo acabaria en notFound() de forma intermitente, y solo para sesiones
+  // largas. Ese viaje extra es el precio de la correccion.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login?next=/chat");
 
-  // Get chat with participants
-  const { data: chat } = await supabase
+  // PRIMERA TANDA: el chat y sus confirmaciones, a la vez.
+  //
+  // Hasta el 27-ago esta pagina hacia cinco viajes a Supabase EN FILA, y solo
+  // dos de los cinco dependian de verdad del anterior. Abrir un chat costaba
+  // la suma de los cinco (~5 s medidos).
+  //
+  // Las dos de aqui solo necesitan `chatId`. `saleConfirmations` se adelanta al
+  // chequeo de participante de mas abajo: si el usuario no lo es, los datos se
+  // traen y se tiran sin llegar nunca al cliente, porque `notFound()` corta el
+  // render antes. Es una consulta desperdiciada en un caso raro, no una fuga.
+  const chatQuery = supabase
     .from("chats")
     .select(
       `
@@ -41,6 +58,27 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     )
     .eq("id", chatId)
     .single();
+
+  // Get pending sale confirmations for this chat
+  const saleConfirmationsQuery = supabase
+    .from("sale_confirmations")
+    .select(
+      `
+      id, product_id, buyer_id, seller_id, precio_acordado, cantidad,
+      metodo_pago, tipo_entrega, status, initiated_by,
+      buyer_confirmed, seller_confirmed, created_at,
+      products_services(titulo)
+    `
+    )
+    .eq("chat_id", chatId)
+    .in("status", ["pending_confirmation", "completed"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const [{ data: chat }, { data: saleConfirmations }] = await Promise.all([
+    chatQuery,
+    saleConfirmationsQuery,
+  ]);
 
   if (!chat) notFound();
 
@@ -72,32 +110,30 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     messagesQuery.gt("created_at", deletedAt);
   }
 
-  const { data: messagesDesc } = await messagesQuery;
+  // SEGUNDA TANDA: los mensajes y el acuse de lectura, a la vez.
+  //
+  // Los mensajes son la unica consulta que de verdad depende de la anterior:
+  // `deletedAt` sale del chat y recorta la ventana. Por eso hay dos tandas y
+  // no una.
+  //
+  // `mark_messages_as_read` no depende de nada de esto y su resultado no se
+  // pinta — pero es una ESCRITURA, y encadenada le cobraba al usuario un viaje
+  // entero antes de ver el chat. Va aqui dentro para que solape con la lectura
+  // de mensajes en vez de sumarse a ella. No se puede soltar sin `await`: el
+  // runtime puede cortar el trabajo pendiente al terminar de renderizar, y
+  // entonces el contador de no leidos se queda pegado de forma intermitente.
+  const [{ data: messagesDesc }, { error: markReadErr }] = await Promise.all([
+    messagesQuery,
+    // Gemelo del markAsRead de chat/actions.ts: la RPC es SECURITY DEFINER y
+    // levanta 'unauthenticated', 'chat not found' o 'forbidden' como
+    // excepcion, y el await pelado las descartaba todas.
+    supabase.rpc("mark_messages_as_read", {
+      p_chat_id: chatId,
+      p_user_id: user.id,
+    }),
+  ]);
+
   const messages = (messagesDesc ?? []).slice().reverse();
-
-  // Get pending sale confirmations for this chat
-  const { data: saleConfirmations } = await supabase
-    .from("sale_confirmations")
-    .select(
-      `
-      id, product_id, buyer_id, seller_id, precio_acordado, cantidad,
-      metodo_pago, tipo_entrega, status, initiated_by,
-      buyer_confirmed, seller_confirmed, created_at,
-      products_services(titulo)
-    `
-    )
-    .eq("chat_id", chatId)
-    .in("status", ["pending_confirmation", "completed"])
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  // Mark messages as read. Gemelo del markAsRead de chat/actions.ts: la RPC es
-  // SECURITY DEFINER y levanta 'unauthenticated', 'chat not found' o
-  // 'forbidden' como excepcion, y el await pelado las descartaba todas.
-  const { error: markReadErr } = await supabase.rpc("mark_messages_as_read", {
-    p_chat_id: chatId,
-    p_user_id: user.id,
-  });
 
   // Solo se registra, nunca se aborta: la pagina tiene que renderizar el chat
   // aunque el contador de no leidos se quede pegado.
