@@ -43,7 +43,7 @@ interface BottomNavProps {
  *     la peor forma de romper algo.
  *   - El badge de mensajes sin leer.
  *   - La háptica al tocar.
- *   - Que la barra desaparezca dentro del detalle de un chat y en /perfil/editar, donde el teclado
+ *   - Que la barra desaparezca dentro del detalle de un chat, en /perfil/editar y en /vender, donde el teclado
  *     y la caja de escribir necesitan el sitio, y dentro de la ficha de
  *     producto, donde manda el StickyCta y el circulo central se le encimaba.
  *   - `md:hidden`: en escritorio manda el Sidebar.
@@ -54,10 +54,11 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
 
   const onChatDetail = /^\/chat\/[^/]+/.test(pathname);
   const onEditarPerfil = pathname === "/perfil/editar";
+  const onVender = /^\/vender(\/|$)/.test(pathname);
   const segments = pathname.split("/").filter(Boolean);
   const onProductDetail =
     segments.length === 2 && CATEGORY_SLUGS.has(segments[0] ?? "");
-  if (onChatDetail || onProductDetail || onEditarPerfil) return null;
+  if (onChatDetail || onProductDetail || onEditarPerfil || onVender) return null;
 
   const esActivo = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);

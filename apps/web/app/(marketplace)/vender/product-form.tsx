@@ -14,7 +14,8 @@ const ProductMediaCropper = dynamic(
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { hapticMedium } from "@/lib/haptics";
-import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
@@ -78,6 +79,7 @@ export interface ProductInitialValues {
 interface ProductFormProps {
   mode?: Mode;
   initialValues?: ProductInitialValues;
+  sellerInactive?: boolean;
 }
 
 const VIDEO_EXT_RE = /\.(mp4|webm|mov)$/i;
@@ -198,7 +200,8 @@ function filterCategoriesByTipo(
   );
 }
 
-export function ProductForm({ mode = "create", initialValues }: ProductFormProps) {
+export function ProductForm({ mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -588,7 +591,59 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
   const isEdit = mode === "edit";
 
   return (
-    <form action={handleSubmit} className="space-y-6 animate-scale-in">
+    <>
+      <div className="mb-6 flex items-center gap-3">
+        <Link
+          href={isEdit ? "/seller/listings" : "/"}
+          className="w-9 h-9 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center shrink-0 transition-colors hover:bg-[color:var(--card-2)]"
+          aria-label={isEdit ? "Volver a mis publicaciones" : "Volver al inicio"}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <h1 className="flex-1 font-heading text-xl font-bold text-[color:var(--fg)]">
+          {isEdit ? "Editar publicación" : "Publicar producto"}
+        </h1>
+        <button
+          type="button"
+          onClick={() => formRef.current?.requestSubmit()}
+          disabled={loading || uploading}
+          className="shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : uploading ? (
+            "Subiendo…"
+          ) : isEdit ? (
+            "Guardar"
+          ) : (
+            "Publicar"
+          )}
+        </button>
+      </div>
+
+      {sellerInactive && (
+        <div className="mb-8 animate-scale-in rounded-2xl bg-[rgba(212,168,83,0.18)] p-5 text-sm text-[color:var(--fg)] shadow-[inset_0_0_0_1px_rgba(212,168,83,0.30)]">
+          <p className="mb-1 font-semibold text-[color:var(--trust-gold)]">
+            Tu perfil de vendedor está inactivo
+          </p>
+          <p className="text-[color:var(--fg-muted)]">
+            Para publicar productos, necesitas activar el modo vendedor en{" "}
+            <Link
+              href="/perfil"
+              className="font-semibold text-[color:var(--brand-hi)] underline transition-colors hover:text-[color:var(--brand)]"
+            >
+              tu perfil
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
+      <form
+        ref={formRef}
+        action={handleSubmit}
+        className="rounded-3xl product-card-custom p-6 md:p-8 space-y-6 animate-scale-in"
+      >
       {error && (
         <div className="rounded-xl bg-[rgba(255,59,48,0.10)] p-4 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.30)]">
           <p className="flex items-center gap-2 font-semibold">
@@ -1202,20 +1257,7 @@ export function ProductForm({ mode = "create", initialValues }: ProductFormProps
         onSkip={handleCropSkip}
         onCropComplete={handleCropResult}
       />
-
-      <button
-        type="submit"
-        disabled={loading || uploading}
-        className="sticky bottom-[var(--bottom-nav-h)] z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-4 text-base font-semibold text-white transition-all duration-200 hover:bg-[color:var(--brand-dark)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 md:bottom-4"
-      >
-        {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : isEdit ? (
-          "Guardar cambios"
-        ) : (
-          "Publicar ahora"
-        )}
-      </button>
     </form>
+    </>
   );
 }

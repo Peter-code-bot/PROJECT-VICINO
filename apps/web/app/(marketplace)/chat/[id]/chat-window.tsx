@@ -630,7 +630,7 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border/10 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -690,7 +690,7 @@ export function ChatWindow({
       {product && (
         <Link
           href={`/buscar?q=${encodeURIComponent(product.titulo)}`}
-          className="flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
+          className="mx-4 my-2 flex items-center gap-2.5 rounded-xl bg-[color:var(--bg-elev-2)] px-3 py-2 transition-colors hover:bg-[color:var(--card-2)]"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
             {product.imagen_principal ? (
