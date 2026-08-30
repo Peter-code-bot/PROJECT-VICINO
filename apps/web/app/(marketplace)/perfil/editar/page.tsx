@@ -66,7 +66,7 @@ export default async function EditarPerfilPage({
     .eq("estatus", "disponible");
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-[var(--bottom-nav-h)] md:pb-8 animate-fade-in-up">
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/perfil"

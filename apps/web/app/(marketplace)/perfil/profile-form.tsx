@@ -1,11 +1,10 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { updateProfile } from "./actions";
-import { UsernameField } from "./username-field";
+import { updateProfile, setUsername } from "./actions";
 import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown } from "lucide-react";
 
 const METODOS_PAGO = [
@@ -19,6 +18,30 @@ const METODOS_PAGO = [
   "Depósito bancario",
   "Crypto",
 ];
+
+function FieldRow({ label, htmlFor, hint, children, last = false }: {
+  label: string;
+  htmlFor?: string;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+  last?: boolean;
+}) {
+  const Etiqueta = htmlFor ? "label" : "span";
+  return (
+    <div className={`group/field flex items-start gap-3 py-3 ${last ? "" : "border-b border-border/10"}`}>
+      <Etiqueta
+        htmlFor={htmlFor}
+        className="w-24 shrink-0 pt-0.5 text-[13px] text-muted-foreground transition-colors group-focus-within/field:text-primary"
+      >
+        {label}
+      </Etiqueta>
+      <div className="min-w-0 flex-1">
+        {children}
+        {hint && <span className="mt-1 block text-[11px] text-muted-foreground">{hint}</span>}
+      </div>
+    </div>
+  );
+}
 
 interface ProfileFormProps {
   profile: {
@@ -53,6 +76,7 @@ export function ProfileForm({
 }: ProfileFormProps) {
   const initialEsVendedor = profile?.es_vendedor ?? false;
   const [error, setError] = useState("");
+  const [usernameError, setUsernameError] = useState(false);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   // Si llega desde "Quiero vender" y todavia no lo es, la casilla nace
@@ -69,12 +93,34 @@ export function ProfileForm({
   const [sellerType, setSellerType] = useState(profile?.seller_type ?? "casual");
   const [avatarUrl, setAvatarUrl] = useState(profile?.foto ?? "");
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [username, setUsernameLocal] = useState(profile?.username ?? "");
+  const [usernameGuardado, setUsernameGuardado] = useState(profile?.username ?? "");
   const [metodosSeleccionados, setMetodosSeleccionados] = useState<string[]>(() => {
     const raw = profile?.metodos_pago_aceptados ?? "";
     return raw ? raw.split(",").map(m => m.trim()).filter(Boolean) : [];
   });
   const [metodosOpen, setMetodosOpen] = useState(false);
   const router = useRouter();
+
+  const bioRef = useRef<HTMLTextAreaElement>(null);
+  const negocioRef = useRef<HTMLTextAreaElement>(null);
+
+  function autoGrow(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  useEffect(() => {
+    if (bioRef.current) {
+      autoGrow(bioRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sellerType === "business" && negocioRef.current) {
+      autoGrow(negocioRef.current);
+    }
+  }, [sellerType]);
 
   function toggleMetodo(metodo: string) {
     setMetodosSeleccionados(prev =>
@@ -84,6 +130,24 @@ export function ProfileForm({
 
   async function runUpdate(formData: FormData) {
     setLoading(true);
+    setUsernameError(false);
+
+    if (username.trim() !== usernameGuardado) {
+      const usernameData = new FormData();
+      usernameData.set("username", username.trim());
+      const r = await setUsername(usernameData);
+      if (r.error) {
+        setError(r.error);
+        setUsernameError(true);
+        setLoading(false);
+        return;
+      }
+      if (r.username) {
+        setUsernameLocal(r.username);
+        setUsernameGuardado(r.username);
+      }
+    }
+
     const result = await updateProfile(formData);
     if (result?.error) {
       setError(result.error);
@@ -170,20 +234,63 @@ export function ProfileForm({
         </div>
       )}
 
+      {/* Avatar upload */}
+      <div className="flex flex-col items-center justify-center mb-6">
+        <div className="relative w-[72px] h-[72px] rounded-full bg-muted overflow-hidden shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
+              {profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
+            </div>
+          )}
+          {avatarUploading && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            </div>
+          )}
+        </div>
+        <label className="cursor-pointer mt-3">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={avatarUploading}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) { setError("La imagen no debe exceder 5MB"); return; }
+              setAvatarUploading(true);
+              try {
+                const supabase = (await import("@/lib/supabase/client")).createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("No autenticado");
+                const ext = file.name.split(".").pop() ?? "jpg";
+                const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+                const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: CACHE_INMUTABLE });
+                if (upErr) throw upErr;
+                const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+                setAvatarUrl(urlData.publicUrl);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Error al subir foto");
+              }
+              setAvatarUploading(false);
+            }}
+          />
+          <span className="text-[13px] font-medium text-primary hover:underline">
+            {avatarUrl ? "Cambiar foto" : "Subir foto"}
+          </span>
+        </label>
+        <input type="hidden" name="foto" value={avatarUrl} />
+      </div>
+
       {/* Basic Info Section */}
-      <div className="space-y-4 p-5 rounded-3xl bg-card border border-border/40 shadow-sm animate-scale-in">
-        <div className="flex items-center justify-between pb-2 border-b border-border/40">
-          <h2 className="font-heading font-semibold text-lg">Información Personal</h2>
-          {/* El .split('-') de antes era herencia de cuando user_id era un
-              UUID. Con 'U8769877' no hay guiones que cortar, asi que llevaba
-              meses mostrando la cadena entera y aparentando recortarla. */}
-          <UsernameField inicial={profile?.username} userId={profile?.user_id} />
+      <div className="p-5 rounded-3xl bg-card shadow-sm animate-scale-in">
+        <div className="pb-4">
+          <h2 className="font-heading font-semibold text-[15px]">Información personal</h2>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="nombre" className="text-sm font-medium text-foreground/80">
-            Nombre completo
-          </label>
+        <FieldRow label="Nombre" htmlFor="nombre">
           <input
             id="nombre"
             name="nombre"
@@ -191,104 +298,71 @@ export function ProfileForm({
             required
             maxLength={100}
             defaultValue={profile?.nombre ?? ""}
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
           />
-        </div>
+        </FieldRow>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground/80">
-            Correo electrónico
-          </label>
+        <FieldRow 
+          label="Usuario" 
+          htmlFor="username"
+          hint={
+            <>
+              Visible en tu perfil · ID: {profile?.user_id ?? "—"}
+              {usernameError && (
+                <span className="block text-destructive mt-1" role="alert">
+                  3 a 30 caracteres · letras, números y guion bajo
+                </span>
+              )}
+            </>
+          }
+        >
+          <div className="flex items-center">
+            <span className="text-base text-muted-foreground mr-0.5">@</span>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsernameLocal(e.target.value)}
+              maxLength={30}
+              className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+            />
+          </div>
+        </FieldRow>
+
+        <FieldRow 
+          label="Correo"
+          htmlFor="email"
+          hint="No se puede cambiar"
+        >
           <input
+            id="email"
             type="email"
             disabled
             value={profile?.email ?? ""}
-            className="w-full rounded-xl border border-border/30 bg-muted px-4 py-3 text-sm text-muted-foreground outline-none cursor-not-allowed opacity-80"
+            className="w-full bg-transparent border-0 p-0 text-base text-muted-foreground outline-none focus:outline-none focus:ring-0 cursor-not-allowed opacity-80"
           />
-          <p className="text-[11px] text-muted-foreground/70 ml-1">Tu email no se puede cambiar.</p>
-        </div>
+        </FieldRow>
 
-        {/* Avatar upload */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground/80">Foto de perfil</label>
-          <input type="hidden" name="foto" value={avatarUrl} />
-          <div className="flex items-center gap-4">
-            <div className="relative w-20 h-20 rounded-full bg-muted overflow-hidden shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                  {profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
-                </div>
-              )}
-              {avatarUploading && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                </div>
-              )}
-            </div>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                disabled={avatarUploading}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (file.size > 5 * 1024 * 1024) { setError("La imagen no debe exceder 5MB"); return; }
-                  setAvatarUploading(true);
-                  try {
-                    const supabase = (await import("@/lib/supabase/client")).createClient();
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (!user) throw new Error("No autenticado");
-                    const ext = file.name.split(".").pop() ?? "jpg";
-                    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-                    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: CACHE_INMUTABLE });
-                    if (upErr) throw upErr;
-                    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-                    setAvatarUrl(urlData.publicUrl);
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Error al subir foto");
-                  }
-                  setAvatarUploading(false);
-                }}
-              />
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
-                {avatarUrl ? "Cambiar foto" : "Subir foto"}
-              </span>
-            </label>
-          </div>
-          <p className="text-xs text-muted-foreground">JPG, PNG o WebP · Máx 5MB</p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="bio" className="text-sm font-medium text-foreground/80">
-            Bio <span className="text-muted-foreground font-normal">(opcional)</span>
-          </label>
+        <FieldRow label="Bio" htmlFor="bio" hint="Opcional">
           <textarea
             id="bio"
             name="bio"
-            rows={3}
+            ref={bioRef}
+            rows={2}
             maxLength={500}
             defaultValue={profile?.bio ?? ""}
-            placeholder="Cuéntanos un poco sobre ti..."
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
+            onInput={(e) => autoGrow(e.currentTarget)}
+            placeholder="Cuéntanos sobre ti..."
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground resize-none overflow-hidden"
           />
-        </div>
+        </FieldRow>
 
-        <div className="space-y-2">
-          <label htmlFor="ubicacion" className="text-sm font-medium text-foreground/80">
-            Colonia o zona <span className="text-muted-foreground font-normal">(opcional)</span>
-          </label>
-          {/* Se dice para que sirve, porque "Ubicacion principal" invitaba a
-              creer que decide donde apareces. No lo decide: el feed filtra por
-              la ubicacion de CADA publicacion, no por esta. Comprobado leyendo
-              search_nearby_products_v4, que ni siquiera mira pr.ubicacion. */}
-          <p className="text-xs text-muted-foreground">
-            Se muestra junto a tu nombre para que te reconozcan. Dónde apareces en
-            las búsquedas lo decide la ubicación que eliges en cada publicación.
-          </p>
+        <FieldRow 
+          label="Zona"
+          htmlFor="ubicacion"
+          hint="Opcional · Se muestra junto a tu nombre. Dónde apareces en las búsquedas lo decide la ubicación de cada publicación."
+          last
+        >
           <input
             id="ubicacion"
             name="ubicacion"
@@ -296,19 +370,23 @@ export function ProfileForm({
             maxLength={200}
             defaultValue={profile?.ubicacion ?? ""}
             placeholder="Ej: Col. Roma, CDMX"
-            className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
           />
-        </div>
+        </FieldRow>
       </div>
 
       {/* Seller Section */}
-      <div className={`p-5 rounded-3xl border transition-all duration-300 stagger ${
-        esVendedor 
-          ? "bg-primary/5 border-primary/20 shadow-sm" 
-          : "bg-card border-border/40"
-      }`}>
-        <label className="flex items-start gap-4 cursor-pointer group mb-1">
-          <div className="relative flex items-center justify-center mt-1 w-5 h-5 shrink-0">
+      <div className="p-5 rounded-3xl bg-card shadow-sm transition-all duration-300 stagger">
+        <label className="flex items-center justify-between cursor-pointer group mb-1">
+          <div>
+            <h3 className="font-heading font-semibold text-[15px] group-hover:text-primary transition-colors">
+              Modo Vendedor
+            </h3>
+            <p className="text-[13px] text-muted-foreground mt-0.5">
+              Publica productos y servicios
+            </p>
+          </div>
+          <div className="relative flex items-center shrink-0">
             <input
               type="checkbox"
               name="es_vendedor"
@@ -321,90 +399,87 @@ export function ProfileForm({
               }}
               className="peer sr-only"
             />
-            <div className="w-5 h-5 rounded border-2 border-muted-foreground/40 peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
-              <CheckCircle2 className="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+            <div className={`relative w-11 h-[26px] rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${
+              esVendedor ? "bg-primary" : "bg-muted-foreground/30"
+            }`}>
+              <div className={`absolute top-[2px] h-[22px] w-[22px] rounded-full bg-white shadow-sm transition-all duration-200 ${
+                esVendedor ? "left-[20px]" : "left-[2px]"
+              }`} />
             </div>
-          </div>
-          <div>
-            <h3 className="font-heading font-semibold text-lg group-hover:text-primary transition-colors">
-              Modo Vendedor
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Activa esta opción para publicar productos y servicios en el marketplace.
-            </p>
           </div>
         </label>
 
         <div className={`grid transition-all duration-300 ${
-          esVendedor ? "grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-primary/10" : "grid-rows-[0fr] opacity-0"
+          esVendedor ? "grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-border/10" : "grid-rows-[0fr] opacity-0"
         }`}>
           <div className="overflow-hidden space-y-4">
             {/* Seller type */}
             <input type="hidden" name="seller_type" value={sellerType} />
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Tipo de vendedor</label>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
+              <span className="block text-[13px] text-muted-foreground">Tipo de vendedor</span>
+              <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setSellerType("casual")}
-                  className={`p-3.5 rounded-xl border-2 text-left transition-all ${sellerType === "casual" ? "border-primary bg-primary/10" : "border-border/50 hover:border-primary/40"}`}>
-                  <User className="w-5 h-5 mb-1.5 text-muted-foreground" />
-                  <p className="font-medium text-sm">Casual</p>
+                  className={`p-3 rounded-xl border text-left transition-all ${sellerType === "casual" ? "border-primary bg-primary/10" : "border-border/15"}`}>
+                  <User className="w-5 h-5 mb-1 text-muted-foreground" />
+                  <p className="font-semibold text-sm">Casual</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Vende artículos personales</p>
                 </button>
                 <button type="button" onClick={() => setSellerType("business")}
-                  className={`p-3.5 rounded-xl border-2 text-left transition-all ${sellerType === "business" ? "border-primary bg-primary/10" : "border-border/50 hover:border-primary/40"}`}>
-                  <Store className="w-5 h-5 mb-1.5 text-muted-foreground" />
-                  <p className="font-medium text-sm">Negocio</p>
+                  className={`p-3 rounded-xl border text-left transition-all ${sellerType === "business" ? "border-primary bg-primary/10" : "border-border/15"}`}>
+                  <Store className="w-5 h-5 mb-1 text-muted-foreground" />
+                  <p className="font-semibold text-sm">Negocio</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Registra tu tienda</p>
                 </button>
               </div>
             </div>
 
+            <hr className="border-border/10" />
+
             {/* Business fields — only if type is business */}
             {sellerType === "business" && (
               <>
-                <div className="space-y-2">
-                  <label htmlFor="nombre_negocio" className="text-sm font-medium text-foreground/80">
-                    Nombre de tienda o negocio
-                  </label>
-                  <input
-                    id="nombre_negocio"
-                    name="nombre_negocio"
-                    type="text"
-                    maxLength={100}
-                    defaultValue={profile?.nombre_negocio ?? ""}
-                    placeholder="Mi Tienda Local"
-                    className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+                <div>
+                  <FieldRow label="Tienda" htmlFor="nombre_negocio">
+                    <input
+                      id="nombre_negocio"
+                      name="nombre_negocio"
+                      type="text"
+                      maxLength={100}
+                      defaultValue={profile?.nombre_negocio ?? ""}
+                      placeholder="Mi Tienda Local"
+                      className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                    />
+                  </FieldRow>
 
-                <div className="space-y-2">
-                  <label htmlFor="descripcion_negocio" className="text-sm font-medium text-foreground/80">
-                    Descripción del negocio <span className="text-muted-foreground font-normal">(opcional)</span>
-                  </label>
-                  <textarea
-                    id="descripcion_negocio"
-                    name="descripcion_negocio"
-                    rows={2}
-                    maxLength={1000}
-                    defaultValue={profile?.descripcion_negocio ?? ""}
-                    placeholder="¿Qué tipo de productos ofreces?"
-                    className="w-full rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 resize-y"
-                  />
+                  <FieldRow label="Descripción" htmlFor="descripcion_negocio" hint="Opcional" last>
+                    <textarea
+                      id="descripcion_negocio"
+                      name="descripcion_negocio"
+                      ref={negocioRef}
+                      rows={2}
+                      maxLength={1000}
+                      defaultValue={profile?.descripcion_negocio ?? ""}
+                      onInput={(e) => autoGrow(e.currentTarget)}
+                      placeholder="¿Qué tipo de productos ofreces?"
+                      className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground resize-none overflow-hidden"
+                    />
+                  </FieldRow>
                 </div>
+                <hr className="border-border/10" />
               </>
             )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80">
-                Métodos de pago aceptados
-              </label>
+            <div className="space-y-3">
+              <span className="block text-[13px] text-muted-foreground">
+                Métodos de pago
+              </span>
               <input type="hidden" name="metodos_pago_aceptados" value={metodosSeleccionados.join(", ")} />
 
               {/* Botón desplegable */}
               <button
                 type="button"
                 onClick={() => setMetodosOpen(!metodosOpen)}
-                className="w-full flex items-center justify-between rounded-xl border border-border/50 bg-muted px-4 py-3 text-sm text-left transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-base text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <span className={metodosSeleccionados.length > 0 ? "text-foreground truncate pr-2" : "text-muted-foreground"}>
                   {metodosSeleccionados.length > 0
@@ -417,7 +492,7 @@ export function ProfileForm({
               {/* Panel expandible INLINE (NO absolute — el padre tiene overflow-hidden) */}
               <div className={`grid transition-all duration-300 ${metodosOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden">
-                  <div className="rounded-xl border border-border/50 bg-card mt-1">
+                  <div className="rounded-xl bg-muted mt-1">
                     <div className="p-2 space-y-0.5">
                       {METODOS_PAGO.map((metodo) => (
                         <label
@@ -425,7 +500,7 @@ export function ProfileForm({
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
                             metodosSeleccionados.includes(metodo)
                               ? "bg-primary/10 text-foreground"
-                              : "hover:bg-muted text-foreground/80"
+                              : "hover:bg-foreground/5 text-foreground/80"
                           }`}
                         >
                           <input
@@ -443,7 +518,7 @@ export function ProfileForm({
                               <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
                             )}
                           </div>
-                          <span className="text-sm">{metodo}</span>
+                          <span className="text-base">{metodo}</span>
                         </label>
                       ))}
                     </div>
@@ -455,12 +530,14 @@ export function ProfileForm({
             <div className="pt-2">
               <Link
                 href="/seller/verificacion"
-                className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 hover:underline transition-all group"
+                className="flex items-center gap-3 bg-primary/[0.06] rounded-xl px-3 py-2.5 group"
               >
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 group-hover:scale-110 transition-transform">
-                  <ShieldAlert className="w-3.5 h-3.5" />
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <ShieldAlert className="w-3 h-3 text-primary" />
                 </div>
-                Verificar identidad para subir nivel de confianza →
+                <span className="text-[12px] font-medium text-primary flex-1">
+                  Verifica tu identidad para más confianza →
+                </span>
               </Link>
             </div>
           </div>
@@ -468,7 +545,7 @@ export function ProfileForm({
       </div>
 
       {pendingDeactivation ? (
-        <div className="sticky bottom-20 md:bottom-4 z-10 space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
+        <div className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           <p className="font-semibold text-amber-900 dark:text-amber-200">
             Desactivar Modo Vendedor
           </p>
@@ -524,7 +601,7 @@ export function ProfileForm({
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sticky bottom-20 md:bottom-4 z-10"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-[15px] font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
