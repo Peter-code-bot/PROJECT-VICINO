@@ -58,7 +58,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--sidebar-bg)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
       {/* Logo */}
-      <div className="px-5 py-5 shadow-[inset_0_-1px_0_0_var(--border)]">
+      <div className="px-5 py-5">
         <Link href="/" className="group flex items-center gap-2.5">
           <div className="flex flex-col leading-none">
             <span className="font-heading text-2xl font-bold tracking-tight text-[color:var(--fg)]">VICINO</span>
@@ -130,8 +130,6 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
           </div>
         )}
 
-        <div className="my-2 h-px bg-[color:var(--border)]" />
-
         {/* Auth-required items */}
         {user ? (
           <>
@@ -142,8 +140,6 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             <NavItem href="/favoritos" icon={Heart} label="Favoritos" active={isActive("/favoritos")} />
             <NavItem href="/citas" icon={Calendar} label="Mis citas" active={isActive("/citas")} />
             <NavItem href="/notificaciones" icon={Bell} label="Notificaciones" active={isActive("/notificaciones")} badge={unreadNotifications} />
-
-            <div className="my-2 h-px bg-[color:var(--border)]" />
 
             {/* Profile */}
             <Link
@@ -166,8 +162,6 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               <NavItem href="/admin" icon={ShieldAlert} label="Admin" active={isActive("/admin")} />
             )}
 
-            <div className="my-2 h-px bg-[color:var(--border)]" />
-
             <ThemeToggle />
 
             <NavItem href="/configuracion" icon={Settings} label="Configuración" active={isActive("/configuracion")} />
@@ -177,8 +171,6 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             <NavItem href="/vender" icon={PlusCircle} label="Vender" active={false} disabled />
             <NavItem href="/chat" icon={MessageCircle} label="Chat" active={false} disabled />
             <NavItem href="/favoritos" icon={Heart} label="Favoritos" active={false} disabled />
-
-            <div className="my-2 h-px bg-[color:var(--border)]" />
 
             <Link
               // Conserva la pagina actual. Antes era "/login" pelado: quien

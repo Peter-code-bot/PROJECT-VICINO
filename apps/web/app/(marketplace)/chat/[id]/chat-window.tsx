@@ -630,7 +630,7 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-[inset_0_-1px_0_0_var(--border)]">
+      <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -690,7 +690,7 @@ export function ChatWindow({
       {product && (
         <Link
           href={`/buscar?q=${encodeURIComponent(product.titulo)}`}
-          className="flex items-center gap-2.5 px-4 py-2 shadow-[inset_0_-1px_0_0_var(--border)] transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
+          className="flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
             {product.imagen_principal ? (
@@ -895,7 +895,7 @@ export function ChatWindow({
       />
       <form
         onSubmit={handleSend}
-        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 bg-card supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3 shadow-[inset_0_1px_0_0_var(--border)]"
+        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 bg-card supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3"
       >
         <PhotoPickerButton
           onElegir={elegirFotos}
@@ -908,7 +908,7 @@ export function ChatWindow({
           onChange={(e) => setInput(e.target.value)}
           maxLength={2000}
           placeholder="Escribe un mensaje..."
-          className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-[color:var(--fg-dim)] focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+          className="flex-1 rounded-full bg-[color:var(--card-2)] px-4 py-2.5 text-sm text-[color:var(--fg)] outline-none placeholder:text-[color:var(--fg-dim)] focus:bg-[color:var(--bg-elev-2)]"
         />
         <button
           type="submit"

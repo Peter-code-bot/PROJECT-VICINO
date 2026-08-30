@@ -20,7 +20,7 @@ export function Header({ isAdmin }: { isAdmin?: boolean }) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300 border-b border-border",
+        "sticky top-0 z-40 transition-[background,backdrop-filter] duration-300",
         "bg-bg/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]"
       )}
     >
