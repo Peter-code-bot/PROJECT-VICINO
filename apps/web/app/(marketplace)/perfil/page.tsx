@@ -17,13 +17,104 @@ export default async function PerfilPage() {
 
   if (!user) redirect("/login?next=/perfil");
 
-  const { data: profileData, error: profileError } = await supabase
+  // LAS SIETE CONSULTAS VAN JUNTAS, Y ESE ES EL PUNTO.
+  //
+  // Hasta el 27-ago esta pagina las encadenaba con siete `await` seguidos.
+  // Ninguna necesita el resultado de la anterior: todas se filtran por
+  // `user.id`, que ya lo tenemos desde `getUser()`. Encadenadas, la pagina
+  // pagaba la SUMA de los siete viajes a Supabase (~5 s medidos). En paralelo
+  // paga solo el MAS LENTO de los siete.
+  //
+  // Los constructores de consulta de supabase-js son perezosos: no salen a la
+  // red hasta que alguien llama a su `.then()`. Por eso se declaran sin
+  // `await` y es `Promise.all` quien las dispara todas a la vez.
+  //
+  // Si anades una consulta aqui, metela en este bloque. Un `await` suelto mas
+  // abajo vuelve a serializar la pagina entera y no se nota hasta produccion.
+  const profileQuery = supabase
     .from("profiles")
     .select(
       "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at, alta_vendedor_paso"
     )
     .eq("id", user.id)
     .single();
+
+  // Get user's products.
+  // MP#08 #5c-4: SELECT expandido con product_categories embed para que la
+  // data fluya al tipo ProfileTabsProps.products. Render visual de badges en
+  // SortableProductCard esta DIFERIDO a 5c-4-bis: ese componente es
+  // image-only (overlay con precio hover + badge PAUSADO existente) y
+  // requiere diseno de overlay propio para no colisionar.
+  const productsQueryBuilder = supabase
+    .from("products_services")
+    .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
+    .eq("creador_id", user.id)
+    .neq("estatus", "eliminado")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  const reviewsAsSellerQuery = supabase
+    .from("reviews")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
+    .eq("reviewed_id", user.id)
+    .eq("review_type", "buyer_to_seller")
+    .eq("visible", true)
+    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
+    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
+    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
+    .eq("products_services.estatus", "disponible")
+    .eq("products_services.is_hidden", false)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const reviewsAsBuyerQuery = supabase
+    .from("reviews")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
+    .eq("reviewed_id", user.id)
+    .eq("review_type", "seller_to_buyer")
+    .eq("visible", true)
+    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
+    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
+    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
+    .eq("products_services.estatus", "disponible")
+    .eq("products_services.is_hidden", false)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  // Count purchases
+  const purchaseCountQuery = supabase
+    .from("sale_confirmations")
+    .select("id", { count: "exact", head: true })
+    .eq("buyer_id", user.id)
+    .eq("status", "completed");
+
+  const followersCountQuery = supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", user.id);
+
+  const followingCountQuery = supabase
+    .from("store_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", user.id);
+
+  const [
+    { data: profileData, error: profileError },
+    productsQuery,
+    { data: reviewsAsSeller },
+    { data: reviewsAsBuyer },
+    { count: purchaseCount },
+    { count: followersCount },
+    { count: followingCount },
+  ] = await Promise.all([
+    profileQuery,
+    productsQueryBuilder,
+    reviewsAsSellerQuery,
+    reviewsAsBuyerQuery,
+    purchaseCountQuery,
+    followersCountQuery,
+    followingCountQuery,
+  ]);
 
   if (profileError) {
     console.error("[perfil] Error loading profile:", profileError);
@@ -58,20 +149,6 @@ export default async function PerfilPage() {
       }
     : null;
 
-  // Get user's products.
-  // MP#08 #5c-4: SELECT expandido con product_categories embed para que la
-  // data fluya al tipo ProfileTabsProps.products. Render visual de badges en
-  // SortableProductCard esta DIFERIDO a 5c-4-bis: ese componente es
-  // image-only (overlay con precio hover + badge PAUSADO existente) y
-  // requiere diseno de overlay propio para no colisionar.
-  const productsQuery = await supabase
-    .from("products_services")
-    .select("id, titulo, precio, modo_precio, imagen_principal, categoria, slug, estatus, ventas_count, sort_order, product_categories(is_primary, categories(slug, nombre))")
-    .eq("creador_id", user.id)
-    .neq("estatus", "eliminado")
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
-
   // `products` sigue siendo let porque el respaldo de mas abajo lo reasigna;
   // `productsError` no se reasigna nunca, y estaba compartiendo el let solo por
   // venir del mismo destructuring.
@@ -101,52 +178,6 @@ export default async function PerfilPage() {
   // de detalle resuelve SOLO por slug, o sea un 404. El respaldo por id esta
   // copiado en otros cuatro sitios del marketplace y no funciona en ninguno.
   const productsForTabs = products ?? [];
-
-  // Get reviews received
-  const { data: reviewsAsSeller } = await supabase
-    .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
-    .eq("reviewed_id", user.id)
-    .eq("review_type", "buyer_to_seller")
-    .eq("visible", true)
-    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
-    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
-    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .eq("products_services.estatus", "disponible")
-    .eq("products_services.is_hidden", false)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: reviewsAsBuyer } = await supabase
-    .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
-    .eq("reviewed_id", user.id)
-    .eq("review_type", "seller_to_buyer")
-    .eq("visible", true)
-    // LEFT JOIN deliberada: queremos preservar la reseña aunque el producto esté
-    // eliminado. <ReviewProductLink> degrada a "Producto no disponible" si el
-    // join devuelve null. NO cambiar a !inner — esconde reseñas históricas válidas.
-    .eq("products_services.estatus", "disponible")
-    .eq("products_services.is_hidden", false)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  // Count purchases
-  const { count: purchaseCount } = await supabase
-    .from("sale_confirmations")
-    .select("id", { count: "exact", head: true })
-    .eq("buyer_id", user.id)
-    .eq("status", "completed");
-
-  const { count: followersCount } = await supabase
-    .from("store_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", user.id);
-
-  const { count: followingCount } = await supabase
-    .from("store_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("follower_id", user.id);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
