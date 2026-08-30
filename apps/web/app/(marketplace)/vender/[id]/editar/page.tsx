@@ -96,6 +96,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 md:py-10">
       <ProductForm
+        userId={user.id}
         mode="edit"
         initialValues={{
           id: product.id,

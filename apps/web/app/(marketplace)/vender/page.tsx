@@ -25,7 +25,7 @@ export default async function VenderPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 md:py-10 animate-fade-in-up">
-      <ProductForm sellerInactive={!profile?.es_vendedor} />
+      <ProductForm userId={user.id} sellerInactive={!profile?.es_vendedor} />
     </div>
   );
 }

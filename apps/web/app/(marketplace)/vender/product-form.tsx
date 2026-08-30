@@ -78,6 +78,7 @@ export interface ProductInitialValues {
 }
 
 interface ProductFormProps {
+  userId: string;
   mode?: Mode;
   initialValues?: ProductInitialValues;
   sellerInactive?: boolean;
@@ -201,7 +202,7 @@ function filterCategoriesByTipo(
   );
 }
 
-export function ProductForm({ mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
+export function ProductForm({ userId, mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
   const [error, setError] = useState("");
@@ -427,91 +428,129 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
     if (media.length === 0) return [];
     setUploading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setUploading(false);
-      throw new Error("Tu sesion expiro. Vuelve a iniciar sesion para subir imagenes.");
-    }
-    const userId = user.id;
     const timestamp = Date.now();
-    const finalUrls: string[] = [];
+    const finalUrls: string[] = new Array(media.length);
+    
+    // Preparar tareas síncronamente conservando orden y asignando posiciones
     let pendingIdx = 0;
+    const uploadTasks: (() => Promise<void>)[] = [];
+
     for (let i = 0; i < media.length; i++) {
       const item = media[i]!;
       if (item.kind === "existing") {
-        finalUrls.push(item.url);
+        finalUrls[i] = item.url;
         continue;
       }
+
       const ext = item.file.name.split(".").pop() ?? "jpg";
       const path = `${userId}/${timestamp}-${pendingIdx}.${ext}`;
+      const currentPendingIdx = pendingIdx;
       pendingIdx++;
-      const { error: uploadErr } = await supabase.storage
-        .from("product-media")
-        .upload(path, item.file, { cacheControl: CACHE_INMUTABLE });
-      if (uploadErr) {
-        setUploading(false);
-        throw new Error(`Error subiendo imagen ${i + 1}: ${uploadErr.message}`);
-      }
-      const { data: urlData } = supabase.storage
-        .from("product-media")
-        .getPublicUrl(path);
-      finalUrls.push(urlData.publicUrl);
+      const itemIndex = i; // capturar el index de este loop
 
-      // Best-effort thumbnail upload for videos. Path mirrors the
-      // derivedThumbnailUrl convention in lib/video-thumbnail.ts so the
-      // gallery can resolve thumbs without a DB lookup. We await any
-      // pending background generation here so a fast submit (before the
-      // canvas decode finishes) still ships the thumbnail when it
-      // ultimately resolves. A failure (rejection or upload error) is
-      // logged but does not abort the product upload — display falls
-      // back to <video #t=0.1> for missing thumbs.
-      if (item.isVideo) {
-        const pending = pendingThumbsRef.current.get(item.file);
-        let thumbBlob: Blob | null = null;
-        if (pending) {
-          // Race the pending generation against an 8s timeout. Canvas decode
-          // typically completes in <1s; 4K sources take ~2-3s. 8s is safe
-          // margin while bailing on hangs (e.g., WebView legacy Android,
-          // corrupted source, codecs that never fire loadeddata/seeked).
-          // Since thumbnails are best-effort, blocking submission is worse
-          // than skipping the thumb — display falls back to <video #t=0.1>.
-          const THUMB_GENERATION_TIMEOUT_MS = 8000;
-          try {
-            thumbBlob = await Promise.race([
-              pending,
-              new Promise<never>((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("thumbnail generation timed out")),
-                  THUMB_GENERATION_TIMEOUT_MS,
+      uploadTasks.push(async () => {
+        const { error: uploadErr } = await supabase.storage
+          .from("product-media")
+          .upload(path, item.file, { cacheControl: CACHE_INMUTABLE });
+
+        if (uploadErr) {
+          if (
+            uploadErr.status === 401 || uploadErr.status === 403 ||
+            uploadErr.statusCode === "401" || uploadErr.statusCode === "403"
+          ) {
+            throw new Error("Tu sesión expiró. Vuelve a iniciar sesión para subir imágenes.");
+          }
+          throw new Error(`Error subiendo imagen ${itemIndex + 1}: ${uploadErr.message}`);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("product-media")
+          .getPublicUrl(path);
+
+        finalUrls[itemIndex] = urlData.publicUrl;
+
+        // Best-effort thumbnail upload for videos. Path mirrors the
+        // derivedThumbnailUrl convention in lib/video-thumbnail.ts so the
+        // gallery can resolve thumbs without a DB lookup. We await any
+        // pending background generation here so a fast submit (before the
+        // canvas decode finishes) still ships the thumbnail when it
+        // ultimately resolves. A failure (rejection or upload error) is
+        // logged but does not abort the product upload — display falls
+        // back to <video #t=0.1> for missing thumbs.
+        if (item.isVideo) {
+          const pending = pendingThumbsRef.current.get(item.file);
+          let thumbBlob: Blob | null = null;
+          if (pending) {
+            // Race the pending generation against an 8s timeout. Canvas decode
+            // typically completes in <1s; 4K sources take ~2-3s. 8s is safe
+            // margin while bailing on hangs (e.g., WebView legacy Android,
+            // corrupted source, codecs that never fire loadeddata/seeked).
+            // Since thumbnails are best-effort, blocking submission is worse
+            // than skipping the thumb — display falls back to <video #t=0.1>.
+            const THUMB_GENERATION_TIMEOUT_MS = 8000;
+            try {
+              thumbBlob = await Promise.race([
+                pending,
+                new Promise<never>((_, reject) =>
+                  setTimeout(
+                    () => reject(new Error("thumbnail generation timed out")),
+                    THUMB_GENERATION_TIMEOUT_MS,
+                  ),
                 ),
-              ),
-            ]);
-          } catch (thumbGenErr) {
-            // Se sigue sin miniatura a proposito: el video ya se subio y la
-            // capa de render cae a <video #t=0.1>. Lo que NO puede pasar es que
-            // el fallo desaparezca: sin esto, la miniatura queda en 404 y nadie
-            // se entera nunca de que la generacion viene fallando.
-            Sentry.captureException(thumbGenErr, {
-              tags: { action: "productForm", step: "video_thumbnail" },
-              level: "warning",
-            });
+              ]);
+            } catch (thumbGenErr) {
+              // Se sigue sin miniatura a proposito: el video ya se subio y la
+              // capa de render cae a <video #t=0.1>. Lo que NO puede pasar es que
+              // el fallo desaparezca: sin esto, la miniatura queda en 404 y nadie
+              // se entera nunca de que la generacion viene fallando.
+              Sentry.captureException(thumbGenErr, {
+                tags: { action: "productForm", step: "video_thumbnail" },
+                level: "warning",
+              });
+            }
+          }
+          if (thumbBlob) {
+            const thumbPath = `${userId}/${timestamp}-${currentPendingIdx}_thumb.jpg`;
+            const { error: thumbErr } = await supabase.storage
+              .from("product-media")
+              .upload(thumbPath, thumbBlob, {
+                contentType: "image/jpeg",
+                cacheControl: CACHE_INMUTABLE,
+              });
+            if (thumbErr) {
+              // Diagnostic only — product upload already succeeded.
+              console.warn(`thumbnail upload failed for video ${itemIndex + 1}: ${thumbErr.message}`);
+            }
           }
         }
-        if (thumbBlob) {
-          const thumbPath = `${userId}/${timestamp}-${pendingIdx - 1}_thumb.jpg`;
-          const { error: thumbErr } = await supabase.storage
-            .from("product-media")
-            .upload(thumbPath, thumbBlob, {
-              contentType: "image/jpeg",
-              cacheControl: CACHE_INMUTABLE,
-            });
-          if (thumbErr) {
-            // Diagnostic only — product upload already succeeded.
-            console.warn(`thumbnail upload failed for video ${i + 1}: ${thumbErr.message}`);
-          }
-        }
+      });
+    }
+
+    // NOTA: Con la concurrencia, si una subida falla después de que otras
+    // ya completaron, quedarán archivos huérfanos en el bucket.
+    // Esto se tolera por ahora.
+    
+    // Ejecutar máximo 3 tareas a la vez para no saturar conexiones móviles
+    const results: Promise<void>[] = [];
+    const executing = new Set<Promise<void>>();
+    let hasError = false;
+
+    for (const task of uploadTasks) {
+      if (hasError) break; // abortar early submission loop
+      const p = task().catch((err) => {
+        hasError = true;
+        setUploading(false); // set to false on error fast path
+        throw err;
+      });
+      results.push(p);
+      const e = p.catch(() => {}).finally(() => executing.delete(e));
+      executing.add(e);
+      if (executing.size >= 3) {
+        await Promise.race(executing);
       }
     }
+    await Promise.all(results);
+
     setUploading(false);
     return finalUrls;
   }
@@ -520,6 +559,7 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
     if (submittingRef.current) return;
     if (mode === "create" && locationData.lat === 0 && locationData.lng === 0) {
       setError("Selecciona una ubicación en el mapa para tu publicación");
+      setLoading(false);
       return;
     }
     // MP#08 #5c-2: validacion cliente del array de categorias. El zod del
@@ -527,10 +567,12 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
     // muestra el error en linea sin tocar la red.
     if (categories.length === 0) {
       setError("Selecciona al menos una categoría");
+      setLoading(false);
       return;
     }
     if (categories.filter((c) => c.is_primary).length !== 1) {
       setError("Marca exactamente una categoría como principal");
+      setLoading(false);
       return;
     }
     // La ventana de disponibilidad tiene que dar para al menos una cita.
@@ -543,6 +585,7 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
       const endMinutes = endH * 60 + endM;
       if (endMinutes - startMinutes < Number(apptDuration)) {
         setError("Tu horario de citas no alcanza para una sola cita. Revisa la hora de inicio, la de fin y la duración.");
+        setLoading(false);
         return;
       }
     }
@@ -551,7 +594,6 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
     void hapticMedium();
     submittingRef.current = true;
     setError("");
-    setLoading(true);
     try {
       const finalUrls = await uploadMediaAndBuildGallery();
       formData.set("imagen_principal", finalUrls[0] ?? "");
@@ -607,14 +649,18 @@ export function ProductForm({ mode = "create", initialValues, sellerInactive = f
         </h1>
         <button
           type="button"
-          onClick={() => formRef.current?.requestSubmit()}
+          onClick={() => {
+            setLoading(true);
+            formRef.current?.requestSubmit();
+          }}
           disabled={loading || uploading}
-          className="shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
+          className="min-w-[8rem] justify-center shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
         >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : uploading ? (
-            "Subiendo…"
+          {loading || uploading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isEdit ? "Guardando…" : "Publicando…"}
+            </>
           ) : isEdit ? (
             "Guardar"
           ) : (
