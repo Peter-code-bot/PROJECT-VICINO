@@ -90,11 +90,12 @@ export function ProductMediaCropper({
   );
 
   async function handleApply() {
-    if (!mediaSrc || !croppedArea) return;
+    if (!mediaSrc) return;
     setSaving(true);
     setError(null);
     try {
       if (mediaType === "image") {
+        if (!croppedArea) return;
         const blob = await getCroppedProductBlob(mediaSrc, croppedArea);
         onCropComplete({ type: "image", blob });
       } else {
@@ -265,7 +266,7 @@ export function ProductMediaCropper({
           </button>
           <button
             onClick={handleApply}
-            disabled={saving || !croppedArea}
+            disabled={saving || (mediaType === "image" && !croppedArea)}
             className="flex-1 rounded-full py-3 bg-primary text-primary-foreground font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (
