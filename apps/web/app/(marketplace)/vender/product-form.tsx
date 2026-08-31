@@ -555,25 +555,18 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     return finalUrls;
   }
 
-  async function handleSubmit(formData: FormData) {
-    if (submittingRef.current) return;
+  function validarAntesDeEnviar(): string | null {
     if (mode === "create" && locationData.lat === 0 && locationData.lng === 0) {
-      setError("Selecciona una ubicación en el mapa para tu publicación");
-      setLoading(false);
-      return;
+      return "Selecciona una ubicación en el mapa para tu publicación";
     }
     // MP#08 #5c-2: validacion cliente del array de categorias. El zod del
     // servidor enforza la misma regla; este check ahorra un round-trip y
     // muestra el error en linea sin tocar la red.
     if (categories.length === 0) {
-      setError("Selecciona al menos una categoría");
-      setLoading(false);
-      return;
+      return "Selecciona al menos una categoría";
     }
     if (categories.filter((c) => c.is_primary).length !== 1) {
-      setError("Marca exactamente una categoría como principal");
-      setLoading(false);
-      return;
+      return "Marca exactamente una categoría como principal";
     }
     // La ventana de disponibilidad tiene que dar para al menos una cita.
     // Sin esto se guarda un rango invalido (ej. 12:00 a.m. a 12:00 a.m.) y
@@ -584,11 +577,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
       if (endMinutes - startMinutes < Number(apptDuration)) {
-        setError("Tu horario de citas no alcanza para una sola cita. Revisa la hora de inicio, la de fin y la duración.");
-        setLoading(false);
-        return;
+        return "Tu horario de citas no alcanza para una sola cita. Revisa la hora de inicio, la de fin y la duración.";
       }
     }
+    return null;
+  }
+
+  async function handleSubmit(formData: FormData) {
+    if (submittingRef.current) return;
+
     // A4 sub-fase 4.1 (codex follow-up): haptic Medium DESPUES de validar
     // ambos checks (count + primary). Asi no suena en envio fallido.
     void hapticMedium();
@@ -650,8 +647,17 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <button
           type="button"
           onClick={() => {
+            const form = formRef.current;
+            if (!form) return;
+            if (!form.reportValidity()) return;
+            const err = validarAntesDeEnviar();
+            if (err) {
+              setError(err);
+              return;
+            }
+            setError("");
             setLoading(true);
-            formRef.current?.requestSubmit();
+            form.requestSubmit();
           }}
           disabled={loading || uploading}
           className="min-w-[8rem] justify-center shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
