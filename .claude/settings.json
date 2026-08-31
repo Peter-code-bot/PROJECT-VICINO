@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/pedro/Projects/startup-marketplace/.claude/hooks/guard-db.js\""
+            "command": "node \".claude/hooks/guard-db.js\""
           }
         ]
       }
