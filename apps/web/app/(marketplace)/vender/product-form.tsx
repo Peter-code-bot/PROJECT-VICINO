@@ -375,17 +375,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           isVideo: true,
         },
       ]);
-      // La portada sale del fotograma que eligio el vendedor, no del segundo
-      // 0,1 fijo de antes. Y no se recorta: el recorte de video nunca existio
-      // —el archivo se subia intacto— asi que recortar solo la miniatura hacia
-      // que la portada no se pareciera al video.
-      const thumbPromise: Promise<Blob | null> = generateVideoThumbnail(
-        result.file,
-        result.segundoPortada,
-      ).catch((err) => {
-        console.warn("video thumbnail generation failed", result.file.name, err);
-        return null;
-      });
+      // Si el vendedor encuadro la portada en el modal, esa es la buena: ya
+      // viene recortada 1:1. El generateVideoThumbnail solo queda de respaldo
+      // para el camino que no pasa por el encuadre.
+      const thumbPromise: Promise<Blob | null> = result.portada
+        ? Promise.resolve(result.portada)
+        : generateVideoThumbnail(result.file, result.segundoPortada).catch((err) => {
+            console.warn("video thumbnail generation failed", result.file.name, err);
+            return null;
+          });
       pendingThumbsRef.current.set(result.file, thumbPromise);
     }
     advanceCropQueue();

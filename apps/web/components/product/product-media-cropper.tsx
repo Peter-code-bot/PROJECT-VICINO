@@ -21,7 +21,7 @@ export type CropResult =
    * QUE FOTOGRAMA queda de portada. Antes se tomaba siempre el del segundo 0,1
    * y al vendedor le tocaba lo que saliera.
    */
-  | { type: "video"; file: File; segundoPortada: number };
+  | { type: "video"; file: File; segundoPortada: number; portada: Blob | null };
 
 interface ProductMediaCropperProps {
   open: boolean;
@@ -72,6 +72,9 @@ export function ProductMediaCropper({
   // Selector de portada del video. Solo se usa cuando mediaType es "video".
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [segundoPortada, setSegundoPortada] = useState(0);
+  // Paso 2 del video: el fotograma elegido, capturado como data URL para que lo
+  // recorte el mismo Cropper que usan las fotos. Null = seguimos en el paso 1.
+  const [frameSrc, setFrameSrc] = useState<string | null>(null);
 
   // Portal mount gate — avoids SSR hydration mismatch
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -86,6 +89,7 @@ export function ProductMediaCropper({
       setCroppedArea(null);
       setSaving(false);
       setError(null);
+      setFrameSrc(null);
     }
   }, [mediaSrc]);
 
@@ -106,21 +110,43 @@ export function ProductMediaCropper({
         const blob = await getCroppedProductBlob(mediaSrc, croppedArea);
         onCropComplete({ type: "image", blob });
       } else {
-        // Video: pass through the original file + crop coordinates.
-        // The actual video file is NOT re-encoded; the crop area is used
-        // to generate a cropped thumbnail and for visual display.
-        //
-        // Este early-return dejaba el boton clavado en "Procesando..." para
-        // siempre: saltaba el setSaving(false) que estaba despues del try.
-        // Ahora vive en el finally, asi que cualquier salida lo libera.
+        // Los return tempranos de aqui son seguros porque setSaving(false) vive
+        // en el finally. Cuando estaba despues del try, un return dejaba el
+        // boton clavado en "Procesando..." para siempre.
         if (!originalFile) {
           setError("No se pudo leer el archivo de video. Vuelve a seleccionarlo.");
           return;
         }
+
+        // Paso 1: capturar el fotograma actual y pasar al encuadre.
+        if (!frameSrc) {
+          const v = videoRef.current;
+          if (!v || !v.videoWidth || !v.videoHeight) {
+            setError("No se pudo leer el fotograma. Adelanta el video e intenta de nuevo.");
+            return;
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = v.videoWidth;
+          canvas.height = v.videoHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            setError("No se pudo preparar la portada. Intenta de nuevo.");
+            return;
+          }
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          setSegundoPortada(v.currentTime);
+          setFrameSrc(canvas.toDataURL("image/jpeg", 0.92));
+          return;
+        }
+
+        // Paso 2: el vendedor ya encuadro ese fotograma.
+        if (!croppedArea) return;
+        const portada = await getCroppedProductBlob(frameSrc, croppedArea);
         onCropComplete({
           type: "video",
           file: originalFile,
-          segundoPortada: videoRef.current?.currentTime ?? segundoPortada,
+          segundoPortada,
+          portada,
         });
       }
     } catch (err) {
@@ -182,7 +208,7 @@ export function ProductMediaCropper({
             oscuro de react-easy-crop, que con un video vertical dentro de una
             caja cuadrada pintaba franjas oscuras arriba y abajo. Eso es lo que
             se reportaba como "banda negra arriba", y desaparece solo. */}
-        {mediaType === "video" ? (
+        {mediaType === "video" && !frameSrc ? (
           <div className="relative w-full bg-black">
             <video
               ref={videoRef}
@@ -193,6 +219,22 @@ export function ProductMediaCropper({
               className="w-full max-h-[60vh] object-contain bg-black"
               onTimeUpdate={(e) => setSegundoPortada(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setSegundoPortada(e.currentTarget.currentTime)}
+            />
+          </div>
+        ) : mediaType === "video" && frameSrc ? (
+          <div className="relative w-full aspect-square bg-black">
+            <Cropper
+              image={frameSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="rect"
+              showGrid={true}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropDone}
+              minZoom={1}
+              maxZoom={3}
             />
           </div>
         ) : (
@@ -217,13 +259,14 @@ export function ProductMediaCropper({
         <div className="px-6 py-4 space-y-3 bg-card">
           {mediaType === "video" && (
             <p className="text-xs text-muted-foreground">
-              Adelanta el video hasta el momento que quieras como portada y pulsa
-              «Usar este fotograma». El video se publica completo, sin recortar.
+              {frameSrc
+                ? "Encuadra la portada. El video se publica completo: esto solo decide como se ve en el inicio."
+                : "Adelanta el video hasta el momento que quieras como portada y pulsa «Usar este fotograma»."}
             </p>
           )}
 
           {/* Zoom slider — solo para imagen: en video no hay recorte que ajustar */}
-          {mediaType === "image" && (
+          {(mediaType === "image" || frameSrc) && (
           <>
           {/* Zoom slider */}
           <div className="flex items-center gap-3">
@@ -272,7 +315,7 @@ export function ProductMediaCropper({
           </button>
           <button
             onClick={handleApply}
-            disabled={saving || (mediaType === "image" && !croppedArea)}
+            disabled={saving || (!croppedArea && (mediaType === "image" || frameSrc !== null))}
             className="flex-1 rounded-full py-3 bg-primary text-primary-foreground font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (
@@ -281,7 +324,7 @@ export function ProductMediaCropper({
                 Procesando...
               </>
             ) : (
-              mediaType === "video" ? "Usar este fotograma" : "Recortar y usar"
+              mediaType === "video" && !frameSrc ? "Usar este fotograma" : "Recortar y usar"
             )}
           </button>
         </div>
