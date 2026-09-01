@@ -110,14 +110,11 @@ export function ProductGallery({
     return (
       <div className="relative aspect-[4/3] md:rounded-3xl overflow-hidden bg-card dark:bg-neutral-900 border-x-0 md:border border-border/40">
         {isVideo(url) ? (
-          // Single-item full player. For legacy videos without a paired
-          // `_thumb.jpg` the poster URL 404s and the browser shows blank,
-          // which matches the preload="metadata" default (no first-frame
-          // render) — so this is neutral for legacy and an improvement for
-          // new uploads that DO have the thumbnail.
+          // Reproductor completo. Sin poster a proposito: el fragmento #t=0.1
+          // pinta el primer fotograma con la forma real del video, mientras que
+          // el _thumb.jpg pasa a ser cuadrado para el feed.
           <video
-            src={url}
-            poster={derivedThumbnailUrl(url)}
+            src={`${url}#t=0.1`}
             controls
             preload="metadata"
             className="w-full h-full object-contain bg-black"

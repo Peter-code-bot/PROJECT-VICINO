@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { derivedThumbnailUrl, isVideoUrl } from "@/lib/video-thumbnail";
+import { isVideoUrl } from "@/lib/video-thumbnail";
 
 interface ProductGalleryCarouselProps {
   images: string[];
@@ -45,8 +45,11 @@ function CarouselMedia({ src, alt, eager }: { src: string; alt: string; eager: b
   if (isVideoUrl(src)) {
     return (
       <video
-        src={src}
-        poster={derivedThumbnailUrl(src)}
+        // El fragmento #t=0.1 fuerza al navegador a pintar ese fotograma. Es el
+        // mismo truco que ya usa product-gallery.tsx para los videos sin thumb.
+        // Sustituye al poster, que a partir del commit 2 tendria otra forma que
+        // el video y produciria un salto al arrancar.
+        src={`${src}#t=0.1`}
         controls
         playsInline
         preload="metadata"
