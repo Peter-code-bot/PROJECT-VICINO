@@ -146,7 +146,7 @@ export function StorePost({
       {/* 3. Imagen del producto */}
       <ConEnlace
         href={href}
-        className="block relative aspect-[4/3] bg-[var(--bg-elev-2)] overflow-hidden"
+        className="block relative aspect-square bg-[var(--bg-elev-2)] overflow-hidden"
       >
         {imgUrl ? (
           <Image
