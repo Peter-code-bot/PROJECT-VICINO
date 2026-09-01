@@ -77,7 +77,6 @@ export function ProfileForm({
   const initialEsVendedor = profile?.es_vendedor ?? false;
   const [error, setError] = useState("");
   const [usernameError, setUsernameError] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   // Si llega desde "Quiero vender" y todavia no lo es, la casilla nace
   // marcada. Honra lo que acaba de pedir, y el aviso de arriba lo dice en
@@ -151,19 +150,20 @@ export function ProfileForm({
     const result = await updateProfile(formData);
     if (result?.error) {
       setError(result.error);
-    } else {
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/perfil");
-        router.refresh();
-      }, 1500);
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // Sin espera y sin apagar `loading`: el boton se queda en "Guardando..." hasta
+    // que pinta /perfil, y asi no hay hueco para reenviar el formulario.
+    // `replace` y no `push` para que el boton atras no devuelva al formulario que
+    // se acaba de cerrar.
+    router.replace("/perfil");
+    router.refresh();
   }
 
   async function handleSubmit(formData: FormData) {
     setError("");
-    setSuccess(false);
 
     // Phase 9: intercept ON→OFF transitions when the user has active products.
     // The form data still goes through unchanged once the user confirms; the
@@ -214,7 +214,14 @@ export function ProfileForm({
           disabled={loading || pendingDeactivation !== null}
           className="shrink-0 text-[15px] font-semibold text-primary dark:text-accent px-2 py-1 rounded-lg transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40"
         >
-          {loading ? "Guardando…" : "Listo"}
+          {loading ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Guardando…
+            </span>
+          ) : (
+            "Listo"
+          )}
         </button>
       </div>
 
@@ -242,12 +249,6 @@ export function ProfileForm({
         <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
           <ShieldAlert className="w-5 h-5 shrink-0" />
           <p>{error}</p>
-        </div>
-      )}
-      {success && (
-        <div className="flex items-start gap-3 rounded-xl border border-green-200/50 bg-green-50/50 dark:bg-green-950/20 p-4 text-sm text-green-700 dark:text-green-400 animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <p>Tu perfil se ha actualizado correctamente.</p>
         </div>
       )}
 
