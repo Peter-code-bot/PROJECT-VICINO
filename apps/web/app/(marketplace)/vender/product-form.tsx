@@ -89,6 +89,30 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXT_RE.test(url.split("?")[0] ?? "");
 }
 
+/** Segundos de un video, leidos del metadata. */
+async function duracionDeVideo(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    let listo = false;
+    // Si el metadata no llega, NO bloqueamos la subida: es preferible dejar
+    // pasar un video raro que impedirle publicar a alguien por un contenedor
+    // que el navegador no sabe medir.
+    const terminar = (segundos: number) => {
+      if (listo) return;
+      listo = true;
+      clearTimeout(reloj);
+      URL.revokeObjectURL(url);
+      resolve(segundos);
+    };
+    const reloj = setTimeout(() => terminar(NaN), 5000);
+    v.preload = "metadata";
+    v.onloadedmetadata = () => terminar(v.duration);
+    v.onerror = () => terminar(NaN);
+    v.src = url;
+  });
+}
+
 /** Postgres devuelve `time` como "HH:MM:SS"; el select usa "HH:MM". */
 function toHHMM(t: string | null | undefined, fallback: string): string {
   if (!t) return fallback;
@@ -300,6 +324,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       // 20260521000010). Si se sube este numero hay que subir el bucket ANTES:
       // al reves, el archivo viaja entero y muere al llegar.
       if (isVid && f.size > 50 * 1024 * 1024) { setError(`${f.name} excede 50MB`); return; }
+      if (isVid) {
+        const segundos = await duracionDeVideo(f);
+        // Number.isFinite descarta NaN e Infinity de una vez. Un contenedor sin
+        // duracion medible pasa; el tope de 50MB sigue siendo el freno duro.
+        if (Number.isFinite(segundos) && segundos > 10) {
+          setError(`${f.name} dura ${Math.round(segundos)} s. Por ahora el maximo es 10 segundos.`);
+          return;
+        }
+      }
       if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
     }
     setError("");
