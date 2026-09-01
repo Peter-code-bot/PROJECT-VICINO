@@ -21,6 +21,7 @@ import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 import { fileToDataURL } from "@/lib/crop-image";
 import * as Sentry from "@sentry/nextjs";
+import { toast } from "sonner";
 import type { CropResult } from "@/components/product/product-media-cropper";
 
 import {
@@ -323,17 +324,29 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       // 50 MB = file_size_limit del bucket product-media (migracion
       // 20260521000010). Si se sube este numero hay que subir el bucket ANTES:
       // al reves, el archivo viaja entero y muere al llegar.
-      if (isVid && f.size > 50 * 1024 * 1024) { setError(`${f.name} excede 50MB`); return; }
+      // Toast y no setError: el banner de error vive al principio del formulario
+      // y aqui estamos junto al selector, muy por debajo. En el telefono el
+      // vendedor no llegaba a verlo nunca y el archivo parecia no entrar solo.
+      if (isVid && f.size > 50 * 1024 * 1024) {
+        toast.error(`${f.name} pesa demasiado. El maximo es 50 MB.`, { duration: 2000 });
+        return;
+      }
       if (isVid) {
         const segundos = await duracionDeVideo(f);
         // Number.isFinite descarta NaN e Infinity de una vez. Un contenedor sin
         // duracion medible pasa; el tope de 50MB sigue siendo el freno duro.
         if (Number.isFinite(segundos) && segundos > 10) {
-          setError(`${f.name} dura ${Math.round(segundos)} s. Por ahora el maximo es 10 segundos.`);
+          toast.error(
+            `Ese video dura ${Math.round(segundos)} segundos. Por ahora el maximo es 10.`,
+            { duration: 2000 },
+          );
           return;
         }
       }
-      if (!isVid && f.size > 5 * 1024 * 1024) { setError(`${f.name} excede 5MB`); return; }
+      if (!isVid && f.size > 5 * 1024 * 1024) {
+        toast.error(`${f.name} pesa demasiado. El maximo es 5 MB.`, { duration: 2000 });
+        return;
+      }
     }
     setError("");
 
