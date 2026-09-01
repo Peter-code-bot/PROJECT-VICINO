@@ -398,6 +398,18 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     advanceCropQueue();
   }
 
+  /**
+   * Descartar el archivo actual sin anadirlo a media[]. Es la salida del
+   * recortador para imagen, ahora que el recorte 1:1 es obligatorio.
+   */
+  function handleCropCancel() {
+    const item = cropQueue[cropIndex];
+    // Solo el video usa object URL; para imagen la src es un data URL y
+    // revocarla no aplica.
+    if (item?.isVideo) URL.revokeObjectURL(item.src);
+    advanceCropQueue();
+  }
+
   function advanceCropQueue() {
     const nextIndex = cropIndex + 1;
     if (nextIndex >= cropQueue.length) {
@@ -1309,6 +1321,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         mediaType={currentCropItem?.isVideo ? "video" : "image"}
         originalFile={currentCropItem?.file}
         onSkip={handleCropSkip}
+        onCancel={handleCropCancel}
         onCropComplete={handleCropResult}
       />
     </form>

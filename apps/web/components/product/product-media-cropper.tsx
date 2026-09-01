@@ -39,6 +39,12 @@ interface ProductMediaCropperProps {
    * deshace — hay que volver a buscarla en el telefono.
    */
   onSkip: () => void;
+  /**
+   * Descartar ESTE archivo y pasar al siguiente de la cola. Es la unica
+   * salida de la imagen desde que el recorte 1:1 es obligatorio: sin ella,
+   * quien elige la foto equivocada queda encerrado en el recortador.
+   */
+  onCancel: () => void;
   onCropComplete: (result: CropResult) => void;
 }
 
@@ -52,6 +58,7 @@ export function ProductMediaCropper({
   mediaType,
   originalFile,
   onSkip,
+  onCancel,
   onCropComplete,
 }: ProductMediaCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -121,7 +128,7 @@ export function ProductMediaCropper({
       setError(
         mediaType === "video"
           ? "No se pudo recortar el video. Intenta de nuevo u omite el recorte."
-          : "No se pudo recortar la imagen. Intenta de nuevo u omite el recorte.",
+          : "No se pudo recortar la imagen. Intenta de nuevo o cancela y elige otra.",
       );
     } finally {
       setSaving(false);
@@ -152,10 +159,9 @@ export function ProductMediaCropper({
   return createPortal(
     <div
       className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      // Pulsar fuera tampoco pierde el archivo. Un toque accidental que anade
-      // una foto se arregla quitandola de la rejilla; uno que la borra obliga
-      // a buscarla otra vez en el telefono.
-      onClick={handleSkip}
+      // El recorte 1:1 es obligatorio para imagen, asi que el fondo ya no es un
+      // atajo: la salida es el boton Cancelar, que descarta el archivo a
+      // proposito. Un toque accidental fuera no debe publicar ni borrar nada.
     >
       <div
         className="bg-card w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border"
@@ -258,11 +264,11 @@ export function ProductMediaCropper({
         {/* Footer */}
         <div className="px-6 pb-5 pt-2 flex gap-3">
           <button
-            onClick={handleSkip}
+            onClick={mediaType === "image" ? onCancel : handleSkip}
             disabled={saving}
             className="flex-1 rounded-full py-3 border border-border text-foreground font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
-            Usar sin recortar
+            {mediaType === "image" ? "Cancelar" : "Usar sin recortar"}
           </button>
           <button
             onClick={handleApply}
@@ -275,7 +281,7 @@ export function ProductMediaCropper({
                 Procesando...
               </>
             ) : (
-              mediaType === "video" ? "Usar este fotograma" : "Aplicar crop"
+              mediaType === "video" ? "Usar este fotograma" : "Recortar y usar"
             )}
           </button>
         </div>
