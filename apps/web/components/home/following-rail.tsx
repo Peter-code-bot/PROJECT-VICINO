@@ -23,12 +23,6 @@ export function FollowingRail({ stores }: FollowingRailProps) {
         <h2 className="font-display font-medium text-[15.5px] text-[var(--fg)]">
           Tiendas que sigues <span className="text-[var(--fg-muted)] font-normal">· {stores.length}</span>
         </h2>
-        <Link
-          href="/perfil/siguiendo"
-          className="text-[13.5px] font-medium text-[var(--brand-hi)] hover:text-[var(--brand)] transition-colors"
-        >
-          Gestionar
-        </Link>
       </div>
 
       <div className="flex overflow-x-auto gap-4 px-4 pb-2 snap-x scrollbar-none" style={{ scrollbarWidth: "none" }}>
@@ -38,8 +32,7 @@ export function FollowingRail({ stores }: FollowingRailProps) {
             href={`/vendedor/${store.id}`}
             className="flex flex-col items-center gap-1.5 snap-start shrink-0"
             style={{ width: "60px" }}
-            // A3 sub-fase 3.6: carousel de tiendas seguidas (N items). El Link
-            // "Gestionar" arriba (linea ~26) mantiene prefetch default.
+            // A3 sub-fase 3.6: carousel de tiendas seguidas (N items).
             prefetch={false}
           >
             <div

@@ -69,7 +69,18 @@ const rutasReales = () => {
 /** Un segmento [x] casa con cualquier cosa que no lleve barra. */
 const casa = (destino, rutas) => {
   if (rutas.has(destino)) return true;
+  // Precedencia como la de Next: si el primer tramo del destino corresponde a
+  // una carpeta estatica real, solo pueden casarlo rutas que empiecen por esa
+  // misma carpeta. Sin esto, /[categoria]/[slug] —que vive en la raiz— casaba
+  // con CUALQUIER destino de dos tramos, y el chequeo daba por buena
+  // /perfil/siguiendo, que no existe. Next no retrocede a la ruta dinamica
+  // hermana cuando el tramo estatico ya gano.
+  const primero = destino.split('/').filter(Boolean)[0];
+  const raizEstatica =
+    Boolean(primero) &&
+    [...rutas].some((r) => r.split('/').filter(Boolean)[0] === primero);
   for (const r of rutas) {
+    if (raizEstatica && r.split('/').filter(Boolean)[0] !== primero) continue;
     const patron = '^' + r.replace(/\[\.\.\.[^\]]+\]/g, '.+').replace(/\[[^\]]+\]/g, '[^/]+') + '$';
     if (new RegExp(patron).test(destino)) return true;
   }
