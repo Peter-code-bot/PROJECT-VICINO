@@ -127,6 +127,8 @@ type MediaItem = ExistingMedia | PendingMedia;
 /** Item queued for cropping before being added to media[] */
 type CropQueueItem = { file: File; src: string; isVideo: boolean };
 
+const MAX_VIDEO_SEGUNDOS = 10;
+
 function SortableMediaItem({
   item,
   index,
@@ -316,7 +318,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (media.length + files.length > 5) {
-      setError("Máximo 5 archivos");
+      toast.error("Máximo 5 archivos", { duration: 2000 });
       return;
     }
     for (const f of files) {
@@ -335,9 +337,9 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         const segundos = await duracionDeVideo(f);
         // Number.isFinite descarta NaN e Infinity de una vez. Un contenedor sin
         // duracion medible pasa; el tope de 50MB sigue siendo el freno duro.
-        if (Number.isFinite(segundos) && segundos > 10) {
+        if (Number.isFinite(segundos) && segundos > MAX_VIDEO_SEGUNDOS) {
           toast.error(
-            `Ese video dura ${Math.round(segundos)} segundos. Por ahora el maximo es 10.`,
+            `Máx. ${MAX_VIDEO_SEGUNDOS} segundos`,
             { duration: 2000 },
           );
           return;
@@ -399,46 +401,6 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           });
       pendingThumbsRef.current.set(result.file, thumbPromise);
     }
-    advanceCropQueue();
-  }
-
-  /**
-   * El usuario decide no recortar: el archivo se anade TAL CUAL.
-   *
-   * Antes se descartaba, sin aviso y sin vuelta atras. El boton decia
-   * "Omitir", que se lee como "saltate el recorte", no como "tira la foto".
-   */
-  function handleCropSkip() {
-    const item = cropQueue[cropIndex];
-    if (!item) {
-      advanceCropQueue();
-      return;
-    }
-
-    if (item.isVideo) {
-      const preview = URL.createObjectURL(item.file);
-      setMedia((prev) => [
-        ...prev,
-        { id: preview, kind: "pending", file: item.file, preview, isVideo: true },
-      ]);
-      // Sin area de recorte, la miniatura sale del primer fotograma completo.
-      const thumbPromise: Promise<Blob | null> = generateVideoThumbnail(item.file).catch(
-        (err) => {
-          console.warn("video thumbnail generation failed", item.file.name, err);
-          return null;
-        },
-      );
-      pendingThumbsRef.current.set(item.file, thumbPromise);
-      // La src del modal ya no se usa; el preview de la rejilla es otro objeto.
-      URL.revokeObjectURL(item.src);
-    } else {
-      const preview = URL.createObjectURL(item.file);
-      setMedia((prev) => [
-        ...prev,
-        { id: preview, kind: "pending", file: item.file, preview, isVideo: false },
-      ]);
-    }
-
     advanceCropQueue();
   }
 
@@ -1364,7 +1326,6 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         mediaSrc={currentCropItem?.src ?? null}
         mediaType={currentCropItem?.isVideo ? "video" : "image"}
         originalFile={currentCropItem?.file}
-        onSkip={handleCropSkip}
         onCancel={handleCropCancel}
         onCropComplete={handleCropResult}
       />

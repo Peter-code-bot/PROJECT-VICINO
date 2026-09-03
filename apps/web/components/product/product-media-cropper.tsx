@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2, Crop } from "lucide-react";
 import { getCroppedProductBlob, type CropArea } from "@/lib/crop-image";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -31,15 +32,6 @@ interface ProductMediaCropperProps {
   /** Original File — needed for the video passthrough */
   originalFile?: File;
   /**
-   * Salir del recortador SIN recortar. El archivo se usa tal cual.
-   *
-   * Antes se llamaba onCancel y descartaba el archivo en silencio, que es lo
-   * contrario de lo que promete el boton: quien pulsa "omitir" quiere saltarse
-   * el RECORTE, no perder la foto que acaba de elegir. Y perderla no se
-   * deshace — hay que volver a buscarla en el telefono.
-   */
-  onSkip: () => void;
-  /**
    * Descartar ESTE archivo y pasar al siguiente de la cola. Es la unica
    * salida de la imagen desde que el recorte 1:1 es obligatorio: sin ella,
    * quien elige la foto equivocada queda encerrado en el recortador.
@@ -57,7 +49,6 @@ export function ProductMediaCropper({
   mediaSrc,
   mediaType,
   originalFile,
-  onSkip,
   onCancel,
   onCropComplete,
 }: ProductMediaCropperProps) {
@@ -69,12 +60,16 @@ export function ProductMediaCropper({
   // Sin esto el fallo de crop era mudo: el catch solo hacia console.error y el
   // usuario veia el modal volver a "Aplicar crop" sin explicacion.
   const [error, setError] = useState<string | null>(null);
-  // Instante del fotograma que se usa como portada. Fijo en 0.1 s desde que se
-  // quito el selector; viaja en el CropResult para el camino de respaldo.
   const [segundoPortada, setSegundoPortada] = useState(0);
-  // La portada del video, capturada como data URL para que la recorte el mismo
-  // Cropper que usan las fotos. Null = todavia se esta capturando.
-  const [frameSrc, setFrameSrc] = useState<string | null>(null);
+
+  const contenedorRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const onCancelRef = useRef(onCancel);
+  const congeladoRef = useRef(false);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  });
 
   // Portal mount gate — avoids SSR hydration mismatch
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -89,44 +84,51 @@ export function ProductMediaCropper({
       setCroppedArea(null);
       setSaving(false);
       setError(null);
-      setFrameSrc(null);
+      congeladoRef.current = false;
     }
   }, [mediaSrc]);
 
-  // El video ya no se adelanta a mano: se captura el fotograma del arranque y
-  // se pasa directo al encuadre. 0.1 s y no 0, porque en 0 muchos contenedores
-  // aun no tienen frame decodificado. Es el mismo instante que pinta el
-  // reproductor de la ficha con su fragmento #t=0.1, asi que portada y video
-  // arrancan en la misma imagen.
+  // Temporizador de 6 segundos para video ilegible
   useEffect(() => {
-    if (mediaType !== "video" || !mediaSrc || frameSrc) return;
-    const v = document.createElement("video");
-    v.preload = "auto";
-    v.muted = true;
-    v.playsInline = true;
-    let cancelado = false;
-    function capturar() {
-      if (cancelado || !v.videoWidth || !v.videoHeight) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = v.videoWidth;
-      canvas.height = v.videoHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        setError("No se pudo preparar la portada. Vuelve a seleccionar el video.");
-        return;
-      }
-      ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-      setSegundoPortada(0.1);
-      setFrameSrc(canvas.toDataURL("image/jpeg", 0.92));
-    }
-    v.onloadeddata = () => { v.currentTime = 0.1; };
-    v.onseeked = capturar;
-    v.onerror = () => {
-      if (!cancelado) setError("No se pudo leer el video. Vuelve a seleccionarlo.");
+    if (!mounted || !open || mediaType !== "video" || !mediaSrc) return;
+
+    timerRef.current = setTimeout(() => {
+      toast.error("No pudimos leer este video, intenta con otro", { duration: 2000 });
+      onCancelRef.current();
+    }, 6000);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-    v.src = mediaSrc;
-    return () => { cancelado = true; v.src = ""; };
-  }, [mediaType, mediaSrc, frameSrc]);
+  }, [mounted, open, mediaType, mediaSrc]);
+
+  // Congela el video en el primer fotograma real. Los dos eventos (loadeddata
+  // y playing) cubren escritorios e iOS respectivamente; el ref de una sola
+  // vez los hace idempotentes.
+  function congelar(v: HTMLVideoElement) {
+    if (congeladoRef.current) return;
+    if (!v.videoWidth || !v.videoHeight) return;
+    congeladoRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    v.pause();
+    v.currentTime = 0.1;
+    setSegundoPortada(0.1);
+  }
+
+  // react-easy-crop dispara onMediaLoaded desde onLoadedMetadata (linea 908
+  // de index.js). Solo garantiza dimensiones, NO fotograma decodificado.
+  const handleMediaLoaded = useCallback((mediaSize: { width: number, height: number, naturalWidth: number, naturalHeight: number }) => {
+    if (mediaType === "video") {
+      const v = contenedorRef.current?.querySelector("video");
+      if (v && (v.videoWidth === 0 || v.videoHeight === 0)) {
+        toast.error("No pudimos leer este video, intenta con otro", { duration: 2000 });
+        onCancelRef.current();
+      }
+    }
+  }, [mediaType]);
 
   const onCropDone = useCallback(
     (_: unknown, pixels: CropArea) => {
@@ -145,20 +147,34 @@ export function ProductMediaCropper({
         const blob = await getCroppedProductBlob(mediaSrc, croppedArea);
         onCropComplete({ type: "image", blob });
       } else {
-        // Los return tempranos de aqui son seguros porque setSaving(false) vive
-        // en el finally. Cuando estaba despues del try, un return dejaba el
-        // boton clavado en "Procesando..." para siempre.
         if (!originalFile) {
           setError("No se pudo leer el archivo de video. Vuelve a seleccionarlo.");
           return;
         }
 
-        // El vendedor ya encuadro la portada capturada. El guard de frameSrc es
-        // defensivo: el boton esta deshabilitado mientras no haya croppedArea, y
-        // croppedArea solo existe si el Cropper llego a montarse, o sea si ya
-        // habia portada. TypeScript no puede deducirlo desde aqui.
-        if (!frameSrc || !croppedArea) return;
-        const portada = await getCroppedProductBlob(frameSrc, croppedArea);
+        if (!croppedArea) return;
+
+        // PASO 4: La portada se captura al confirmar.
+        const v = contenedorRef.current?.querySelector("video");
+        if (!v || v.videoWidth === 0 || v.videoHeight === 0) {
+          toast.error("No pudimos leer este video, intenta con otro", { duration: 2000 });
+          onCancelRef.current();
+          return;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = v.videoWidth;
+        canvas.height = v.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          toast.error("No pudimos leer este video, intenta con otro", { duration: 2000 });
+          onCancelRef.current();
+          return;
+        }
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+        const portada = await getCroppedProductBlob(dataUrl, croppedArea);
         onCropComplete({
           type: "video",
           file: originalFile,
@@ -176,14 +192,6 @@ export function ProductMediaCropper({
     } finally {
       setSaving(false);
     }
-  }
-
-  function handleSkip() {
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedArea(null);
-    setSaving(false);
-    onSkip();
   }
 
   function handleReset() {
@@ -219,20 +227,11 @@ export function ProductMediaCropper({
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
 
-        {/* Video: la portada se captura sola del arranque y solo se encuadra.
-            Antes habia aqui un reproductor con controles nativos para elegir el
-            segundo; se quito el 1-sep-2026 por decision de producto. */}
-        {mediaType === "video" && !frameSrc ? (
-          <div className="relative w-full aspect-square bg-black flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="text-xs">Preparando la portada...</span>
-            </div>
-          </div>
-        ) : mediaType === "video" && frameSrc ? (
-          <div className="relative w-full aspect-square bg-black">
+        {/* Video branch */}
+        {mediaType === "video" ? (
+          <div ref={contenedorRef} className="relative w-full aspect-square bg-black">
             <Cropper
-              image={frameSrc}
+              video={mediaSrc}
               crop={crop}
               zoom={zoom}
               aspect={1}
@@ -241,8 +240,21 @@ export function ProductMediaCropper({
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropDone}
+              onMediaLoaded={handleMediaLoaded}
               minZoom={1}
               maxZoom={3}
+              mediaProps={{
+                muted: true,
+                playsInline: true,
+                preload: "auto",
+                autoPlay: true,
+                onLoadedData: (e: React.SyntheticEvent<HTMLVideoElement>) => congelar(e.currentTarget),
+                onPlaying: (e: React.SyntheticEvent<HTMLVideoElement>) => congelar(e.currentTarget),
+                onError: () => {
+                  toast.error("No pudimos leer este video, intenta con otro", { duration: 2000 });
+                  onCancelRef.current();
+                }
+              }}
             />
           </div>
         ) : (
@@ -265,16 +277,13 @@ export function ProductMediaCropper({
 
         {/* Controls */}
         <div className="px-6 py-4 space-y-3 bg-card">
-          {mediaType === "video" && frameSrc && (
+          {mediaType === "video" && (
             <p className="text-xs text-muted-foreground">
               Encuadra la portada. El video se publica completo: esto solo decide
               como se ve en el inicio.
             </p>
           )}
 
-          {/* Zoom slider — solo para imagen: en video no hay recorte que ajustar */}
-          {(mediaType === "image" || frameSrc) && (
-          <>
           {/* Zoom slider */}
           <div className="flex items-center gap-3">
             <ZoomOut className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -291,18 +300,14 @@ export function ProductMediaCropper({
             <ZoomIn className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
-          {/* Reset */}
           <button
             onClick={handleReset}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             <RotateCcw className="w-3 h-3" /> Restablecer
           </button>
-          </>
-          )}
         </div>
 
-        {/* Error — el modal ya no se queda mudo cuando el crop falla */}
         {error && (
           <div className="px-6 pb-1">
             <p role="alert" className="text-xs text-[color:var(--danger)]">
@@ -314,11 +319,11 @@ export function ProductMediaCropper({
         {/* Footer */}
         <div className="px-6 pb-5 pt-2 flex gap-3">
           <button
-            onClick={mediaType === "image" ? onCancel : handleSkip}
+            onClick={onCancel}
             disabled={saving}
             className="flex-1 rounded-full py-3 border border-border text-foreground font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
-            {mediaType === "image" ? "Cancelar" : "Usar sin recortar"}
+            Cancelar
           </button>
           <button
             onClick={handleApply}
