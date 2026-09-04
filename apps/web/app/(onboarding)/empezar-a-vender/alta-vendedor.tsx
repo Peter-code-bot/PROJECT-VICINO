@@ -89,14 +89,16 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
         ) : (
           <span />
         )}
-        <button
-          type="button"
-          onClick={() => router.push(paso === "listo" ? "/perfil" : "/")}
-          className="text-muted-foreground hover:text-foreground"
-          aria-label="Salir"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {paso !== "listo" && (
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Salir"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {error && (
@@ -382,32 +384,33 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
       {paso === "listo" && (
         <div className="space-y-6 animate-fade-in">
           <h1 className="font-heading text-2xl font-bold">
-            ¡Listo{nombre ? `, ${nombre.split(" ")[0]}` : ""}! Ya eres vendedor en VICINO.
+            Bienvenido a VICINO, {tipo === "business" && nombreNegocio ? nombreNegocio.trim() : (nombre ? nombre.split(" ")[0] : "")}
           </h1>
 
-          {/* El texto de esta pantalla se corrigio tras comprobar la premisa.
-              El borrador decia "registra tu colonia: sin ella no apareces en el
-              feed de nadie", y ES FALSO: el feed filtra por la ubicacion de
-              CADA PUBLICACION (ps.ubicacion_geo), no por la colonia del perfil
+          {/* El texto de esta pantalla se corrigió tras comprobar la premisa.
+              El borrador decía "registra tu colonia: sin ella no apareces en el
+              feed de nadie", y ES FALSO: el feed filtra por la ubicación de
+              CADA PUBLICACIÓN (ps.ubicacion_geo), no por la colonia del perfil
               — comprobado leyendo search_nearby_products_v4, que ni siquiera
               mira pr.ubicacion. La colonia del perfil solo se muestra en el
               perfil (profile-header.tsx:171).
 
               Por eso el paso que de verdad hace aparecer a alguien es PUBLICAR,
-              y esa pasa a ser la accion principal. Es ademas lo que distingue a
+              y esa pasa a ser la acción principal. Es además lo que distingue a
               un marketplace de Instagram: Instagram termina en un perfil, un
-              marketplace tiene que terminar en una publicacion. */}
+              marketplace tiene que terminar en una publicación. */}
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p className="text-foreground">Te falta una cosa para que la gente te encuentre:</p>
+            <p className="text-foreground">
+              Ya eres vendedor. Falta una sola cosa para que la gente te encuentre: <strong>publicar.</strong>
+            </p>
             <p>
-              <strong className="text-foreground">Publica algo.</strong> Al publicar
-              eliges en el mapa dónde estás, y es esa ubicación —la de cada
-              publicación, no la de tu perfil— la que hace que aparezcas cuando alguien
-              busca cerca. Un perfil sin publicaciones no sale en ninguna búsqueda.
+              Cuando publicas eliges en el mapa dónde estás, y es esa ubicación —la de cada publicación, no la de tu perfil— la que te hace aparecer cuando alguien busca cerca. Un perfil sin publicaciones no sale en ninguna búsqueda.
+            </p>
+            <p>
+              VICINO no cobra comisión ni suscripción. El comprador te escribe directo y el trato lo cierras tú.
             </p>
             <p className="pt-1">
-              Aparte, puedes escribir tu colonia en tu perfil para que se vea junto a
-              tu nombre. Eso es solo para que te reconozcan; no afecta a dónde apareces.
+              El aviso de "Termina tu alta de vendedor" se queda en tu perfil hasta que publiques tu primera cosa.
             </p>
           </div>
 
@@ -417,21 +420,17 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
               onClick={() => router.push("/vender")}
               className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98]"
             >
-              Publicar mi primera cosa
+              Publicar
             </button>
             <button
               type="button"
-              onClick={() => router.push("/perfil/editar")}
-              className="w-full rounded-xl bg-card py-2.5 text-sm font-medium shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-[color:var(--bg-elev-2)]"
-            >
-              Escribir mi colonia en el perfil
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/perfil")}
+              onClick={() => {
+                router.refresh();
+                router.push("/");
+              }}
               className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Salir. Ya eres vendedor; puedes terminar esto después desde tu perfil.
+              Ahora no
             </button>
           </div>
         </div>

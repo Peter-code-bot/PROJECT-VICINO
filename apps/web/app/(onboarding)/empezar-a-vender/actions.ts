@@ -58,10 +58,11 @@ export async function activarModoVendedor(params: {
     return { error: error.message };
   }
 
-  // El perfil y el propio alta cambian de estado: las dos vistas se rehacen.
   revalidatePath("/perfil");
   revalidatePath("/vender");
-  revalidatePath("/");
+  // Se quitó revalidatePath("/") porque revalidar la raíz invalida el árbol entero,
+  // incluida /empezar-a-vender, y eso expulsaba al vendedor de su propia pantalla
+  // de bienvenida antes de que la viera. El refresco del home se delega al cliente.
   return { success: true as const };
 }
 
