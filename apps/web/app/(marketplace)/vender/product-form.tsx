@@ -14,7 +14,7 @@ const ProductMediaCropper = dynamic(
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { hapticMedium } from "@/lib/haptics";
-import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft, Play } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { esNavegacionDeNext } from "@/lib/next-navigation-error";
@@ -121,7 +121,7 @@ function toHHMM(t: string | null | undefined, fallback: string): string {
 }
 
 type ExistingMedia = { id: string; kind: "existing"; url: string; isVideo: boolean };
-type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean };
+type PendingMedia = { id: string; kind: "pending"; file: File; preview: string; isVideo: boolean; coverPreview?: string; };
 type MediaItem = ExistingMedia | PendingMedia;
 
 /** Item queued for cropping before being added to media[] */
@@ -154,6 +154,7 @@ function SortableMediaItem({
   };
 
   const previewSrc = item.kind === "pending" ? item.preview : item.url;
+  const hasCoverPreview = item.kind === "pending" && item.coverPreview;
 
   return (
     <div
@@ -166,10 +167,10 @@ function SortableMediaItem({
         isDragging ? "border-primary/50 shadow-lg scale-105" : "border-border/50",
       )}
     >
-      {item.isVideo ? (
+      {item.isVideo && !hasCoverPreview ? (
         <video src={previewSrc} className="w-full h-full object-cover pointer-events-none" />
       ) : (
-        <Image src={previewSrc} alt={`Preview ${index + 1}`} fill className="object-cover pointer-events-none" />
+        <Image src={hasCoverPreview ? item.coverPreview! : previewSrc} alt={`Preview ${index + 1}`} fill className="object-cover pointer-events-none" />
       )}
       <button
         type="button"
@@ -191,9 +192,9 @@ function SortableMediaItem({
         </span>
       )}
       {item.isVideo && (
-        <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white px-1.5 py-0.5 rounded font-medium z-10 pointer-events-none backdrop-blur-md">
-          Video
-        </span>
+        <div className="absolute bottom-1 right-1 rounded-sm bg-black/60 p-0.5 pointer-events-none z-10 backdrop-blur-md">
+          <Play className="w-3 h-3 text-white fill-white" />
+        </div>
       )}
     </div>
   );
@@ -380,6 +381,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     } else {
       // Video: keep the original file, store crop area for thumbnail generation
       const preview = URL.createObjectURL(result.file);
+      const coverPreview = result.portada ? URL.createObjectURL(result.portada) : undefined;
       setMedia((prev) => [
         ...prev,
         {
@@ -387,6 +389,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           kind: "pending",
           file: result.file,
           preview,
+          coverPreview,
           isVideo: true,
         },
       ]);
@@ -432,6 +435,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       const item = prev[index];
       if (item && item.kind === "pending") {
         URL.revokeObjectURL(item.preview);
+        if (item.coverPreview) URL.revokeObjectURL(item.coverPreview);
         pendingThumbsRef.current.delete(item.file);
       }
       // Existing items: the actual Storage cleanup happens server-side AFTER
