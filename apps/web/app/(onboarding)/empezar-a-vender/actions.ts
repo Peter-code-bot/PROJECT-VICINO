@@ -23,6 +23,10 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
 export async function activarModoVendedor(params: {
   categoria: string | null;
   tipo: "casual" | "business";
+  nombreNegocio?: string;
+  descripcionNegocio?: string;
+  metodosPago?: string;
+  foto?: string;
 }) {
   const supabase = await createClient();
   const {
@@ -39,6 +43,10 @@ export async function activarModoVendedor(params: {
     // resuelve con COALESCE(p_categoria_negocio, categoria_negocio).
     p_categoria_negocio: params.categoria ?? undefined,
     p_seller_type: params.tipo,
+    p_nombre_negocio: params.nombreNegocio || undefined,
+    p_descripcion_negocio: params.descripcionNegocio || undefined,
+    p_metodos_pago_aceptados: params.metodosPago || undefined,
+    p_foto: params.foto || undefined,
   });
 
   if (error) {
@@ -53,6 +61,7 @@ export async function activarModoVendedor(params: {
   // El perfil y el propio alta cambian de estado: las dos vistas se rehacen.
   revalidatePath("/perfil");
   revalidatePath("/vender");
+  revalidatePath("/");
   return { success: true as const };
 }
 

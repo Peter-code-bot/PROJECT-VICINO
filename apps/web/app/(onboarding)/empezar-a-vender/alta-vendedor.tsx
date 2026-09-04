@@ -6,6 +6,8 @@ import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { Check, ChevronLeft, Store, User, X } from "lucide-react";
 import { activarModoVendedor } from "./actions";
+import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
+import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 
 /**
  * Alta de vendedor, con el patrón de Instagram: convertir con lo mínimo y
@@ -29,7 +31,7 @@ import { activarModoVendedor } from "./actions";
  * publicar: hasta entonces la policy «Sellers can create products» lo impide.
  */
 
-type Paso = "valor" | "categoria" | "tipo" | "activar" | "listo";
+type Paso = "valor" | "categoria" | "tipo" | "negocio" | "activar" | "listo";
 
 /** Solo las que se ofrecen en el formulario de publicar: mismo criterio. */
 const CATEGORIAS_VISIBLES = CATEGORIES.filter((c) => !c.hidden_in_form);
@@ -39,13 +41,24 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
   const [paso, setPaso] = useState<Paso>("valor");
   const [categoria, setCategoria] = useState<string | null>(null);
   const [tipo, setTipo] = useState<"casual" | "business">("casual");
+  const [nombreNegocio, setNombreNegocio] = useState("");
+  const [descripcionNegocio, setDescripcionNegocio] = useState("");
+  const [metodosPago, setMetodosPago] = useState<string[]>([]);
+  const [fotoUrl, setFotoUrl] = useState("");
   const [error, setError] = useState("");
   const [enviando, startTransition] = useTransition();
 
   function activar() {
     setError("");
     startTransition(async () => {
-      const r = await activarModoVendedor({ categoria, tipo });
+      const r = await activarModoVendedor({
+        categoria,
+        tipo,
+        nombreNegocio: nombreNegocio.trim(),
+        descripcionNegocio: descripcionNegocio.trim(),
+        metodosPago: metodosPago.join(", "),
+        foto: fotoUrl,
+      });
       if (r.error) {
         setError(r.error);
         return;
@@ -62,9 +75,12 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
         {paso !== "valor" && paso !== "listo" ? (
           <button
             type="button"
-            onClick={() =>
-              setPaso(paso === "activar" ? "tipo" : paso === "tipo" ? "categoria" : "valor")
-            }
+            onClick={() => {
+              if (paso === "activar") setPaso(tipo === "business" ? "negocio" : "tipo");
+              else if (paso === "negocio") setPaso("tipo");
+              else if (paso === "tipo") setPaso("categoria");
+              else setPaso("valor");
+            }}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Regresar"
           >
@@ -267,9 +283,43 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
 
           <button
             type="button"
-            onClick={() => setPaso("activar")}
+            onClick={() => setPaso(tipo === "business" ? "negocio" : "activar")}
             className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98]"
           >
+            Continuar
+          </button>
+        </div>
+      )}
+      {/* ---------------------------------------------------------------- */}
+      {/* P3.5 — Datos del negocio.                                        */}
+      {/* ---------------------------------------------------------------- */}
+      {paso === "negocio" && (
+        <div className="space-y-6 animate-fade-in">
+          <div>
+            <h1 className="font-heading text-2xl font-bold">Cuéntanos de tu negocio</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Así te encuentran los compradores de tu colonia.
+            </p>
+          </div>
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <label htmlFor="nombreNegocio" className="block text-sm font-medium text-foreground">Nombre de la tienda</label>
+              <input id="nombreNegocio" type="text" value={nombreNegocio} onChange={(e) => setNombreNegocio(e.target.value)} placeholder="Mi Tienda Local" className="w-full rounded-xl bg-muted px-4 py-3 text-base outline-none transition-all placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/40" />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="descripcionNegocio" className="block text-sm font-medium text-foreground">Descripción del negocio <span className="text-muted-foreground font-normal">(Opcional)</span></label>
+              <textarea id="descripcionNegocio" rows={2} maxLength={1000} value={descripcionNegocio} onChange={(e) => setDescripcionNegocio(e.target.value)} placeholder="¿Qué tipo de productos ofreces?" className="w-full rounded-xl bg-muted px-4 py-3 text-base outline-none transition-all placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/40 resize-none" />
+            </div>
+            <div className="space-y-1.5">
+              <span className="block text-sm font-medium text-foreground">Métodos de pago <span className="text-muted-foreground font-normal">(Opcional)</span></span>
+              <MetodosPagoSelector metodosSeleccionados={metodosPago} onChange={setMetodosPago} />
+            </div>
+            <div className="space-y-1.5">
+              <span className="block text-sm font-medium text-foreground">Foto de perfil <span className="text-muted-foreground font-normal">(Opcional)</span></span>
+              <AvatarInlineUpload initial={nombreNegocio.charAt(0)?.toUpperCase() || nombre?.charAt(0)?.toUpperCase() || "?"} avatarUrl={fotoUrl} onUploadSuccess={setFotoUrl} onError={setError} />
+            </div>
+          </div>
+          <button type="button" disabled={!nombreNegocio.trim()} onClick={() => setPaso("activar")} className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40">
             Continuar
           </button>
         </div>
@@ -288,7 +338,7 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
           <div className="space-y-3 text-sm text-muted-foreground">
             <p className="text-foreground">Al activarlo, esto se vuelve público en tu perfil:</p>
             <ul className="space-y-1.5">
-              <li>· Tu nombre, o el nombre de tu negocio</li>
+              <li>· {nombreNegocio.trim() ? nombreNegocio.trim() : "Tu nombre, o el nombre de tu negocio"}</li>
               <li>· Tu categoría</li>
               <li>· La colonia que registres — nunca tu dirección exacta</li>
             </ul>

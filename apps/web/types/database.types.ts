@@ -2069,7 +2069,7 @@ export type Database = {
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       activar_modo_vendedor: {
-        Args: { p_categoria_negocio?: string; p_seller_type?: string }
+        Args: { p_categoria_negocio?: string; p_seller_type?: string; p_nombre_negocio?: string; p_descripcion_negocio?: string; p_metodos_pago_aceptados?: string; p_foto?: string }
         Returns: Json
       }
       addauth: { Args: { "": string }; Returns: boolean }

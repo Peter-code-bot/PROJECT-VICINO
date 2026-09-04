@@ -29,7 +29,7 @@ export default async function AltaVendedorPage() {
     .eq("id", user.id)
     .single();
 
-  if (perfil?.es_vendedor) redirect("/vender");
+  if (perfil?.es_vendedor) redirect("/");
 
   return <AltaVendedor nombre={perfil?.nombre ?? null} />;
 }

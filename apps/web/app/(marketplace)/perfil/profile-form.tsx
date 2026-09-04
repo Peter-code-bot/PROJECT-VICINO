@@ -1,23 +1,12 @@
 "use client";
 
-import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile, setUsername } from "./actions";
-import { Loader2, ShieldAlert, CheckCircle2, User, Store, ChevronDown, ChevronLeft } from "lucide-react";
-
-const METODOS_PAGO = [
-  "Efectivo",
-  "Tarjeta de crédito",
-  "Tarjeta de débito",
-  "Transferencia bancaria",
-  "Mercado Pago",
-  "OXXO Pay",
-  "PayPal",
-  "Depósito bancario",
-  "Crypto",
-];
+import { Loader2, ShieldAlert, User, Store, ChevronLeft } from "lucide-react";
+import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
+import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 
 function FieldRow({ label, htmlFor, hint, children, last = false }: {
   label: string;
@@ -91,14 +80,13 @@ export function ProfileForm({
   const [pendingDeactivation, setPendingDeactivation] = useState<FormData | null>(null);
   const [sellerType, setSellerType] = useState(profile?.seller_type ?? "casual");
   const [avatarUrl, setAvatarUrl] = useState(profile?.foto ?? "");
-  const [avatarUploading, setAvatarUploading] = useState(false);
   const [username, setUsernameLocal] = useState(profile?.username ?? "");
   const [usernameGuardado, setUsernameGuardado] = useState(profile?.username ?? "");
   const [metodosSeleccionados, setMetodosSeleccionados] = useState<string[]>(() => {
     const raw = profile?.metodos_pago_aceptados ?? "";
     return raw ? raw.split(",").map(m => m.trim()).filter(Boolean) : [];
   });
-  const [metodosOpen, setMetodosOpen] = useState(false);
+
   const router = useRouter();
 
   const bioRef = useRef<HTMLTextAreaElement>(null);
@@ -120,12 +108,6 @@ export function ProfileForm({
       autoGrow(negocioRef.current);
     }
   }, [sellerType]);
-
-  function toggleMetodo(metodo: string) {
-    setMetodosSeleccionados(prev =>
-      prev.includes(metodo) ? prev.filter(m => m !== metodo) : [...prev, metodo]
-    );
-  }
 
   async function runUpdate(formData: FormData) {
     setLoading(true);
@@ -253,54 +235,13 @@ export function ProfileForm({
       )}
 
       {/* Avatar upload */}
-      <div className="flex flex-col items-center justify-center mb-6">
-        <div className="relative w-[72px] h-[72px] rounded-full bg-muted overflow-hidden shrink-0">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
-              {profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
-            </div>
-          )}
-          {avatarUploading && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-              <Loader2 className="w-5 h-5 text-white animate-spin" />
-            </div>
-          )}
-        </div>
-        <label className="cursor-pointer mt-3">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            disabled={avatarUploading}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              if (file.size > 5 * 1024 * 1024) { setError("La imagen no debe exceder 5MB"); return; }
-              setAvatarUploading(true);
-              try {
-                const supabase = (await import("@/lib/supabase/client")).createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) throw new Error("No autenticado");
-                const ext = file.name.split(".").pop() ?? "jpg";
-                const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-                const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: CACHE_INMUTABLE });
-                if (upErr) throw upErr;
-                const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-                setAvatarUrl(urlData.publicUrl);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Error al subir foto");
-              }
-              setAvatarUploading(false);
-            }}
-          />
-          <span className="text-[13px] font-medium text-primary hover:underline">
-            {avatarUrl ? "Cambiar foto" : "Subir foto"}
-          </span>
-        </label>
-        <input type="hidden" name="foto" value={avatarUrl} />
-      </div>
+      <AvatarInlineUpload
+        initial={profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
+        avatarUrl={avatarUrl}
+        onUploadSuccess={(url) => setAvatarUrl(url)}
+        onError={(msg) => setError(msg)}
+      />
+      <input type="hidden" name="foto" value={avatarUrl} />
 
       {/* Seller Section */}
       <div className="p-5 rounded-3xl bg-card shadow-sm transition-all duration-300 stagger">
@@ -402,56 +343,11 @@ export function ProfileForm({
               </span>
               <input type="hidden" name="metodos_pago_aceptados" value={metodosSeleccionados.join(", ")} />
 
-              {/* Botón desplegable */}
-              <button
-                type="button"
-                onClick={() => setMetodosOpen(!metodosOpen)}
-                className="w-full flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-base text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <span className={metodosSeleccionados.length > 0 ? "text-foreground truncate pr-2" : "text-muted-foreground"}>
-                  {metodosSeleccionados.length > 0
-                    ? metodosSeleccionados.join(", ")
-                    : "Selecciona métodos de pago..."}
-                </span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${metodosOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {/* Panel expandible INLINE (NO absolute — el padre tiene overflow-hidden) */}
-              <div className={`grid transition-all duration-300 ${metodosOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-                <div className="overflow-hidden">
-                  <div className="rounded-xl bg-muted mt-1">
-                    <div className="p-2 space-y-0.5">
-                      {METODOS_PAGO.map((metodo) => (
-                        <label
-                          key={metodo}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
-                            metodosSeleccionados.includes(metodo)
-                              ? "bg-primary/10 text-foreground"
-                              : "hover:bg-foreground/5 text-foreground/80"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={metodosSeleccionados.includes(metodo)}
-                            onChange={() => toggleMetodo(metodo)}
-                          />
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                            metodosSeleccionados.includes(metodo)
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground/40"
-                          }`}>
-                            {metodosSeleccionados.includes(metodo) && (
-                              <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
-                            )}
-                          </div>
-                          <span className="text-base">{metodo}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Botón desplegable y panel */}
+              <MetodosPagoSelector
+                metodosSeleccionados={metodosSeleccionados}
+                onChange={setMetodosSeleccionados}
+              />
             </div>
 
             <div className="pt-2">
