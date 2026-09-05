@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import {
   User, Store, BadgeCheck, ShoppingBag, Calendar, Heart, Star,
   Bell, Lock, Sun, Moon, HelpCircle, MessageCircle, FileText,
-  Shield, Info, Settings, ChevronRight, X,
+  Shield, Info, Settings, ChevronRight, X, Loader2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -141,13 +141,33 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
+/**
+ * El galon de la derecha se convierte en spinner mientras la navegacion esta
+ * en vuelo. useLinkStatus (next/link, disponible desde Next 15.3) solo funciona
+ * DENTRO de un <Link>, de ahi que sea un componente aparte y no una variable.
+ *
+ * Es el arreglo directo de la queja "cada boton tiene que ser instantaneo": lo
+ * que no puede ser instantaneo es la respuesta del servidor, pero el ACUSE DE
+ * RECIBO si. Sin esto, tocar una entrada del menu no producia ningun efecto
+ * visible hasta que la pantalla nueva estaba lista, y eso se lee como que la
+ * aplicacion se colgo, no como que esta trabajando.
+ */
+function GalonOSpinner() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-[color:var(--brand)]" aria-hidden="true" />
+  ) : (
+    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+  );
+}
+
 function Item({ href, icon: Icon, label, onClose }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string; onClose: () => void }) {
   return (
     <Link href={href} onClick={onClose}
       className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors text-foreground text-sm">
       <Icon className="w-5 h-5 shrink-0" />
       <span className="flex-1">{label}</span>
-      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      <GalonOSpinner />
     </Link>
   );
 }
