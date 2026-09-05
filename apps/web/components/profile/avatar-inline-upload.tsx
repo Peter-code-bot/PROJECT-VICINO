@@ -94,23 +94,43 @@ export function AvatarInlineUpload({
                 }
               } catch (compressErr) {
                 console.warn("avatar compression failed", compressErr);
-                throw new Error("No pudimos procesar la foto en tu dispositivo.");
+                onError("No pudimos procesar la foto en tu dispositivo.");
+                setAvatarUploading(false);
+                return;
               }
 
               const supabase = (await import("@/lib/supabase/client")).createClient();
               const {
                 data: { user },
               } = await supabase.auth.getUser();
-              if (!user) throw new Error("No autenticado");
+              if (!user) {
+                onError("Tu sesión expiró. Vuelve a entrar y reinténtalo.");
+                setAvatarUploading(false);
+                return;
+              }
               const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-              const { error: upErr } = await supabase.storage
-                .from("avatars")
-                .upload(path, uploadBlob, { upsert: true, cacheControl: CACHE_INMUTABLE });
+              // Un solo reintento: el fallo tipico aqui es de red — se vio en un
+              // iPhone con senal debil, y al segundo intento manual entro. Con
+              // upsert:true reintentar sobre el mismo path es seguro.
+              const subir = () =>
+                supabase.storage
+                  .from("avatars")
+                  .upload(path, uploadBlob, { upsert: true, cacheControl: CACHE_INMUTABLE });
+
+              let { error: upErr } = await subir();
+              if (upErr) {
+                await new Promise((r) => setTimeout(r, 1500));
+                ({ error: upErr } = await subir());
+              }
               if (upErr) throw upErr;
               const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
               onUploadSuccess(urlData.publicUrl);
             } catch (err) {
-              onError(err instanceof Error ? err.message : "Error al subir foto");
+              // Nunca ensenar err.message: en Safari un fallo de red da
+              // "Load failed" y el cliente de Supabase le pega el host del
+              // proyecto. El vendedor veia eso en ingles.
+              console.warn("avatar upload failed", err);
+              onError("No se pudo subir la foto. Revisa tu conexión e inténtalo de nuevo.");
             }
             setAvatarUploading(false);
           }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
@@ -26,20 +26,46 @@ import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
  *     orden de la app. Y como Instagram, se aclara que una no determina la otra.
  *   · BOTONES DE ESCAPE CON NOMBRE PROPIO. Instagram no usa un «saltar» gris:
  *     usa «No usar mi información de contacto». Aquí, «Elegir categoría
- *     después» y «Ahora no».
+ *     después»: el vendedor puede continuar sin categoría y elegirla más tarde.
  *
- * Los pasos 1 a 3 NO tocan la base. Solo el 4 escribe, y es el que desbloquea
+ * Ningun paso toca la base hasta la activacion. En negocio escribe el paso
+ * de datos; en casual, la pantalla de activar. Es la escritura que desbloquea
  * publicar: hasta entonces la policy «Sellers can create products» lo impide.
  */
 
-type Paso = "valor" | "categoria" | "tipo" | "negocio" | "activar" | "listo";
+type Paso = "categoria" | "tipo" | "negocio" | "activar" | "listo";
 
 /** Solo las que se ofrecen en el formulario de publicar: mismo criterio. */
 const CATEGORIAS_VISIBLES = CATEGORIES.filter((c) => !c.hidden_in_form);
 
+function ListaDePrivacidad({
+  nombreMostrado,
+  conSeparador = false,
+}: {
+  nombreMostrado: string;
+  conSeparador?: boolean;
+}) {
+  return (
+    <div
+      className={`space-y-3 text-sm text-muted-foreground${conSeparador ? " pt-4 border-t border-border/50" : ""}`}
+    >
+      <p className="text-foreground">Al activarlo, esto se vuelve público en tu perfil:</p>
+      <ul className="space-y-1.5">
+        <li>· {nombreMostrado}</li>
+        <li>· Tu categoría</li>
+        <li>· La colonia que registres — nunca tu dirección exacta</li>
+      </ul>
+      <p>
+        Puedes desactivar el Modo Vendedor cuando quieras. Al desactivarlo, tus
+        publicaciones activas se pausan y dejan de verse; no se borran.
+      </p>
+    </div>
+  );
+}
+
 export function AltaVendedor({ nombre }: { nombre: string | null }) {
   const router = useRouter();
-  const [paso, setPaso] = useState<Paso>("valor");
+  const [paso, setPaso] = useState<Paso>("categoria");
   const [categoria, setCategoria] = useState<string | null>(null);
   const [tipo, setTipo] = useState<"casual" | "business">("casual");
   const [nombreNegocio, setNombreNegocio] = useState("");
@@ -48,6 +74,13 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
   const [fotoUrl, setFotoUrl] = useState("");
   const [error, setError] = useState("");
   const [enviando, startTransition] = useTransition();
+
+  // El banner de error se pinta arriba del contenedor, fuera de los pasos.
+  // Sin esto, un error de un paso persigue al vendedor por todo el flujo:
+  // paso en produccion con el error de subir la foto.
+  useEffect(() => {
+    setError("");
+  }, [paso]);
 
   function activar() {
     setError("");
@@ -73,14 +106,13 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
       {/* Salida siempre visible. Instagram la tiene y devuelve a un perfil
           funcional, no a un limbo. */}
       <div className="mb-8 flex items-center justify-between">
-        {paso !== "valor" && paso !== "listo" ? (
+        {paso !== "categoria" && paso !== "listo" ? (
           <button
             type="button"
             onClick={() => {
               if (paso === "activar") setPaso("tipo");
               else if (paso === "negocio") setPaso("tipo");
-              else if (paso === "tipo") setPaso("categoria");
-              else setPaso("valor");
+              else setPaso("categoria");
             }}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Regresar"
@@ -111,54 +143,9 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* P1 — Qué ganas. Ni un campo: el premio antes que el formulario.   */}
-      {/* ---------------------------------------------------------------- */}
-      {paso === "valor" && (
-        <div className="space-y-6 animate-fade-in">
-          <h1 className="font-heading text-2xl font-bold">Vende en tu colonia</h1>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p className="text-foreground">Al activar el Modo Vendedor:</p>
-            <ul className="space-y-2">
-              <li className="flex gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-                Tus publicaciones aparecen en el mapa de quien está cerca de ti.
-              </li>
-              <li className="flex gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-                Los compradores de tu zona te escriben directo.
-              </li>
-              <li className="flex gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-                Entras a los rankings de vendedores de Puebla.
-              </li>
-            </ul>
-            <p className="pt-2">
-              VICINO no cobra comisión ni suscripción. Nosotros solo los conectamos;
-              el trato lo cierran ustedes.
-            </p>
-          </div>
-          <div className="space-y-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setPaso("categoria")}
-              className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98]"
-            >
-              Continuar
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Ahora no
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* P2 — Categoría. Lista cerrada: VICINO tiene 32, no mil.          */}
+      {/* P1 — Categoría. Lista cerrada: VICINO tiene 32, no mil.          */}
       {/* ---------------------------------------------------------------- */}
       {paso === "categoria" && (
         <div className="space-y-5 animate-fade-in">
@@ -231,7 +218,7 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* P3 — Tipo de vendedor.                                           */}
+      {/* P2 — Tipo de vendedor.                                           */}
       {/* ---------------------------------------------------------------- */}
       {paso === "tipo" && (
         <div className="space-y-5 animate-fade-in">
@@ -294,7 +281,7 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
         </div>
       )}
       {/* ---------------------------------------------------------------- */}
-      {/* P3.5 — Datos del negocio.                                        */}
+      {/* P3 — Datos del negocio.                                          */}
       {/* ---------------------------------------------------------------- */}
       {paso === "negocio" && (
         <div className="space-y-6 animate-fade-in">
@@ -328,22 +315,10 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
             </div>
           </div>
 
-          <div className="space-y-3 text-sm text-muted-foreground pt-4 border-t border-border/50">
-            <p className="text-foreground">Al activarlo, esto se vuelve público en tu perfil:</p>
-            <ul className="space-y-1.5">
-              <li>• {nombreNegocio.trim() ? nombreNegocio.trim() : "Tu nombre, o el nombre de tu negocio"}</li>
-              <li>• Tu categoría</li>
-              <li>• La colonia que registres — nunca tu dirección exacta</li>
-            </ul>
-            <p className="pt-1">
-              Tu teléfono y tu correo <strong>no</strong> se publican. Tú decides si los
-              muestras, y eso lo eliges más adelante.
-            </p>
-            <p>
-              Puedes desactivar el Modo Vendedor cuando quieras. Al desactivarlo, tus
-              publicaciones activas se pausan y dejan de verse; no se borran.
-            </p>
-          </div>
+          <ListaDePrivacidad
+            nombreMostrado={nombreNegocio.trim() || "Tu nombre, o el nombre de tu negocio"}
+            conSeparador
+          />
           
           <p className="text-xs text-muted-foreground pb-2">
             Al activar el Modo Vendedor aceptas los <a href="/terminos" target="_blank" className="underline hover:text-foreground">Términos</a> y el <a href="/privacidad" target="_blank" className="underline hover:text-foreground">Aviso de Privacidad</a>.
@@ -356,7 +331,8 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* P4 — Activación. AQUÍ, y solo aquí, se escribe.                  */}
+      {/* P4 — Activacion (casual). Para negocio la escritura ya ocurrio    */}
+      {/*      en P3; aqui solo se confirma.                                */}
       {/*                                                                   */}
       {/* Se avisa ANTES de lo que se vuelve público, no después. Ese es el */}
       {/* patrón de Instagram al convertir la cuenta.                       */}
@@ -365,22 +341,9 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
         <div className="space-y-6 animate-fade-in">
           <h1 className="font-heading text-2xl font-bold">Activa tu Modo Vendedor</h1>
 
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p className="text-foreground">Al activarlo, esto se vuelve público en tu perfil:</p>
-            <ul className="space-y-1.5">
-              <li>· {nombreNegocio.trim() ? nombreNegocio.trim() : "Tu nombre, o el nombre de tu negocio"}</li>
-              <li>· Tu categoría</li>
-              <li>· La colonia que registres — nunca tu dirección exacta</li>
-            </ul>
-            <p className="pt-1">
-              Tu teléfono y tu correo <strong>no</strong> se publican. Tú decides si los
-              muestras, y eso lo eliges más adelante.
-            </p>
-            <p>
-              Puedes desactivar el Modo Vendedor cuando quieras. Al desactivarlo, tus
-              publicaciones activas se pausan y dejan de verse; no se borran.
-            </p>
-          </div>
+          <ListaDePrivacidad
+            nombreMostrado={nombreNegocio.trim() || "Tu nombre, o el nombre de tu negocio"}
+          />
 
           <div className="space-y-2">
             <button
@@ -428,17 +391,36 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
               un marketplace de Instagram: Instagram termina en un perfil, un
               marketplace tiene que terminar en una publicación. */}
           <div className="space-y-3 text-sm text-muted-foreground">
+            <p className="text-foreground">Ya eres vendedor. Esto es lo que se te abre:</p>
+            <ul className="space-y-2">
+              <li className="flex gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
+                Tus publicaciones aparecen en el mapa de quien está cerca de ti.
+              </li>
+              <li className="flex gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
+                Los compradores de tu zona te escriben directo.
+              </li>
+              <li className="flex gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
+                Entras a los rankings de vendedores de Puebla, que se renuevan cada mes.
+              </li>
+              <li className="flex gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
+                Tienes Mi tienda: tus publicaciones, tus ventas del mes y tus reseñas.
+              </li>
+            </ul>
             <p className="text-foreground">
-              Ya eres vendedor. Falta una sola cosa para que la gente te encuentre: <strong>publicar.</strong>
+              Falta una sola cosa para que la gente te encuentre: <strong>publicar.</strong>
             </p>
             <p>
-              Cuando publicas eliges en el mapa dónde estás, y es esa ubicación —la de cada publicación, no la de tu perfil— la que te hace aparecer cuando alguien busca cerca. Un perfil sin publicaciones no sale en ninguna búsqueda.
+              Cuando publicas eliges en el mapa dónde estás, y es esa ubicación —la de
+              cada publicación, no la de tu perfil— la que te hace aparecer cuando
+              alguien busca cerca. Un perfil sin publicaciones no sale en ninguna
+              búsqueda.
             </p>
             <p>
-              VICINO no cobra comisión ni suscripción. El comprador te escribe directo y el trato lo cierras tú.
-            </p>
-            <p className="pt-1">
-              El aviso de "Termina tu alta de vendedor" se queda en tu perfil hasta que publiques tu primera cosa.
+              VICINO no cobra comisión ni suscripción. El trato lo cierras tú.
             </p>
           </div>
 
