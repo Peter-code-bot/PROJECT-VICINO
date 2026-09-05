@@ -30,7 +30,6 @@ function RankingRow({ seller }: { seller: RankedSeller }) {
       href={`/vendedor/${seller.seller_id}`}
       className="group flex items-center gap-3 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-3 active:scale-[0.98] transition-all hover:opacity-90"
       // A3 sub-fase 3.6: fila de lista en /rankings (10-20 vendedores).
-      prefetch={false}
     >
       <span className="w-6 text-sm tabular-nums text-muted-foreground">
         #{seller.rank}

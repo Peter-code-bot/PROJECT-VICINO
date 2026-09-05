@@ -65,7 +65,7 @@ function ConEnlace({
 }) {
   if (!href) return <div className={className}>{children}</div>;
   return (
-    <Link href={href} className={className} prefetch={false}>
+    <Link href={href} className={className}>
       {children}
     </Link>
   );
@@ -96,10 +96,12 @@ export function StorePost({
     <article className="flex flex-col mb-4 product-card-custom sm:rounded-2xl overflow-hidden">
       {/* 1. Header de tienda */}
       <header className="flex items-center px-4 py-3 gap-3">
-        {/* A3 sub-fase 3.6: card en feed siguiendo (lista vertical de N posts).
-            Prefetch default lanzaria 5 GETs por card (3 a vendedor + 2 a producto + chat).
-            Hover/tap igual prefetchea on-demand. Aplica a los 5 Links del card. */}
-        <Link href={`/vendedor/${storeId}`} className="shrink-0" prefetch={false}>
+        {/* El prefetch vuelve a estar activo en los cinco Links de la tarjeta.
+            Se habia apagado para no lanzar 5 GETs por card, pero el remedio
+            salio caro: sin prefetch cada toque paga la navegacion entera en
+            frio. Ahora que /vendedor/[id] y la ficha tienen su loading.tsx, lo
+            que se adelanta es el esqueleto, no la pagina renderizada. */}
+        <Link href={`/vendedor/${storeId}`} className="shrink-0">
           <div className="w-10 h-10 rounded-[12px] bg-[var(--brand-tint)] flex items-center justify-center font-bold text-[var(--brand-hi)] text-lg">
             {letter}
           </div>
@@ -109,7 +111,6 @@ export function StorePost({
             <Link
               href={`/vendedor/${storeId}`}
               className="font-medium product-card-text truncate hover:underline"
-              prefetch={false}
             >
               {store}
             </Link>
@@ -196,7 +197,6 @@ export function StorePost({
           <Link
             href={`/chat/nuevo?product=${id}`}
             className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors"
-            prefetch={false}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />
             Mensaje
@@ -206,7 +206,6 @@ export function StorePost({
           <Link
             href={href}
             className="flex items-center justify-center h-9 px-4 rounded-full product-card-btn text-[13.5px] font-medium hover:opacity-90 transition-colors"
-            prefetch={false}
           >
             Ver producto
             <ArrowRight className="w-4 h-4 ml-1.5" />

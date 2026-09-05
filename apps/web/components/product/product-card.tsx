@@ -182,7 +182,6 @@ export function ProductCard({
       // esta vacio (caller no migrado o edge sin pivote). Cuando 1C dropee
       href={`/${categories[0]?.slug ?? categoria}/${slug}`}
       id={`product-${slug}`}
-      prefetch={false}
       onClick={handleNavigate}
       className={cn(
         "group relative block w-full min-w-0 overflow-hidden rounded-2xl product-card-custom transition-all duration-300",

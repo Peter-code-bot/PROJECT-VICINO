@@ -417,7 +417,6 @@ export default async function HomePage({ searchParams }: Props) {
                       // A3 sub-fase 3.6: 12+ categorias en el carousel scrolleable
                       // del home; solo 1 se clickea por sesion. Prefetch default
                       // lanzaria 12 GETs a /buscar?category=X.
-                      prefetch={false}
                     >
                       <div
                         className={
