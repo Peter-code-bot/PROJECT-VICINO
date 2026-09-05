@@ -62,12 +62,25 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico (favicon file)
-     * - public files (svg, png, jpg, etc.)
+     * Lo que NO casa aqui se ahorra el proxy entero, y con el la llamada de red
+     * que updateSession hace a supabase.auth.getUser() en CADA peticion.
+     *
+     * Importa mas de lo que parece: el matcher compilado lleva un sufijo
+     * opcional (.json|.rsc|.segments/....segment.rsc), asi que tambien casaba
+     * cada peticion RSC y cada prefetch por segmento, no solo la navegacion
+     * visible. Cada envio a Sentry por /sentry-tunnel pagaba tambien su getUser,
+     * pese a que next.config.ts afirmaba que esa ruta estaba excluida.
+     *
+     * La semantica de autenticacion NO cambia: las rutas que updateSession
+     * vigila (/login, /register, /perfil, /historial, /favoritos,
+     * /notificaciones, /vender, /seller, /admin) y /auth/callback-server siguen
+     * pasando por aqui, igual que el resto de paginas. Lo que sale es lo que
+     * nunca fue una navegacion:
+     *   - api: cada route handler resuelve su propia autenticacion, y el cron
+     *     usa CRON_SECRET. Ninguno depende de que el proxy refresque la cookie.
+     *   - sentry-tunnel, sw.js, workbox-*.js, theme-init.js, manifest.json,
+     *     icons/ y los estaticos de _next.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|theme-init\\.js|manifest\\.json|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };
