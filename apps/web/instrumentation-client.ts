@@ -18,7 +18,14 @@ if (!isCapacitor) {
     // ERRORS: capture everything; quota is generous for typical pre-launch.
     sampleRate: 1.0,
     // TRACING: tiny slice — 5M span quota is per-month and shared org-wide.
-    tracesSampleRate: 0.05,
+    // Al 0.05 solo se veia 1 de cada 20 navegaciones, insuficiente para
+    // sacar una linea base. onRouterTransitionStart ya esta exportado en
+    // instrumentation-client, asi que cada navegacion del App Router emite
+    // una transaccion `navigation` cuya duracion ES el hueco entre el toque
+    // y la pantalla nueva: la metrica exacta del problema. Subirlo no cambia
+    // el comportamiento de la app, solo cuanto se mide. Bajar a ~0.2 cuando
+    // haya volumen real: el plan gratis da 5M spans/mes.
+    tracesSampleRate: 1.0,
     // SESSION REPLAY: do NOT record idle sessions; only when an error fires.
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,

@@ -26,7 +26,14 @@ export function CapacitorSentryInit() {
             release: `vicino@${process.env.NEXT_PUBLIC_VERSION ?? "dev"}`,
             dist: process.env.NEXT_PUBLIC_ANDROID_BUILD ?? "1",
             sampleRate: 1.0,
-            tracesSampleRate: 0.05,
+            // Al 0.05 solo se veia 1 de cada 20 navegaciones, insuficiente para
+            // sacar una linea base. onRouterTransitionStart ya esta exportado en
+            // instrumentation-client, asi que cada navegacion del App Router emite
+            // una transaccion `navigation` cuya duracion ES el hueco entre el toque
+            // y la pantalla nueva: la metrica exacta del problema. Subirlo no cambia
+            // el comportamiento de la app, solo cuanto se mide. Bajar a ~0.2 cuando
+            // haya volumen real: el plan gratis da 5M spans/mes.
+            tracesSampleRate: 1.0,
             // Session Replay intentionally omitted: removed entirely in
             // @sentry/capacitor v4.x. Native crash capture (Java/Kotlin/NDK)
             // is still automatic via the bundled sentry-android lib.
