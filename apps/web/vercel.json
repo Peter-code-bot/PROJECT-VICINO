@@ -4,6 +4,7 @@
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && pnpm install",
   "framework": "nextjs",
+  "regions": ["pdx1"],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
