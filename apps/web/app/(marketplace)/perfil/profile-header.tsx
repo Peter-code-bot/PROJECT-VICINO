@@ -232,15 +232,26 @@ export function ProfileHeader({
       </div>
 
       {/* Seller info */}
-      {profile.es_vendedor && profile.nombre_negocio && (
+      {/* La fila NO puede colgar de nombre_negocio, que es lo que hacia antes.
+          Esa columna solo se escribe para el vendedor de tipo "business" (el
+          RPC activar_modo_vendedor la mete en un CASE WHEN), mientras que
+          categoria_negocio se escribe SIEMPRE, porque elegir categoria es el
+          primer paso del alta y es obligatorio. Colgar la fila del nombre
+          dejaba sin ver su categoria justo al vendedor casual, que es el tipo
+          preseleccionado — y el alta le promete lo contrario por escrito:
+          "Tu categoria se ve en tu perfil". Cada chip decide por su cuenta;
+          los dos componentes devuelven null cuando no tienen dato. */}
+      {profile.es_vendedor &&
+        (profile.nombre_negocio ||
+          profile.categoria_negocio ||
+          profile.metodos_pago_aceptados) && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold product-card-btn">
-            <Store className="w-3 h-3" />
-            {profile.nombre_negocio}
-          </span>
-          {/* La categoria se recogia en el alta y viajaba hasta aqui dentro de
-              las props sin que ninguna linea la pintara. Este chip es lo unico
-              que la hace visible en la app. */}
+          {profile.nombre_negocio && (
+            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold product-card-btn">
+              <Store className="w-3 h-3" />
+              {profile.nombre_negocio}
+            </span>
+          )}
           <ChipCategoria categoria={profile.categoria_negocio} />
           <MetodosPagoChips metodosPagoAceptados={profile.metodos_pago_aceptados} />
         </div>
