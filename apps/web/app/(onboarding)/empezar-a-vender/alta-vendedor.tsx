@@ -403,19 +403,19 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
               </li>
               <li className="flex gap-2">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-                Entras a los rankings de vendedores de Puebla, que se renuevan cada mes.
+                Entras a los rankings de vendedores de tu zona, que se renuevan cada mes.
               </li>
               <li className="flex gap-2">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-                Tienes Mi tienda: tus publicaciones, tus ventas del mes y tus reseñas.
+                Se activa Mi tienda, donde ves tus publicaciones, tus ventas del mes y tus reseñas.
               </li>
             </ul>
             <p className="text-foreground">
               Falta una sola cosa para que la gente te encuentre: <strong>publicar.</strong>
             </p>
             <p>
-              Cuando publicas eliges en el mapa dónde estás, y es esa ubicación —la de
-              cada publicación, no la de tu perfil— la que te hace aparecer cuando
+              Cuando publicas eliges en el mapa dónde estás, y es esa ubicación, la de
+              cada publicación y no la de tu perfil, la que te hace aparecer cuando
               alguien busca cerca. Un perfil sin publicaciones no sale en ninguna
               búsqueda.
             </p>
