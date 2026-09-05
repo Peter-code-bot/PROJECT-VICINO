@@ -11,6 +11,8 @@ interface AvatarInlineUploadProps {
   onError: (msg: string) => void;
 }
 
+const MAX_SAFE_SIZE_MB = 25;
+
 export function AvatarInlineUpload({
   initial,
   avatarUrl,
@@ -44,22 +46,66 @@ export function AvatarInlineUpload({
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            if (file.size > 5 * 1024 * 1024) {
-              onError("La imagen no debe exceder 5MB");
+            if (file.size > MAX_SAFE_SIZE_MB * 1024 * 1024) {
+              onError(`La imagen es demasiado grande (máx ${MAX_SAFE_SIZE_MB}MB)`);
               return;
             }
             setAvatarUploading(true);
             try {
+              let uploadBlob: Blob = file;
+              let ext = file.name.split(".").pop() ?? "jpg";
+              
+              if (typeof window === "undefined" || !window.createImageBitmap) {
+                onError("No pudimos procesar la foto en este navegador");
+                setAvatarUploading(false);
+                return;
+              }
+
+              try {
+                const bmp = await window.createImageBitmap(file);
+                const MAX_SIZE = 800;
+                let width = bmp.width;
+                let height = bmp.height;
+                
+                if (width > MAX_SIZE || height > MAX_SIZE) {
+                  if (width > height) {
+                    height = Math.round(height * (MAX_SIZE / width));
+                    width = MAX_SIZE;
+                  } else {
+                    width = Math.round(width * (MAX_SIZE / height));
+                    height = MAX_SIZE;
+                  }
+                }
+                
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                  ctx.drawImage(bmp, 0, 0, width, height);
+                  const compressedBlob = await new Promise<Blob | null>((resolve) => 
+                    canvas.toBlob(resolve, "image/jpeg", 0.85)
+                  );
+                  if (!compressedBlob) throw new Error("Fallo al exportar blob");
+                  uploadBlob = compressedBlob;
+                  ext = "jpg";
+                } else {
+                  throw new Error("No se pudo crear contexto 2d");
+                }
+              } catch (compressErr) {
+                console.warn("avatar compression failed", compressErr);
+                throw new Error("No pudimos procesar la foto en tu dispositivo.");
+              }
+
               const supabase = (await import("@/lib/supabase/client")).createClient();
               const {
                 data: { user },
               } = await supabase.auth.getUser();
               if (!user) throw new Error("No autenticado");
-              const ext = file.name.split(".").pop() ?? "jpg";
               const path = `${user.id}/avatar-${Date.now()}.${ext}`;
               const { error: upErr } = await supabase.storage
                 .from("avatars")
-                .upload(path, file, { upsert: true, cacheControl: CACHE_INMUTABLE });
+                .upload(path, uploadBlob, { upsert: true, cacheControl: CACHE_INMUTABLE });
               if (upErr) throw upErr;
               const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
               onUploadSuccess(urlData.publicUrl);

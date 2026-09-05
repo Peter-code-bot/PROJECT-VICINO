@@ -25,11 +25,16 @@ export default async function AltaVendedorPage() {
 
   const { data: perfil } = await supabase
     .from("profiles")
-    .select("nombre, es_vendedor")
+    .select("nombre, es_vendedor, alta_vendedor_paso")
     .eq("id", user.id)
     .single();
 
-  if (perfil?.es_vendedor) redirect("/");
+  // alta_vendedor_paso vale 'publicacion' justo después de activar y se limpia
+  // al publicar el primer producto, así que distingue al recién activado
+  // —que tiene que ver su bienvenida— del vendedor asentado.
+  if (perfil?.es_vendedor && !perfil?.alta_vendedor_paso) {
+    redirect("/");
+  }
 
   return <AltaVendedor nombre={perfil?.nombre ?? null} />;
 }
