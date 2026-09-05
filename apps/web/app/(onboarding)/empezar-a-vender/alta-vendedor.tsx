@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
+import { toast } from "sonner";
 import { Check, ChevronLeft, Store, User, X } from "lucide-react";
 import { activarModoVendedor } from "./actions";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
@@ -76,7 +77,7 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
           <button
             type="button"
             onClick={() => {
-              if (paso === "activar") setPaso(tipo === "business" ? "negocio" : "tipo");
+              if (paso === "activar") setPaso("tipo");
               else if (paso === "negocio") setPaso("tipo");
               else if (paso === "tipo") setPaso("categoria");
               else setPaso("valor");
@@ -318,11 +319,38 @@ export function AltaVendedor({ nombre }: { nombre: string | null }) {
             </div>
             <div className="space-y-1.5">
               <span className="block text-sm font-medium text-foreground">Foto de perfil <span className="text-muted-foreground font-normal">(Opcional)</span></span>
-              <AvatarInlineUpload initial={nombreNegocio.charAt(0)?.toUpperCase() || nombre?.charAt(0)?.toUpperCase() || "?"} avatarUrl={fotoUrl} onUploadSuccess={setFotoUrl} onError={setError} />
+              <AvatarInlineUpload 
+                initial={nombreNegocio.charAt(0)?.toUpperCase() || nombre?.charAt(0)?.toUpperCase() || "?"} 
+                avatarUrl={fotoUrl} 
+                onUploadSuccess={setFotoUrl} 
+                onError={(msg) => toast.error(msg, { duration: 2000 })} 
+              />
             </div>
           </div>
-          <button type="button" disabled={!nombreNegocio.trim()} onClick={() => setPaso("activar")} className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40">
-            Continuar
+
+          <div className="space-y-3 text-sm text-muted-foreground pt-4 border-t border-border/50">
+            <p className="text-foreground">Al activarlo, esto se vuelve público en tu perfil:</p>
+            <ul className="space-y-1.5">
+              <li>• {nombreNegocio.trim() ? nombreNegocio.trim() : "Tu nombre, o el nombre de tu negocio"}</li>
+              <li>• Tu categoría</li>
+              <li>• La colonia que registres — nunca tu dirección exacta</li>
+            </ul>
+            <p className="pt-1">
+              Tu teléfono y tu correo <strong>no</strong> se publican. Tú decides si los
+              muestras, y eso lo eliges más adelante.
+            </p>
+            <p>
+              Puedes desactivar el Modo Vendedor cuando quieras. Al desactivarlo, tus
+              publicaciones activas se pausan y dejan de verse; no se borran.
+            </p>
+          </div>
+          
+          <p className="text-xs text-muted-foreground pb-2">
+            Al activar el Modo Vendedor aceptas los <a href="/terminos" target="_blank" className="underline hover:text-foreground">Términos</a> y el <a href="/privacidad" target="_blank" className="underline hover:text-foreground">Aviso de Privacidad</a>.
+          </p>
+
+          <button type="button" disabled={!nombreNegocio.trim() || enviando} onClick={activar} className="w-full rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60">
+            {enviando ? "Activando..." : "Activar Modo Vendedor"}
           </button>
         </div>
       )}
