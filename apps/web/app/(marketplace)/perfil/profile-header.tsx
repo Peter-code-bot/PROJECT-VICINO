@@ -5,6 +5,8 @@ import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
 import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
+import { ChipCategoria } from "@/components/profile/chip-categoria";
+import { MetodosPagoChips } from "@/components/profile/metodos-pago-chips";
 import { TRUST_LEVELS } from "@vicino/shared";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
@@ -236,14 +238,11 @@ export function ProfileHeader({
             <Store className="w-3 h-3" />
             {profile.nombre_negocio}
           </span>
-          {profile.metodos_pago_aceptados?.split(",").map((m) => (
-            <span
-              key={m.trim()}
-              className="rounded-full px-2.5 py-1 text-xs font-semibold product-card-tab shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
-            >
-              {m.trim()}
-            </span>
-          ))}
+          {/* La categoria se recogia en el alta y viajaba hasta aqui dentro de
+              las props sin que ninguna linea la pintara. Este chip es lo unico
+              que la hace visible en la app. */}
+          <ChipCategoria categoria={profile.categoria_negocio} />
+          <MetodosPagoChips metodosPagoAceptados={profile.metodos_pago_aceptados} />
         </div>
       )}
 
