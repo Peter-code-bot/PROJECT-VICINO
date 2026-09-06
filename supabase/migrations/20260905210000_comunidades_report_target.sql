@@ -1,0 +1,70 @@
+-- Comunidades: hacer reportable una publicacion de comunidad.
+--
+-- Este archivo hace UNA sola cosa, y va solo por dos razones distintas, las dos
+-- de peso.
+--
+-- ---------------------------------------------------------------------------
+-- RAZON 1: UN VALOR DE ENUM NO SE PUEDE USAR EN SU PROPIA TRANSACCION
+--
+-- Desde Postgres 12 `ALTER TYPE ... ADD VALUE` si se puede ejecutar dentro de
+-- un bloque de transaccion, pero el valor recien anadido NO se puede USAR hasta
+-- que esa transaccion cierre. Si esta linea viviera dentro de
+-- 20260905220000_comunidades_moderacion.sql, la primera funcion que escribiera
+-- el literal 'community_post' fallaria con un error que parece de sintaxis y no
+-- lo es:
+--
+--   ERROR: unsafe use of new value "community_post" of enum type
+--
+-- De ahi el orden obligatorio de aplicacion:
+--
+--   1. 20260905200000_comunidades_base.sql         (no menciona el enum)
+--   2. 20260905210000_comunidades_report_target.sql (este archivo)  <-- COMMIT
+--   3. 20260905220000_comunidades_moderacion.sql   (ya puede usarlo)
+--
+-- Por eso este archivo tampoco lleva `begin;` / `commit;` propios: se aplica
+-- como sentencia suelta y su commit es justo lo que habilita al archivo 3.
+--
+-- ---------------------------------------------------------------------------
+-- RAZON 2: ESTO ES IRREVERSIBLE
+--
+-- Postgres no sabe quitar un valor de un enum. No hay `ALTER TYPE ... DROP
+-- VALUE`. Deshacerlo significa crear un tipo nuevo, migrar la columna de
+-- `reports`, recrear las policies y los triggers que la referencian, y tirar el
+-- viejo. O sea que anadir un valor aqui es una decision de una sola direccion, y
+-- merece un archivo propio donde se vea, en vez de esconderse en la linea 400 de
+-- una migracion de mil.
+--
+-- Es tambien la razon de que se anada UN solo valor y no tres. El diseno mete
+-- los comentarios dentro de `community_posts` con `parent_post_id` en lugar de
+-- darles tabla propia, precisamente para no gastar un segundo valor irreversible
+-- en algo que comparte exactamente la misma politica de moderacion que una
+-- publicacion. Y la comunidad entera no se hace reportable en v1: abusar de su
+-- nombre se denuncia hoy contra quien la fundo, con el valor 'user' que ya
+-- existe. Anadir mas valores despues es aditivo y barato; quitarlos, imposible.
+--
+-- ---------------------------------------------------------------------------
+-- QUE SE ROMPE SI ESTO NO SE APLICA
+--
+-- `reports.target_type` vale hoy exactamente: listing, user, message, review.
+-- Sin este valor, una publicacion de comunidad es contenido generado por
+-- usuario que NADIE puede denunciar: no entra en el panel de moderacion, no
+-- dispara `auto_hide_on_threshold` a los 3 reportes, y no dispara
+-- `handle_child_safety_report` al primero. Es exactamente el agujero en el que
+-- lleva `purchase_requests` desde julio.
+
+alter type public.report_target_type add value if not exists 'community_post';
+
+-- ---------------------------------------------------------------------------
+-- VERIFY (correr DESPUES de aplicar, y ANTES de aplicar la migracion 220000):
+--
+--   SELECT string_agg(e.enumlabel, ', ' ORDER BY e.enumsortorder) AS valores
+--     FROM pg_type t
+--     JOIN pg_enum e ON e.enumtypid = t.oid
+--     JOIN pg_namespace n ON n.oid = t.typnamespace AND n.nspname = 'public'
+--    WHERE t.typname = 'report_target_type';
+--   -- esperado: listing, user, message, review, community_post
+--
+--   -- Y que el literal ya sea usable (esto es lo que habilita al archivo 3):
+--   SELECT 'community_post'::public.report_target_type;
+--   -- esperado: community_post, sin error.
+-- ---------------------------------------------------------------------------
