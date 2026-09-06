@@ -17,9 +17,21 @@
 
 import { SkeletonGrid } from "@/components/shared/skeleton-card";
 
+/**
+ * Contenedor comun de los seis esqueletos que usan los loading.tsx.
+ *
+ * `esqueleto-demorado` retrasa 180 ms lo que se VE, para que una ruta rapida no
+ * ensene un destello de esqueleto —el efecto que se reporto como "ahora tarda
+ * un poco mas"—. El porque, el numero y por que degrada a visible y no a
+ * invisible estan en globals.css, junto a la clase.
+ *
+ * El aviso para lectores de pantalla NO se retrasa: opacity no toca el arbol de
+ * accesibilidad, asi que el role="status" y el texto de abajo salen igual desde
+ * el primer frame.
+ */
 function Envoltorio({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
-    <div role="status" aria-busy="true" aria-live="polite">
+    <div role="status" aria-busy="true" aria-live="polite" className="esqueleto-demorado">
       <span className="sr-only">{etiqueta}</span>
       {children}
     </div>
