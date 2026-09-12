@@ -287,15 +287,14 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
     ],
-    // A5.3: opt into the React 19 View Transition wrapper for App Router
-    // navigations. With this flag set, Next wraps client navigations in
-    // `document.startViewTransition` when the browser supports it. Pair
-    // with `view-transition-name` styles on the shared element (product
-    // card image -> detail hero) for the card-to-detail animation.
-    // Kill-switch (Constraint C3 of openspec/changes/2026-06-03-instant-ux):
-    // if the flag breaks build or SSR on the current toolchain it must be
-    // reverted immediately rather than shipped behind a workaround.
-    viewTransition: true,
+    // A5.3 (historico): aqui vivia `viewTransition: true`. Next 16.3.0 quito
+    // la clave del esquema ("Remove inert experimental.viewTransition flag",
+    // vercel/next.js#96098): ya era INERTE en 16.2, porque el App Router usa
+    // React canary y las navegaciones son transiciones de React de serie, asi
+    // que `<ViewTransition>` y los `viewTransitionName` inline de
+    // product-card.tsx / product-gallery-carousel.tsx funcionan sin bandera.
+    // Con 16.3 la clave rompe `tsc` (TS2353) y el esquema `strictObject` de
+    // next.config la rechaza. No hay kill-switch que preservar: no hacia nada.
   },
 };
 
