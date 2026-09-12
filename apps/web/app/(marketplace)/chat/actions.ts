@@ -131,7 +131,7 @@ export async function iniciarConversacion(input: {
     // 23505) son respuestas, no fallos: no ensucian Sentry. Todo lo demas si,
     // con el `details` de Postgres, que es donde el motor nombra la columna o
     // la policy que rechazo.
-    if (!["42501", "22023", "PT404", "P0002", "23514", "23505"].includes(error.code)) {
+    if (!["42501", "22023", "PT404", "P0002", "23514", "PT409"].includes(error.code)) {
       Sentry.captureException(error, {
         tags: { action: "iniciarConversacion" },
         extra: {

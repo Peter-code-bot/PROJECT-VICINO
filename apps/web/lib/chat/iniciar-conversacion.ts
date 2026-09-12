@@ -79,7 +79,10 @@ export function traducirErrorIniciarConversacion(error: PostgrestError): string 
       return "Este vendedor o producto ya no está disponible.";
     case "23514":
       return "Demasiadas intenciones de compra hoy. Inténtalo mañana.";
-    case "23505":
+    case "PT409":
+      // La misma clave con otro vendedor u otro producto: error del cliente.
+      // Un 23505 real (unique_violation del motor) NO cae aqui: es un fallo y
+      // la accion lo manda a Sentry con el texto generico.
       return "Esta operación ya se registró con otros datos. Vuelve a la publicación e inténtalo de nuevo.";
     default:
       return "No se pudo abrir la conversación. Inténtalo de nuevo en un momento.";
