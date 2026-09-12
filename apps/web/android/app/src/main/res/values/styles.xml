@@ -18,6 +18,13 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- Android 12+ usa la SplashScreen API del sistema y NO lee
+             android:background. Sin esta linea, windowSplashScreenBackground
+             cae en su default ?android:colorBackground, que en modo noche
+             resuelve oscuro porque Theme.SplashScreen se reparenta a
+             Theme.DeviceDefault (ver values-night-v8 del AAR
+             androidx.core:core-splashscreen). Ese era el destello. -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="android:statusBarColor">@color/splash_background</item>
         <item name="android:navigationBarColor">@color/splash_background</item>
     </style>
