@@ -125,6 +125,18 @@ Source PNG entregados por Alejandro (FASE 6 cerrada, todos en `apps/web/assets/`
 | `splash.png` | 2732×2732 | V flat verde+negra sobre crema. Se usa cuando el device está en **light mode**. |
 | `splash-dark.png` | 2732×2732 | V flat verde+**crema** (pata derecha adaptada para contraste) sobre `#0D0D1A`. Se usa cuando el device está en **dark mode**. |
 
+> **DESACTUALIZADO desde el 12-sep-2026.** `splash-dark.png` ya no vive en
+> `apps/web/assets/`: se movió a `apps/web/assets/desactivados/`, donde
+> `@capacitor/assets` no lo detecta. El splash oscuro `#0D0D1A` producía el
+> destello al abrir la app instalada (backlog de Notion). Hoy el splash es
+> claro siempre; `Splash.imageset` no tiene variantes dark y
+> `LaunchScreen.storyboard` fija el fondo crema en vez de
+> `systemBackgroundColor`, que resolvía a negro en modo oscuro.
+> Correr `generate` tal como se documenta abajo **ya no** reintroduce el
+> destello (comprobado: sale con código 0 y escribe solo las tres variantes
+> claras). Devolver el archivo a la raíz sí lo reintroduce, y eso requiere
+> decisión conjunta de Pedro y Alejandro. Ver `apps/web/assets/desactivados/LEEME.md`.
+
 Decisión de diseño de Alejandro: en el splash dark, la pata derecha es crema en vez de negra porque la negra no contrasta sobre `#0D0D1A`. Brand intencional, no error.
 
 Comando (desde `apps/web/`):
