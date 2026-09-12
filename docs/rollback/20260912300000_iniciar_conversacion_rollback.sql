@@ -17,9 +17,30 @@
 
 begin;
 
+-- 1. La policy de INSERT vuelve a su forma de 20260912120000 (participante y
+--    no suspendido), sin las clausulas sobre clave_idempotencia y message_type.
+--    Va ANTES de borrar la columna: la expresion actual la referencia.
+alter policy "Participants can send messages" on public.messages
+  with check (
+    (select auth.uid()) = autor_id
+    and exists (
+      select 1 from public.chats
+       where chats.id = messages.chat_id
+         and (chats.comprador_id = (select auth.uid())
+              or chats.vendedor_id = (select auth.uid()))
+    )
+    and not (select vicino_guard.cuenta_suspendida())
+  );
+
+-- 2. La RPC, el indice y la columna.
 drop function if exists public.iniciar_conversacion(uuid, uuid, text, uuid);
 drop index if exists public.messages_autor_clave_idempotencia_unica;
 alter table public.messages drop column if exists clave_idempotencia;
+
+-- 3. get_or_create_chat (20260912310000) se queda con el ON CONFLICT: es
+--    estrictamente mas robusta que la version anterior y no depende de nada
+--    de lo que se quita aqui. Si aun asi se quiere revertir, reaplicar el
+--    cuerpo de 20260912130000 y borrar tambien esa version del ledger.
 
 delete from supabase_migrations.schema_migrations where version = '20260912300000';
 
