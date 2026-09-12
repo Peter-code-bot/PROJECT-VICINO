@@ -75,7 +75,6 @@ export function traducirErrorIniciarConversacion(error: PostgrestError): string 
     case "22023":
       return "Datos inválidos para iniciar la conversación.";
     case "PT404":
-    case "P0002":
       return "Este vendedor o producto ya no está disponible.";
     case "23514":
       return "Demasiadas intenciones de compra hoy. Inténtalo mañana.";

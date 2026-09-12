@@ -128,10 +128,11 @@ export async function iniciarConversacion(input: {
 
   if (error) {
     // Los codigos que la RPC levanta a proposito (42501, 22023, PT404, 23514,
-    // 23505) son respuestas, no fallos: no ensucian Sentry. Todo lo demas si,
+    // PT409) son respuestas, no fallos: no ensucian Sentry. Todo lo demas si,
+    // incluido un 23505 real del motor (el conflicto de negocio es PT409),
     // con el `details` de Postgres, que es donde el motor nombra la columna o
     // la policy que rechazo.
-    if (!["42501", "22023", "PT404", "P0002", "23514", "PT409"].includes(error.code)) {
+    if (!["42501", "22023", "PT404", "23514", "PT409"].includes(error.code)) {
       Sentry.captureException(error, {
         tags: { action: "iniciarConversacion" },
         extra: {

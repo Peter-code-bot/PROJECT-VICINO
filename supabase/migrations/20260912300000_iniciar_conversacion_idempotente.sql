@@ -123,6 +123,12 @@ alter policy "Participants can send messages" on public.messages
           select 1 from public.sale_confirmations sc
            where sc.id = messages.sale_confirmation_id
              and sc.status = 'completed'::public.sale_status
+             -- En el chat de ESA venta y no en otro: sin esto, quien es parte
+             -- de una venta completada podia colar un "venta confirmada" con
+             -- texto libre en cualquier otro chat suyo y, de paso, gastar el
+             -- indice unico messages_unique_sale_confirmed para que el aviso
+             -- legitimo de confirmSale muriera con 23505 en silencio.
+             and sc.chat_id = messages.chat_id
              and (sc.buyer_id = (select auth.uid()) or sc.seller_id = (select auth.uid()))
         )
       )
@@ -186,7 +192,10 @@ begin
       from messages m
      where m.autor_id = v_actor and m.clave_idempotencia = p_clave;
     if found then
-      if v_previo.publicacion_id is distinct from p_producto_id
+      -- publicacion_id es ON DELETE SET NULL: si el producto se borro
+      -- fisicamente entre la primera llamada y el reintento, NULL no es
+      -- "otro producto", es "ya no se puede comparar" y el par manda.
+      if (v_previo.publicacion_id is not null and v_previo.publicacion_id <> p_producto_id)
          or not exists (
            select 1 from chats c
             where c.id = v_previo.chat_id
@@ -270,11 +279,17 @@ begin
   --    chat: la llave es por par, y una clave repetida hacia otro vendedor no
   --    se serializa con esta.
   if v_compra then
-    select m.id, m.chat_id into v_previo
+    select m.id, m.chat_id, m.publicacion_id into v_previo
       from messages m
      where m.autor_id = v_actor and m.clave_idempotencia = p_clave;
     if found then
-      if v_previo.chat_id <> v_chat then
+      -- Mismo criterio que el paso 2 (autor + vendedor + producto): dos
+      -- peticiones gemelas hacia el mismo vendedor con productos distintos
+      -- se serializan aqui, y la segunda no puede "heredar" el aviso de la
+      -- primera como si fuera suyo.
+      if v_previo.chat_id <> v_chat
+         or (v_previo.publicacion_id is not null and v_previo.publicacion_id <> p_producto_id)
+      then
         raise exception 'la clave de idempotencia ya se uso en otra operacion'
           using errcode = 'PT409';
       end if;
@@ -339,10 +354,13 @@ begin
     returning id into v_msg;
 
     if v_msg is null then
-      select m.id, m.chat_id into v_previo
+      select m.id, m.chat_id, m.publicacion_id into v_previo
         from messages m
        where m.autor_id = v_actor and m.clave_idempotencia = p_clave;
-      if not found or v_previo.chat_id <> v_chat then
+      if not found
+         or v_previo.chat_id <> v_chat
+         or (v_previo.publicacion_id is not null and v_previo.publicacion_id <> p_producto_id)
+      then
         raise exception 'la clave de idempotencia ya se uso en otra operacion'
           using errcode = 'PT409';
       end if;

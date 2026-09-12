@@ -117,11 +117,11 @@ console.log(`usuarios de esta corrida: ${comprador.email}, ${otro.email}, ${glot
 
   // D. no autorizado / mal uso
   const a = await rpc(null, { p_vendedor_id: V });
-  check("D. anon: rechazado", a.status === 401 || a.status === 403 || a.body?.code === "42501", `${a.status} ${a.body?.code ?? ""}`);
+  check("D. anon: rechazado por ACL (401 permission denied), no por el RAISE de dentro", a.status === 401 && /permission denied/i.test(a.body?.message ?? ""), `${a.status} ${a.body?.code ?? ""} ${a.body?.message ?? ""}`);
   const b = await rpc(comprador.token, { p_vendedor_id: comprador.id });
   check("D. contigo mismo: 22023", b.body?.code === "22023", `${b.status} ${b.body?.code}`);
   const c = await rpc(comprador.token, { p_vendedor_id: otro.id, p_producto_id: P, p_intencion: "compra", p_clave: crypto.randomUUID() });
-  check("D. producto que no es de ese vendedor: PT404", c.status === 404 && c.body?.code === "PT404", `${c.status} ${c.body?.code}`);
+  check("D. producto que no es de ese vendedor: PT404 producto no disponible", c.status === 404 && c.body?.code === "PT404" && c.body?.message === "producto no disponible", `${c.status} ${c.body?.code} ${c.body?.message}`);
   const d = await rpc(comprador.token, { p_vendedor_id: V, p_producto_id: P, p_intencion: "compra" });
   check("D. compra sin clave: 22023", d.body?.code === "22023", `${d.status} ${d.body?.code}`);
   const e = await rpc(comprador.token, { p_vendedor_id: V, p_producto_id: P, p_intencion: "regalo" });
@@ -142,7 +142,7 @@ console.log(`usuarios de esta corrida: ${comprador.email}, ${otro.email}, ${glot
 {
   const r = await rpc(otro.token, { p_vendedor_id: V, p_producto_id: crypto.randomUUID(), p_intencion: "compra", p_clave: crypto.randomUUID() });
   const despues = await rest(otro.token, `chats?select=id&comprador_id=eq.${otro.id}&vendedor_id=eq.${V}`);
-  check("E. fallo (PT404) sin rastro: no aparece un chat", r.body?.code === "PT404" && despues.body.length === 0, `${r.status} ${r.body?.code}; chats despues ${despues.body.length}`);
+  check("E. fallo (PT404 producto no disponible) sin rastro: no aparece un chat", r.body?.code === "PT404" && r.body?.message === "producto no disponible" && despues.body.length === 0, `${r.status} ${r.body?.code} ${r.body?.message}; chats despues ${despues.body.length}`);
 }
 
 // F. 10 claves distintas en paralelo (usuario 'otro', sin chat previo con V)

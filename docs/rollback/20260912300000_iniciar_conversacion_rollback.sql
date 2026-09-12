@@ -37,10 +37,13 @@ drop function if exists public.iniciar_conversacion(uuid, uuid, text, uuid);
 drop index if exists public.messages_autor_clave_idempotencia_unica;
 alter table public.messages drop column if exists clave_idempotencia;
 
--- 3. get_or_create_chat (20260912310000) se queda con el ON CONFLICT: es
---    estrictamente mas robusta que la version anterior y no depende de nada
---    de lo que se quita aqui. Si aun asi se quiere revertir, reaplicar el
---    cuerpo de 20260912130000 y borrar tambien esa version del ledger.
+-- 3. 20260912310000 (get_or_create_chat con ON CONFLICT y sin EXECUTE para
+--    anon, y la policy de INSERT de chats cerrada) se queda: es estrictamente
+--    mas robusta y no depende de nada de lo que se quita aqui. Si aun asi se
+--    quiere revertir, reaplicar el cuerpo de 20260912130000, devolver la
+--    policy "Authenticated users can create chats" a
+--    ((select auth.uid()) = comprador_id or (select auth.uid()) = vendedor_id)
+--    y borrar esa version del ledger.
 
 delete from supabase_migrations.schema_migrations where version = '20260912300000';
 
