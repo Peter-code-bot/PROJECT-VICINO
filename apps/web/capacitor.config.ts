@@ -34,8 +34,8 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     limitsNavigationsToAppBoundDomains: false,
     appendUserAgent: 'VICINO-iOS',
-    // TEMP: Sentry excluido de iOS por fallo de descarga sentry-cocoa (red). Re-incluir antes de release publico.
     includePlugins: [
+      '@sentry/capacitor',
       '@capacitor/app',
       '@capacitor/browser',
       '@capacitor/camera',

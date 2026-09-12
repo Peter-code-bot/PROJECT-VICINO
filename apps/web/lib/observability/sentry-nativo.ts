@@ -1,6 +1,14 @@
 type Modules = [typeof import("@sentry/capacitor"), typeof import("@sentry/react")];
 type Estado = "idle" | "initializing" | "ready" | "failed";
 type EstadoNativo = { state: Estado; jsClient: boolean; nativeBridge: "unverified" | "unavailable" };
+type PlataformaNativa = "android" | "ios";
+
+/** Plataforma nativa con SDK de Sentry enlazado, o undefined en web y SSR. */
+export function plataformaNativa(): PlataformaNativa | undefined {
+  if (typeof window === "undefined") return undefined;
+  const p = (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
+  return p === "android" || p === "ios" ? p : undefined;
+}
 
 /** Inyectable para transporte de pruebas. El callback publico de init acredita
  * el cliente JS; el SDK no expone aqui confirmacion publica del puente Android.
@@ -44,11 +52,23 @@ export function crearInicializadorSentry(load: () => Promise<Modules>) {
           resolve(status);
         };
         try {
+          // Se lee aqui y no al cargar el modulo: iniciarSentryNativo ya
+          // garantizo que hay plataforma nativa antes de llegar a este punto.
+          // Si aun asi faltara, se falla en vez de adivinar: etiquetar eventos
+          // de iOS como android-production corromperia lo que vinimos a medir.
+          const plataforma = plataformaNativa();
+          if (!plataforma) return finish("failed");
           native.init({
-            dsn: process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE,
-            environment: "android-production",
+            // Mientras no exista proyecto iOS propio, iOS cae en el DSN movil
+            // y se distingue por environment. Separarlos es anadir la variable.
+            dsn: plataforma === "ios"
+              ? (process.env.NEXT_PUBLIC_SENTRY_DSN_IOS ?? process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE)
+              : process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE,
+            environment: `${plataforma}-production`,
             release: `vicino@${process.env.NEXT_PUBLIC_VERSION ?? "dev"}`,
-            dist: process.env.NEXT_PUBLIC_ANDROID_BUILD ?? "1",
+            dist: (plataforma === "ios"
+              ? process.env.NEXT_PUBLIC_IOS_BUILD
+              : process.env.NEXT_PUBLIC_ANDROID_BUILD) ?? "1",
             sampleRate: 1.0,
             tracesSampleRate: 1.0,
             integrations: [react.browserTracingIntegration({
@@ -86,8 +106,7 @@ export function crearInicializadorSentry(load: () => Promise<Modules>) {
 
 const bootstrap = crearInicializadorSentry(() => Promise.all([import("@sentry/capacitor"), import("@sentry/react")]));
 export function iniciarSentryNativo(retry = false) {
-  if (typeof window === "undefined" ||
-    (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.() !== "android") {
+  if (!plataformaNativa()) {
     return Promise.resolve<EstadoNativo>({ state: "idle", jsClient: false, nativeBridge: "unavailable" });
   }
   return bootstrap.init(retry);
