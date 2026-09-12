@@ -95,7 +95,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // the shape is single-sourced.
   const sellersTypeRef = supabase
     .from("profiles")
-    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count");
+    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count").throwOnError();
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
@@ -131,7 +131,7 @@ export default async function SearchPage({ searchParams }: Props) {
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
     const { data: sellers, error: sellersError } = await supabase
       .from("profiles")
-      .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count")
+      .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count").throwOnError()
       .ilike("nombre", `%${nombreVendedorLike}%`)
       .limit(4);
 
@@ -158,7 +158,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // no-category Postgres usa estas columnas via .order() como siempre.
   const queryTypeRef = supabase
     .from("products_services")
-    .select(selectFields, { count: "exact" });
+    .select(selectFields, { count: "exact" }).throwOnError();
 
   let query: typeof queryTypeRef;
   if (userLocation) {
@@ -185,7 +185,7 @@ export default async function SearchPage({ searchParams }: Props) {
           restrict_seller_mode: false,
         },
         { count: "exact" }
-      )
+      ).throwOnError()
       // `as unknown as` y no `as any`: los dos constructores son tipos
       // realmente distintos -- .rpc().select() no es .from().select() -- y no
       // existe un tipo generado que los una, asi que aqui hay una afirmacion
@@ -196,7 +196,7 @@ export default async function SearchPage({ searchParams }: Props) {
   } else {
     query = supabase
       .from("products_services")
-      .select(selectFields, { count: "exact" })
+      .select(selectFields, { count: "exact" }).throwOnError()
       .eq("estatus", "disponible");
 
     if (terminoSinGeo) {
@@ -228,7 +228,7 @@ export default async function SearchPage({ searchParams }: Props) {
     // es canonico; el maybeSingle defiende del caso de URL manipulada.
     const { data: cat } = await supabase
       .from("categories")
-      .select("id")
+      .select("id").throwOnError()
       .eq("slug", params.category)
       .maybeSingle();
 
@@ -236,12 +236,12 @@ export default async function SearchPage({ searchParams }: Props) {
       const [primariesRes, secondariesRes] = await Promise.all([
         supabase
           .from("product_categories")
-          .select("product_id")
+          .select("product_id").throwOnError()
           .eq("categoria_id", cat.id)
           .eq("is_primary", true),
         supabase
           .from("product_categories")
-          .select("product_id")
+          .select("product_id").throwOnError()
           .eq("categoria_id", cat.id)
           .eq("is_primary", false),
       ]);
@@ -288,7 +288,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // romper el binding tipado al ProductCard mas abajo.
   type ProductsData = Awaited<ReturnType<typeof query.range>>["data"];
   type ProductRow = NonNullable<ProductsData>[number];
-  let products: ProductsData = null;
+  let products: ProductsData = [];
   let totalCount: number | null = null;
 
   // Helper sortFn: comparador segun el sort param. Mismas keys que el
@@ -399,7 +399,7 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
+    <div data-navigation-kind="search" data-navigation-ready={crypto.randomUUID()} className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
       <SearchFilters
         initialQuery={params.q}
         initialCategory={params.category}

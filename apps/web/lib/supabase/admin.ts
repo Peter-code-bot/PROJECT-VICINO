@@ -10,6 +10,7 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchConLimite } from "./fetch-con-limite";
 import type { Database } from "@/types/database.types";
 
 export function createAdminClient() {
@@ -19,6 +20,7 @@ export function createAdminClient() {
 // selects en silencio. Los tipos se regeneran con: node scripts/gen-types.mjs
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: fetchConLimite(fetch, process.env.NEXT_PUBLIC_SUPABASE_URL!) } }
   );
 }

@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseIntegration } from "@supabase/sentry-js-integration";
+import { iniciarSentryNativo, empezarRutaNativa } from "./lib/observability/sentry-nativo";
 
 // Anti-double-counting gate (D2): when the Next.js bundle runs inside the
 // Capacitor Android WebView, we let @sentry/capacitor handle init instead.
@@ -17,14 +18,7 @@ if (!isCapacitor) {
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? "development",
     // ERRORS: capture everything; quota is generous for typical pre-launch.
     sampleRate: 1.0,
-    // TRACING: tiny slice — 5M span quota is per-month and shared org-wide.
-    // Al 0.05 solo se veia 1 de cada 20 navegaciones, insuficiente para
-    // sacar una linea base. onRouterTransitionStart ya esta exportado en
-    // instrumentation-client, asi que cada navegacion del App Router emite
-    // una transaccion `navigation` cuya duracion ES el hueco entre el toque
-    // y la pantalla nueva: la metrica exacta del problema. Subirlo no cambia
-    // el comportamiento de la app, solo cuanto se mide. Bajar a ~0.2 cuando
-    // haya volumen real: el plan gratis da 5M spans/mes.
+    // Conservar muestreo durante verificacion; las cuotas requieren consumo real.
     tracesSampleRate: 1.0,
     // SESSION REPLAY: do NOT record idle sessions; only when an error fires.
     replaysSessionSampleRate: 0,
@@ -55,7 +49,15 @@ if (!isCapacitor) {
       return event;
     },
   });
+} else {
+  // Arranca imports del SDK antes de hidratar; el componente es fallback.
+  void iniciarSentryNativo().catch(() => {});
 }
 
-// Required by App Router for client-side navigation transactions.
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function onRouterTransitionStart(url: string, navigationType: "push" | "replace" | "traverse") {
+  if (isCapacitor) {
+    empezarRutaNativa(url, window.location.pathname);
+  } else {
+    Sentry.captureRouterTransitionStart(url, navigationType);
+  }
+}

@@ -14,7 +14,7 @@ import {
   formatPrice,
   type ChatAttachment,
 } from "@vicino/shared";
-import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { enforce, writeRateLimit, chatReadRateLimit } from "@/lib/rate-limit";
 
 export async function getOrCreateChat(sellerId: string, productId?: string) {
   const supabase = await createClient();
@@ -289,13 +289,20 @@ export async function markAsRead(chatId: string) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return;
+  if (!user) return { ok: false, status: 401 };
 
-  const rate = await enforce(writeRateLimit, `write:${user.id}`);
-  if (!rate.ok) return;
+  const rate = await enforce(chatReadRateLimit, `chat-read:${user.id}`);
+  if (!rate.ok) return { ok: false, status: 429 };
 
   const parsed = markChatReadSchema.safeParse({ chat_id: chatId });
-  if (!parsed.success) return;
+  if (!parsed.success) return { ok: false, status: 400 };
+
+  // Verify membership here as well: historical DB definitions of this
+  // SECURITY DEFINER RPC differ. Never trust a client-supplied user ID.
+  const { data: chat, error: chatError } = await supabase.from("chats")
+    .select("comprador_id, vendedor_id").eq("id", parsed.data.chat_id).maybeSingle();
+  if (chatError) return { ok: false, status: 503 };
+  if (!chat || (chat.comprador_id !== user.id && chat.vendedor_id !== user.id)) return { ok: false, status: 404 };
 
   // mark_messages_as_read es SECURITY DEFINER y levanta 'unauthenticated',
   // 'chat not found' o 'forbidden: no eres participante de este chat' como
@@ -319,7 +326,9 @@ export async function markAsRead(chatId: string) {
         hint: markReadErr.hint,
       },
     });
+    return { ok: false, status: 503 };
   }
+  return { ok: true, status: 200 };
 }
 
 export async function createSaleConfirmation(data: {
@@ -595,22 +604,24 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
   return { success: true };
 }
 
-export async function getTotalUnreadChats(): Promise<number> {
+export async function getTotalUnreadChats() {
   const supabase = await createClient();
   const {
-    data: { user },
+    data: { user }, error: authError,
   } = await supabase.auth.getUser();
-  if (!user) return 0;
+  if (authError && authError.name !== "AuthSessionMissingError") return { count: 0, userId: null, error: "No se pudo actualizar el contador" };
+  if (!user) return { count: 0, userId: null, error: null };
 
-  const [{ data: buyerChats }, { data: sellerChats }] = await Promise.all([
+  const [{ data: buyerChats, error: buyerError }, { data: sellerChats, error: sellerError }] = await Promise.all([
     supabase.from("chats").select("no_leidos_comprador").eq("comprador_id", user.id),
     supabase.from("chats").select("no_leidos_vendedor").eq("vendedor_id", user.id),
   ]);
 
-  return (
+  if (buyerError || sellerError) return { count: 0, userId: user.id, error: "No se pudo actualizar el contador" };
+  return { userId: user.id, error: null, count: (
     (buyerChats?.reduce((sum, c) => sum + (c.no_leidos_comprador ?? 0), 0) ?? 0) +
     (sellerChats?.reduce((sum, c) => sum + (c.no_leidos_vendedor ?? 0), 0) ?? 0)
-  );
+  ) };
 }
 
 export async function hideChat(chatId: string) {

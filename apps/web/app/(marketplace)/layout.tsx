@@ -1,3 +1,6 @@
+import { NavigationPrefetch } from "@/components/layout/navigation-prefetch";
+import { Suspense } from "react";
+import { NavigationMetrics } from "@/components/layout/navigation-metrics";
 import { Header } from "@/components/layout/header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ConditionalFooter } from "@/components/layout/conditional-footer";
@@ -25,11 +28,11 @@ export default async function MarketplaceLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Se LANZA aqui y se espera al final. Antes era un await suelto despues del
-  // Promise.allSettled, o sea un viaje en serie extra en CADA pagina del
-  // marketplace. No entra en el allSettled porque ese bloque solo corre con
-  // sesion, y este aviso tiene que verse tambien sin ella.
-  const avisosPendientes = supabase.rpc("avisos_legales_pendientes");
+  // PostgREST builders are lazy thenables. Consume now so this request runs
+  // alongside the authenticated batch, also for guests. Handle rejection now,
+  // rather than leaving an unhandled promise until the batch finishes.
+  const avisosPendientes = Promise.resolve(supabase.rpc("avisos_legales_pendientes"))
+    .then(({ data }) => data, () => null);
 
   let profile = null;
   let isAdmin = false;
@@ -112,7 +115,7 @@ export default async function MarketplaceLayout({
   // Avisos del §18: versiones sustanciales publicadas que aun no entran en
   // vigor. Si la consulta falla, la lista queda vacia y no se anuncia nada: un
   // fallo de lectura no puede tumbar el marketplace entero.
-  const { data: avisosLegales } = await avisosPendientes;
+  const avisosLegales = await avisosPendientes;
 
   const isVendedor = profile?.es_vendedor ?? false;
 
@@ -130,12 +133,14 @@ export default async function MarketplaceLayout({
         userId={user?.id ?? ""}
         initialCount={unreadNotifications}
       >
-        <FavoritesProvider initialIds={favoriteIds}>
+        <FavoritesProvider key={user?.id ?? "guest"} initialIds={favoriteIds}>
         {/* El muro envuelve TODO el marketplace, no cada superficie: asi
             cualquier control que necesite sesion la puede pedir sin que haya
             que pasarle el usuario por props desde media docena de padres. */}
         <MuroSesionProvider haySesion={!!user}>
         <div className="flex min-h-screen">
+          <NavigationPrefetch key={user?.id ?? "guest"} authenticated={!!user} />
+          <Suspense fallback={null}><NavigationMetrics key={user?.id ?? "guest"} /></Suspense>
           <Sidebar
             user={user ? { id: user.id } : null}
             // es_vendedor admite NULL en la base (tiene DEFAULT, pero el tipo

@@ -144,6 +144,8 @@ function ItemNav({
   return (
     <Link
       href={href}
+      prefetch={false}
+      data-tab-prefetch="true"
       aria-label={label}
       aria-current={activo ? "page" : undefined}
       id={`nav-${label.toLowerCase()}`}

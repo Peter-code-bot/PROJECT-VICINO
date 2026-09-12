@@ -8,6 +8,8 @@ import {
 
 const NotificationUnreadContext = createContext<UseNotificationUnreadCountResult>({
   count: 0,
+  pending: false,
+  retry: () => {},
   decrement: () => {},
   decrementAll: () => {},
   increment: () => {},

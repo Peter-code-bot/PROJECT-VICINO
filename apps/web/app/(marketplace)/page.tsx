@@ -1,10 +1,9 @@
 import { Suspense } from "react";
-import { iconoDeCategoria } from "@/lib/categories/icons";
+import { HomeCategoryOrder } from "@/components/home/home-category-order";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { HapticLink } from "@/components/shared/haptic-link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
 import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
@@ -15,7 +14,7 @@ import { HomeTabs } from "@/components/home/home-tabs";
 import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
 import { SolicitudesFeed } from "@/components/solicitudes/solicitudes-feed";
-import { UNIVERSITY_COLORS, getContrastYIQ, cn } from "@/lib/utils";
+import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import { makeFeedCursor } from "@/lib/feed-cursor";
 import { consultarProductosCercanos } from "@/lib/geo/consulta-cercanos";
@@ -43,14 +42,14 @@ function RankingSkeleton() {
 }
 
 interface Props {
-  searchParams: Promise<{ feed?: string }>;
+  searchParams: Promise<{ feed?: string; cats?: string | string[] }>;
 }
 
 import type { FeedProduct } from "@/types/feed";
 import { parseRadiusCookie } from "@/lib/geo/radius";
 
 export default async function HomePage({ searchParams }: Props) {
-  const { feed: feedParam } = await searchParams;
+  const { feed: feedParam, cats: catsParam } = await searchParams;
   const feed = feedParam === "following" ? "following" : feedParam === "solicitudes" ? "solicitudes" : "parati";
 
   const supabase = await createClient();
@@ -109,7 +108,7 @@ export default async function HomePage({ searchParams }: Props) {
         user_lng: userLng!,
         radius_meters: validRadius,
         result_limit: 150,
-      });
+      }).throwOnError();
       if (error) {
         Sentry.captureException(error, {
           tags: { action: "feed_nearby_products", section: "para_ti" },
@@ -135,7 +134,7 @@ export default async function HomePage({ searchParams }: Props) {
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
       `
-      )
+      ).throwOnError()
       .eq("estatus", "disponible")
       .order("created_at", { ascending: false })
       .limit(150);
@@ -143,13 +142,13 @@ export default async function HomePage({ searchParams }: Props) {
   })();
 
   const perfilPromise = user
-    ? supabase.from("profiles").select("es_vendedor").eq("id", user.id).single()
+    ? supabase.from("profiles").select("es_vendedor").throwOnError().eq("id", user.id).single()
     : Promise.resolve(null);
 
   const verificacionPromise = user
     ? supabase
         .from("seller_verification")
-        .select("university_name")
+        .select("university_name").throwOnError()
         .eq("user_id", user.id)
         .eq("status", "approved")
         .eq("document_type", "Credencial Universitaria")
@@ -197,7 +196,7 @@ export default async function HomePage({ searchParams }: Props) {
     if (!viewerUniversity) return [];
     const { data: uniSellers } = await supabase
       .from("seller_verification")
-      .select("user_id")
+      .select("user_id").throwOnError()
       .eq("university_name", viewerUniversity)
       .eq("status", "approved");
 
@@ -214,7 +213,7 @@ export default async function HomePage({ searchParams }: Props) {
         result_limit: 20,
         seller_ids: sellerIds,
         restrict_seller_mode: true,
-      });
+      }).throwOnError();
       if (error) {
         Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "university" } });
         rpcFailed = true;
@@ -238,7 +237,7 @@ export default async function HomePage({ searchParams }: Props) {
           modo_precio,
           profiles!inner(nombre, trust_level, average_rating, reviews_count),
           product_categories(is_primary, categories(slug, nombre))
-        `)
+        `).throwOnError()
         .eq("estatus", "disponible")
         .in("creador_id", sellerIds)
         .order("created_at", { ascending: false })
@@ -288,6 +287,9 @@ export default async function HomePage({ searchParams }: Props) {
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, 15);
 
+  const firstSelectedCategory = (typeof catsParam === "string" ? catsParam : "")
+    .split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
+
   // Fetch "Siguiendo" data.
   // F10: single IIFE that returns the 4 vars so each is inferred from its
   // actual Supabase SELECT result (no manual any[]). The three exit paths
@@ -305,14 +307,14 @@ export default async function HomePage({ searchParams }: Props) {
       }
       const { data: follows } = await supabase
         .from("store_follows")
-        .select("store_id, profiles!store_id(id, nombre, foto)")
+        .select("store_id, profiles!store_id(id, nombre, foto)").throwOnError()
         .eq("follower_id", user.id);
 
       if (!follows || follows.length === 0) {
         // Fetch some suggestions
         const { data: suggestions } = await supabase
           .from("profiles")
-          .select("id, nombre, foto, trust_level")
+          .select("id, nombre, foto, trust_level").throwOnError()
           .eq("es_vendedor", true)
           .limit(3);
         return {
@@ -339,7 +341,7 @@ export default async function HomePage({ searchParams }: Props) {
           modo_precio,
           profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count),
           product_categories(is_primary, categories(slug, nombre))
-        `)
+        `).throwOnError()
         .eq("estatus", "disponible")
         .in("creador_id", storeIds)
         .order("created_at", { ascending: false })
@@ -383,7 +385,7 @@ export default async function HomePage({ searchParams }: Props) {
     })();
 
   return (
-    <div className="w-full min-w-0 min-h-screen">
+    <div data-navigation-kind="home" data-navigation-ready={crypto.randomUUID()} className="w-full min-w-0 min-h-screen">
       <HomeTabs active={feed} />
 
       {feed === "parati" ? (
@@ -415,60 +417,29 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
           </section>
 
-          {/* ─── CATEGORIES ─────────────────────────────────────── */}
-          <section className="px-4 pb-6">
-            <div className="max-w-7xl mx-auto">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-heading text-lg font-semibold text-[color:var(--fg)]">
-                  Categorías
-                </h2>
-                <Link
-                  href="/buscar"
-                  id="home-see-all-categories"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
-                >
-                  Ver todas
-                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </div>
-
-              <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
-                {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat, i) => {
-                  const IconComponent = iconoDeCategoria(cat.slug);
-                  const isFeatured = i === 0;
-
-                  return (
-                    <HapticLink
-                      key={cat.id}
-                      href={`/buscar?category=${cat.slug}`}
-                      id={`cat-${cat.slug}`}
-                      className="group flex min-w-[72px] flex-col items-center gap-1.5 text-center"
-                      // A3 sub-fase 3.6: 12+ categorias en el carousel scrolleable
-                      // del home; solo 1 se clickea por sesion. Prefetch default
-                      // lanzaria 12 GETs a /buscar?category=X.
-                    >
-                      <div
-                        className={
-                          isFeatured
-                            ? "flex h-16 w-16 items-center justify-center rounded-[14px] category-tile-selected transition-all duration-200"
-                            : "flex h-16 w-16 items-center justify-center rounded-[14px] category-tile-unselected transition-all duration-200"
-                        }
+          <HomeCategoryOrder
+            rows={categoryCarousels.map(([slug, ps]) => ({
+              slug,
+              name: CATEGORIES.find(c => c.slug === slug)?.name ?? slug,
+              content: (
+                  <section key={slug}>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
+                        {CATEGORIES.find(c => c.slug === slug)?.name ?? slug}
+                      </h2>
+                      <Link
+                        href={`/buscar?category=${slug}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
                       >
-                        <IconComponent className="h-[22px] w-[22px]" strokeWidth={1.8} />
-                      </div>
-                      <span className={cn(
-                        "text-[11px] font-medium transition-colors",
-                        isFeatured ? "text-[color:var(--fg)]" : "text-[color:var(--fg-muted)] group-hover:text-[color:var(--fg)]"
-                      )}>
-                        {cat.name}
-                      </span>
-                    </HapticLink>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
+                        Ver más
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                    <ProductCarousel products={ps.slice(0, 20)} priorityFirstItem={slug === firstSelectedCategory} />
+                  </section>
+              ),
+            }))}
+            intro={<>
           {/* ─── RANKING STRIP ─────────────────────────────────── */}
           <Suspense fallback={<RankingSkeleton />}>
             <RankingsHomeStripSection />
@@ -515,9 +486,8 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
           </section>
 
-          {/* ─── PRODUCT CAROUSELS ──────────────────────────────── */}
-          {all.length > 0 ? (
-            <div className="space-y-8 px-4 pb-8">
+            </>}
+            recent={<>
               {/* Recientes */}
               <section>
                 <div className="mb-3">
@@ -543,85 +513,19 @@ export default async function HomePage({ searchParams }: Props) {
                     Es el candidato LCP del feed Para ti -- las cards arriba
                     (ZoneCard + Categories + RankingsStrip + ...) son texto/SVG.
                     Cero costo si el LCP termina siendo otro elemento. */}
-                <ProductCarousel products={all.slice(0, 20)} priorityFirstItem />
+                <ProductCarousel products={all.slice(0, 20)} priorityFirstItem={!firstSelectedCategory} />
               </section>
 
-              {/* Per-category carousels */}
-              {categoryCarousels.length === 0 && (
-                <section className="px-4 py-8 text-center bg-card rounded-2xl mx-4 mb-6 border border-border">
-                  <div className="mx-auto max-w-sm">
-                    <div className="mb-3 text-[40px]">🚀</div>
-                    <h3 className="mb-2 font-heading text-[18px] font-bold text-foreground">
-                      ¡Sé de los primeros en vender en tu zona!
-                    </h3>
-                    <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                      Hay una gran oportunidad para crear tu tienda aquí. Publica el primer producto o servicio para esta ubicación.
-                    </p>
-                    {viewerIsVendedor ? (
-                      <Link
-                        href="/vender"
-                        className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background shadow-sm transition-all hover:opacity-90"
-                      >
-                        Publicar ahora
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    ) : (
-                      <Link
-                        // Era "/registro", que NO EXISTE: 404 comprobado en
-                        // produccion. La ruta de alta es /register, y desde aqui
-                        // la intencion es crear tienda, asi que el destino de
-                        // vuelta es el alta de vendedor.
-                        href="/register?next=%2Fempezar-a-vender"
-                        className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background shadow-sm transition-all hover:opacity-90"
-                      >
-                        Crear tienda
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {categoryCarousels.map(([slug, ps]) => {
-                const label = CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
-                return (
-                  <section key={slug}>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
-                        {label}
-                      </h2>
-                      <Link
-                        href={`/buscar?category=${slug}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
-                      >
-                        Ver más
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                    <ProductCarousel products={ps.slice(0, 20)} />
-                  </section>
-                );
-              })}
-
-              {/* A5.2: flat infinite-scroll section beyond the initial 150.
-                  When catalog < 150, initialCursor is null and the
-                  component renders nothing. */}
-              {/* P5.2 (F4 follow-up): key={cursor} fuerza unmount+remount cuando
-                  el cursor cambia post-revalidatePath('/'). Sin el key, useInfiniteCursor
-                  toma initialCursor como valor inicial de useState una sola vez
-                  (no se re-init al cambiar prop) -- post-publish del mismo usuario
-                  en la misma sesion, el componente podria mostrar la pagina vieja
-                  del cursor mezclada con productos que ahora estan en la 150 inicial.
-                  El remount blow-aways el buffer y arranca limpio desde el nuevo
-                  cursor. Defensivo, costo cero. */}
+            </>}
+            tail={
               <MasProductos
                 key={masProductosInitialCursor ?? "empty"}
                 initialCursor={masProductosInitialCursor}
                 lat={!feedRpcFailed ? (userLat ?? undefined) : undefined}
                 lng={!feedRpcFailed ? (userLng ?? undefined) : undefined}
               />
-            </div>
-          ) : showGeoEmptyState ? (
+            }
+            empty={showGeoEmptyState ? (
             /* ─── EMPTY STATE GEO ─────────────────────────────── */
             <section className="px-4 pb-8">
               <div className="px-4 py-20 text-center">
@@ -682,6 +586,7 @@ export default async function HomePage({ searchParams }: Props) {
               </div>
             </section>
           )}
+          />
         </>
       ) : feed === "solicitudes" ? (
         /* ─── SOLICITUDES FEED ─────────────────────────────── */
@@ -823,6 +728,7 @@ export default async function HomePage({ searchParams }: Props) {
                       }
                       storeId={post.creador_id}
                       store={post.profiles.nombre}
+                      storeAvatar={post.profiles.foto}
                       letter={post.profiles.nombre.charAt(0).toUpperCase()}
                       tier={(post.profiles.trust_level as TrustLevel) ?? "nuevo"}
                       cat={

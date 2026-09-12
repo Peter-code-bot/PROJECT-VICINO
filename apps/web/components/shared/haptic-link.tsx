@@ -1,5 +1,6 @@
 "use client";
 
+import { isTabRoute } from "@/lib/navigation/tab-routes";
 import Link, { type LinkProps } from "next/link";
 import { hapticLight, hapticMedium, hapticSelection } from "@/lib/haptics";
 import type { ComponentPropsWithoutRef, MouseEvent, ReactNode } from "react";
@@ -39,8 +40,9 @@ export function HapticLink({
     else if (haptic === "selection") void hapticSelection();
     else void hapticLight();
   }
+  const tab = typeof rest.href === "string" && isTabRoute(rest.href);
   return (
-    <Link {...rest} onClick={handleClick}>
+    <Link {...rest} prefetch={tab ? false : rest.prefetch} data-tab-prefetch={tab ? "true" : undefined} onClick={handleClick}>
       {children}
     </Link>
   );

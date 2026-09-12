@@ -86,6 +86,7 @@ export interface ProductDetailData {
   seller: ProductDetailSeller;
   reviews: ProductDetailReview[];
   coupons: ProductDetailCoupon[];
+  extras?: Promise<ProductDetailExtras>;
   isFavorite: boolean;
   user: ProductDetailUser | null;
   isOwner: boolean;
@@ -96,4 +97,11 @@ export interface ProductDetailData {
   // ProductDetailMobile/Desktop a MetaRow que renderea con fallback al
   // pretty-print de categoria TEXT cuando esto es null.
   categoryName: string | null;
+}
+
+export interface ProductDetailExtras {
+  reviews: ProductDetailReview[];
+  coupons: ProductDetailCoupon[];
+  reviewsError?: string;
+  couponsError?: string;
 }

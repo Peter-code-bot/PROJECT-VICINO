@@ -25,15 +25,14 @@ import { SkeletonGrid } from "@/components/shared/skeleton-card";
  * un poco mas"—. El porque, el numero y por que degrada a visible y no a
  * invisible estan en globals.css, junto a la clase.
  *
- * El aviso para lectores de pantalla NO se retrasa: opacity no toca el arbol de
- * accesibilidad, asi que el role="status" y el texto de abajo salen igual desde
- * el primer frame.
+ * El aviso queda fuera del dibujo demorado y de aria-busy. La locucion depende
+ * del lector de pantalla; su presencia en el DOM no acredita un anuncio de voz.
  */
 function Envoltorio({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
-    <div role="status" aria-busy="true" aria-live="polite" className="esqueleto-demorado">
-      <span className="sr-only">{etiqueta}</span>
-      {children}
+    <div>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{etiqueta}</span>
+      <div aria-hidden="true" className="esqueleto-demorado">{children}</div>
     </div>
   );
 }

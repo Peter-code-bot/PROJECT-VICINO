@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { PriceDisplay } from "@/components/shared/price-display";
-import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
-import { useMuroSesion } from "@/components/auth/muro-sesion";
-import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { NegociablePill } from "@/components/product/negociable-pill";
 import { CategoryBadge } from "@/components/product/category-badge";
 import type { ProductCardCategory, TrustLevel } from "@vicino/shared";
@@ -16,7 +13,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { posterUrl } from "@/lib/video-thumbnail";
-import { useFavorites } from "@/components/layout/favorites-provider";
+import { useFavorite } from "@/hooks/use-favorite";
 
 interface ProductCardProps {
   id: string;
@@ -63,16 +60,7 @@ export function ProductCard({
   categories = [],
   priority = false,
 }: ProductCardProps) {
-  // El estado vive en el proveedor del layout, no en la tarjeta: el mismo
-  // producto puede salir en dos carruseles del home a la vez y los dos
-  // corazones tienen que moverse juntos. El estado local es el respaldo para
-  // una tarjeta montada fuera del layout, donde no hay proveedor.
-  const favorites = useFavorites();
-  const [localFavorite, setLocalFavorite] = useState(initialFavorite);
-  const isFavorite = favorites.ready ? favorites.has(id) : localFavorite;
-  const setIsFavorite = favorites.ready
-    ? (value: boolean) => favorites.setFavorite(id, value)
-    : setLocalFavorite;
+  const { isFavorite, isPending, toggle } = useFavorite(id, initialFavorite);
 
   // A5.3: just-in-time view-transition-name. Applied imperatively on the
   // image wrapper at the moment of click so only the CLICKED card
@@ -151,28 +139,6 @@ export function ProductCard({
     }, 500);
     return () => clearTimeout(t);
   }, [id]);
-
-  const { pedirSesion } = useMuroSesion();
-  const { mutate: toggleFav, isPending } = useOptimisticMutation(
-    toggleFavorite,
-    {
-      onMutate: () => {
-        const previous = isFavorite;
-        setIsFavorite(!previous);
-        return () => setIsFavorite(previous);
-      },
-      onSuccess: (result) => {
-        if (
-          result &&
-          typeof result === "object" &&
-          "isFavorite" in result &&
-          typeof result.isFavorite === "boolean"
-        ) {
-          setIsFavorite(result.isFavorite);
-        }
-      },
-    },
-  );
 
   return (
     <Link
@@ -258,14 +224,12 @@ export function ProductCard({
         <button
           type="button"
           disabled={isPending}
+          aria-pressed={isFavorite}
+          aria-busy={isPending}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Antes esto llamaba a la accion sin mas. Sin sesion, la accion
-            // contestaba { error: "No autenticado" } y NADIE lo leia: el
-            // corazon se ponia rojo por el optimista y volvia a gris solo.
-            if (!pedirSesion("Inicia sesión para guardar tus favoritos")) return;
-            void toggleFav(id);
+            void toggle();
           }}
           aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           className={cn(

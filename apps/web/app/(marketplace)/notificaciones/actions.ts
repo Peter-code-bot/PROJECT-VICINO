@@ -85,19 +85,20 @@ export async function markAllAsRead() {
   return { success: true };
 }
 
-export async function getTotalUnreadNotifications(): Promise<number> {
+export async function getTotalUnreadNotifications() {
   const supabase = await createClient();
   const {
-    data: { user },
+    data: { user }, error: authError,
   } = await supabase.auth.getUser();
-  if (!user) return 0;
+  if (authError && authError.name !== "AuthSessionMissingError") return { count: 0, userId: null, error: "No se pudo actualizar el contador" };
+  if (!user) return { count: 0, userId: null, error: null };
 
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("leida", false)
     .neq("tipo", "message");
 
-  return count ?? 0;
+  return { count: count ?? 0, userId: user.id, error: error ? "No se pudo actualizar el contador" : null };
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+
 import { useSearchParams } from "next/navigation";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { AppointmentButton } from "./appointment-button";
-import { CouponBlock } from "./coupon-block";
+import { ProductCoupons, ProductReviews } from "./product-extras";
 import { DescriptionBlock } from "./description-block";
 import { GalleryTopBar } from "./gallery-top-bar";
 import { ListingStatusBanner } from "./listing-status-banner";
@@ -15,31 +15,14 @@ import { NegociablePill } from "./negociable-pill";
 import { PaymentChips } from "./payment-chips";
 import { PreviewBanner } from "./preview-banner";
 import { ProductGalleryCarousel } from "./product-gallery-carousel";
-import { ProductReviewsTrigger } from "./product-reviews-trigger";
-import { ReviewsSummary } from "./reviews-summary";
 import { SellerCardMini } from "./seller-card-mini";
 import { SpecRow } from "./spec-row";
 import { StickyCta } from "./sticky-cta";
 import { TrustCallout } from "./trust-callout";
-import type { DrawerReview } from "./product-reviews-drawer";
 import type { ProductDetailData } from "./types";
 
 interface ProductDetailMobileProps extends ProductDetailData {
   className?: string;
-}
-
-const STAGGER_MS = 50;
-
-function stagger(idx: number): CSSProperties {
-  return { animationDelay: `${idx * STAGGER_MS}ms` };
-}
-
-function StaggerItem({ idx, children }: { idx: number; children: ReactNode }) {
-  return (
-    <div className="animate-fade-in-up" style={stagger(idx)}>
-      {children}
-    </div>
-  );
 }
 
 export function ProductDetailMobile({
@@ -47,6 +30,7 @@ export function ProductDetailMobile({
   seller,
   reviews,
   coupons,
+  extras,
   user,
   isFavorite,
   isOwner,
@@ -57,7 +41,6 @@ export function ProductDetailMobile({
   const isVisitorPreview = searchParams.get("preview") === "visitor";
   const effectiveIsOwner = isOwner && !isVisitorPreview;
 
-  const [reviewsOpen, setReviewsOpen] = useState(false);
 
   const images =
     product.galeria_imagenes && product.galeria_imagenes.length > 0
@@ -66,13 +49,10 @@ export function ProductDetailMobile({
         ? [product.imagen_principal]
         : [];
 
-  const safeCoupons = coupons ?? [];
 
   const canShowAppointment =
     !!product.allow_appointments && !!user && !effectiveIsOwner;
 
-  const averageRating = Number(seller.average_rating ?? 0);
-  const reviewsCount = Number(seller.reviews_count ?? reviews.length);
 
   return (
     <div className="flex flex-col bg-bg pb-[calc(env(safe-area-inset-bottom)+8rem)]">
@@ -99,7 +79,7 @@ export function ProductDetailMobile({
       </div>
 
       <div className="flex flex-col gap-5 px-4 py-5">
-        <StaggerItem idx={0}>
+        <div>
           <MetaRow
             categoria={product.categoria}
             categoryName={categoryName}
@@ -107,9 +87,9 @@ export function ProductDetailMobile({
             sellerLat={seller.ubicacion_lat ?? null}
             sellerLng={seller.ubicacion_lng ?? null}
           />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={1}>
+        <div>
           <div className="flex flex-col gap-4">
             <h1 className="font-display text-[26px] font-semibold leading-tight text-fg">
               {product.titulo}
@@ -123,9 +103,9 @@ export function ProductDetailMobile({
               />
             </div>
           </div>
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={2}>
+        <div>
           <SpecRow
             estado={product.estado}
             color={product.color}
@@ -133,36 +113,36 @@ export function ProductDetailMobile({
             createdAt={product.created_at}
             tipo={product.tipo}
           />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={3}>
+        <div>
           <SellerCardMini seller={seller} />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={4}>
+        <div>
           <LocationBanner ubicacion={product.ubicacion} />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={5}>
+        <div>
           <DescriptionBlock descripcion={product.descripcion} />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={6}>
+        <div>
           <PaymentChips
             metodosPagoAceptados={seller.metodos_pago_aceptados ?? null}
           />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={7}>
+        <div>
           <TrustCallout />
-        </StaggerItem>
+        </div>
 
-        <StaggerItem idx={8}>
-          <CouponBlock coupons={safeCoupons} />
-        </StaggerItem>
+        <div>
+          <ProductCoupons extras={extras} coupons={coupons} />
+        </div>
 
         {canShowAppointment ? (
-          <StaggerItem idx={9}>
+          <div>
             <AppointmentButton
               product={{
                 id: product.id,
@@ -176,17 +156,12 @@ export function ProductDetailMobile({
                   product.appointment_duration_minutes ?? 60,
               }}
             />
-          </StaggerItem>
+          </div>
         ) : null}
 
-        <StaggerItem idx={canShowAppointment ? 10 : 9}>
-          <ReviewsSummary
-            reviews={reviews}
-            averageRating={averageRating}
-            reviewsCount={reviewsCount}
-            onOpenReviews={() => setReviewsOpen(true)}
-          />
-        </StaggerItem>
+        <div>
+          <ProductReviews key={product.id} extras={extras} reviews={reviews} seller={seller} currentUserId={user?.id ?? null} productId={product.id} />
+        </div>
       </div>
 
       <StickyCta
@@ -196,17 +171,6 @@ export function ProductDetailMobile({
         hasSession={!!user}
       />
 
-      <ProductReviewsTrigger
-        reviews={reviews as unknown as DrawerReview[]}
-        averageRating={averageRating}
-        reviewsCount={reviewsCount}
-        sellerName={seller.nombre ?? "Vendedor"}
-        sellerAvatar={seller.foto ?? null}
-        currentUserId={user?.id ?? null}
-        currentProductId={product.id}
-        externalOpen={reviewsOpen}
-        onExternalClose={() => setReviewsOpen(false)}
-      />
     </div>
   );
 }

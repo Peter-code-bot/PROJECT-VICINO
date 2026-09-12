@@ -20,6 +20,7 @@ export default async function SellerOverviewPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select("trust_level, trust_points, average_rating, reviews_count, total_sales")
+    .throwOnError()
     .eq("id", user.id)
     .single();
 
@@ -31,6 +32,7 @@ export default async function SellerOverviewPage() {
   const { data: monthlySales } = await supabase
     .from("sale_confirmations")
     .select("precio_acordado")
+    .throwOnError()
     .eq("seller_id", user.id)
     .eq("status", "completed")
     .gte("completed_at", startOfMonth.toISOString());
@@ -42,6 +44,7 @@ export default async function SellerOverviewPage() {
   const { count: activeListings } = await supabase
     .from("products_services")
     .select("id", { count: "exact", head: true })
+    .throwOnError()
     .eq("creador_id", user.id)
     .eq("estatus", "disponible");
 
@@ -49,12 +52,14 @@ export default async function SellerOverviewPage() {
   const { data: completedSales } = await supabase
     .from("sale_confirmations")
     .select("id")
+    .throwOnError()
     .eq("seller_id", user.id)
     .eq("status", "completed");
 
   const { data: sellerReviews } = await supabase
     .from("reviews")
     .select("sale_confirmation_id")
+    .throwOnError()
     .eq("reviewer_id", user.id)
     .eq("review_type", "seller_to_buyer");
 

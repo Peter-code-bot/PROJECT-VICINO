@@ -1,14 +1,14 @@
 import { redirect, notFound } from "next/navigation";
-import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { ChatWindow } from "./chat-window";
+import type { SalesSeed } from "@/hooks/use-deferred-sales";
 
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ intentFailed?: string }>;
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata() {
   return { title: "Chat" };
 }
 
@@ -35,16 +35,7 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
 
   if (!user) redirect("/login?next=/chat");
 
-  // PRIMERA TANDA: el chat y sus confirmaciones, a la vez.
-  //
-  // Hasta el 27-ago esta pagina hacia cinco viajes a Supabase EN FILA, y solo
-  // dos de los cinco dependian de verdad del anterior. Abrir un chat costaba
-  // la suma de los cinco (~5 s medidos).
-  //
-  // Las dos de aqui solo necesitan `chatId`. `saleConfirmations` se adelanta al
-  // chequeo de participante de mas abajo: si el usuario no lo es, los datos se
-  // traen y se tiran sin llegar nunca al cliente, porque `notFound()` corta el
-  // render antes. Es una consulta desperdiciada en un caso raro, no una fuga.
+  // Only the authorized chat and messages gate the first useful content.
   const chatQuery = supabase
     .from("chats")
     .select(
@@ -75,17 +66,19 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const [{ data: chat }, { data: saleConfirmations }] = await Promise.all([
-    chatQuery,
-    saleConfirmationsQuery,
-  ]);
+  const { data: chat, error: chatError } = await chatQuery;
 
+  if (chatError && chatError.code !== "PGRST116") throw new Error("No se pudo cargar la conversación. Intenta de nuevo.");
   if (!chat) notFound();
 
   // Verify user is a participant
   if (chat.comprador_id !== user.id && chat.vendedor_id !== user.id) {
     notFound();
   }
+
+  const salesSeed: Promise<SalesSeed> = Promise.resolve(saleConfirmationsQuery)
+    .then(({ data, error }) => error ? { ok: false as const } : { ok: true as const, sales: data ?? [] },
+      () => ({ ok: false as const }));
 
   // Get initial messages.
   // A5.1: fetch the LATEST 50 via DESC then reverse to ASC for render.
@@ -104,50 +97,18 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     .select("id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor")
     .eq("chat_id", chatId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(50);
 
   if (deletedAt) {
     messagesQuery.gt("created_at", deletedAt);
   }
 
-  // SEGUNDA TANDA: los mensajes y el acuse de lectura, a la vez.
-  //
-  // Los mensajes son la unica consulta que de verdad depende de la anterior:
-  // `deletedAt` sale del chat y recorta la ventana. Por eso hay dos tandas y
-  // no una.
-  //
-  // `mark_messages_as_read` no depende de nada de esto y su resultado no se
-  // pinta — pero es una ESCRITURA, y encadenada le cobraba al usuario un viaje
-  // entero antes de ver el chat. Va aqui dentro para que solape con la lectura
-  // de mensajes en vez de sumarse a ella. No se puede soltar sin `await`: el
-  // runtime puede cortar el trabajo pendiente al terminar de renderizar, y
-  // entonces el contador de no leidos se queda pegado de forma intermitente.
-  const [{ data: messagesDesc }, { error: markReadErr }] = await Promise.all([
-    messagesQuery,
-    // Gemelo del markAsRead de chat/actions.ts: la RPC es SECURITY DEFINER y
-    // levanta 'unauthenticated', 'chat not found' o 'forbidden' como
-    // excepcion, y el await pelado las descartaba todas.
-    supabase.rpc("mark_messages_as_read", {
-      p_chat_id: chatId,
-      p_user_id: user.id,
-    }),
-  ]);
-
+  // Rendering and prefetch are read-only. The visible ChatWindow sends its
+  // acknowledgement separately, without blocking this response or the send queue.
+  const { data: messagesDesc, error: messagesError } = await messagesQuery;
+  if (messagesError) throw new Error("No se pudieron cargar los mensajes. Intenta de nuevo.");
   const messages = (messagesDesc ?? []).slice().reverse();
-
-  // Solo se registra, nunca se aborta: la pagina tiene que renderizar el chat
-  // aunque el contador de no leidos se quede pegado.
-  if (markReadErr) {
-    Sentry.captureException(markReadErr, {
-      tags: { action: "ChatDetailPage", step: "mark_read" },
-      extra: {
-        chatId,
-        code: markReadErr.code,
-        details: markReadErr.details,
-        hint: markReadErr.hint,
-      },
-    });
-  }
 
   // `isBuyer` already computed above
   const otherUser = isBuyer
@@ -159,13 +120,17 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
 
   return (
     <ChatWindow
+      key={`${user.id}:${chatId}`}
       chatId={chatId}
+      deletedAt={deletedAt}
       currentUserId={user.id}
       isBuyer={isBuyer}
       otherUser={otherUser ?? null}
       product={product ?? null}
       initialMessages={messages ?? []}
-      initialSaleConfirmations={saleConfirmations ?? []}
+      initialSaleConfirmations={[]}
+      salesSeed={salesSeed}
+      readinessToken={crypto.randomUUID()}
       buyIntentFailed={intentFailed === "1"}
     />
   );

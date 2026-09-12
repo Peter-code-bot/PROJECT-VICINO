@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
@@ -15,7 +15,7 @@ import type { CropResult } from "@/components/product/product-media-cropper";
  */
 const ProductMediaCropper = dynamic(
   () => import("@/components/product/product-media-cropper").then((m) => m.ProductMediaCropper),
-  { ssr: false },
+  { ssr: false, loading: () => <p role="status" className="mt-3 text-sm text-muted-foreground">Abriendo el recortador…</p> },
 );
 
 interface AvatarInlineUploadProps {
@@ -48,6 +48,8 @@ export function AvatarInlineUpload({
   conRecorte = false,
 }: AvatarInlineUploadProps) {
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const busy = useRef(false);
   const [recorteSrc, setRecorteSrc] = useState<string | null>(null);
 
   /**
@@ -57,6 +59,8 @@ export function AvatarInlineUpload({
    */
   const procesarYSubir = useCallback(
     async (origen: Blob) => {
+      if (busy.current) return;
+      busy.current = true;
       setAvatarUploading(true);
       try {
         let uploadBlob: Blob = origen;
@@ -70,35 +74,37 @@ export function AvatarInlineUpload({
 
         try {
           const bmp = await window.createImageBitmap(origen);
-          const MAX_SIZE = 800;
-          let width = bmp.width;
-          let height = bmp.height;
+          try {
+            const MAX_SIZE = 800;
+            let width = bmp.width;
+            let height = bmp.height;
 
-          if (width > MAX_SIZE || height > MAX_SIZE) {
-            if (width > height) {
-              height = Math.round(height * (MAX_SIZE / width));
-              width = MAX_SIZE;
-            } else {
-              width = Math.round(width * (MAX_SIZE / height));
-              height = MAX_SIZE;
+            if (width > MAX_SIZE || height > MAX_SIZE) {
+              if (width > height) {
+                height = Math.round(height * (MAX_SIZE / width));
+                width = MAX_SIZE;
+              } else {
+                width = Math.round(width * (MAX_SIZE / height));
+                height = MAX_SIZE;
+              }
             }
-          }
 
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(bmp, 0, 0, width, height);
-            const compressedBlob = await new Promise<Blob | null>((resolve) =>
-              canvas.toBlob(resolve, "image/jpeg", 0.85),
-            );
-            if (!compressedBlob) throw new Error("Fallo al exportar blob");
-            uploadBlob = compressedBlob;
-            ext = "jpg";
-          } else {
-            throw new Error("No se pudo crear contexto 2d");
-          }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(bmp, 0, 0, width, height);
+              const compressedBlob = await new Promise<Blob | null>((resolve) =>
+                canvas.toBlob(resolve, "image/jpeg", 0.85),
+              );
+              if (!compressedBlob) throw new Error("Fallo al exportar blob");
+              uploadBlob = compressedBlob;
+              ext = "jpg";
+            } else {
+              throw new Error("No se pudo crear contexto 2d");
+            }
+          } finally { bmp.close(); }
         } catch (compressErr) {
           console.warn("avatar compression failed", compressErr);
           onError("No pudimos procesar la foto en tu dispositivo.");
@@ -145,8 +151,10 @@ export function AvatarInlineUpload({
         console.warn("avatar upload failed", err);
         Sentry.captureException(err, { tags: { action: "avatar_upload" } });
         onError("No se pudo subir la foto. Revisa tu conexión e inténtalo de nuevo.");
+      } finally {
+        busy.current = false;
+        setAvatarUploading(false);
       }
-      setAvatarUploading(false);
     },
     [onError, onUploadSuccess],
   );
@@ -170,7 +178,7 @@ export function AvatarInlineUpload({
             {initial}
           </div>
         )}
-        {avatarUploading && (
+        {(avatarUploading || preparing) && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <Loader2 className="w-5 h-5 text-white animate-spin" />
           </div>
@@ -181,24 +189,33 @@ export function AvatarInlineUpload({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
-          disabled={avatarUploading}
+          disabled={avatarUploading || preparing || !!recorteSrc}
           onChange={async (e) => {
             const file = e.target.files?.[0];
             // El input se limpia SIEMPRE. Sin esto, elegir la misma foto dos
             // veces seguidas (por ejemplo tras cancelar el recorte) no dispara
             // otro change y parece que el boton dejo de funcionar.
             e.target.value = "";
-            if (!file) return;
+            if (!file || busy.current || recorteSrc) return;
+            if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+              onError("Elige una imagen JPG, PNG o WebP.");
+              return;
+            }
             if (file.size > MAX_SAFE_SIZE_MB * 1024 * 1024) {
               onError(`La imagen es demasiado grande (máx ${MAX_SAFE_SIZE_MB}MB)`);
               return;
             }
 
             if (conRecorte) {
+              busy.current = true;
+              setPreparing(true);
               try {
                 setRecorteSrc(await fileToDataURL(file));
               } catch {
                 onError("No pudimos abrir esa foto. Prueba con otra.");
+              } finally {
+                busy.current = false;
+                setPreparing(false);
               }
               return;
             }
@@ -210,6 +227,12 @@ export function AvatarInlineUpload({
           {avatarUrl ? "Cambiar foto" : "Subir foto"}
         </span>
       </label>
+
+      {(preparing || avatarUploading) && (
+        <p role="status" className="mt-2 text-sm text-muted-foreground">
+          {preparing ? "Preparando foto…" : "Subiendo foto…"}
+        </p>
+      )}
 
       {recorteSrc && (
         <ProductMediaCropper

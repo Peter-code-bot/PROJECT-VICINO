@@ -44,7 +44,7 @@ export default async function ChatPage({ searchParams }: Props) {
       if (params.intent === "buy" && params.product) {
         const { data: product, error: productErr } = await supabase
           .from("products_services")
-          .select("titulo, precio, modo_precio")
+          .select("titulo, precio, modo_precio").throwOnError()
           .eq("id", params.product)
           .single();
         // El producto puede no ser visible para ESTE comprador: la policy
@@ -68,7 +68,7 @@ export default async function ChatPage({ searchParams }: Props) {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("nombre")
+          .select("nombre").throwOnError()
           .eq("id", user.id)
           .single();
         // El precio es nullable desde que existe modo_precio. El
@@ -116,7 +116,7 @@ export default async function ChatPage({ searchParams }: Props) {
       vendedor:profiles!vendedor_id(id, nombre, foto),
       ultimo_producto:products_services!ultimo_producto_id(titulo)
     `
-    )
+    ).throwOnError()
     .or(`comprador_id.eq.${user.id},vendedor_id.eq.${user.id}`)
     .order("updated_at", { ascending: false });
 
@@ -130,7 +130,7 @@ export default async function ChatPage({ searchParams }: Props) {
   const showSelfChatBanner = params.selfChatError === "1";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in-up">
+    <div data-navigation-kind="chat_list" data-navigation-ready={crypto.randomUUID()} className="max-w-2xl mx-auto px-4 py-8">
       {showSelfChatBanner && (
         <div className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
           No puedes iniciar un chat contigo mismo. Estabas en modo vista visitante de tu propio producto.

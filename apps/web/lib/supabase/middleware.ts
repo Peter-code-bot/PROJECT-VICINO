@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { fetchConLimite } from "./fetch-con-limite";
 import type { Database } from "@/types/database.types";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -23,6 +24,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchConLimite(fetch, process.env.NEXT_PUBLIC_SUPABASE_URL!) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -150,11 +152,19 @@ export async function updateSession(request: NextRequest, nonce?: string) {
       pathname === "/seller" ||
       pathname.startsWith("/seller/"))
   ) {
-    const { data: gateProfile } = await supabase
+    const { data: gateProfile, error: gateError } = await supabase
       .from("profiles")
       .select("es_vendedor")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+    if (gateError) {
+      const unavailable = new NextResponse("No se pudo verificar el acceso. Intenta de nuevo.", {
+        status: 503,
+        headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+      });
+      for (const cookie of supabaseResponse.cookies.getAll()) unavailable.cookies.set(cookie);
+      return unavailable;
+    }
     if (!gateProfile?.es_vendedor) {
       const url = request.nextUrl.clone();
       url.pathname = "/empezar-a-vender";

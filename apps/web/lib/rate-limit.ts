@@ -94,6 +94,10 @@ export const oauthCallbackRateLimit = makeLimiter("1 m", 20, "rl:oauth-cb");
 // scripted abuse.
 export const writeRateLimit = makeLimiter("1 m", 30, "rl:write");
 
+// Read receipts are background acknowledgements, not sends. Sharing the write
+// quota would let incoming messages exhaust the user's ability to reply.
+export const chatReadRateLimit = makeLimiter("1 m", 60, "rl:chat-read");
+
 // Heavy reads (search, nearby_products). Per IP. 60/min is above any
 // reasonable UI cadence; below scraping speeds.
 export const readHeavyRateLimit = makeLimiter("1 m", 60, "rl:read");

@@ -1,5 +1,6 @@
 "use client";
 
+import { isTabRoute } from "@/lib/navigation/tab-routes";
 import { useState } from "react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import Link from "next/link";
@@ -144,6 +145,8 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
             {/* Profile */}
             <Link
               href="/perfil"
+              prefetch={false}
+              data-tab-prefetch="true"
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
@@ -228,6 +231,8 @@ function NavItem({
   return (
     <Link
       href={href}
+      prefetch={isTabRoute(href) ? false : undefined}
+      data-tab-prefetch={isTabRoute(href) ? "true" : undefined}
       className={cn(
         "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
         active

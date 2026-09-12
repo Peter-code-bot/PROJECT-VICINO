@@ -1,5 +1,7 @@
 "use client";
 
+import { VisibleVideo } from "@/components/product/visible-video";
+
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -29,7 +31,7 @@ function VideoGridThumbnail({ url }: { url: string }) {
           className="w-full h-full object-cover"
         />
       ) : (
-        <video
+        <VisibleVideo
           src={`${url}#t=0.1`}
           preload="metadata"
           muted
@@ -113,7 +115,7 @@ export function ProductGallery({
           // Reproductor completo. Sin poster a proposito: el fragmento #t=0.1
           // pinta el primer fotograma con la forma real del video, mientras que
           // el _thumb.jpg pasa a ser cuadrado para el feed.
-          <video
+          <VisibleVideo
             src={`${url}#t=0.1`}
             controls
             preload="metadata"
@@ -236,10 +238,11 @@ export function ProductGallery({
                contain en detalle y lightbox, y la misma para <video> que para
                <img>. Sin declararlo, un video con proporciones distintas de las
                de la caja se estiraba en vez de encajar. */
-            <video
+            <VisibleVideo
               src={images[lightbox]}
               controls
-              autoPlay
+              playsInline
+              preload="metadata"
               className="max-w-full max-h-[90vh] object-contain"
               onClick={(e) => e.stopPropagation()}
             />

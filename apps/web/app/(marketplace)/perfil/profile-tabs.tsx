@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -95,7 +95,7 @@ function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: 
 }
 // -----------------------------------------
 
-interface ProfileTabsProps {
+export interface ProfileTabsProps {
   // MP#08 #5c-4: product_categories embed opcional (unknown) que llega de
   // perfil/page.tsx y vendedor/[id]/page.tsx. Tipo `unknown` espeja la
   // imprecision de supabase-js para nested embeds; el consumo eventual
@@ -152,9 +152,45 @@ interface ProfileTabsProps {
   currentUserId?: string | null;
 }
 
-export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor, currentUserId }: ProfileTabsProps) {
+export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor, currentUserId,
+  productsPanel, reviewsPanel, reviewCount = reviewsAsSeller.length + reviewsAsBuyer.length,
+}: ProfileTabsProps & { productsPanel?: ReactNode; reviewsPanel?: ReactNode; reviewCount?: ReactNode }) {
   const [tab, setTab] = useState<"products" | "reviews">("products");
-  
+  return <div>
+      {/* Tab bar */}
+      <div className="mb-4 flex shadow-[inset_0_-1px_0_0_var(--border)]">
+        <button
+          onClick={() => setTab("products")}
+          className={cn(
+            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
+            tab === "products"
+              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
+              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+          )}
+        >
+          <Grid3X3 className="w-4 h-4" />
+          Productos
+        </button>
+        <button
+          onClick={() => setTab("reviews")}
+          className={cn(
+            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
+            tab === "reviews"
+              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
+              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+          )}
+        >
+          <Star className="w-4 h-4" />
+          Reseñas {reviewCount !== null && <>({reviewCount})</>}
+        </button>
+      </div>
+
+    <div hidden={tab !== "products"}>{productsPanel ?? <ProfileProducts products={products} isVendedor={isVendedor} />}</div>
+    <div hidden={tab !== "reviews"}>{reviewsPanel ?? <ProfileReviews reviewsAsSeller={reviewsAsSeller} reviewsAsBuyer={reviewsAsBuyer} currentUserId={currentUserId} />}</div>
+  </div>;
+}
+
+export function ProfileProducts({ products, isVendedor }: Pick<ProfileTabsProps, "products" | "isVendedor">) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -163,12 +199,12 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
 
   const [localProducts, setLocalProducts] = useState(products);
 
-  // Sync prop changes
-  useState(() => {
-    setLocalProducts(products);
-  });
+  const [previousProducts, setPreviousProducts] = useState(products);
+  if (previousProducts !== products) {
+    setPreviousProducts(products);
+    if (!isEditing) setLocalProducts(products);
+  }
 
-  const allReviews = [...reviewsAsSeller, ...reviewsAsBuyer];
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -209,37 +245,6 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
   };
 
   return (
-    <div>
-      {/* Tab bar */}
-      <div className="mb-4 flex shadow-[inset_0_-1px_0_0_var(--border)]">
-        <button
-          onClick={() => setTab("products")}
-          className={cn(
-            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
-            tab === "products"
-              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
-              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
-          )}
-        >
-          <Grid3X3 className="w-4 h-4" />
-          Productos
-        </button>
-        <button
-          onClick={() => setTab("reviews")}
-          className={cn(
-            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
-            tab === "reviews"
-              ? "border-[color:var(--fg)] text-[color:var(--fg)]"
-              : "border-transparent text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
-          )}
-        >
-          <Star className="w-4 h-4" />
-          Reseñas ({allReviews.length})
-        </button>
-      </div>
-
-      {/* Products grid */}
-      {tab === "products" && (
         <div className="relative">
           {/* Edit Banner */}
           {isEditing && (
@@ -310,10 +315,12 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
             </div>
           )}
         </div>
-      )}
+  );
+}
 
-      {/* Reviews */}
-      {tab === "reviews" && (
+export function ProfileReviews({ reviewsAsSeller, reviewsAsBuyer, currentUserId }: Pick<ProfileTabsProps, "reviewsAsSeller" | "reviewsAsBuyer" | "currentUserId">) {
+  const allReviews = [...reviewsAsSeller, ...reviewsAsBuyer];
+  return (
         <div className="space-y-3">
           {allReviews.length > 0 ? (
             allReviews.map((r) => {
@@ -371,8 +378,5 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
             </div>
           )}
         </div>
-      )}
-
-    </div>
   );
 }

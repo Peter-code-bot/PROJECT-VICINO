@@ -1,12 +1,14 @@
+import { StorePostOptions } from "@/components/home/store-post-options";
 import Link from "next/link";
 import Image from "next/image";
-import { MoreHorizontal, Heart, MessageCircle, MapPin, Tag, ArrowRight } from "lucide-react";
+import { MessageCircle, MapPin, Tag, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrustLevel } from "@vicino/shared";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { FavoriteButton } from "@/components/shared/favorite-button";
 import { PriceDisplay } from "@/components/shared/price-display";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { priceFallbackLabel } from "@/lib/price-mode";
 
 export interface StorePostProps {
@@ -25,6 +27,7 @@ export interface StorePostProps {
   storeId: string;
   store: string;
   letter: string;
+  storeAvatar?: string | null;
   tier: TrustLevel;
   cat: string;
   when: string;
@@ -76,7 +79,7 @@ export function StorePost({
   href,
   storeId,
   store,
-  letter,
+  storeAvatar,
   tier,
   cat,
   when,
@@ -96,15 +99,10 @@ export function StorePost({
     <article className="flex flex-col mb-4 product-card-custom sm:rounded-2xl overflow-hidden">
       {/* 1. Header de tienda */}
       <header className="flex items-center px-4 py-3 gap-3">
-        {/* El prefetch vuelve a estar activo en los cinco Links de la tarjeta.
-            Se habia apagado para no lanzar 5 GETs por card, pero el remedio
-            salio caro: sin prefetch cada toque paga la navegacion entera en
-            frio. Ahora que /vendedor/[id] y la ficha tienen su loading.tsx, lo
-            que se adelanta es el esqueleto, no la pagina renderizada. */}
+        {/* Perfil y detalle conservan la precarga de Next. Mensaje la desactiva
+            mientras la ruta de contacto todavía crea el chat durante el GET. */}
         <Link href={`/vendedor/${storeId}`} className="shrink-0">
-          <div className="w-10 h-10 rounded-[12px] bg-[var(--brand-tint)] flex items-center justify-center font-bold text-[var(--brand-hi)] text-lg">
-            {letter}
-          </div>
+          <UserAvatar key={storeAvatar ?? storeId} src={storeAvatar} name={store} size="md" className="rounded-[12px]" />
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -122,9 +120,7 @@ export function StorePost({
             <span>{when}</span>
           </div>
         </div>
-        <button className="product-card-muted p-2 -mr-2" aria-label="Más opciones">
-          <MoreHorizontal className="w-5 h-5" />
-        </button>
+        <StorePostOptions storeId={storeId} href={href} />
       </header>
 
       {/* 2. Flag opcional */}
@@ -190,12 +186,10 @@ export function StorePost({
       {/* 5. Footer de acciones */}
       <footer className="flex items-center justify-between px-4 pb-4 pt-1">
         <div className="flex gap-2">
-          <button className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors">
-            <Heart className="w-4 h-4 mr-1.5" />
-            Guardar
-          </button>
+          <FavoriteButton productId={id} initialFavorite={heart} variant="standalone" showLabel />
           <Link
-            href={`/chat/nuevo?product=${id}`}
+            href={`/chat?seller=${storeId}&product=${id}`}
+            prefetch={false}
             className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors"
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />

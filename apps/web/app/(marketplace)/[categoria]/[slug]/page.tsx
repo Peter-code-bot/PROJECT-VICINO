@@ -6,12 +6,13 @@ import { ChevronRight } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
 import { primaryCategoryFull, primaryCategorySlug } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
-import { posterUrl } from "@/lib/video-thumbnail";
+import { ProductView } from "@/components/product/product-view";
 import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
 import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
 import type {
   ProductDetailCoupon,
   ProductDetailData,
+  ProductDetailExtras,
   ProductDetailReview,
 } from "@/components/product/types";
 
@@ -69,12 +70,17 @@ export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError && authError.name !== "AuthSessionMissingError") {
+    throw new Error("No se pudo verificar la sesión. Intenta de nuevo.");
+  }
+
   // MP#08 #4 Fase 1A: incluimos product_categories embed para que el
   // breadcrumb derive el nombre legible de la PRIMARY del pivote (no del
   // pretty-print de categoria TEXT). categoria TEXT sigue en el SELECT (`*`)
   // y el render lo usa como fallback si por algun edge case el pivote
   // estuviera vacio (logueado a Sentry abajo).
-  const { data: product } = await supabase
+  const { data: product, error: productError } = await supabase
     .from("products_services")
     .select(
       `
@@ -94,13 +100,16 @@ export default async function ProductDetailPage({ params }: Props) {
     .neq("estatus", "eliminado")
     .single();
 
+  if (productError && productError.code !== "PGRST116") {
+    throw new Error("No se pudo cargar el producto. Intenta de nuevo.");
+  }
   if (!product) notFound();
 
   const seller = Array.isArray(product.profiles)
     ? product.profiles[0]
     : product.profiles;
 
-  const { data: reviews } = await supabase
+  const reviewsQuery = supabase
     .from("reviews")
     .select(
       `
@@ -115,7 +124,7 @@ export default async function ProductDetailPage({ params }: Props) {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const { data: coupons } = await supabase
+  const couponsQuery = supabase
     .from("coupons")
     .select("codigo, tipo_descuento, valor")
     .eq("vendedor_id", product.creador_id)
@@ -123,40 +132,29 @@ export default async function ProductDetailPage({ params }: Props) {
     .or("fecha_expiracion.is.null,fecha_expiracion.gt." + new Date().toISOString())
     .limit(5);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Start both queries now; only their local Suspense boundaries wait for them.
+  const extras: Promise<ProductDetailExtras> = Promise.all([reviewsQuery, couponsQuery])
+    .then(([reviewResult, couponResult]) => ({
+      reviews: (reviewResult.data ?? []) as ProductDetailReview[],
+      coupons: (couponResult.data ?? []) as ProductDetailCoupon[],
+      ...(reviewResult.error ? { reviewsError: "No se pudieron cargar las reseñas." } : {}),
+      ...(couponResult.error ? { couponsError: "No se pudieron cargar los cupones." } : {}),
+    }), () => ({
+      reviews: [], coupons: [],
+      reviewsError: "No se pudieron cargar las reseñas.",
+      couponsError: "No se pudieron cargar los cupones.",
+    }));
+
   let isFavorite = false;
   if (user) {
-    const { data: fav } = await supabase
+    const { data: fav, error: favoriteError } = await supabase
       .from("favorites")
       .select("id")
       .eq("usuario_id", user.id)
       .eq("producto_id", product.id)
       .maybeSingle();
+    if (favoriteError) throw new Error("No se pudieron cargar tus favoritos. Intenta de nuevo.");
     isFavorite = !!fav;
-  }
-
-  // p1-8: el UPDATE directo de vistas_count nunca funciono. Ni anon ni
-  // authenticated tienen privilegio de columna UPDATE sobre vistas_count (los
-  // GRANT de products_services son columna por columna y ADD COLUMN nunca los
-  // hereda), asi que PostgREST respondia 42501 y el `.then()` sin catch se lo
-  // tragaba: 0 productos con vistas > 0 en produccion. increment_product_view
-  // es SECURITY DEFINER (owner postgres, search_path fijado) con EXECUTE para
-  // anon y authenticated, incrementa de forma atomica (vistas_count + 1, sin el
-  // read-modify-write que perdia incrementos concurrentes) y solo cuenta si el
-  // producto sigue disponible y no oculto -- de paso el preview del dueno sobre
-  // su propio listing pausado deja de inflar el contador.
-  const { error: viewError } = await supabase.rpc("increment_product_view", {
-    p_id: product.id,
-  });
-  if (viewError) {
-    Sentry.captureException(viewError, {
-      tags: { action: "productDetailPage", step: "increment_product_view" },
-      contexts: {
-        product: { id: product.id, slug: product.slug },
-      },
-    });
   }
 
   // delivery_radius_km era una columna de SOLO ESCRITURA: el vendedor movia el
@@ -207,8 +205,9 @@ export default async function ProductDetailPage({ params }: Props) {
   const data: ProductDetailData = {
     product: product as unknown as ProductDetailData["product"],
     seller: seller as unknown as ProductDetailData["seller"],
-    reviews: (reviews ?? []) as ProductDetailReview[],
-    coupons: (coupons ?? []) as ProductDetailCoupon[],
+    reviews: [],
+    coupons: [],
+    extras,
     isFavorite,
     user: user ? { id: user.id } : null,
     isOwner,
@@ -217,7 +216,8 @@ export default async function ProductDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto md:py-8 animate-fade-in">
+    <div data-navigation-kind="product" data-navigation-ready={crypto.randomUUID()} className="max-w-4xl mx-auto md:py-8">
+      <ProductView productId={product.id} />
       <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mb-6 px-4">
         <Link href="/" className="hover:text-primary transition-colors">
           Inicio

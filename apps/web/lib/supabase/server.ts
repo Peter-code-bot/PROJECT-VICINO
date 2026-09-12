@@ -1,5 +1,6 @@
 import type { Database } from "@/types/database.types";
 import { createServerClient } from "@supabase/ssr";
+import { fetchConLimite } from "./fetch-con-limite";
 import { cookies } from "next/headers";
 
 export async function createClient() {
@@ -9,6 +10,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchConLimite(fetch, process.env.NEXT_PUBLIC_SUPABASE_URL!) },
       cookies: {
         getAll() {
           return cookieStore.getAll();

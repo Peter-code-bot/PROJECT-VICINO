@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -31,12 +32,18 @@ interface FavoritesValue {
   has: (productId: string) => boolean;
   setFavorite: (productId: string, value: boolean) => void;
   ready: boolean;
+  pending: (productId: string) => boolean;
+  acquire: (productId: string) => boolean;
+  release: (productId: string) => void;
 }
 
 const FavoritesContext = createContext<FavoritesValue>({
   has: () => false,
   setFavorite: () => {},
   ready: false,
+  pending: () => false,
+  acquire: () => true,
+  release: () => {},
 });
 
 export function FavoritesProvider({
@@ -46,6 +53,18 @@ export function FavoritesProvider({
   initialIds: readonly string[];
   children: ReactNode;
 }) {
+  const locks = useRef(new Set<string>());
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const acquire = useCallback((id: string) => {
+    if (locks.current.has(id)) return false;
+    locks.current.add(id);
+    setPendingIds(new Set(locks.current));
+    return true;
+  }, []);
+  const release = useCallback((id: string) => {
+    locks.current.delete(id);
+    setPendingIds(new Set(locks.current));
+  }, []);
   const [ids, setIds] = useState<ReadonlySet<string>>(
     () => new Set(initialIds),
   );
@@ -67,8 +86,11 @@ export function FavoritesProvider({
       has: (productId: string) => ids.has(productId),
       setFavorite,
       ready: true,
+      pending: (id: string) => pendingIds.has(id),
+      acquire,
+      release,
     }),
-    [ids, setFavorite],
+    [ids, setFavorite, pendingIds, acquire, release],
   );
 
   return (

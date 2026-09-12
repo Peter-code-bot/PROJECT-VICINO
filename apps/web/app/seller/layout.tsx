@@ -21,7 +21,7 @@ export default async function SellerLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("nombre_negocio, nombre, trust_level, es_vendedor")
+    .select("nombre_negocio, nombre, trust_level, es_vendedor").throwOnError()
     .eq("id", user.id)
     .single();
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { VisibleVideo } from "@/components/product/visible-video";
+
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
@@ -44,7 +46,7 @@ interface ProductGalleryCarouselProps {
 function CarouselMedia({ src, alt, eager }: { src: string; alt: string; eager: boolean }) {
   if (isVideoUrl(src)) {
     return (
-      <video
+      <VisibleVideo
         // El fragmento #t=0.1 fuerza al navegador a pintar ese fotograma. Es el
         // mismo truco que ya usa product-gallery.tsx para los videos sin thumb.
         // Sustituye al poster, que a partir del commit 2 tendria otra forma que

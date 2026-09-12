@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { fetchConLimite } from "./fetch-con-limite";
 import type { Database } from "@/types/database.types";
 
 export function createClient() {
@@ -8,6 +9,7 @@ export function createClient() {
 // selects en silencio. Los tipos se regeneran con: node scripts/gen-types.mjs
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { fetch: fetchConLimite(fetch, process.env.NEXT_PUBLIC_SUPABASE_URL!) } }
   );
 }

@@ -67,6 +67,7 @@ export function ProfileForm({
   const [error, setError] = useState("");
   const [usernameError, setUsernameError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const saving = useRef(false);
   // Si llega desde "Quiero vender" y todavia no lo es, la casilla nace
   // marcada. Honra lo que acaba de pedir, y el aviso de arriba lo dice en
   // voz alta para que no sea un cambio a sus espaldas: sigue pudiendo
@@ -110,41 +111,54 @@ export function ProfileForm({
   }, [sellerType]);
 
   async function runUpdate(formData: FormData) {
+    if (saving.current) return;
+    saving.current = true;
     setLoading(true);
     setUsernameError(false);
-
-    if (username.trim() !== usernameGuardado) {
-      const usernameData = new FormData();
-      usernameData.set("username", username.trim());
-      const r = await setUsername(usernameData);
-      if (r.error) {
-        setError(r.error);
-        setUsernameError(true);
-        setLoading(false);
+    let navigating = false;
+    let usernameUpdated = false;
+    const requestedUsername = String(formData.get("username") ?? username).trim();
+    const describeFailure = (message: string) => usernameUpdated
+      ? `Tu nombre de usuario se guardó, pero faltan los demás cambios. ${message}`
+      : message;
+    try {
+      if (requestedUsername !== usernameGuardado) {
+        const usernameData = new FormData();
+        usernameData.set("username", requestedUsername);
+        const result = await setUsername(usernameData);
+        if (result.error) {
+          setError(result.error);
+          setUsernameError(true);
+          return;
+        }
+        if (result.username) {
+          setUsernameLocal(result.username);
+          setUsernameGuardado(result.username);
+          usernameUpdated = true;
+        }
+      }
+      const result = await updateProfile(formData);
+      if (result?.error) {
+        setError(describeFailure(result.error));
         return;
       }
-      if (r.username) {
-        setUsernameLocal(r.username);
-        setUsernameGuardado(r.username);
+      router.replace("/perfil");
+      router.refresh();
+      navigating = true;
+    } catch {
+      setError(describeFailure("No pudimos confirmar el guardado. Revisa tu conexión e inténtalo de nuevo."));
+    } finally {
+      // Keep duplicate submission blocked until navigation after success;
+      // every error restores the form and preserves the user's draft.
+      if (!navigating) {
+        saving.current = false;
+        setLoading(false);
       }
     }
-
-    const result = await updateProfile(formData);
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-      return;
-    }
-
-    // Sin espera y sin apagar `loading`: el boton se queda en "Guardando..." hasta
-    // que pinta /perfil, y asi no hay hueco para reenviar el formulario.
-    // `replace` y no `push` para que el boton atras no devuelva al formulario que
-    // se acaba de cerrar.
-    router.replace("/perfil");
-    router.refresh();
   }
 
   async function handleSubmit(formData: FormData) {
+    if (saving.current) return;
     setError("");
 
     // Phase 9: intercept ON→OFF transitions when the user has active products.
@@ -409,6 +423,8 @@ export function ProfileForm({
             <span className="text-base text-muted-foreground mr-0.5">@</span>
             <input
               id="username"
+              name="username"
+              disabled={loading}
               type="text"
               value={username}
               onChange={(e) => setUsernameLocal(e.target.value)}

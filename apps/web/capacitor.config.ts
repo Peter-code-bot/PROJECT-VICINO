@@ -70,7 +70,7 @@ const config: CapacitorConfig = {
       // salida era matar la app. Es tambien lo primero que prueba un revisor
       // de tienda: abrir con mala red.
       //
-      // Con true, el sistema lo quita a los 4 s pase lo que pase. En el camino
+      // Con true, el sistema lo quita al alcanzar el techo. En el camino
       // normal no se llega a esperar tanto: capacitor-init lo quita en cuanto
       // sabe que esta en nativo, mucho antes.
       // 15 s es un TECHO para el caso roto, no un tiempo de espera normal: el
@@ -91,7 +91,8 @@ const config: CapacitorConfig = {
       androidScaleType: 'CENTER_CROP',
     },
     StatusBar: {
-      style: 'DEFAULT',
+      style: 'LIGHT',
+      backgroundColor: '#FFF8F0',
       overlaysWebView: false,
     },
     Keyboard: {

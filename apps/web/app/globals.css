@@ -512,8 +512,8 @@ h1, h2, h3, h4, h5, h6 {
  *
  * NO afecta a lectores de pantalla: `opacity` no saca nada del arbol de
  * accesibilidad (eso lo hacen display:none y visibility:hidden), asi que el
- * role="status" y el texto sr-only del Envoltorio se anuncian al instante. Se
- * demora lo que se ve, no lo que se oye.
+ * aviso sr-only del Envoltorio queda separado del dibujo. El anuncio de voz
+ * requiere verificacion con cada lector de pantalla.
  */
 .esqueleto-demorado {
   animation: esqueleto-espera 180ms step-end;
@@ -522,6 +522,13 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes esqueleto-espera {
   from {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto-demorado,
+  .esqueleto-demorado .skeleton {
+    animation: none;
   }
 }
 

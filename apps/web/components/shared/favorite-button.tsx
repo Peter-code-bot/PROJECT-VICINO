@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useFavorite } from "@/hooks/use-favorite";
 import { Heart } from "lucide-react";
-import { toggleFavorite } from "@/app/(marketplace)/favoritos/actions";
-import { useMuroSesion } from "@/components/auth/muro-sesion";
-import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 
@@ -14,6 +11,7 @@ interface FavoriteButtonProps {
   size?: "sm" | "md" | "lg";
   variant?: "overlay" | "standalone";
   className?: string;
+  showLabel?: boolean;
 }
 
 export function FavoriteButton({
@@ -22,27 +20,9 @@ export function FavoriteButton({
   size = "md",
   variant = "overlay",
   className,
+  showLabel = false,
 }: FavoriteButtonProps) {
-  const [isFavorite, setIsFavorite] = useState(initialFavorite);
-
-  const { pedirSesion } = useMuroSesion();
-  const { mutate, isPending } = useOptimisticMutation(toggleFavorite, {
-    onMutate: () => {
-      const previous = isFavorite;
-      setIsFavorite(!previous);
-      return () => setIsFavorite(previous);
-    },
-    onSuccess: (result) => {
-      if (
-        result &&
-        typeof result === "object" &&
-        "isFavorite" in result &&
-        typeof result.isFavorite === "boolean"
-      ) {
-        setIsFavorite(result.isFavorite);
-      }
-    },
-  });
+  const { isFavorite, isPending, toggle } = useFavorite(productId, initialFavorite);
 
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -60,14 +40,14 @@ export function FavoriteButton({
     e.preventDefault();
     e.stopPropagation();
     void hapticLight();
-    // Mismo caso que el corazon de la tarjeta: sin sesion, esto acababa en
-    // un error que nadie pintaba.
-    if (!pedirSesion("Inicia sesión para guardar tus favoritos")) return;
-    void mutate(productId);
+    void toggle();
   }
 
   return (
     <button
+      type="button"
+      aria-pressed={isFavorite}
+      aria-busy={isPending}
       onClick={handleClick}
       disabled={isPending}
       aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
@@ -78,7 +58,7 @@ export function FavoriteButton({
           : isFavorite
             ? "bg-[color:var(--danger)] text-white shadow-[0_4px_12px_rgba(255,59,48,0.35)]"
             : "bg-black/40 backdrop-blur-md hover:bg-black/55 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]",
-        sizeClasses[size],
+        showLabel ? "h-10 px-3 gap-1.5 text-[13px] font-medium" : sizeClasses[size],
         className
       )}
     >
@@ -94,6 +74,7 @@ export function FavoriteButton({
               : "text-white"
         )}
       />
+      {showLabel && <span>{isFavorite ? "Guardado" : "Guardar"}</span>}
     </button>
   );
 }

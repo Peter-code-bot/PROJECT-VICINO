@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import type { TrustLevel } from "@vicino/shared";
 import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
@@ -40,15 +41,15 @@ interface ProfileHeaderProps {
     is_verified: boolean | null;
     created_at: string | null;
   } | null;
-  productCount: number;
+  productCount: ReactNode;
   purchaseCount: number;
   isPublic?: boolean;
   /** Id del usuario autenticado. Se usa para esconder el botón de reportar
    *  cuando el perfil mostrado es el del propio usuario. */
   currentUserId?: string | null;
   isFollowing?: boolean;
-  followersCount?: number;
-  followingCount?: number;
+  followersCount?: ReactNode;
+  followingCount?: ReactNode;
 }
 
 export function ProfileHeader({ 

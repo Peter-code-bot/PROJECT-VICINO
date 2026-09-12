@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { canalesGestionados, refrescoCoalescido } from "@/lib/realtime/canales-gestionados";
+import { reconciliarChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
@@ -10,6 +12,8 @@ import { sendMessage, getMessagesBefore } from "../actions";
 import { hapticMedium } from "@/lib/haptics";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
+import { useDeferredSales, type SalesSeed } from "@/hooks/use-deferred-sales";
+import { useVisibleChatRead } from "@/hooks/use-visible-chat-read";
 import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
@@ -22,12 +26,6 @@ import { useFirmasAdjuntos } from "@/hooks/use-firmas-adjuntos";
 import { MessagePhotos } from "./message-photos";
 import { PhotoPickerButton, PhotoTray, admitirFotos } from "./photo-tray";
 import { MAX_ADJUNTOS_POR_MENSAJE, type ChatAttachment } from "@vicino/shared";
-
-// Window for the realtime fallback to reclaim an in-flight optimistic
-// message. 3s is firmed as the safe upper bound: shorter risks legitimate
-// network latency on slow connections, longer would start swallowing
-// genuinely separate sends of the same text. Keep tight on purpose.
-const TEMP_RECLAIM_WINDOW_MS = 3000;
 
 // A5.1: initial SSR fetch page size. Must match page.tsx's .limit(50).
 // If the initial fetch returns exactly INITIAL_PAGE_SIZE items, the chat
@@ -65,7 +63,10 @@ interface ChatWindowProps {
   } | null;
   initialMessages: Message[];
   initialSaleConfirmations: SaleConfirmation[];
+  salesSeed?: Promise<SalesSeed>;
+  readinessToken?: string;
   buyIntentFailed?: boolean;
+  deletedAt: string | null;
 }
 
 export function ChatWindow({
@@ -76,7 +77,10 @@ export function ChatWindow({
   product,
   initialMessages,
   initialSaleConfirmations,
+  salesSeed,
+  readinessToken,
   buyIntentFailed = false,
+  deletedAt,
 }: ChatWindowProps) {
   // A5.1: cursor-based load-older via the shared hook. The hook owns
   // the messages buffer; setItems is exposed for the FIFO temp-id
@@ -108,9 +112,11 @@ export function ChatWindow({
     prepend: true,
   });
 
-  const [saleConfirmations, setSaleConfirmations] = useState<SaleConfirmation[]>(
-    initialSaleConfirmations,
-  );
+  const { sales: saleConfirmations, status: salesStatus, updateLive: setSaleConfirmations,
+    applySnapshot: applySalesSnapshot, failed: salesFailed } = useDeferredSales(initialSaleConfirmations, salesSeed);
+  const [retryingSales, startSalesRetry] = useTransition();
+  const lastIncomingId = messages.findLast((message) => message.autor_id !== currentUserId)?.id ?? "";
+  useVisibleChatRead(chatId, currentUserId, lastIncomingId);
   const [input, setInput] = useState("");
   const [sendError, setSendError] = useState("");
   /** Fotos elegidas y aun sin mandar. Se vacia al enviar o al fallar. */
@@ -188,12 +194,23 @@ export function ChatWindow({
     else tempSendsByTextRef.current.set(text, next);
   }
   const router = useRouter();
+  const messagesRef = useRef(messages);
+  const deletedAtRef = useRef(deletedAt);
+  const recoveredCursorRef = useRef<Cursor | null>(ultimoConfirmado(initialMessages));
+  const incompleteRef = useRef<Intervalo | null>(null);
+  const inFlightSendsRef = useRef(new Set<string>());
+  const retryRecoveryRef = useRef<() => void>(() => {});
+  const preserveRecoveryScrollRef = useRef(false);
+  const recoveryAnchorRef = useRef<{ id: string; top: number } | null>(null);
+  const [recovery, setRecovery] = useState<"recovering" | "pending" | "more" | "synced">("recovering");
+  useLayoutEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const sendMutation = useOptimisticMutation(
     ({ text, attachments }: { tempId: string; text: string; attachments: ChatAttachment[] }) =>
       sendMessage(chatId, text, attachments),
     {
       onMutate: ({ tempId, text, attachments }) => {
+        inFlightSendsRef.current.add(tempId);
         trackTempId(text, tempId);
         const optimisticMsg: Message = {
           id: tempId,
@@ -235,12 +252,18 @@ export function ChatWindow({
         // realId is available. The temp is no longer in flight.
         releaseTempId(text, tempId);
         fotosPorTempRef.current.delete(tempId);
+        inFlightSendsRef.current.delete(tempId);
+        retryRecoveryRef.current();
         if (!realId) return;
         setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m)),
+          prev.some((m) => m.id === realId)
+            ? prev.filter((m) => m.id !== tempId)
+            : prev.map((m) => (m.id === tempId ? { ...m, id: realId } : m)),
         );
       },
       onError: (err, { tempId, text, attachments }) => {
+        inFlightSendsRef.current.delete(tempId);
+        retryRecoveryRef.current();
         // Las fotos YA estan en el bucket y el mensaje no existe: sin esto se
         // quedan ahi para siempre, que es como se juntaron los 31 huerfanos de
         // esta manana en otros buckets. Best-effort: si la limpieza falla no
@@ -280,198 +303,113 @@ export function ChatWindow({
   );
 
 
-  // Subscribe to new messages and read receipt updates
+  // Un canal por montaje y generacion; las referencias no reconstruyen el canal.
   useEffect(() => {
-    const channel = supabase
-      .channel(`chat:${chatId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          setMessages((prev) => {
-            // Already in list by real id (after onSuccess replaced temp->real).
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-
-            if (newMsg.autor_id === currentUserId) {
-              // Primary reclaim path: FIFO map keyed by texto. Two rapid
-              // identical sends (test #6 from MP#07 item #1 Fase 5) each
-              // push their own tempId into the same key. The oldest temp
-              // wins each realtime echo, so the second send is preserved
-              // as its own message instead of collapsing into the first
-              // (which is what the proximity-only fallback used to do).
-              const queue = tempSendsByTextRef.current.get(newMsg.texto);
-              if (queue && queue.length > 0) {
-                const reclaimTempId = queue[0];
-                if (queue.length === 1) {
-                  tempSendsByTextRef.current.delete(newMsg.texto);
-                } else {
-                  tempSendsByTextRef.current.set(newMsg.texto, queue.slice(1));
-                }
-                return prev.map((m) =>
-                  m.id === reclaimTempId ? newMsg : m,
-                );
-              }
-
-              // Ultimate fallback: if the Map desyncs (unmount/remount,
-              // race condition with clearTimeout, hook reset during HMR,
-              // etc) the proximity 3s window still covers the edge
-              // ordering scenario from test #4 (realtime echo before the
-              // server action response). NOT redundant with the Map: this
-              // is the safety net for cases where the Map is empty but
-              // a matching temp is still visible in the messages array.
-              // Do NOT remove this check.
-              // Sin fecha no hay proximidad que medir, asi que este camino se
-              // salta. No se pierde nada: el principal es el mapa FIFO por
-              // texto de arriba, y este es solo la red de seguridad.
-              const realTime = newMsg.created_at
-                ? new Date(newMsg.created_at).getTime()
-                : null;
-              const tempMatch =
-                realTime === null
-                  ? undefined
-                  : prev.find((m) => {
-                      if (!m.id.startsWith("temp-")) return false;
-                      if (m.autor_id !== newMsg.autor_id) return false;
-                      if (m.texto !== newMsg.texto) return false;
-                      if (!m.created_at) return false;
-                      const tempTime = new Date(m.created_at).getTime();
-                      return Math.abs(realTime - tempTime) < TEMP_RECLAIM_WINDOW_MS;
-                    });
-              if (tempMatch) {
-                return prev.map((m) => (m.id === tempMatch.id ? newMsg : m));
-              }
-            }
-            return [...prev, newMsg];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        (payload) => {
-          const updated = payload.new as Message;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "sale_confirmations",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        async (payload) => {
-          const newSc = payload.new as Omit<SaleConfirmation, "products_services">;
-          // Realtime payload does not include the join; fetch product title.
-          const { data: prod } = await supabase
-            .from("products_services")
-            .select("titulo")
-            .eq("id", newSc.product_id)
-            .single();
-          setSaleConfirmations((prev) => {
-            if (prev.some((s) => s.id === newSc.id)) return prev;
-            return [{ ...newSc, products_services: prod ?? null }, ...prev];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "sale_confirmations",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        (payload) => {
-          const updated = payload.new as Omit<SaleConfirmation, "products_services">;
-          // Mirror the SSR query: only pending_confirmation and completed are
-          // displayed. Drop the row on cancel/expire so the card disappears
-          // live instead of lingering until refresh.
-          const visibleStatuses = ["pending_confirmation", "completed"];
-          setSaleConfirmations((prev) => {
-            if (!visibleStatuses.includes(updated.status)) {
-              return prev.filter((s) => s.id !== updated.id);
-            }
-            return prev.map((s) =>
-              s.id === updated.id ? { ...s, ...updated } : s
-            );
-          });
-        }
-      )
-      .subscribe(async (status) => {
-        // F9 catch-up on subscribe: the Realtime channel only delivers
-        // INSERTs that happen AFTER the subscription handshake completes
-        // (~500-1500 ms on mobile). Between the SSR query in page.tsx and
-        // this SUBSCRIBED callback there is a window where an INSERT from
-        // the other participant lands in neither path. Without this fix
-        // the message stays invisible until the next live INSERT (or a
-        // route refresh) pushes the buffer forward. The catch-up issues
-        // a one-shot `.gt(newestKnown)` fetch on the same SELECT shape as
-        // the SSR and merges by id-dedup -- safe against any INSERT that
-        // arrives during the await (the channel handler's existing
-        // `prev.some(m => m.id === newMsg.id)` guard plus the Set-based
-        // dedup here cover both directions).
-        if (status !== "SUBSCRIBED") return;
-        // Se busca hacia atras la ultima marca disponible en vez de rendirse
-        // con el ultimo mensaje: un solo created_at ausente al final no puede
-        // dejar el chat sin recuperar los mensajes que se perdieron.
-        const newestKnown = [...messages].reverse().find((m) => m.created_at)
-          ?.created_at;
-        if (!newestKnown) return;
-        const { data: caughtUp } = await supabase
-          .from("messages")
-          .select(
-            "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor",
-          )
-          .eq("chat_id", chatId)
-          .gt("created_at", newestKnown)
-          // CODEX MED follow-up to commit d622d9b: exclude own messages
-          // from the catch-up. The current user's own sends are always
-          // covered by (a) sendMutation.onSuccess swapping temp -> real
-          // id and (b) the Realtime channel echo running the FIFO temp
-          // reclaim. If a user's own INSERT lands between the SSR snapshot
-          // and SUBSCRIBED, the catch-up would otherwise append the real
-          // message while the temp-id was still visible -- a transient
-          // duplicate where the temp would be orphaned until next
-          // navigation. Catch-up's sole job is recovering the OTHER
-          // participant's gap messages, so .neq the current user.
-          .neq("autor_id", currentUserId)
-          .order("created_at", { ascending: true });
-        if (!caughtUp || caughtUp.length === 0) return;
-        setMessages((prev) => {
-          const seen = new Set(prev.map((m) => m.id));
-          const fresh = (caughtUp as Message[]).filter((m) => !seen.has(m.id));
-          if (fresh.length === 0) return prev;
-          return [...prev, ...fresh];
+    let disposed = false;
+    const controller = canalesGestionados(supabase);
+    const pending = () => { if (!disposed) { setRecovery("pending"); salesFailed(); } };
+    let cancelRefresh = () => {};
+    const unregister = controller.registrar(`chat:${chatId}`, ({ vigente }) => {
+      cancelRefresh();
+      const changedMessages = new Map<string, Message>();
+      const changedSales = new Map<string, Omit<SaleConfirmation, "products_services"> | null>();
+      let subscribed = false;
+      let subscriptionGeneration = 0;
+      const refresh = refrescoCoalescido(async () => {
+        if (!vigente() || !subscribed) return;
+        const subscription = subscriptionGeneration;
+        setRecovery("recovering");
+        changedMessages.clear();
+        changedSales.clear();
+        const result = await reconciliarChat(supabase, {
+          chatId, userId: currentUserId, deletedAt,
+          loadedIds: messagesRef.current.map((m) => m.id),
+          cursor: recoveredCursorRef.current, intervalo: incompleteRef.current,
         });
-      });
-
+        if (!vigente() || subscription !== subscriptionGeneration) return;
+        if (result.denied) {
+          setMessages([]);
+          setSaleConfirmations([]);
+          setRecovery("pending");
+          router.refresh();
+          return;
+        }
+        const sending = inFlightSendsRef.current.size > 0;
+        deletedAtRef.current = result.deletedAt;
+        // No se emparejan textos de una instantanea con temporales. El resultado
+        // real del envio decide su UUID; otra vuelta recoge los otros dispositivos.
+        const recovered = result.messages.filter((m) => !sending || m.autor_id !== currentUserId);
+        const changed = new Map([...changedMessages].filter(([, m]) => !sending || m.autor_id !== currentUserId));
+        preserveRecoveryScrollRef.current = true;
+        const container = scrollContainerRef.current;
+        const anchor = container && [...container.querySelectorAll<HTMLElement>("[data-message-id]")]
+          .find((node) => node.getBoundingClientRect().bottom >= container.getBoundingClientRect().top);
+        recoveryAnchorRef.current = anchor ? { id: anchor.dataset.messageId!, top: anchor.getBoundingClientRect().top } : null;
+        setMessages((prev) => fusionarMensajes(prev, recovered, changed, result.deletedAt));
+        const salesChanges = new Map(changedSales);
+        applySalesSnapshot(() => {
+          const sales = new Map(result.sales.map((sc) => [sc.id, sc as SaleConfirmation]));
+          for (const [id, sc] of salesChanges) {
+            if (!sc || !["pending_confirmation", "completed"].includes(sc.status)) sales.delete(id);
+            else sales.set(id, { ...sales.get(id), ...sc, products_services: sales.get(id)?.products_services ?? null });
+          }
+          return [...sales.values()].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id.localeCompare(a.id)).slice(0, 5);
+        });
+        if (!sending) {
+          recoveredCursorRef.current = result.cursor;
+          incompleteRef.current = result.intervalo;
+        }
+        setRecovery(sending ? "pending" : result.intervalo ? "more" : "synced");
+      }, pending);
+      cancelRefresh = () => refresh.cancelar();
+      retryRecoveryRef.current = () => { if (vigente()) refresh.solicitar(); };
+      return supabase.channel(`chat:${chatId}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
+          if (!vigente()) return;
+          const message = payload.new as Message;
+          changedMessages.set(message.id, message);
+          if (message.autor_id === currentUserId && inFlightSendsRef.current.size > 0) return;
+          setMessages((prev) => fusionarMensajes(prev, [message], new Map(), deletedAtRef.current));
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
+          if (!vigente()) return;
+          const message = payload.new as Message;
+          changedMessages.set(message.id, message);
+          setMessages((prev) => prev.map((m) => m.id === message.id ? message : m));
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "sale_confirmations", filter: `chat_id=eq.${chatId}` }, (payload) => {
+          if (!vigente()) return;
+          if (payload.eventType !== "DELETE") {
+            const sale = payload.new as Omit<SaleConfirmation, "products_services">;
+            changedSales.set(sale.id, sale);
+            setSaleConfirmations((prev) => ["pending_confirmation", "completed"].includes(sale.status)
+              ? prev.map((sc) => sc.id === sale.id ? { ...sc, ...sale } : sc)
+              : prev.filter((sc) => sc.id !== sale.id));
+          }
+          if (payload.eventType === "DELETE") {
+            const id = (payload.old as { id?: string }).id;
+            if (id) {
+              changedSales.set(id, null);
+              setSaleConfirmations(prev => prev.filter(sale => sale.id !== id));
+            }
+          }
+          refresh.solicitar();
+        })
+        .subscribe((status) => {
+          if (!vigente()) return;
+          subscriptionGeneration++;
+          subscribed = status === "SUBSCRIBED";
+          if (subscribed) refresh.solicitar();
+          else pending();
+        });
+    }, pending);
     return () => {
-      supabase.removeChannel(channel);
+      disposed = true;
+      retryRecoveryRef.current = () => {};
+      cancelRefresh();
+      unregister();
     };
-    // F9: messages intentionally NOT in the dep list. The catch-up uses
-    // the latest buffer at subscription time (closed-over via state) --
-    // re-running the entire effect on every messages update would tear
-    // down and rebuild the Realtime channel + listeners on each new
-    // message, defeating the whole subscription. The existing channel
-    // handlers already cover post-subscribe live INSERTs; the catch-up
-    // is a one-shot bridge.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, supabase]);
+  }, [chatId, currentUserId, deletedAt, supabase, router, setMessages, setSaleConfirmations, applySalesSnapshot, salesFailed]);
 
   // A5.1: scroll preservation on prepend. Runs synchronously BEFORE
   // paint (useLayoutEffect, NOT useEffect) so the user does NOT see a
@@ -484,6 +422,13 @@ export function ChatWindow({
   // commit. With the gate, the snapshot is consumed ONLY when the change
   // is a prepend, never when it is a bottom append.
   useLayoutEffect(() => {
+    const anchor = recoveryAnchorRef.current;
+    recoveryAnchorRef.current = null;
+    if (anchor) {
+      const container = scrollContainerRef.current;
+      const node = container && [...container.querySelectorAll<HTMLElement>("[data-message-id]")].find((item) => item.dataset.messageId === anchor.id);
+      if (node && container) container.scrollTop += node.getBoundingClientRect().top - anchor.top;
+    }
     if (!isPrependingRef.current) return;
     isPrependingRef.current = false;
     const snap = pendingScrollSnapshotRef.current;
@@ -502,8 +447,15 @@ export function ChatWindow({
   // useLayoutEffect above without a smooth-scroll override here.
   useEffect(() => {
     const lastId = messages[messages.length - 1]?.id ?? null;
-    if (lastId === lastMessageIdRef.current) return;
+    if (lastId === lastMessageIdRef.current) {
+      preserveRecoveryScrollRef.current = false;
+      return;
+    }
     lastMessageIdRef.current = lastId;
+    if (preserveRecoveryScrollRef.current) {
+      preserveRecoveryScrollRef.current = false;
+      return;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -628,7 +580,7 @@ export function ChatWindow({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div data-navigation-kind="chat_detail" data-navigation-ready={readinessToken} className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border/10 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
@@ -651,7 +603,7 @@ export function ChatWindow({
             )}
           </div>
         </Link>
-        {saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
+        {salesStatus === "ready" && saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
           <button
             onClick={() => setShowSaleForm(!showSaleForm)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-[color:var(--brand-dark)]"
@@ -675,6 +627,13 @@ export function ChatWindow({
           No pudimos avisarle al vendedor que te interesa. Escríbele tú aquí abajo para que se entere.
         </div>
       )}
+
+      {salesStatus !== "ready" && <div className="mx-4 shrink-0 text-xs text-fg-muted" role="status">
+        {salesStatus === "loading" ? "Cargando confirmaciones…" : <>
+          No se pudieron actualizar las confirmaciones. <button type="button" className="min-h-11 font-semibold text-brand"
+            disabled={retryingSales} onClick={() => { retryRecoveryRef.current(); startSalesRetry(() => router.refresh()); }}>{retryingSales ? "Reintentando…" : "Reintentar"}</button>
+        </>}
+      </div>}
 
       {/* Sale confirmation form */}
       {showSaleForm && (
@@ -820,6 +779,7 @@ export function ChatWindow({
           return (
             <div
               key={msg.id}
+              data-message-id={msg.id}
               className={cn(
                 "flex items-end gap-1 group",
                 isOwn ? "justify-end" : "justify-start"
@@ -877,6 +837,14 @@ export function ChatWindow({
             </div>
           );
         })}
+        {recovery !== "synced" && (
+          <div className="px-4 py-2 text-sm text-muted-foreground">
+            <p role="status" aria-live="polite">{recovery === "recovering" ? "Recuperando conversación…" : recovery === "more" ? "Hay mensajes pendientes de recuperar." : "Sincronización pendiente. Tus mensajes se conservan."}</p>
+            {recovery !== "recovering" && <button type="button" className="mt-2 min-h-12 rounded-lg border border-border px-3 text-fg focus-visible:outline-2 focus-visible:outline-primary" onClick={() => retryRecoveryRef.current()}>
+              {recovery === "more" ? "Cargar mensajes pendientes" : "Reintentar"}
+            </button>}
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

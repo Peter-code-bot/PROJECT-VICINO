@@ -42,6 +42,17 @@ export function CapacitorInit() {
       const { Capacitor } = await import("@capacitor/core");
       if (state.cancelled || !Capacitor.isNativePlatform()) return;
 
+      // Independiente de OAuth, barra y teclado: sus fallos no anulan Realtime.
+      void Promise.all([
+        import("@/lib/realtime/pausa-en-segundo-plano"),
+        import("@/lib/realtime/canales-gestionados"),
+        import("@/lib/supabase/client"),
+      ]).then(([{ iniciarPausaNativa }, { canalesGestionados }, { createClient }]) => {
+        if (state.cancelled) return;
+        const handle = iniciarPausaNativa(canalesGestionados(createClient()));
+        state.handles.push(handle);
+      }).catch(() => { console.warn("[realtime] lifecycle nativo no disponible"); });
+
       // Mark native context for CSS targeting (scrollbar hiding, etc.)
       document.body.classList.add("is-capacitor");
 
@@ -55,7 +66,7 @@ export function CapacitorInit() {
       // no llega (son 583 B que webpack saco a un fichero aparte, o sea una
       // peticion de red mas contra vicinomarket.com), el resto del arranque no
       // se queda esperando. Y si falla, el launchAutoHide del config lo quita
-      // igual a los 4 s.
+      // igual al alcanzar su techo de 15 s.
       void import("@capacitor/splash-screen")
         .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 300 }))
         .catch(() => {});
@@ -116,7 +127,6 @@ export function CapacitorInit() {
           const { toast } = await import("sonner");
           toast("Presiona de nuevo para salir", { duration: TOAST_GRACE_MS });
         } catch (err) {
-          // eslint-disable-next-line no-console -- back button handler debe loguear errores nativos
           console.error("[capacitor-init] handleBackButton error:", err);
         }
       };
@@ -178,61 +188,48 @@ export function CapacitorInit() {
         } catch {}
       }
 
-      // --- Status bar ---
-      const { StatusBar, Style } = await import("@capacitor/status-bar");
-      if (state.cancelled) return;
-
-      const updateStatusBarTheme = () => {
-        const isDark = document.documentElement.classList.contains("dark");
-        void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
-
-        // El color sale del MISMO token que pinta el fondo de la app, leido de
-        // los estilos calculados. Antes estaba escrito a mano aqui
-        // (#0D0D1A / #EDE0D4) y no coincidia con los tokens de globals.css
-        // (#050907 / #FFF8F0): la barra de estado y el fondo eran colores
-        // distintos, y esa es la costura que se ve al abrir.
-        //
-        // Leerlo en vez de copiarlo lo vuelve imposible de desincronizar. Es
-        // ademas la leccion del dia: habia un ThemeProvider MUERTO en el repo
-        // que si tenia los colores correctos, y el vivo era el que no. Dos
-        // copias siempre acaban divergiendo; la unica salida es que no haya
-        // copia.
-        const token = getComputedStyle(document.documentElement)
-          .getPropertyValue("--bg")
-          .trim();
-        // Reserva por si el token no esta disponible todavia. No se inventa un
-        // color nuevo: son los mismos valores de globals.css.
-        const color = /^#[0-9a-fA-F]{3,8}$/.test(token)
-          ? token
-          : isDark
-            ? "#050907"
-            : "#FFF8F0";
-        void StatusBar.setBackgroundColor({ color });
-      };
-
-      // Initial apply
-      updateStatusBarTheme();
-
-      // Observe theme changes
-      const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          if (mutation.attributeName === "class") {
-            updateStatusBarTheme();
-            break;
-          }
-        }
-      });
-
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-
-      state.handles.push({
-        remove: async () => {
-          observer.disconnect();
-        },
-      });
+      // --- Status bar: fallo aislado; el teclado aun debe inicializarse. ---
+      try {
+        const { StatusBar, Style } = await import("@capacitor/status-bar");
+        if (state.cancelled) return;
+        let requested = false;
+        let applying = false;
+        const updateStatusBarTheme = () => {
+          requested = true;
+          if (applying) return;
+          applying = true;
+          void (async () => {
+            while (requested && !state.cancelled) {
+              requested = false;
+              const isDark = document.documentElement.classList.contains("dark");
+              const token = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+              const color = /^#[0-9a-fA-F]{3,8}$/.test(token) ? token : isDark ? "#050907" : "#FFF8F0";
+              // Dark significa iconos claros. Android 15+ puede ignorar el fondo;
+              // esto no acredita la correccion del primer frame edge-to-edge.
+              const results = await Promise.allSettled([
+                StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }),
+                StatusBar.setBackgroundColor({ color }),
+              ]);
+              if (results.some((result) => result.status === "rejected")) {
+                console.warn("[status-bar] no se pudo aplicar el tema");
+              }
+            }
+          })().catch(() => {
+            console.warn("[status-bar] tema no disponible");
+          }).finally(() => {
+            applying = false;
+            // Una mutacion puede llegar entre la ultima condicion del bucle y
+            // este finally. Vuelve a arrancar para no perder ese tema final.
+            if (requested && !state.cancelled) updateStatusBarTheme();
+          });
+        };
+        updateStatusBarTheme();
+        const observer = new MutationObserver(updateStatusBarTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state.handles.push({ remove: async () => { observer.disconnect(); } });
+      } catch {
+        console.warn("[status-bar] plugin no disponible");
+      }
 
       // --- Keyboard: set CSS variable for keyboard height ---
       try {
