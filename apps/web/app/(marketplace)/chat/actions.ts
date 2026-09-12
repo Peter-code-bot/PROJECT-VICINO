@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   sendMessageSchema,
   getOrCreateChatSchema,
+  iniciarConversacionSchema,
   markChatReadSchema,
   createSaleConfirmationSchema,
   confirmSaleSchema,
@@ -15,6 +16,10 @@ import {
   type ChatAttachment,
 } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import {
+  llamarIniciarConversacion,
+  traducirErrorIniciarConversacion,
+} from "@/lib/chat/iniciar-conversacion";
 
 export async function getOrCreateChat(sellerId: string, productId?: string) {
   const supabase = await createClient();
@@ -57,6 +62,103 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
 
   if (error) return { error: error.message };
   return { chatId };
+}
+
+/**
+ * Contrato de contacto/compra en UNA operacion (rama feat/chat-intencion-idempotente).
+ *
+ * Obtiene o crea la conversacion con el vendedor y, si `intencion` es "compra",
+ * registra el aviso "quiere comprar" con la clave de idempotencia que el
+ * cliente genero al pintar el boton. La RPC iniciar_conversacion
+ * (20260912300000) hace todo dentro de una transaccion: si falla el registro
+ * de la intencion no queda ni el chat recien creado, y la accion devuelve
+ * { error }, nunca exito a medias.
+ *
+ *   - Misma clave (F5, atras, doble toque, reintento por red): mismo chatId,
+ *     mismo messageId, `repetida: true`, cero filas nuevas.
+ *   - Clave nueva (otra vista de la ficha): intencion nueva en el MISMO chat.
+ *   - Sin intencion: solo abre/obtiene el chat (`messageId: null`).
+ *
+ * El comprador es siempre quien llama (auth.uid() dentro de la RPC); el
+ * vendedor y el producto se comprueban en la base (existencia, visibilidad,
+ * que el producto sea de ese vendedor, bloqueo bidireccional, suspension). El
+ * texto del aviso lo compone la base: no viaja desde el cliente.
+ *
+ * NO sustituye todavia a getOrCreateChat ni cambia chat/page.tsx: la
+ * integracion en pantallas se coordina con Alejandro (ver
+ * docs/CONTRATO-iniciar-conversacion.md).
+ */
+export async function iniciarConversacion(input: {
+  sellerId: string;
+  productId?: string;
+  intencion?: "contacto" | "compra";
+  clave?: string;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "No autenticado" };
+
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const parsed = iniciarConversacionSchema.safeParse({
+    seller_id: input.sellerId,
+    product_id: input.productId,
+    intencion: input.intencion ?? "contacto",
+    clave: input.clave,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  }
+
+  // La base tambien lo rechaza (22023); aqui solo se ahorra el viaje.
+  if (user.id === parsed.data.seller_id) {
+    return { error: "No puedes iniciar un chat contigo mismo" };
+  }
+
+  const { data, error } = await llamarIniciarConversacion(supabase, {
+    p_vendedor_id: parsed.data.seller_id,
+    p_producto_id: parsed.data.product_id,
+    p_intencion: parsed.data.intencion,
+    p_clave: parsed.data.clave,
+  });
+
+  if (error) {
+    // Los codigos que la RPC levanta a proposito (42501, 22023, PT404, 23514,
+    // 23505) son respuestas, no fallos: no ensucian Sentry. Todo lo demas si,
+    // con el `details` de Postgres, que es donde el motor nombra la columna o
+    // la policy que rechazo.
+    if (!["42501", "22023", "PT404", "P0002", "23514", "23505"].includes(error.code)) {
+      Sentry.captureException(error, {
+        tags: { action: "iniciarConversacion" },
+        extra: {
+          sellerId: parsed.data.seller_id,
+          productId: parsed.data.product_id,
+          intencion: parsed.data.intencion,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        },
+      });
+    }
+    return { error: traducirErrorIniciarConversacion(error) };
+  }
+
+  if (!data) {
+    Sentry.captureMessage("iniciarConversacion: respuesta con forma inesperada", "error");
+    return { error: "No se pudo abrir la conversación. Inténtalo de nuevo en un momento." };
+  }
+
+  return {
+    chatId: data.chat_id,
+    messageId: data.message_id,
+    chatNuevo: data.chat_nuevo,
+    mensajeNuevo: data.mensaje_nuevo,
+    repetida: data.repetida,
+  };
 }
 
 /**
