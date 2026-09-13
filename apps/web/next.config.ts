@@ -192,10 +192,22 @@ const cspDirectives = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.apple-mapkit.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.apple-mapkit.com https://*.apple.com",
-  // media-src: los .mov/.mp4 de product-media en Supabase y las previsualizaciones blob: de /vender y de la reseña
+  // media-src NO EXISTIA, asi que el video caia en default-src 'self' y cada
+  // reproduccion se reportaba: los .mov/.mp4 de product-media en Supabase y las
+  // previsualizaciones blob: de /vender y de la resena.
   "media-src 'self' blob: https://*.supabase.co",
   "font-src 'self' data:",
-  // connect-src: Supabase, Upstash, Apple MapKit y Sentry Ingest (en fallback de Capacitor nativo)
+  // *.ingest.us.sentry.io NO es laxitud, es algo que la app de verdad pide: en
+  // el shell de Capacitor, si el SDK nativo no arranca, @sentry/capacitor
+  // reinicia el SDK de JS con su transporte fetch por defecto y manda los
+  // envelopes directo al ingest, sin pasar por el tunel. Sin esta entrada,
+  // promover la CSP apagaria el Sentry del movil.
+  //
+  // Las entradas de OpenStreetMap (tiles y nominatim) se fueron con Leaflet en
+  // 14b9251. Si alguien vuelve a meter un mapa que no sea MapKit, ojo: el
+  // service worker de next-pwa registra un NetworkFirst para TODO lo
+  // cross-origin, asi que re-pide cada tile por fetch() y eso se mide contra
+  // connect-src, no contra img-src.
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://*.apple-mapkit.com https://*.apple.com https://*.ingest.us.sentry.io",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

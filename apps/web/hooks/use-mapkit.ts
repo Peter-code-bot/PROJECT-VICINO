@@ -137,10 +137,14 @@ import * as Sentry from "@sentry/nextjs";
 const MAPKIT_SCRIPT_URL = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
 const LOAD_TIMEOUT_MS = 8000;
 
-let sentryReported = false;
+// Una vez POR MOTIVO, no una vez por sesion. Con un solo booleano global, el
+// primer fallo apagaba el reporte de todos los demas: un timeout al arrancar
+// dejaba invisible el token caducado de media hora despues, que es justo el que
+// hay que ver.
+const motivosReportados = new Set<string>();
 function reportMapKitError(reason: string, extra?: unknown) {
-  if (sentryReported) return;
-  sentryReported = true;
+  if (motivosReportados.has(reason)) return;
+  motivosReportados.add(reason);
   try {
     Sentry.captureMessage(`[MapKit] ${reason}`, {
       level: "warning",
@@ -204,6 +208,8 @@ export async function loadMapKitScript(): Promise<boolean> {
           return;
         }
 
+        let primerTokenConsumido = false;
+
         // 2. Inyectar script si no existe
         const existingScript = document.querySelector(`script[src="${MAPKIT_SCRIPT_URL}"]`);
         const onScriptLoaded = () => {
@@ -217,13 +223,31 @@ export async function loadMapKitScript(): Promise<boolean> {
             window.mapkit.init({
               // B-3: Refresco dinámico de token cada vez que Apple lo solicite (expiración de 30 min)
               authorizationCallback: (done: (token: string) => void) => {
-                fetchTokenFresh().then((freshToken) => {
-                  if (freshToken) {
-                    done(freshToken);
-                  } else {
-                    console.warn("[MapKit] Falló refresco dinámico de token");
-                  }
-                });
+                // El primer token ya esta en la mano: reusarlo evita una segunda
+                // peticion identica en cada arranque en frio.
+                if (!primerTokenConsumido) {
+                  primerTokenConsumido = true;
+                  done(initialToken);
+                  return;
+                }
+                fetchTokenFresh()
+                  .then((freshToken) => {
+                    if (freshToken) {
+                      done(freshToken);
+                      return;
+                    }
+                    // done() SIEMPRE. Si no se llama, MapKit se queda esperando
+                    // un token para siempre: el mapa se congela sin error, sin
+                    // reintento y sin nada en consola que lo explique. Un token
+                    // vacio hace que Apple falle de forma visible, que es lo que
+                    // queremos.
+                    reportMapKitError("Falló el refresco dinámico del token de MapKit");
+                    done("");
+                  })
+                  .catch((e) => {
+                    reportMapKitError("Excepción al refrescar el token de MapKit", String(e));
+                    done("");
+                  });
               },
               language: "es",
             });
@@ -283,6 +307,9 @@ export function useMapKit() {
     if (typeof window !== "undefined") {
       delete window.__mapkit_init_promise;
     }
+    // Un reintento explicito del usuario es un evento nuevo: si vuelve a fallar,
+    // queremos verlo en Sentry aunque ya hubieramos reportado ese mismo motivo.
+    motivosReportados.clear();
     setIsReady(false);
     loadMapKitScript().then((ok) => {
       setIsAvailable(ok);

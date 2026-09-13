@@ -43,6 +43,7 @@ export default function DeliveryMap({
   const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [showMap, setShowMap] = useState(hasInitial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inversaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,12 +111,14 @@ export default function DeliveryMap({
         });
 
         if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
-          setSuggestions(results);
+          setSuggestions(results.results);
+          setOutOfCoverage(results.outOfCoverage);
           setHasSearched(true);
         }
       } catch {
         if (searchSeqRef.current === currentSeq) {
           setSuggestions([]);
+          setOutOfCoverage(false);
           setHasSearched(true);
         }
       } finally {
@@ -129,13 +132,24 @@ export default function DeliveryMap({
   async function selectSuggestion(s: LocationSearchResult) {
     setSearchQuery(s.name);
     setSuggestions([]);
-    setHasSearched(false);
+    setSearching(true);
 
     const resolved = await resolveLocationCoordinates(s, {
       lat: position[0],
       lng: position[1],
     });
+    setSearching(false);
 
+    // Esta es la zona de entrega de un vendedor: plantarla en el centro del mapa
+    // porque la resolucion fallo es peor que no hacer nada.
+    if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
+      setOutOfCoverage(!!resolved.outOfCoverage);
+      setHasSearched(true);
+      return;
+    }
+
+    setHasSearched(false);
+    setOutOfCoverage(false);
     setPosition([resolved.lat, resolved.lng]);
     setShowMap(true);
     onLocationChange(resolved.lat, resolved.lng, resolved.fullName);
@@ -184,7 +198,9 @@ export default function DeliveryMap({
         {/* Empty results indicator */}
         {!searching && hasSearched && suggestions.length === 0 && searchQuery.trim().length >= 3 && (
           <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl border bg-card shadow-2xl p-4 text-center text-sm text-muted-foreground">
-            No se encontraron ubicaciones para esa búsqueda.
+            {outOfCoverage
+              ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
+              : "No se encontraron ubicaciones para esa búsqueda."}
           </div>
         )}
 

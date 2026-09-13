@@ -135,6 +135,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const [recents, setRecents] = useState<SavedLocation[]>([]);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -215,9 +216,11 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
       if (v.trim().length < 3) {
         setResults([]);
+        setSearchNotice(null);
         setSearching(false);
         return;
       }
+      setSearchNotice(null);
       setSearching(true);
       const currentSeq = ++searchSeqRef.current;
 
@@ -232,11 +235,17 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             signal: controller.signal,
           });
           if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
-            setResults(data);
+            setResults(data.results);
+            setSearchNotice(
+              data.outOfCoverage
+                ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
+                : null,
+            );
           }
         } catch {
           if (searchSeqRef.current === currentSeq) {
             setResults([]);
+            setSearchNotice(null);
           }
         } finally {
           if (searchSeqRef.current === currentSeq) {
@@ -262,10 +271,25 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
   const handleSelectResult = useCallback(
     async (r: LocationSearchResult) => {
+      setSearching(true);
       const resolved = await resolveLocationCoordinates(r, {
         lat: center.lat,
         lng: center.lng,
       });
+      setSearching(false);
+
+      // Si la resolucion no dio coordenadas buenas NO se guarda nada. Guardar
+      // aqui era mover al usuario al centro del mapa con el nombre del sitio que
+      // habia pedido: feed equivocado, etiqueta correcta, nadie se entera.
+      if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
+        setSearchNotice(
+          resolved.outOfCoverage
+            ? "Ese lugar está fuera de la zona donde VICINO opera por ahora."
+            : "No pudimos ubicar ese lugar. Intenta con otro nombre o usa tu ubicación actual.",
+        );
+        return;
+      }
+
       commit({
         lat: resolved.lat,
         lng: resolved.lng,
@@ -386,6 +410,15 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                     />
                   )}
                 </div>
+
+                {searchNotice && (
+                  <p
+                    role="status"
+                    className="mt-2 rounded-xl bg-[color:var(--card-2)] px-3 py-2 text-xs leading-snug text-[color:var(--fg-dim)]"
+                  >
+                    {searchNotice}
+                  </p>
+                )}
 
                 {results.length > 0 && (
                   <div className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded-2xl bg-[color:var(--card-2)] shadow-[0_0_0_1px_var(--border),0_8px_24px_rgba(0,0,0,0.4)]">

@@ -45,6 +45,7 @@ export default function OnboardingLocationMap({
   const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
@@ -136,12 +137,14 @@ export default function OnboardingLocationMap({
 
         // Descartar si una consulta más reciente ya se disparó
         if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
-          setSuggestions(results);
+          setSuggestions(results.results);
+          setOutOfCoverage(results.outOfCoverage);
           setHasSearched(true);
         }
       } catch {
         if (searchSeqRef.current === currentSeq) {
           setSuggestions([]);
+          setOutOfCoverage(false);
           setHasSearched(true);
         }
       } finally {
@@ -156,13 +159,24 @@ export default function OnboardingLocationMap({
   const selectSuggestion = async (s: LocationSearchResult) => {
     setSearchQuery(s.name);
     setSuggestions([]);
-    setHasSearched(false);
+    setSearching(true);
 
     const resolved = await resolveLocationCoordinates(s, {
       lat: position[0],
       lng: position[1],
     });
+    setSearching(false);
 
+    // Sin coordenadas buenas no se mueve el pin: antes esto plantaba al usuario
+    // en el centro del mapa con el nombre del sitio que habia elegido.
+    if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
+      setOutOfCoverage(!!resolved.outOfCoverage);
+      setHasSearched(true);
+      return;
+    }
+
+    setHasSearched(false);
+    setOutOfCoverage(false);
     commitPosition(resolved.lat, resolved.lng, resolved.name);
   };
 
@@ -243,15 +257,27 @@ export default function OnboardingLocationMap({
         {!searching && hasSearched && suggestions.length === 0 && searchQuery.trim().length >= 3 && (
           <div className="absolute left-0 right-0 z-[60] mt-1.5 rounded-2xl bg-[color:var(--card-2)] p-3 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.35)] border border-[color:var(--border)] space-y-2">
             <p className="text-[color:var(--fg-dim)]">
-              No encontramos lugares con ese nombre.
+              {outOfCoverage
+                ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
+                : "No encontramos lugares con ese nombre."}
             </p>
-            <button
-              type="button"
-              onClick={handleConfirmManualText}
-              className="w-full rounded-xl bg-[color:var(--brand)]/15 px-3 py-1.5 text-center font-medium text-[color:var(--brand)] hover:bg-[color:var(--brand)]/25"
-            >
-              Usar &ldquo;{searchQuery.trim()}&rdquo; como mi zona
-            </button>
+            {/*
+              Esta salida manual guarda el CENTRO ACTUAL del mapa con el texto
+              que escribio el usuario como etiqueta. Vale cuando no encontramos
+              el nombre —el pin esta a la vista y el usuario lo esta aceptando—
+              pero NO cuando el sitio esta fuera de cobertura: ahi ofrecerlo
+              seria volver a prometer "Monterrey" y guardar Puebla, que es
+              justo el fallo que se acaba de corregir.
+            */}
+            {!outOfCoverage && (
+              <button
+                type="button"
+                onClick={handleConfirmManualText}
+                className="w-full rounded-xl bg-[color:var(--brand)]/15 px-3 py-1.5 text-center font-medium text-[color:var(--brand)] hover:bg-[color:var(--brand)]/25"
+              >
+                Usar &ldquo;{searchQuery.trim()}&rdquo; como mi zona
+              </button>
+            )}
           </div>
         )}
 
