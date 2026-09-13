@@ -51,7 +51,9 @@ let yaAvisado = false;
 
 function avisarSiNoHayFreno(): void {
   if (hasUpstash || yaAvisado) return;
-  if (process.env.NODE_ENV !== "production") return;
+  // VERCEL_ENV y no NODE_ENV: NODE_ENV tambien vale "production" en cada build
+  // de preview, asi que el preview alimentaba el mismo issue.
+  if (process.env.VERCEL_ENV !== "production") return;
   yaAvisado = true;
   const mensaje =
     "[rate-limit] NO HAY LIMITE DE PETICIONES EN PRODUCCION: faltan " +
@@ -61,9 +63,21 @@ function avisarSiNoHayFreno(): void {
   console.error(mensaje);
   // Sentry se carga de forma perezosa para no atarlo al grafo del modulo, que
   // tambien se importa desde proxy.ts (runtime Edge).
+  // Nivel "warning" y no "error" a proposito. `yaAvisado` es una variable de
+  // modulo, o sea POR ISOLATE: en Vercel eso no es una vez por despliegue sino
+  // una vez por arranque en frio, en los dos runtimes (Node y Edge) y en cada
+  // region. Asi salieron 77 eventos en una semana, el 62% de todo el volumen de
+  // errores del proyecto, para decir 77 veces lo mismo. Y no es un error de
+  // ejecucion: es un hecho de configuracion del despliegue, que ademas ya queda
+  // dicho una sola vez y de forma determinista en el guard de build
+  // (scripts/check-rate-limit-env.mjs). Aqui se conserva la senal, pero fuera
+  // del recuento de errores y de la regla de alerta.
   void import("@sentry/nextjs")
     .then((Sentry) => {
-      Sentry.captureMessage(mensaje, "error");
+      Sentry.captureMessage(mensaje, {
+        level: "warning",
+        tags: { runtime: process.env.NEXT_RUNTIME ?? "desconocido" },
+      });
     })
     .catch(() => {
       // Si Sentry no esta disponible el console.error de arriba ya salio.
