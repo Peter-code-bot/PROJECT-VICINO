@@ -43,3 +43,61 @@ export function formatRelativeTime(date: string | Date): string {
   if (Math.abs(diffDays) < 30) return relativeFormatter.format(diffDays, "day");
   return formatDate(date);
 }
+
+const REPAIR_PATTERNS: Array<[RegExp, string]> = [
+  [/Rodr[\uFFFD]guez/gi, "Rodríguez"],
+  [/Mart[\uFFFD]nez/gi, "Martínez"],
+  [/Garc[\uFFFD]a/gi, "García"],
+  [/Hern[\uFFFD]ndez/gi, "Hernández"],
+  [/Gonz[\uFFFD]lez/gi, "González"],
+  [/P[\uFFFD]rez/gi, "Pérez"],
+  [/S[\uFFFD]nchez/gi, "Sánchez"],
+  [/L[\uFFFD]pez/gi, "López"],
+  [/D[\uFFFD]az/gi, "Díaz"],
+  [/Ram[\uFFFD]rez/gi, "Ramírez"],
+  [/Guti[\uFFFD]rrez/gi, "Gutiérrez"],
+  [/V[\uFFFD]zquez/gi, "Vázquez"],
+  [/Jim[\uFFFD]nez/gi, "Jiménez"],
+  [/Mu[\uFFFD]oz/gi, "Muñoz"],
+  [/Pe[\uFFFD]a/gi, "Peña"],
+  [/M[\uFFFD]xico/gi, "México"],
+  [/Jes[\uFFFD]s/gi, "Jesús"],
+  [/Jos[\uFFFD]/gi, "José"],
+  [/Mar[\uFFFD]a/gi, "María"],
+  [/Sebasti[\uFFFD]n/gi, "Sebastián"],
+  [/Adri[\uFFFD]n/gi, "Adrián"],
+  [/Juli[\uFFFD]n/gi, "Julián"],
+  [/Mart[\uFFFD]n/gi, "Martín"],
+  [/Ángel/gi, "Ángel"],
+  [/[\uFFFD]ngel/gi, "Ángel"],
+];
+
+/**
+ * Sanitiza y repara nombres de usuario que puedan contener caracteres corruptos
+ * o el caracter de reemplazo Unicode (\uFFFD / ) debido a codificaciones de BD antiguas.
+ */
+export function cleanDisplayName(name: string | null | undefined): string {
+  if (!name || typeof name !== "string") return "Usuario";
+
+  let cleaned = name.trim();
+  if (!cleaned) return "Usuario";
+
+  // Reparar patrones comunes con \uFFFD
+  for (const [pattern, replacement] of REPAIR_PATTERNS) {
+    cleaned = cleaned.replace(pattern, (match) => {
+      const first = match.charAt(0);
+      if (first && first === first.toUpperCase()) {
+        return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+      }
+      return replacement.toLowerCase();
+    });
+  }
+
+  // Eliminar cualquier caracter de reemplazo Unicode (\uFFFD) remanente
+  cleaned = cleaned.replace(/\uFFFD+/g, "").trim();
+
+  // Limpiar espacios dobles producidos por la remoción
+  cleaned = cleaned.replace(/\s{2,}/g, " ");
+
+  return cleaned || "Usuario";
+}

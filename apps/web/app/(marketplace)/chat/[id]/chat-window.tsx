@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } 
 import { createClient } from "@/lib/supabase/client";
 import { canalesGestionados, refrescoCoalescido } from "@/lib/realtime/canales-gestionados";
 import { reconciliarChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
-import { formatPrice, formatRelativeTime } from "@vicino/shared";
+import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -589,12 +589,12 @@ export function ChatWindow({
         <Link
           href={`/vendedor/${otherUser?.id ?? ""}`}
           className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
-          aria-label={otherUser?.nombre ? `Ver perfil de ${otherUser.nombre}` : "Perfil de usuario"}
+          aria-label={otherUser?.nombre ? `Ver perfil de ${cleanDisplayName(otherUser.nombre)}` : "Perfil de usuario"}
         >
-          <UserAvatar src={otherUser?.foto} name={otherUser?.nombre ?? "?"} size="sm" />
+          <UserAvatar src={otherUser?.foto} name={cleanDisplayName(otherUser?.nombre)} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[color:var(--fg)]">
-              {otherUser?.nombre ?? "Usuario"}
+              {cleanDisplayName(otherUser?.nombre)}
             </p>
             {product && (
               <p className="truncate text-xs text-[color:var(--fg-muted)]">

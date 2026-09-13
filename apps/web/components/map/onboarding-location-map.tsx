@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Search, LocateFixed, Loader2, MapPin, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { searchLocations, type LocationSearchResult } from "@/lib/geo/location-search";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
   ssr: false,
@@ -36,9 +37,7 @@ export default function OnboardingLocationMap({
       : ""
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<
-    Array<{ display_name: string; lat: string; lon: string }>
-  >([]);
+  const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -88,7 +87,7 @@ export default function OnboardingLocationMap({
     [commitPosition]
   );
 
-  // Buscador de direcciones
+  // Buscador de direcciones con sesgo de proximidad geográfica
   const handleSearch = (q: string) => {
     setSearchQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -98,32 +97,25 @@ export default function OnboardingLocationMap({
       return;
     }
     setSearching(true);
-    debounceRef.current = setTimeout(() => {
-      fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          q
-        )}&format=json&countrycodes=mx&limit=5`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          setSuggestions(Array.isArray(data) ? data : []);
-          setSearching(false);
-        })
-        .catch(() => {
-          setSuggestions([]);
-          setSearching(false);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchLocations(q, {
+          center: { lat: position[0], lng: position[1] },
+          limit: 5,
         });
-    }, 500);
+        setSuggestions(results);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
   };
 
-  const selectSuggestion = (s: { display_name: string; lat: string; lon: string }) => {
-    const lat = parseFloat(s.lat);
-    const lng = parseFloat(s.lon);
-    const parts = s.display_name.split(",").map((p) => p.trim());
-    const shortLabel = parts.slice(0, 2).join(", ");
-    setSearchQuery(shortLabel);
+  const selectSuggestion = (s: LocationSearchResult) => {
+    setSearchQuery(s.name);
     setSuggestions([]);
-    commitPosition(lat, lng, shortLabel);
+    commitPosition(s.lat, s.lng, s.name);
   };
 
   // Botón GPS
@@ -184,15 +176,29 @@ export default function OnboardingLocationMap({
         {/* Dropdown sugerencias */}
         {suggestions.length > 0 && (
           <div className="absolute left-0 right-0 z-[60] mt-1.5 overflow-hidden rounded-2xl bg-[color:var(--card-2)] shadow-[0_8px_24px_rgba(0,0,0,0.35)] border border-[color:var(--border)] max-h-56 overflow-y-auto">
-            {suggestions.map((s, idx) => (
+            {suggestions.map((s) => (
               <button
-                key={idx}
+                key={s.id}
                 type="button"
                 onClick={() => selectSuggestion(s)}
                 className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left text-xs text-[color:var(--fg)] hover:bg-[color:var(--card)] border-b border-[color:var(--border)]/40 last:border-0"
               >
                 <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[color:var(--brand)]" />
-                <span className="line-clamp-2">{s.display_name}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium truncate">{s.name}</span>
+                    {s.distanceKm !== undefined && (
+                      <span className="shrink-0 text-[10px] text-[color:var(--fg-dim)]">
+                        {s.distanceKm < 1 ? "< 1 km" : `${s.distanceKm.toFixed(1)} km`}
+                      </span>
+                    )}
+                  </div>
+                  {s.subtitle && (
+                    <p className="line-clamp-1 text-[11px] text-[color:var(--fg-dim)] mt-0.5">
+                      {s.subtitle}
+                    </p>
+                  )}
+                </div>
               </button>
             ))}
           </div>
