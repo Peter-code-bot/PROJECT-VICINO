@@ -173,15 +173,43 @@ function sentryCspReportUri(): string | null {
   }
 }
 
-const cspReportUri = sentryCspReportUri();
+/**
+ * Solo PRODUCCION reporta.
+ *
+ * Estas cabeceras tambien las sirve Vercel en cada preview, y encima de la
+ * pagina de deployment-protection, que es suya y no nuestra. De ahi salian los
+ * "Blocked 'font' from 'vercel.com'" y los "Blocked 'connect' from
+ * 'vicinomarket-<hash>-peters-projects-*.vercel.app'": violaciones reales de
+ * una pagina que no es de la app, mezcladas con las nuestras en el mismo
+ * proyecto de Sentry. Ademas el flujo de despliegue no usa el preview como
+ * puerta, asi que esos reportes no tenian lector.
+ */
+const cspReportUri =
+  process.env.VERCEL_ENV === "production" ? sentryCspReportUri() : null;
 
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.apple-mapkit.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com https://*.apple-mapkit.com https://*.apple.com",
+  // unpkg.com se cae: solo servia los iconos por defecto de Leaflet y b4718dd
+  // borro las tres urls que los pedian. *.tile.openstreetmap.org SE QUEDA: la
+  // migracion a MapKit no fue total, comunidades/admin/centro-map.tsx sigue
+  // montando react-leaflet con TileLayer de OSM.
+  "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://*.apple-mapkit.com https://*.apple.com",
+  // media-src NO EXISTIA, asi que el video caia en default-src 'self' y cada
+  // reproduccion se reportaba: los .mov/.mp4 de product-media en Supabase y las
+  // previsualizaciones blob: de /vender y de la resena.
+  "media-src 'self' blob: https://*.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org https://*.apple-mapkit.com https://*.apple.com",
+  // Dos anadidos que NO son laxitud, son cosas que la app de verdad pide:
+  // - *.tile.openstreetmap.org: el service worker de next-pwa registra un
+  //   NetworkFirst para TODO lo cross-origin, asi que vuelve a pedir cada tile
+  //   por fetch() y eso se mide contra connect-src, no contra img-src.
+  // - *.ingest.us.sentry.io: en el shell de Capacitor, si el SDK nativo no
+  //   arranca, @sentry/capacitor reinicia el SDK de JS con su transporte fetch
+  //   por defecto y manda los envelopes directo al ingest, sin pasar por el
+  //   tunel. Sin esta entrada, promover la CSP apagaria el Sentry del movil.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://*.apple-mapkit.com https://*.apple.com https://*.ingest.us.sentry.io",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-ancestors 'none'",
