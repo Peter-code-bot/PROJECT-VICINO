@@ -6,7 +6,6 @@ import { parseFeedCursor, makeFeedCursor } from "@/lib/feed-cursor";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 import { headers, cookies } from "next/headers";
 import { parseRadiusCookie } from "@/lib/geo/radius";
-import * as Sentry from "@sentry/nextjs";
 
 /**
  * A5.2: cursor-based load-more for the home "Mas productos" flat section.
@@ -26,9 +25,12 @@ import * as Sentry from "@sentry/nextjs";
  *    flat feed. The carousels above already do the grouping work on the
  *    initial 150; pages 2..N are intentionally flat and ordered by
  *    recency. See proposal.md Constraint and design.md Option C.
- *  - No rate limit guard -- this is a READ. RLS does not gate visibility
- *    of `estatus = disponible` products beyond what the public home
- *    already exposes server-side.
+ *
+ * SI lleva cuota por IP, y este docstring afirmaba lo contrario hasta el
+ * 12-sep-2026 -- "No rate limit guard -- this is a READ" -- cuatro lineas por
+ * encima del guard que si existia. Que sea una lectura no la deja fuera de la
+ * cuota: lo caro aqui no es exponer el dato (el catalogo ya es publico) sino
+ * la CPU y el egress de repetir la consulta a ritmo de script.
  */
 export async function getMoreFeedProducts(
   cursor: string,
@@ -45,18 +47,67 @@ export async function getMoreFeedProducts(
     return { items: [], nextCursor: null, error: "Cursor invalido" };
   }
 
-  // Rate Limiting con Fail-Open
-  try {
-    const ip = getClientIp(await headers());
-    const rateCheck = enforce(readHeavyRateLimit, `feed:${ip}`);
-    const timeout = new Promise<{ok: true}>((resolve) => setTimeout(() => resolve({ ok: true }), 800));
-    const rate = await Promise.race([rateCheck, timeout]);
-    if (!rate.ok) {
-      // Si el rate limiter falla intencionalmente (too many requests), reportamos pero dejamos pasar para no romper ventas
-      Sentry.captureMessage("Feed rate limit exceeded", { level: "warning" });
-    }
-  } catch (e) {
-    Sentry.captureException(e);
+  // Cuota de lectura pesada por IP. Ahora corta.
+  //
+  // Hasta el 12-sep-2026 este bloque DETECTABA el exceso y seguia: un
+  // captureMessage y derecho a la consulta. Con eso el limitador era
+  // decorativo. De los 49 guards de enforce() que hay en apps/web, este era
+  // el UNICO que no cortaba; el hermano mas cercano, getNearbyProducts en
+  // lib/geo/actions.ts, usa este mismo limitador sobre otra lectura publica no
+  // autenticada y devuelve el error.
+  //
+  // Ojo con lo que significa "el mismo limitador": readHeavyRateLimit es UN
+  // objeto Ratelimit, pero Upstash forma la clave con prefijo + identificador,
+  // y los identificadores son distintos -- aqui `feed:`, alli `read:`. O sea
+  // DOS cubetas independientes de 60/min por IP, no una compartida: una misma
+  // IP puede gastar 60 aqui y otras 60 en los cercanos. Es a proposito, para
+  // que raspar el feed no deje sin feed de proximidad a quien comparte salida
+  // NAT, pero el techo real de lecturas pesadas por IP es 120/min, no 60.
+  //
+  // El "fail-open para no romper ventas" que justificaba dejar pasar ya lo
+  // hace enforce() por dentro, y dos veces: sin credenciales de Upstash
+  // devuelve ok, y ante un error de red contra Upstash tambien. Lo unico que
+  // llega aqui como ok:false es un exceso REAL de peticiones, que es
+  // justamente el caso que no hay que dejar pasar.
+  //
+  // Se fue tambien el Promise.race contra un timeout de 800 ms. No daba
+  // tolerancia a FALLOS (ver parrafo anterior) sino a LENTITUD, y de paso
+  // descartaba un ok:false legitimo que llegara en el milisegundo 801; su
+  // setTimeout ademas quedaba colgado aunque la carrera la ganase Upstash.
+  //
+  // Lo que SI se pierde con el race es el unico techo de latencia que habia
+  // hacia Upstash: Redis.fromEnv() no lleva timeout propio, asi que un Upstash
+  // lento -- lento, no caido, que ese caso ya lo cubre el fail-open de
+  // enforce() -- se suma ahora entero al tiempo de la accion. Se acepta: un
+  // techo de latencia que resuelve "pasa" es un fail-open por lentitud, que es
+  // la puerta que este cambio venia a cerrar. Si la p99 de Upstash se nota en
+  // el scroll, el sitio de arreglarlo es el cliente de Redis, no aqui.
+  //
+  // Y se fue el try/catch: ningun otro de los 49 guards envuelve esto, y
+  // enforce() no lanza. headers() en teoria si podria, y antes quedaba tragado
+  // en silencio; ahora sube, y lo absorbe el try/catch de loadMore en
+  // use-infinite-cursor.ts, que pinta "No se pudo cargar mas contenido".
+  //
+  // Ya no se manda un evento a Sentry por peticion bloqueada. El escenario
+  // que este guard existe para frenar --un script raspando-- es exactamente
+  // el que habria inundado Sentry; el volumen vive en las analytics de
+  // Upstash, que es donde no cuesta cuota de errores.
+  //
+  // LO QUE ESTO NO CUBRE: search_nearby_products_v4 es SECURITY DEFINER con
+  // GRANT EXECUTE a anon, y la anon key viaja en el bundle del cliente. Quien
+  // quiera raspar el catalogo llama a /rest/v1/rpc/search_nearby_products_v4
+  // contra Supabase y no pasa por aqui jamas. Esta cuota cierra la puerta de
+  // la aplicacion; la de PostgREST sigue abierta hasta que se revoque ese
+  // EXECUTE y el servidor llame con service_role.
+  //
+  // 60/min por IP (rl:read, en lib/rate-limit.ts) = 1.800 productos por minuto
+  // desde una sola IP. Ninguna persona se acerca; una IP compartida -- CGNAT
+  // movil, un cafe, una oficina -- si puede. Si aparecen falsos positivos, el
+  // arreglo es subir el tope de ese bucket, no volver a dejar pasar.
+  const ip = getClientIp(await headers());
+  const rate = await enforce(readHeavyRateLimit, `feed:${ip}`);
+  if (!rate.ok) {
+    return { items: [], nextCursor: null, error: rate.error };
   }
 
   // CODEX H2 fix: clamp limit. The default is 30; cap at 50 so a
