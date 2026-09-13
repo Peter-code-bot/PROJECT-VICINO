@@ -4,16 +4,28 @@ import type { CanalesGestionados } from "./canales-gestionados";
 type Handle = { remove: () => Promise<void> };
 type AppLifecycle = Pick<AppPlugin, "addListener" | "getState">;
 
+/** El plugin viaja DENTRO de un objeto, nunca como valor de resolucion directo.
+ *
+ * Los plugins de Capacitor son Proxy: cualquier propiedad que no conozcan se
+ * convierte en una llamada nativa, incluida `then`. Eso los vuelve thenables,
+ * asi que `Promise.resolve(App)` (o un `.then(({ App }) => App)`) hace que el
+ * motor de promesas invoque `App.then(resolve, reject)`, iOS responda
+ * `"App.then()" is not implemented on ios` y la promesa se quede pendiente
+ * PARA SIEMPRE: ni resuelve ni rechaza, asi que el `.catch` de abajo tampoco
+ * salta. Envolverlo obliga a que el valor de resolucion sea un objeto plano.
+ */
+type Puente = { app: AppLifecycle };
+
 /** Listener antes de getState: el resultado inicial nunca pisa un evento nuevo.
  * El controlador limita la espera inicial a 2s, incluidos imports del puente.
  */
-export function instalarPausa(app: Promise<AppLifecycle>, controller: CanalesGestionados, onActive: () => void = () => {}): Handle {
+export function instalarPausa(puente: Promise<Puente>, controller: CanalesGestionados, onActive: () => void = () => {}): Handle {
   controller.esperarEstadoNativo();
   let disposed = false;
   let revision = 0;
   let handle: Handle | undefined;
   const start = (async () => {
-    const nativeApp = await app;
+    const { app: nativeApp } = await puente;
     if (disposed) return;
     const version = revision;
     const installed = await nativeApp.addListener("appStateChange", ({ isActive }) => {
@@ -44,7 +56,7 @@ const installations = new WeakMap<CanalesGestionados, { users: number; handle: H
 export function iniciarPausaNativa(controller: CanalesGestionados): Handle {
   let installation = installations.get(controller);
   if (!installation) {
-    installation = { users: 0, handle: instalarPausa(import("@capacitor/app").then(({ App }) => App), controller, () => {
+    installation = { users: 0, handle: instalarPausa(import("@capacitor/app").then(({ App }) => ({ app: App })), controller, () => {
       void import("../observability/sentry-nativo").then(({ iniciarSentryNativo }) => iniciarSentryNativo(true)).catch(() => {});
     }) };
     installations.set(controller, installation);
