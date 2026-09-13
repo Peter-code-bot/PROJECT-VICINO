@@ -12,6 +12,7 @@ interface AppleMapProps {
   markerPosition?: [number, number] | null;
   draggableMarker?: boolean;
   onMarkerDragEnd?: (lat: number, lng: number) => void;
+  onMapClick?: (lat: number, lng: number) => void;
   radiusKm?: number;
   circleCenter?: [number, number];
   circleColor?: string;
