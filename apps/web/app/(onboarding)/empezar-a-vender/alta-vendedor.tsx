@@ -136,7 +136,8 @@ export function AltaVendedor({
       // imposible— y que ademas no gobierna nada, porque has_seen_onboarding
       // manda por delante. Basura de estado, y de la que confunde al leerla.
       if (!yaCompletoOnboarding) {
-        const paso = await guardarPasoOnboarding({ camino: "vender", paso: "perfil" });
+        const siguientePaso = tipo === "business" ? "intereses" : "perfil";
+        const paso = await guardarPasoOnboarding({ camino: "vender", paso: siguientePaso });
         if (paso.error) console.warn("[alta] no se pudo marcar el paso", paso.error);
       }
       irAPaso("listo");

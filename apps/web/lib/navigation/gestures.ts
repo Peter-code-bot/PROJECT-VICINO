@@ -10,7 +10,7 @@ export function pageGestureBlocked(target: EventTarget | null, boundary: HTMLEle
   if (!(target instanceof Element)) return true;
   if (document.body.style.overflow === "hidden" || document.body.hasAttribute("data-scroll-locked")) return true;
   if (document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return true;
-  if (target.closest('[data-no-page-swipe], [data-no-pull-to-refresh], input, textarea, select, button, [contenteditable="true"], [role="slider"], video, audio, .leaflet-container')) return true;
+  if (target.closest('[data-no-page-swipe], [data-no-pull-to-refresh], input, textarea, select, button, [contenteditable="true"], [role="slider"], video, audio, .leaflet-container, .mk-map-view, [data-mapkit]')) return true;
   for (let node: Element | null = target; node && node !== boundary; node = node.parentElement) {
     const style = getComputedStyle(node);
     if ((/auto|scroll/.test(style.overflowX) && node.scrollWidth > node.clientWidth) ||

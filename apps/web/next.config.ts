@@ -177,11 +177,11 @@ const cspReportUri = sentryCspReportUri();
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.apple-mapkit.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com https://*.apple-mapkit.com https://*.apple.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://nominatim.openstreetmap.org https://*.apple-mapkit.com https://*.apple.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-ancestors 'none'",

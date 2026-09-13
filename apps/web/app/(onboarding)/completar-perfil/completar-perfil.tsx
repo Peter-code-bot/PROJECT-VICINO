@@ -4,12 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
-import { Check, ChevronLeft, MapPin, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 import { ChangeLocationSheet } from "@/components/home/change-location-sheet";
 import { useGeolocation, STORAGE_KEY } from "@/hooks/useGeolocation";
 import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
 import { guardarPasoOnboarding, type PasoOnboarding } from "./actions";
+import OnboardingLocationMap from "@/components/map/onboarding-location-map";
 
 /**
  * Los tres pasos que comparten los tres caminos del onboarding.
@@ -39,6 +40,7 @@ const MAX_BIO = 160;
 
 interface CompletarPerfilProps {
   pasoInicial: PasoOnboarding;
+  sellerType?: string;
   nombreInicial: string;
   bioInicial: string;
   fotoInicial: string;
@@ -47,6 +49,7 @@ interface CompletarPerfilProps {
 
 export function CompletarPerfil({
   pasoInicial,
+  sellerType,
   nombreInicial,
   bioInicial,
   fotoInicial,
@@ -62,7 +65,7 @@ export function CompletarPerfil({
   const [enviando, startTransition] = useTransition();
   const [hojaZonaAbierta, setHojaZonaAbierta] = useState(false);
 
-  const { state, request } = useGeolocation();
+  const { state } = useGeolocation();
 
   /**
    * Si la persona eligio su zona a mano en la hoja.
@@ -95,7 +98,6 @@ export function CompletarPerfil({
   }
 
   const hayUbicacion = state.status === "success" || zonaAMano;
-  const permisoNegado = state.status === "error";
 
   /**
    * El banner de error se pinta fuera de los pasos, asi que hay que limpiarlo
@@ -110,6 +112,7 @@ export function CompletarPerfil({
   }
 
   function atras() {
+    if (sellerType === "business" && paso === "intereses") return;
     const i = PASOS.indexOf(paso);
     if (i > 0) irAPaso(PASOS[i - 1]!);
   }
@@ -173,7 +176,7 @@ export function CompletarPerfil({
           obligatorio, y una salida aqui devuelve a la app con el perfil vacio,
           que es exactamente el estado que este flujo viene a evitar. */}
       <div className="mb-8 flex items-center">
-        {paso !== PASOS[0] ? (
+        {(sellerType === "business" ? paso !== "intereses" && paso !== PASOS[0] : paso !== PASOS[0]) ? (
           <button
             type="button"
             onClick={atras}
@@ -367,42 +370,11 @@ export function CompletarPerfil({
             </p>
           </div>
 
-          {hayUbicacion ? (
-            <div className="flex items-center gap-2 rounded-xl bg-[color:var(--brand)]/10 p-3 text-sm">
-              <MapPin className="h-4 w-4 shrink-0 text-[color:var(--brand)]" />
-              <span>Ya tenemos tu zona. Puedes cambiarla cuando quieras.</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={request}
-                disabled={state.status === "loading"}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
-              >
-                {state.status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
-                Usar mi ubicación
-              </button>
-
-              {/* La salida para quien niega el permiso, que en iOS puede ser
-                  para siempre. NO es un «saltar»: elegir la zona a mano deja
-                  una ubicacion igual de valida para el feed. Sin esto, negar el
-                  permiso deja a la persona encerrada en esta pantalla. */}
-              <button
-                type="button"
-                onClick={() => setHojaZonaAbierta(true)}
-                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
-              >
-                Elegir mi zona a mano
-              </button>
-
-              {permisoNegado && (
-                <p className="text-center text-xs text-muted-foreground">
-                  {state.message}. Elige tu zona a mano y sigue.
-                </p>
-              )}
-            </div>
-          )}
+          <OnboardingLocationMap
+            onLocationConfirmed={() => {
+              setZonaAMano(true);
+            }}
+          />
 
           <button
             type="button"

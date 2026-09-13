@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, Loader2, MailCheck } from "lucide-react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { CodigoInput } from "@/components/auth/codigo-input";
 import { LARGO_CODIGO } from "@/lib/auth/otp-formato";
 import { conTope, esTope } from "@/lib/auth/con-tope";
@@ -214,9 +214,6 @@ export function VerificarCodigo({
   return (
     <div className="space-y-6">
       <div className="space-y-3 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <MailCheck className="h-6 w-6 text-primary" aria-hidden="true" />
-        </div>
         <h1 className="font-heading text-2xl font-bold">Revisa tu correo</h1>
         <p className="text-sm text-muted-foreground">
           Enviamos un código de {LARGO_CODIGO} dígitos a

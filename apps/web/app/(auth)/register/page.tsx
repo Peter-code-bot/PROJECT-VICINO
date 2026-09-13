@@ -40,11 +40,6 @@ export default function RegisterPage() {
             <RegisterForm />
           </Suspense>
         </div>
-        
-        {/* Trust badge below card */}
-        <p className="text-center text-xs text-muted-foreground mt-8 flex items-center justify-center gap-1.5 opacity-80">
-          <span>🔒</span> Tus datos están seguros
-        </p>
       </div>
     </div>
   );

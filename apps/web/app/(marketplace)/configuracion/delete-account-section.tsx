@@ -77,15 +77,15 @@ export function DeleteAccountSection() {
             {error}
           </p>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button
             onClick={handleDelete}
             disabled={loading || inputValue !== CONFIRM_WORD}
             aria-label="Confirmar eliminación de cuenta"
-            className="inline-flex items-center gap-2 rounded-lg bg-[color:var(--danger)] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--danger)] px-4 py-2.5 text-sm font-semibold text-white transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 flex-1"
           >
-            <Trash2 className="h-4 w-4" />
-            {loading ? "Eliminando..." : "Sí, eliminar mi cuenta"}
+            <Trash2 className="h-4 w-4 shrink-0" />
+            {loading ? "Eliminando..." : "Eliminar"}
           </button>
           <button
             onClick={() => {
@@ -94,7 +94,7 @@ export function DeleteAccountSection() {
               setError(null);
             }}
             disabled={loading}
-            className="inline-flex items-center rounded-lg bg-[color:var(--card-2)] px-4 py-2 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-lg bg-[color:var(--card-2)] px-4 py-2.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] disabled:opacity-50 sm:flex-initial"
           >
             Cancelar
           </button>

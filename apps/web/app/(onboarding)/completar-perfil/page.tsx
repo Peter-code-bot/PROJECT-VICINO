@@ -26,7 +26,7 @@ export default async function CompletarPerfilPage() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("nombre, bio, foto, intereses, onboarding_paso, has_seen_onboarding")
+    .select("nombre, bio, foto, intereses, onboarding_paso, has_seen_onboarding, seller_type")
     .eq("id", user.id)
     .single();
 
@@ -80,9 +80,16 @@ export default async function CompletarPerfilPage() {
   // para registros nuevos: a los perfiles que ya existian no se les interrumpe.
   if (profile.has_seen_onboarding) redirect("/");
 
+  const pasoBase = pasoSeguro(profile.onboarding_paso);
+  // Si es negocio/tienda, los datos de perfil ya se recolectaron en el alta de vendedor,
+  // por lo que se salta el paso 'perfil' y se inicia directamente en 'intereses'.
+  const esNegocio = profile.seller_type === "business";
+  const pasoInicial = esNegocio && pasoBase === "perfil" ? "intereses" : pasoBase;
+
   return (
     <CompletarPerfil
-      pasoInicial={pasoSeguro(profile.onboarding_paso)}
+      pasoInicial={pasoInicial}
+      sellerType={profile.seller_type ?? undefined}
       // El nombre YA viene del registro (signUp lo manda en full_name), asi que
       // este campo arranca lleno y no se le pide dos veces lo mismo.
       nombreInicial={profile.nombre ?? ""}
