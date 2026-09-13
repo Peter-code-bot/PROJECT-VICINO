@@ -49,8 +49,7 @@ import type { FeedProduct } from "@/types/feed";
 import { parseRadiusCookie } from "@/lib/geo/radius";
 import { ComunidadesFeed } from "@/components/comunidades/comunidades-feed";
 import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
-import { cursorDeUltimo } from "@/components/comunidades/muro-comunidad";
-import { leerEstadoCuota } from "@/lib/comunidades/tipos";
+import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad } from "@/lib/comunidades/errores";
 
 export default async function HomePage({ searchParams }: Props) {
