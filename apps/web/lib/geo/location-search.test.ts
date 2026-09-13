@@ -89,7 +89,7 @@ test("esResultadoValido rejects foreign countries even if near southern border",
 test("esResultadoValido rejects invalid, NaN or null coordinates", () => {
   assert.equal(esResultadoValido({ lat: NaN, lng: -98.2 }, PUEBLA_CENTER), false);
   assert.equal(esResultadoValido({ lat: 19.0, lng: Infinity }, PUEBLA_CENTER), false);
-  assert.equal(esResultadoValido({ lat: null as any, lng: -98.2 }, PUEBLA_CENTER), false);
+  assert.equal(esResultadoValido({ lat: null, lng: -98.2 }, PUEBLA_CENTER), false);
   assert.equal(esResultadoValido({ lat: undefined, lng: -98.2 }, PUEBLA_CENTER), false);
 });
 

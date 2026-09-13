@@ -215,7 +215,8 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
                     {centro.lat.toFixed(2)}, {centro.lng.toFixed(2)}
                   </p>
                   <p className="text-xs text-[color:var(--fg-muted)]">
-                    {centro.movimientos_restantes_24h} {centro.movimientos_restantes_24h === 1 ? "movimiento" : "movimientos"} disponibles hoy
+                    {centro.movimientos_restantes_24h}{" "}
+                    {centro.movimientos_restantes_24h === 1 ? "movimiento disponible" : "movimientos disponibles"} hoy
                   </p>
                 </div>
                 <button
@@ -251,7 +252,7 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
             />
           </Seccion>
 
-          <Seccion titulo="Archivar" texto="La comunidad deja de verse y nadie puede publicar. Quienes ya son miembros pueden leer lo que quedó y salir.">
+          <Seccion titulo="Archivar" texto="La comunidad deja de verse y nadie puede leer ni publicar en ella, tampoco quienes ya son miembros; solo les queda salir.">
             <button
               type="button"
               onClick={() => setConfirmarArchivar(true)}
@@ -264,7 +265,7 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
               open={confirmarArchivar}
               onOpenChange={setConfirmarArchivar}
               titulo={`Archivar ${detalle.nombre}`}
-              cuerpo="La comunidad desaparecerá de Descubrir y del muro unificado. Nadie podrá publicar ni unirse. No se puede deshacer desde la app."
+              cuerpo="La comunidad desaparecerá de Descubrir y del muro unificado. Nadie podrá leerla, publicar ni unirse, tampoco quienes ya son miembros. No se puede deshacer desde la app."
               confirmar="Archivar"
               peligroso
               pendiente={archivando}

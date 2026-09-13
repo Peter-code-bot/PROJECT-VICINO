@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReportRowActions } from "../report-row-actions";
+import { reporterosPorId } from "@/lib/admin/reporteros";
 
 export const metadata = { title: "Admin — Reseñas reportadas" };
 
@@ -16,16 +17,16 @@ export default async function ReviewsModerationPage() {
     ? await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" })
     : { data: false };
 
+  // Sin embed de reporter: ver lib/admin/reporteros.ts (la FK va a auth.users
+  // y `profiles!reporter_id` respondia 400, que se leia como "sin reportes").
   const { data: reports } = await supabase
     .from("reports")
-    .select(`
-      id, reason, description, status, created_at, target_id,
-      reporter:profiles!reporter_id(nombre, user_id)
-    `)
+    .select("id, reason, description, status, created_at, target_id, reporter_id")
     .eq("target_type", "review")
     .in("status", ["pending", "reviewed"])
     .order("created_at", { ascending: false });
 
+  const reporterById = await reporterosPorId(supabase, (reports ?? []).map((r) => r.reporter_id));
   // Hidratar info de cada review reportada
   const targetIds = (reports ?? []).map((r) => r.target_id);
   const { data: reviews } = targetIds.length > 0
@@ -64,7 +65,7 @@ export default async function ReviewsModerationPage() {
             const review = reviewById.get(rep.target_id);
             const reviewer = review && (Array.isArray(review.reviewer) ? review.reviewer[0] : review.reviewer);
             const reviewed = review && (Array.isArray(review.reviewed) ? review.reviewed[0] : review.reviewed);
-            const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
+            const reporter = reporterById.get(rep.reporter_id);
             return (
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">

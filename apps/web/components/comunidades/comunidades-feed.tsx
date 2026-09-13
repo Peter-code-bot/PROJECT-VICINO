@@ -200,21 +200,38 @@ export function ComunidadesFeed({
   }
 
   const pendientes = solicitudes.filter((s) => s.status === "pendiente");
-  const sinNada = mias.length === 0 && (cercanas === null || cercanas.length === 0);
+  // mis_comunidades lista tambien las archivadas u ocultas donde sigo siendo
+  // miembro (para poder salir); para "estoy en alguna" cuentan solo las vivas.
+  const miasVivas = mias.filter((c) => c.disponible);
+  // "Nadie ha fundado" solo se afirma cuando Descubrir YA miro y volvio
+  // vacio: con cercanas === null (sin ubicacion en la cookie y sin pedirla
+  // aun) no se sabe, y el texto neutro es el honesto (decision 8).
+  const sinNada = miasVivas.length === 0 && cercanas !== null && cercanas.length === 0;
   const falta = tiempoQueFalta(cuota.siguiente_en);
   const fundarBloqueado = !cuota.puede_fundar && (cuota.siguiente_en === null || falta !== null);
+  // Bloqueo por CANTIDAD (3 vivas, 20 membresias, suspension): no hay reloj
+  // que mostrar y el motivo ("Archiva una para fundar otra") tiene que
+  // leerse en el telefono, no solo en el title= del hover (decision 10).
+  const motivoSinReloj = fundarBloqueado && !falta ? cuota.motivo : null;
 
   const botonFundar = (
-    <button
-      type="button"
-      onClick={() => setFundar(true)}
-      disabled={fundarBloqueado}
-      title={fundarBloqueado ? cuota.motivo ?? undefined : undefined}
-      className="inline-flex h-11 items-center gap-2 rounded-full bg-[color:var(--brand)] px-5 text-[14px] font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:opacity-60 disabled:shadow-none"
-    >
-      {fundarBloqueado ? <Clock className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-      {fundarBloqueado ? (falta ? `Podrás fundar en ${falta}` : "No puedes fundar por ahora") : "Fundar comunidad"}
-    </button>
+    <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setFundar(true)}
+        disabled={fundarBloqueado}
+        title={fundarBloqueado ? cuota.motivo ?? undefined : undefined}
+        className="inline-flex h-11 items-center gap-2 rounded-full bg-[color:var(--brand)] px-5 text-[14px] font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:opacity-60 disabled:shadow-none"
+      >
+        {fundarBloqueado ? <Clock className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+        {fundarBloqueado ? (falta ? `Podrás fundar en ${falta}` : "No puedes fundar por ahora") : "Fundar comunidad"}
+      </button>
+      {motivoSinReloj && (
+        <p className="max-w-xs text-xs leading-relaxed text-[color:var(--fg-muted)]" role="status">
+          {motivoSinReloj}
+        </p>
+      )}
+    </div>
   );
 
   return (
@@ -225,7 +242,7 @@ export function ComunidadesFeed({
 
       <div className="px-4">
         {tab === "muro" && (
-          mias.length === 0 ? (
+          miasVivas.length === 0 ? (
             <EstadoVacio
               icono={<Users className="h-7 w-7" />}
               titulo="Aún no perteneces a ninguna comunidad"
@@ -341,13 +358,28 @@ export function ComunidadesFeed({
             ) : errorCercanas ? (
               <p className="py-10 text-center text-sm text-[color:var(--fg-muted)]">{errorCercanas}</p>
             ) : cercanas && cercanas.length === 0 ? (
-              <EstadoVacio
-                icono={<Sparkles className="h-7 w-7" />}
-                titulo="Nadie ha fundado una comunidad por aquí"
-                texto="Tu zona todavía no tiene ninguna. Sé quien funde la primera: la verán las personas a menos de 5 km."
-              >
-                {botonFundar}
-              </EstadoVacio>
+              // descubrir_comunidades excluye las comunidades donde ya soy
+              // miembro: cero filas NO significa "no hay ninguna" si estoy
+              // en alguna (decision 8: el estado vacio tiene que ser honesto,
+              // y a quien acaba de fundar la primera de la zona no se le
+              // puede decir que nadie ha fundado ninguna).
+              miasVivas.length > 0 ? (
+                <EstadoVacio
+                  icono={<Users className="h-7 w-7" />}
+                  titulo="Ya estás en todas las comunidades cercanas"
+                  texto="Aquí salen las que están a menos de 5 km y en las que aún no estás. Si te queda cupo, puedes fundar otra."
+                >
+                  {botonFundar}
+                </EstadoVacio>
+              ) : (
+                <EstadoVacio
+                  icono={<Sparkles className="h-7 w-7" />}
+                  titulo="Nadie ha fundado una comunidad por aquí"
+                  texto="Tu zona todavía no tiene ninguna. Sé quien funde la primera: la verán las personas a menos de 5 km."
+                >
+                  {botonFundar}
+                </EstadoVacio>
+              )
             ) : (
               <>
                 {cercanas?.map((c) => (
@@ -368,7 +400,13 @@ export function ComunidadesFeed({
         type="button"
         onClick={() => setFundar(true)}
         disabled={fundarBloqueado}
-        aria-label={fundarBloqueado ? (falta ? `Podrás fundar en ${falta}` : "No puedes fundar por ahora") : "Fundar comunidad"}
+        aria-label={
+          fundarBloqueado
+            ? falta
+              ? `Podrás fundar en ${falta}`
+              : cuota.motivo ?? "No puedes fundar por ahora"
+            : "Fundar comunidad"
+        }
         title={fundarBloqueado ? cuota.motivo ?? undefined : "Fundar comunidad"}
         className={cn(
           "fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-5 z-40 flex h-14 items-center justify-center gap-2 rounded-full bg-foreground text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-105 active:scale-95 disabled:scale-100 disabled:opacity-60",

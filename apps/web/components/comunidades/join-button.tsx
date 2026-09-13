@@ -27,6 +27,12 @@ export interface EstadoRelacion {
   mi_rol: string | null;
   solicitud_pendiente: boolean;
   miembros_count: number;
+  /**
+   * La privacidad no me frena: publica, o tengo el mando, o el pase de una
+   * aceptacion anterior sigue vigente (sali y puedo volver sin pedir permiso).
+   * Lo calcula la base (detalle_comunidad / descubrir_comunidades).
+   */
+  puedo_entrar?: boolean;
 }
 
 interface JoinButtonProps {
@@ -42,12 +48,18 @@ interface JoinButtonProps {
 
 /**
  * Un solo boton para toda la relacion con una comunidad (decision 3):
- *   publica y no soy miembro   -> "Únete"
- *   privada y no soy miembro   -> "Solicitar unirse" (abre el mensaje opcional)
- *   solicitud pendiente        -> "Solicitud enviada" con Cancelar
  *   miembro                    -> "Salir" (con confirmacion; el owner tambien
- *                                 puede: el traspaso lo hace la base)
- * Optimista y reconciliado con lo que devuelve la RPC.
+ *                                 puede: el traspaso lo hace la base; si era
+ *                                 la unica persona, la comunidad se archiva
+ *                                 y el dialogo lo dice)
+ *   publica y no soy miembro   -> "Únete" (aunque quede una solicitud vieja
+ *                                 de cuando era privada: en una publica se
+ *                                 entra con un toque)
+ *   privada con pase vigente   -> "Volver a entrar" (la base ya me deja)
+ *   solicitud pendiente        -> "Solicitud enviada" con Cancelar
+ *   privada y no soy miembro   -> "Solicitar unirse" (abre el mensaje opcional)
+ * Optimista y reconciliado con lo que devuelve la RPC. Si solicitar responde
+ * que se entra directo (publica, o pase vigente), encadena Únete.
  */
 export function JoinButton({
   communityId,
@@ -96,7 +108,9 @@ export function JoinButton({
           solicitud_pendiente: false,
           miembros_count: r.data.miembros_count,
         });
-        toast.success(r.data.soy_miembro ? `Ya eres parte de ${nombre}` : `Saliste de ${nombre}`);
+        if (r.data.soy_miembro) toast.success(`Ya eres parte de ${nombre}`);
+        else if (r.data.archivada) toast.success(`Saliste de ${nombre}. Como no quedaba nadie, la comunidad se archivó.`);
+        else toast.success(`Saliste de ${nombre}`);
       }
       setConfirmarSalir(false);
     },
@@ -117,9 +131,15 @@ export function JoinButton({
       onSuccess: (r) => {
         setPedirMensaje(false);
         setMensaje("");
-        if ("data" in r) {
-          toast.success(r.data.repetida ? "Tu solicitud sigue pendiente" : "Solicitud enviada");
+        if (!("data" in r)) return;
+        if (r.data.entrarDirecto) {
+          // La base dijo que solicitar no es el camino (se abrio entre el
+          // render y el toque, o mi pase sigue vigente): se entra directo.
+          aplicar({ ...local, solicitud_pendiente: false });
+          void alternar.mutate(undefined);
+          return;
         }
+        toast.success(r.data.repetida ? "Tu solicitud sigue pendiente" : "Solicitud enviada");
       },
       onError: (err) => {
         toast.error(err instanceof Error ? err.message : "No se pudo enviar la solicitud");
@@ -140,6 +160,13 @@ export function JoinButton({
   const pendiente = alternar.isPending || solicitar.isPending || cancelar.isPending;
   const tam = size === "sm" ? "sm" : "md";
 
+  // Si sale la unica persona, comunidad_traspasa_mando archiva la comunidad
+  // sin vuelta desde la app: el dialogo tiene que decir eso y no "el mando
+  // pasa a otra persona".
+  const ultimaPersona = local.mi_rol === "owner" && local.miembros_count <= 1;
+  // Publica, o pase vigente: se entra con un toque, sin solicitud.
+  const entraDirecto = !esPrivada || local.puedo_entrar === true;
+
   if (local.soy_miembro) {
     return (
       <>
@@ -158,13 +185,15 @@ export function JoinButton({
         <ConfirmarDialog
           open={confirmarSalir}
           onOpenChange={setConfirmarSalir}
-          titulo={`Salir de ${nombre}`}
+          titulo={ultimaPersona ? `Salir y archivar ${nombre}` : `Salir de ${nombre}`}
           cuerpo={
-            local.mi_rol === "owner"
-              ? "Eres quien administra esta comunidad. Si sales, el mando pasa a otra persona y dejarás de ver el muro. Puedes volver a unirte después."
-              : "Dejarás de ver el muro y de recibir avisos de esta comunidad. Puedes volver a unirte después."
+            ultimaPersona
+              ? "Eres la única persona en esta comunidad. Si sales, se archiva: dejará de verse, nadie podrá leerla ni unirse, y no se puede recuperar desde la app."
+              : local.mi_rol === "owner"
+                ? "Eres quien administra esta comunidad. Si sales, el mando pasa a otra persona y dejarás de ver el muro. Puedes volver a unirte después."
+                : "Dejarás de ver el muro y de recibir avisos de esta comunidad. Puedes volver a unirte después."
           }
-          confirmar="Salir"
+          confirmar={ultimaPersona ? "Salir y archivar" : "Salir"}
           peligroso
           pendiente={alternar.isPending}
           onConfirmar={() => {
@@ -176,7 +205,7 @@ export function JoinButton({
     );
   }
 
-  if (local.solicitud_pendiente) {
+  if (local.solicitud_pendiente && !entraDirecto) {
     return (
       <div className={cn("inline-flex items-center gap-1.5", className)}>
         <span className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[color:var(--brand-tint)] px-3 text-[13px] font-semibold text-[color:var(--brand-hi)]">
@@ -196,7 +225,7 @@ export function JoinButton({
     );
   }
 
-  if (esPrivada) {
+  if (esPrivada && !entraDirecto) {
     return (
       <>
         <Button
@@ -256,7 +285,7 @@ export function JoinButton({
       disabled={pendiente}
     >
       {pendiente ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-      Únete
+      {esPrivada ? "Volver a entrar" : "Únete"}
     </Button>
   );
 }

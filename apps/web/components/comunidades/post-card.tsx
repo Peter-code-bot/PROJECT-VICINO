@@ -29,6 +29,14 @@ interface PostCardProps {
   currentUserId: string | null;
   /** true si el mando local (owner/moderador) puede borrarla aunque no sea suya. */
   puedoModerar?: boolean;
+  /**
+   * false para quien no es miembro (o la comunidad no esta viva): el corazon
+   * no dispara la RPC -- que responderia 42501 tras un parpadeo optimista --
+   * sino un aviso de que hay que unirse.
+   */
+  puedoReaccionar?: boolean;
+  /** Para el aviso de "unete a X": si falta, se dice "la comunidad". */
+  nombreComunidad?: string;
   /** Muestra el nombre de la comunidad (muro unificado). */
   conComunidad?: boolean;
   /** Si es la cabecera del hilo, el cuerpo no se recorta y no enlaza a si misma. */
@@ -42,6 +50,8 @@ export function PostCard({
   post,
   currentUserId,
   puedoModerar = false,
+  puedoReaccionar = true,
+  nombreComunidad,
   conComunidad = false,
   esCabeceraDeHilo = false,
   onBorrada,
@@ -210,8 +220,15 @@ export function PostCard({
           type="button"
           onClick={() => {
             void hapticLight();
+            if (!puedoReaccionar) {
+              // Decision 3: el muro de una publica se ve desde fuera, pero
+              // reaccionar exige pertenencia. Sin viaje al servidor ni parpadeo.
+              toast.info(`Únete a ${nombreComunidad ?? "la comunidad"} para reaccionar`);
+              return;
+            }
             void like.mutate(undefined);
           }}
+          aria-disabled={!puedoReaccionar || undefined}
           aria-pressed={local.le_di_like}
           aria-label={local.le_di_like ? "Quitar me gusta" : "Me gusta"}
           className={cn(
@@ -219,6 +236,7 @@ export function PostCard({
             local.le_di_like
               ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)]"
               : "text-[color:var(--fg-muted)] hover:bg-[color:var(--card)] hover:text-[color:var(--fg)]",
+            !puedoReaccionar && "opacity-60",
           )}
         >
           <Heart className={cn("h-4 w-4", local.le_di_like && "fill-current")} />

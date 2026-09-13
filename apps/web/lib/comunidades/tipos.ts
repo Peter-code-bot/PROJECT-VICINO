@@ -7,6 +7,7 @@
  * undefined.
  */
 import type { Database } from "@/types/database.types";
+import { acentuar } from "./errores";
 
 type Funciones = Database["public"]["Functions"];
 
@@ -97,7 +98,8 @@ export function leerEstadoCuota(json: unknown): EstadoCuotaFundacion {
   const o = json as Record<string, unknown>;
   return {
     puede_fundar: typeof o.puede_fundar === "boolean" ? o.puede_fundar : true,
-    motivo: typeof o.motivo === "string" ? o.motivo : null,
+    // El motivo se pinta en el boton de fundar y en el drawer: con tildes.
+    motivo: typeof o.motivo === "string" ? acentuar(o.motivo) : null,
     siguiente_en: typeof o.siguiente_en === "string" ? o.siguiente_en : null,
     fundadas_vivas: typeof o.fundadas_vivas === "number" ? o.fundadas_vivas : 0,
     tope_vivas: typeof o.tope_vivas === "number" ? o.tope_vivas : 0,

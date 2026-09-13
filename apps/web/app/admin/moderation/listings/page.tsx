@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPrice, primaryCategorySlug, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { ReportRowActions } from "../report-row-actions";
+import { reporterosPorId } from "@/lib/admin/reporteros";
 
 export const metadata = { title: "Admin — Productos reportados" };
 
@@ -15,16 +16,16 @@ export default async function ListingsModerationPage() {
     ? await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" })
     : { data: false };
 
+  // Sin embed de reporter: ver lib/admin/reporteros.ts (la FK va a auth.users
+  // y `profiles!reporter_id` respondia 400, que se leia como "sin reportes").
   const { data: reports } = await supabase
     .from("reports")
-    .select(`
-      id, reason, description, status, created_at, target_id,
-      reporter:profiles!reporter_id(nombre)
-    `)
+    .select("id, reason, description, status, created_at, target_id, reporter_id")
     .eq("target_type", "listing")
     .in("status", ["pending", "reviewed"])
     .order("created_at", { ascending: false });
 
+  const reporterById = await reporterosPorId(supabase, (reports ?? []).map((r) => r.reporter_id));
   const targetIds = (reports ?? []).map((r) => r.target_id);
   // MP#08 #4 Fase 1B: SELECT incluye product_categories embed (solo slug)
   // para derivar el href via primaryCategorySlug. nombre no necesario aqui.
@@ -61,7 +62,7 @@ export default async function ListingsModerationPage() {
           {reports.map((rep) => {
             const listing = listingById.get(rep.target_id);
             const creador = listing && (Array.isArray(listing.creador) ? listing.creador[0] : listing.creador);
-            const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
+            const reporter = reporterById.get(rep.reporter_id);
             return (
               <div key={rep.id} className="rounded-lg border p-4 space-y-2 w-full">
                 <div className="flex items-start justify-between gap-4">

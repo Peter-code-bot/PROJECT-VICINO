@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, Globe, Users, MessageSquare, MapPin, Crown, Shield } from "lucide-react";
+import { Lock, Globe, Users, MessageSquare, MapPin, Crown, Shield, Archive } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import type { ComunidadResumen } from "@/lib/comunidades/tipos";
@@ -49,14 +49,24 @@ export function ChipRol({ rol }: { rol: string | null }) {
 
 export function ComunidadCard({ comunidad, conBoton = false, onEstado }: ComunidadCardProps) {
   const distancia = "distancia_m" in comunidad ? comunidad.distancia_m : null;
+  // mis_comunidades lista tambien las archivadas u ocultas donde sigo siendo
+  // miembro (es la unica ruta para llegar y salir); descubrir no las trae.
+  const disponible = "disponible" in comunidad ? comunidad.disponible : true;
+  const archivada = "archivada" in comunidad ? comunidad.archivada : false;
 
   return (
-    <article className="rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md">
+    <article className={cn("rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md", !disponible && "opacity-75")}>
       <div className="flex items-start justify-between gap-3">
         <Link href={`/comunidades/${comunidad.id}`} className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <BadgeVisibilidad esPrivada={comunidad.es_privada} />
             <ChipRol rol={comunidad.mi_rol} />
+            {!disponible && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--card-2)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]">
+                <Archive className="h-3 w-3" />
+                {archivada ? "Archivada" : "No disponible"}
+              </span>
+            )}
           </div>
           <h3 className="font-heading text-[16px] font-bold leading-snug text-[color:var(--fg)] line-clamp-2">
             {comunidad.nombre}
@@ -98,6 +108,7 @@ export function ComunidadCard({ comunidad, conBoton = false, onEstado }: Comunid
               mi_rol: comunidad.mi_rol,
               solicitud_pendiente: comunidad.solicitud_pendiente,
               miembros_count: comunidad.miembros_count,
+              puedo_entrar: comunidad.puedo_entrar,
             }}
             onEstado={(estado) => onEstado?.(comunidad.id, estado)}
           />

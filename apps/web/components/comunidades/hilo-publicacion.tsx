@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Lock, Trash2 } from "lucide-react";
+import { ArrowLeft, Flag, Loader2, Lock, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ReportModal } from "@/components/moderation/report-modal";
 import { cargarComentarios, comentarPublicacion, eliminarPublicacion } from "@/app/(marketplace)/comunidades/actions";
 import type { PostComunidad, ComentarioComunidad, CursorComunidad } from "@/lib/comunidades/tipos";
 import { PostCard } from "./post-card";
@@ -48,6 +49,9 @@ export function HiloPublicacion({
   const [cabecera, setCabecera] = useState<PostComunidad>(post);
   const [aBorrar, setABorrar] = useState<ComentarioComunidad | null>(null);
   const [borrando, setBorrando] = useState(false);
+  // Un comentario es una fila de community_posts: se reporta con el mismo
+  // target_type que una publicacion (report-modal + /api/reports ya lo saben).
+  const [aReportar, setAReportar] = useState<ComentarioComunidad | null>(null);
 
   const {
     items: comentarios,
@@ -122,6 +126,8 @@ export function HiloPublicacion({
           post={cabecera}
           currentUserId={currentUser.id}
           puedoModerar={puedoModerar}
+          puedoReaccionar={puedoComentar}
+          nombreComunidad={post.community_nombre}
           esCabeceraDeHilo
           onCambio={setCabecera}
           onBorrada={() => {
@@ -152,16 +158,28 @@ export function HiloPublicacion({
                   </time>
                 </div>
                 <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[color:var(--fg)]">{c.cuerpo}</p>
-                {(c.puedo_borrar || puedoModerar) && (
-                  <button
-                    type="button"
-                    onClick={() => setABorrar(c)}
-                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--fg-muted)] hover:text-red-600"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Borrar
-                  </button>
-                )}
+                <div className="mt-1 flex items-center gap-3">
+                  {c.author_id !== currentUser.id && (
+                    <button
+                      type="button"
+                      onClick={() => setAReportar(c)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
+                    >
+                      <Flag className="h-3 w-3" />
+                      Reportar
+                    </button>
+                  )}
+                  {(c.puedo_borrar || puedoModerar) && (
+                    <button
+                      type="button"
+                      onClick={() => setABorrar(c)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--fg-muted)] hover:text-red-600"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Borrar
+                    </button>
+                  )}
+                </div>
               </div>
             </li>
           ))}
@@ -205,6 +223,15 @@ export function HiloPublicacion({
         </p>
       )}
 
+      {aReportar && (
+        <ReportModal
+          open
+          onClose={() => setAReportar(null)}
+          targetType="community_post"
+          targetId={aReportar.id}
+          targetLabel={aReportar.cuerpo.slice(0, 60)}
+        />
+      )}
       <ConfirmarDialog
         open={aBorrar !== null}
         onOpenChange={(v) => (!v && !borrando ? setABorrar(null) : undefined)}

@@ -165,7 +165,7 @@ export async function estadoCuotaFundacion(): Promise<EstadoCuotaFundacion> {
 
 export async function alternarMembresia(
   communityId: string,
-): Promise<{ error: string } | { data: { soy_miembro: boolean; miembros_count: number } }> {
+): Promise<{ error: string } | { data: { soy_miembro: boolean; miembros_count: number; archivada: boolean } }> {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   if (!uuid.safeParse(communityId).success) return { error: "Comunidad inválida." };
@@ -183,14 +183,25 @@ export async function alternarMembresia(
     data: {
       soy_miembro: leerBooleano(data, "soy_miembro", false),
       miembros_count: leerNumero(data, "miembros_count", 0),
+      // true si al salir la comunidad se archivo (quien salia era la unica
+      // persona): el boton lo dice en vez de "Saliste de X".
+      archivada: leerBooleano(data, "archivada", false),
     },
   };
 }
 
+/**
+ * La RPC responde 22023 con estos dos textos cuando solicitar NO es el camino:
+ * la comunidad es publica, o el pase de una aceptacion anterior sigue
+ * vigente. En los dos casos se entra directo con alternar_membresia_comunidad,
+ * asi que la accion lo devuelve como dato (`entrarDirecto`) y no como error.
+ */
+const ENTRADA_DIRECTA_RE = /puedes (unirte|entrar) directamente\.$/;
+
 export async function solicitarUnion(input: {
   community_id: string;
   mensaje?: string | null;
-}): Promise<{ error: string } | { data: { id: string; repetida: boolean } }> {
+}): Promise<{ error: string } | { data: { id: string; repetida: boolean; entrarDirecto: boolean } }> {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = solicitarUnionComunidadSchema.safeParse(input);
@@ -201,13 +212,16 @@ export async function solicitarUnion(input: {
     p_mensaje: parsed.data.mensaje ?? undefined,
   });
   if (error) {
+    if (error.code === CODIGO_ARGUMENTO && ENTRADA_DIRECTA_RE.test(error.message ?? "")) {
+      return { data: { id: "", repetida: false, entrarDirecto: true } };
+    }
     reportarSiInesperado(error, "solicitar_union_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
   const id = leerTexto(data, "id");
   if (!id) return { error: "No se pudo enviar la solicitud. Intenta de nuevo." };
   revalidatePath(`/comunidades/${parsed.data.community_id}`);
-  return { data: { id, repetida: leerBooleano(data, "repetida", false) } };
+  return { data: { id, repetida: leerBooleano(data, "repetida", false), entrarDirecto: false } };
 }
 
 /**
@@ -264,11 +278,13 @@ export async function cancelarSolicitud(
   return { data: { cancelada: true } };
 }
 
+const SOLICITUD_YA_RESUELTA_RE = /Esa solicitud (no existe|ya no esta pendiente).$/;
+
 export async function resolverSolicitud(input: {
   request_id: string;
   aceptar: boolean;
   community_id: string;
-}): Promise<{ error: string } | { data: { status: string } }> {
+}): Promise<{ error: string } | { data: { status: string; resueltaPorOtro: boolean } }> {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = solicitudUnionIdSchema.safeParse({ request_id: input.request_id });
@@ -280,6 +296,15 @@ export async function resolverSolicitud(input: {
     p_aceptar: input.aceptar,
   });
   if (error) {
+    // P0002 con estos dos textos: la solicitud ya no esta pendiente (otra
+    // persona del mando la resolvio a la vez, o quien pedia la cancelo) o ya
+    // no existe. No es un fallo de quien toca: la cola tiene que soltar la
+    // fila, no reinsertarla. El tercer P0002 de la RPC ('ya no se puede
+    // aceptar': bloqueo o suspension) deja la fila pendiente y sigue siendo
+    // error.
+    if (error.code === CODIGO_NO_EXISTE && SOLICITUD_YA_RESUELTA_RE.test(error.message ?? "")) {
+      return { data: { status: "resuelta_por_otro", resueltaPorOtro: true } };
+    }
     reportarSiInesperado(error, "resolver_solicitud_union");
     return { error: traducirErrorComunidad(error) };
   }
@@ -287,7 +312,12 @@ export async function resolverSolicitud(input: {
     revalidatePath(`/comunidades/${input.community_id}`);
     revalidatePath(`/comunidades/${input.community_id}/administrar`);
   }
-  return { data: { status: leerTexto(data, "status") ?? (input.aceptar ? "aceptada" : "rechazada") } };
+  return {
+    data: {
+      status: leerTexto(data, "status") ?? (input.aceptar ? "aceptada" : "rechazada"),
+      resueltaPorOtro: false,
+    },
+  };
 }
 
 export async function cargarSolicitudes(input: {

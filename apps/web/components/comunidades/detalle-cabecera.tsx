@@ -26,6 +26,7 @@ export function DetalleCabecera({ detalle }: DetalleCabeceraProps) {
     mi_rol: detalle.mi_rol,
     solicitud_pendiente: detalle.solicitud_pendiente,
     miembros_count: detalle.miembros_count,
+    puedo_entrar: detalle.puedo_entrar,
   });
 
   return (

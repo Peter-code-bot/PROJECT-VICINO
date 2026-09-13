@@ -20,6 +20,12 @@ interface MuroComunidadProps {
   currentUser: { id: string; nombre: string; foto: string | null } | null;
   /** Solo miembros publican; el mando local ademas borra lo ajeno. */
   puedoPublicar: boolean;
+  /**
+   * Solo miembros reaccionan (la base rechaza con 42501 a quien no pertenece).
+   * En el muro unificado siempre se es miembro; en /comunidades/[id] de una
+   * publica, un no miembro ve el muro pero no enciende corazones.
+   */
+  puedoReaccionar?: boolean;
   puedoModerar?: boolean;
   vacio?: { titulo: string; texto: string };
 }
@@ -37,6 +43,7 @@ export function MuroComunidad({
   initialCursor,
   currentUser,
   puedoPublicar,
+  puedoReaccionar = true,
   puedoModerar = false,
   vacio,
 }: MuroComunidadProps) {
@@ -126,6 +133,8 @@ export function MuroComunidad({
           post={post}
           currentUserId={currentUser?.id ?? null}
           puedoModerar={puedoModerar}
+          puedoReaccionar={puedoReaccionar}
+          nombreComunidad={communityNombre}
           conComunidad={communityId === null}
           onBorrada={(id) => removeItem((p) => p.id === id)}
           onCambio={(fresco) => setItems((prev) => prev.map((p) => (p.id === fresco.id ? fresco : p)))}

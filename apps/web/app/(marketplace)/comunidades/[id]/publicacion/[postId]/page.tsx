@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HiloPublicacion } from "@/components/comunidades/hilo-publicacion";
 import { ComunidadNoDisponible } from "@/components/comunidades/no-disponible";
 import { esMando } from "@/lib/comunidades/tipos";
+import { esErrorNoDisponible } from "@/lib/comunidades/errores";
 
 interface Props {
   params: Promise<{ id: string; postId: string }>;
@@ -67,8 +68,15 @@ export default async function PublicacionPage({ params }: Props) {
     supabase.rpc("comentarios_de_publicacion", { p_post_id: postId, result_limit: PAGINA }),
   ]);
 
-  if (postR.error) Sentry.captureException(postR.error, { tags: { action: "feed_muro_comunidad@hilo" } });
-  if (comentariosR.error) Sentry.captureException(comentariosR.error, { tags: { action: "comentarios_de_publicacion" } });
+  // P0002 = la comunidad esta archivada u oculta (feed_muro_comunidad la
+  // rechaza tambien a sus miembros): estado esperado al abrir un hilo desde
+  // una notificacion vieja, no un incidente para Sentry.
+  if (postR.error && !esErrorNoDisponible(postR.error)) {
+    Sentry.captureException(postR.error, { tags: { action: "feed_muro_comunidad@hilo" } });
+  }
+  if (comentariosR.error && !esErrorNoDisponible(comentariosR.error)) {
+    Sentry.captureException(comentariosR.error, { tags: { action: "comentarios_de_publicacion" } });
+  }
 
   const post = postR.data?.[0];
   if (!post || post.id !== postId) return <ComunidadNoDisponible titulo="Esta publicación no está disponible" />;
@@ -81,7 +89,7 @@ export default async function PublicacionPage({ params }: Props) {
       post={post}
       comentarios={comentarios}
       cursor={comentarios.length === PAGINA && ultimo ? { time: ultimo.created_at, id: ultimo.id } : null}
-      currentUser={{ id: user.id, nombre: perfilR.data?.nombre ?? "Tu", foto: perfilR.data?.foto ?? null }}
+      currentUser={{ id: user.id, nombre: perfilR.data?.nombre ?? "Tú", foto: perfilR.data?.foto ?? null }}
       puedoComentar={detalle.soy_miembro && detalle.disponible}
       puedoModerar={esMando(detalle.mi_rol)}
     />

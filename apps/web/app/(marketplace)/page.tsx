@@ -432,7 +432,7 @@ export default async function HomePage({ searchParams }: Props) {
 
     const posts = muroData?.data ?? [];
     return {
-      user: { id: user.id, nombre: perfilData?.nombre ?? "Tu", foto: perfilData?.foto ?? null },
+      user: { id: user.id, nombre: perfilData?.nombre ?? "Tú", foto: perfilData?.foto ?? null },
       muro: { posts, cursor: cursorDeUltimo(posts, 30) },
       mias: miasData?.data ?? [],
       misSolicitudes: solicitudesData?.data ?? [],

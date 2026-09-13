@@ -2589,6 +2589,10 @@ export type Database = {
         }[]
       }
       complete_user_onboarding: { Args: never; Returns: undefined }
+      comunidad_bloqueo_con_mando: {
+        Args: { p_community_id: string; p_user: string }
+        Returns: boolean
+      }
       comunidad_fundacion_estado: { Args: { p_viewer: string }; Returns: Json }
       comunidad_notifica: {
         Args: {
@@ -2633,6 +2637,7 @@ export type Database = {
           miembros_count: number
           nombre: string
           publicaciones_count: number
+          puedo_entrar: boolean
           solicitud_pendiente: boolean
           soy_miembro: boolean
           ultima_publicacion_at: string
@@ -2641,6 +2646,7 @@ export type Database = {
       detalle_comunidad: {
         Args: { p_community_id: string }
         Returns: {
+          archivada: boolean
           created_at: string
           descripcion: string
           disponible: boolean
@@ -2650,6 +2656,7 @@ export type Database = {
           miembros_count: number
           nombre: string
           publicaciones_count: number
+          puedo_entrar: boolean
           solicitud_pendiente: boolean
           soy_fundador: boolean
           soy_miembro: boolean
@@ -3029,13 +3036,16 @@ export type Database = {
       mis_comunidades: {
         Args: never
         Returns: {
+          archivada: boolean
           descripcion: string
+          disponible: boolean
           es_privada: boolean
           id: string
           mi_rol: string
           miembros_count: number
           nombre: string
           publicaciones_count: number
+          puedo_entrar: boolean
           solicitud_pendiente: boolean
           soy_fundador: boolean
           soy_miembro: boolean
@@ -3245,6 +3255,10 @@ export type Database = {
       solicitar_union_comunidad: {
         Args: { p_community_id: string; p_mensaje?: string }
         Returns: Json
+      }
+      solicitud_aceptada_vigente: {
+        Args: { p_community_id: string; p_user: string }
+        Returns: boolean
       }
       solicitudes_de_comunidad: {
         Args: {

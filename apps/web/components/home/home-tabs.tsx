@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { HapticLink } from "@/components/shared/haptic-link";
+import { HomeTabsFila } from "./home-tabs-fila";
 
 export type HomeFeed = "parati" | "following" | "solicitudes" | "comunidades";
 
@@ -18,8 +19,10 @@ export function HomeTabs({ active }: HomeTabsProps) {
   return (
     // overflow-x-auto obligatorio (decision 2): a 19 px extrabold con gap-4
     // los cuatro tabs miden ~460 px, mas que los 375 de un telefono. El
-    // scroll horizontal es de ESTA fila, nunca del body.
-    <div className="-mx-0 overflow-x-auto scrollbar-hide px-4 pt-3 pb-1">
+    // scroll horizontal es de ESTA fila, nunca del body. HomeTabsFila (cliente)
+    // trae a la vista el tab activo y funde el borde derecho mientras quede
+    // contenido fuera; este componente sigue siendo de servidor.
+    <HomeTabsFila activeId={active}>
       <div className="flex w-max items-baseline gap-4 pr-4">
         {TABS.map((tab) => {
           const isActive = active === tab.id;
@@ -45,6 +48,6 @@ export function HomeTabs({ active }: HomeTabsProps) {
           );
         })}
       </div>
-    </div>
+    </HomeTabsFila>
   );
 }

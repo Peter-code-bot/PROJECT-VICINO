@@ -1,8 +1,10 @@
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { ReportRowActions } from "../report-row-actions";
+import { reporterosPorId } from "@/lib/admin/reporteros";
 
 export const metadata = { title: "Admin — Publicaciones de comunidad reportadas" };
 
@@ -24,15 +26,19 @@ export default async function CommunityPostsModerationPage() {
     ? await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" })
     : { data: false };
 
-  const { data: reports } = await supabase
+  // Sin embed de reporter (ver lib/admin/reporteros.ts: la FK va a auth.users
+  // y el embed daba 400). Y el error de la consulta se ensena, no se traga.
+  const { data: reports, error: errorReports } = await supabase
     .from("reports")
-    .select(`
-      id, reason, description, status, created_at, target_id,
-      reporter:profiles!reporter_id(nombre)
-    `)
+    .select("id, reason, description, status, created_at, target_id, reporter_id")
     .eq("target_type", "community_post")
     .in("status", ["pending", "reviewed"])
     .order("created_at", { ascending: false });
+  if (errorReports) {
+    Sentry.captureException(errorReports, { tags: { action: "reports@community_posts" } });
+  }
+
+  const reporterById = await reporterosPorId(supabase, (reports ?? []).map((r) => r.reporter_id));
 
   const targetIds = (reports ?? []).map((r) => r.target_id);
   const { data: posts } = targetIds.length > 0
@@ -62,7 +68,13 @@ export default async function CommunityPostsModerationPage() {
         ocultamiento; &ldquo;Desestimar&rdquo; solo cierra el reporte.
       </p>
 
-      {!reports || reports.length === 0 ? (
+      {errorReports ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-12 space-y-2">
+          <p className="text-4xl">⚠️</p>
+          <p className="font-medium">No se pudieron cargar los reportes</p>
+          <p className="text-xs text-muted-foreground">Ya quedó registrado. Recarga la página en un momento.</p>
+        </div>
+      ) : !reports || reports.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-12 space-y-2">
           <p className="text-4xl">✅</p>
           <p className="font-medium">Sin publicaciones de comunidad reportadas pendientes</p>
@@ -74,7 +86,7 @@ export default async function CommunityPostsModerationPage() {
             const autor = post && (Array.isArray(post.autor) ? post.autor[0] : post.autor);
             const comunidad =
               post && (Array.isArray(post.comunidad) ? post.comunidad[0] : post.comunidad);
-            const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
+            const reporter = reporterById.get(rep.reporter_id);
             return (
               <div key={rep.id} className="rounded-lg border p-4 space-y-2 w-full">
                 <div className="flex items-start justify-between gap-4">

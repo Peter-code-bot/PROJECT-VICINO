@@ -6,7 +6,7 @@ import { MuroComunidad } from "@/components/comunidades/muro-comunidad";
 import { MuroDifuminado } from "@/components/comunidades/muro-difuminado";
 import { ComunidadNoDisponible } from "@/components/comunidades/no-disponible";
 import { esMando, cursorDeUltimo } from "@/lib/comunidades/tipos";
-import { traducirErrorComunidad, esErrorDePermiso } from "@/lib/comunidades/errores";
+import { traducirErrorComunidad, esErrorDePermiso, esErrorNoDisponible } from "@/lib/comunidades/errores";
 import { Archive } from "lucide-react";
 
 interface Props {
@@ -52,14 +52,19 @@ export default async function ComunidadPage({ params }: Props) {
 
   const currentUser = {
     id: user.id,
-    nombre: perfilR.data?.nombre ?? "Tu",
+    nombre: perfilR.data?.nombre ?? "Tú",
     foto: perfilR.data?.foto ?? null,
   };
 
-  // El muro se pide solo cuando hay derecho a verlo: miembro, o publica. Si
-  // aun asi la RPC dice 42501 (la comunidad se cerro entre una lectura y
-  // otra), se pinta la silueta igual que si fuera privada de entrada.
-  const puedeVerMuro = detalle.soy_miembro || !detalle.es_privada;
+  // El muro se pide solo cuando hay derecho a verlo: la comunidad esta viva
+  // Y (soy miembro, o es publica). Una archivada u oculta NO se lee, ni
+  // siquiera por sus miembros: feed_muro_comunidad, puedo_ver_publicacion y
+  // comentarios_de_publicacion exigen archived_at IS NULL e is_hidden = false
+  // desde 20260912200000 ("dejan de leerse"). Pedirlo igual daba P0002 y una
+  // excepcion en Sentry por cada visita. Si aun asi la RPC dice 42501 (la
+  // comunidad se cerro entre una lectura y otra), se pinta la silueta igual
+  // que si fuera privada de entrada.
+  const puedeVerMuro = detalle.disponible && (detalle.soy_miembro || !detalle.es_privada);
   let posts: Awaited<ReturnType<typeof cargarMuroInicial>> = { items: [], errorPermiso: false, error: null };
   if (puedeVerMuro) posts = await cargarMuroInicial(supabase, id);
 
@@ -72,12 +77,14 @@ export default async function ComunidadPage({ params }: Props) {
       {!detalle.disponible && detalle.soy_miembro && (
         <div className="mx-4 mb-3 flex items-start gap-2 rounded-2xl bg-[color:var(--card-2)] p-3 text-xs text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]">
           <Archive className="mt-0.5 h-4 w-4 shrink-0" />
-          Esta comunidad está archivada. Puedes leer lo que quedó y salir cuando quieras; ya no se publica.
+          {detalle.archivada
+            ? "Esta comunidad fue archivada. Ya no se puede leer ni publicar en ella; puedes salir cuando quieras."
+            : "Esta comunidad no está disponible por ahora. Ya no se puede leer ni publicar en ella; puedes salir cuando quieras."}
         </div>
       )}
 
       <section className="px-4" aria-label="Muro">
-        {muroBloqueado ? (
+        {!detalle.disponible ? null : muroBloqueado ? (
           <MuroDifuminado />
         ) : posts.error ? (
           <p className="py-10 text-center text-sm text-[color:var(--fg-muted)]">{posts.error}</p>
@@ -90,6 +97,9 @@ export default async function ComunidadPage({ params }: Props) {
             initialCursor={cursorDeUltimo(posts.items, PAGINA)}
             currentUser={currentUser}
             puedoPublicar={detalle.soy_miembro && detalle.disponible}
+            // Reaccionar exige pertenencia (alternar_like_publicacion, 42501):
+            // un no miembro de una publica ve el muro pero no enciende corazones.
+            puedoReaccionar={detalle.soy_miembro && detalle.disponible}
             puedoModerar={esMando(detalle.mi_rol)}
           />
         )}
@@ -105,6 +115,9 @@ async function cargarMuroInicial(supabase: Awaited<ReturnType<typeof createClien
   });
   if (error) {
     if (esErrorDePermiso(error)) return { items: [], errorPermiso: true, error: null };
+    // P0002: la comunidad se archivo u oculto entre detalle_comunidad y esta
+    // llamada. Es un estado esperado, no un incidente para Sentry.
+    if (esErrorNoDisponible(error)) return { items: [], errorPermiso: false, error: traducirErrorComunidad(error) };
     Sentry.captureException(error, { tags: { action: "feed_muro_comunidad" } });
     return { items: [], errorPermiso: false, error: traducirErrorComunidad(error) };
   }

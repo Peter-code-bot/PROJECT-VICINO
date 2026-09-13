@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { ReportRowActions } from "../report-row-actions";
 import { firmarAdjuntos, leerAdjuntos } from "@/lib/chat/attachments";
+import { reporterosPorId } from "@/lib/admin/reporteros";
 
 export const metadata = { title: "Admin — Mensajes reportados" };
 
@@ -20,16 +21,16 @@ export default async function MessagesModerationPage() {
     ? await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" })
     : { data: false };
 
+  // Sin embed de reporter: ver lib/admin/reporteros.ts (la FK va a auth.users
+  // y `profiles!reporter_id` respondia 400, que se leia como "sin reportes").
   const { data: reports } = await supabase
     .from("reports")
-    .select(`
-      id, reason, description, status, created_at, target_id,
-      reporter:profiles!reporter_id(nombre)
-    `)
+    .select("id, reason, description, status, created_at, target_id, reporter_id")
     .eq("target_type", "message")
     .in("status", ["pending", "reviewed"])
     .order("created_at", { ascending: false });
 
+  const reporterById = await reporterosPorId(supabase, (reports ?? []).map((r) => r.reporter_id));
   const targetIds = (reports ?? []).map((r) => r.target_id);
   const { data: messages } = targetIds.length > 0
     ? await supabase
@@ -84,7 +85,7 @@ export default async function MessagesModerationPage() {
           {reports.map((rep) => {
             const message = messageById.get(rep.target_id);
             const autor = message && (Array.isArray(message.autor) ? message.autor[0] : message.autor);
-            const reporter = Array.isArray(rep.reporter) ? rep.reporter[0] : rep.reporter;
+            const reporter = reporterById.get(rep.reporter_id);
             return (
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">

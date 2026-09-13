@@ -23,7 +23,9 @@ interface Props {
  * Cola de solicitudes de una comunidad privada. La ven owner y moderadores
  * (decision 5). Aceptar o rechazar quita la fila al instante; si la base
  * dice que no (23514 porque quien pide ya esta en 20 comunidades, 42501
- * por bloqueo), la fila vuelve y el motivo sale en un toast.
+ * por bloqueo), la fila vuelve y el motivo sale en un toast. Si la base dice
+ * que ya no estaba pendiente (P0002: otra persona del mando la resolvio
+ * antes, o quien pedia la cancelo), la fila NO vuelve: ya no existe.
  */
 export function SolicitudesCola({ communityId, iniciales, cursor, error: errorInicial }: Props) {
   const [enCurso, setEnCurso] = useState<string | null>(null);
@@ -52,6 +54,10 @@ export function SolicitudesCola({ communityId, iniciales, cursor, error: errorIn
         return copia;
       });
       toast.error(r.error);
+      return;
+    }
+    if (r.data.resueltaPorOtro) {
+      toast.info(`La solicitud de ${s.user_nombre} ya la resolvió otra persona.`);
       return;
     }
     toast.success(aceptar ? `${s.user_nombre} ya es parte de la comunidad` : "Solicitud rechazada");

@@ -41,6 +41,58 @@ const GENERICO_POR_CODIGO: Record<string, string> = {
 export const MENSAJE_GENERICO = "Algo salió mal. Intenta de nuevo.";
 
 /**
+ * Las RPC hablan en ASCII (regla de estilo del SQL) y la persona lee con
+ * tildes. Este es el UNICO diccionario: clave = texto exacto que lanza la
+ * base, valor = el mismo texto acentuado. Solo entran las frases que cambian;
+ * una frase desconocida sale tal cual (nunca se inventa una tilde con un
+ * reemplazo por palabra: "Esta comunidad" y "no esta disponible" comparten
+ * la palabra y solo una lleva tilde).
+ */
+const ACENTUADO: Record<string, string> = {
+  "El centro solo se puede mover hasta 1 km del punto donde se fundo la comunidad.":
+    "El centro solo se puede mover hasta 1 km del punto donde se fundó la comunidad.",
+  "El mando no se quita desde aqui.": "El mando no se quita desde aquí.",
+  "Esa comunidad es publica: puedes unirte directamente.": "Esa comunidad es pública: puedes unirte directamente.",
+  "Esa comunidad no esta disponible.": "Esa comunidad no está disponible.",
+  "Esa publicacion es de otra comunidad.": "Esa publicación es de otra comunidad.",
+  "Esa publicacion ya no esta disponible.": "Esa publicación ya no está disponible.",
+  "Esa solicitud ya no esta pendiente.": "Esa solicitud ya no está pendiente.",
+  "Falta la publicacion.": "Falta la publicación.",
+  "La descripcion no puede pasar de 300 caracteres.": "La descripción no puede pasar de 300 caracteres.",
+  "Necesitas iniciar sesion.": "Necesitas iniciar sesión.",
+  "No puedes reaccionar a esa publicacion.": "No puedes reaccionar a esa publicación.",
+  "Te uniste a demasiadas comunidades hoy. Intentalo manana.": "Te uniste a demasiadas comunidades hoy. Inténtalo mañana.",
+  "Tu cuenta esta suspendida.": "Tu cuenta está suspendida.",
+  "Ubicacion invalida.": "Ubicación inválida.",
+  "Unete a la comunidad para publicar.": "Únete a la comunidad para publicar.",
+  "Unete a la comunidad para reaccionar.": "Únete a la comunidad para reaccionar.",
+  "Unete a la comunidad para ver su muro.": "Únete a la comunidad para ver su muro.",
+  "Ya existe una comunidad con ese nombre por aqui.": "Ya existe una comunidad con ese nombre por aquí.",
+  "Ya tienes una comunidad a menos de 1 km de aqui.": "Ya tienes una comunidad a menos de 1 km de aquí.",
+  "Ya tienes otra comunidad a menos de 1 km de ahi.": "Ya tienes otra comunidad a menos de 1 km de ahí.",
+};
+
+/** Las frases con un numero dentro (cuotas): la forma es fija, el numero no. */
+const ACENTUADO_CON_NUMERO: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+  [
+    /^Llegaste al limite de (\d+) ediciones de descripcion en 24 horas\.$/,
+    (m) => `Llegaste al límite de ${m[1]} ediciones de descripción en 24 horas.`,
+  ],
+  [/^Llegaste al limite de (\d+) ([a-z]+) en 24 horas\.$/, (m) => `Llegaste al límite de ${m[1]} ${m[2]} en 24 horas.`],
+];
+
+/** Devuelve la frase con tildes si es una de las nuestras; si no, la misma. */
+export function acentuar(mensaje: string): string {
+  const exacto = ACENTUADO[mensaje];
+  if (exacto) return exacto;
+  for (const [re, forma] of ACENTUADO_CON_NUMERO) {
+    const m = mensaje.match(re);
+    if (m) return forma(m);
+  }
+  return mensaje;
+}
+
+/**
  * Un mensaje "del motor" se reconoce por su vocabulario: nombra objetos del
  * esquema o es ingles de Postgres/PostgREST. Los nuestros son frases en
  * espanol sin acentos que terminan en punto.
@@ -81,13 +133,13 @@ export function traducirErrorComunidad(error: unknown): string {
   const message = (e.message ?? "").trim();
 
   if (code in GENERICO_POR_CODIGO) {
-    if (message && !pareceDelMotor(message)) return message;
+    if (message && !pareceDelMotor(message)) return acentuar(message);
     return GENERICO_POR_CODIGO[code]!;
   }
 
   // Rate limit de la app (lib/rate-limit.ts) y errores que ya vienen
   // traducidos por una accion: llegan sin codigo y en espanol.
-  if (!code && message && !pareceDelMotor(message)) return message;
+  if (!code && message && !pareceDelMotor(message)) return acentuar(message);
 
   return MENSAJE_GENERICO;
 }

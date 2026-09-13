@@ -3,6 +3,7 @@ import { ArrowLeft, AlertOctagon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, REPORT_REASON_LABELS, type ReportReason } from "@vicino/shared";
 import { CriticalReportForm } from "./critical-report-form";
+import { reporterosPorId } from "@/lib/admin/reporteros";
 
 export const metadata = { title: "Admin — Reportes críticos" };
 
@@ -14,17 +15,29 @@ export const metadata = { title: "Admin — Reportes críticos" };
 export default async function CriticalReportsPage() {
   const supabase = await createClient();
 
+  // Sin el embed reporter:profiles!reporter_id dentro del reporte: la FK de
+  // reports.reporter_id va a auth.users y PostgREST respondia 400 PGRST200 a
+  // la consulta ENTERA, con lo que esta pagina --la de la denuncia legal--
+  // pintaba "sin reportes criticos pendientes" con pendientes reales. Ver
+  // lib/admin/reporteros.ts.
   const { data: pending } = await supabase
     .from("critical_reports")
     .select(`
       id, created_at, notes,
       report:reports!report_id(
-        id, target_type, target_id, description, created_at,
-        reporter:profiles!reporter_id(nombre, user_id)
+        id, target_type, target_id, description, created_at, reporter_id
       )
     `)
     .is("authority_notified_at", null)
     .order("created_at", { ascending: true });
+
+  const reporterById = await reporterosPorId(
+    supabase,
+    (pending ?? []).map((cr) => {
+      const r = Array.isArray(cr.report) ? cr.report[0] : cr.report;
+      return r?.reporter_id;
+    }),
+  );
 
   const { data: notified, count: notifiedCount } = await supabase
     .from("critical_reports")
@@ -76,7 +89,7 @@ export default async function CriticalReportsPage() {
         <div className="space-y-3">
           {pending.map((cr) => {
             const r = Array.isArray(cr.report) ? cr.report[0] : cr.report;
-            const reporter = r && (Array.isArray(r.reporter) ? r.reporter[0] : r.reporter);
+            const reporter = r ? reporterById.get(r.reporter_id) : undefined;
             if (!r) return null;
             return (
               <div key={cr.id} className="rounded-lg border border-red-500/40 p-4 space-y-3">
