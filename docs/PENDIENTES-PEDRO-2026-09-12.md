@@ -69,9 +69,15 @@ Opciones: (a) rotarlo en Supabase → *Settings* → *API* → *JWT Settings* �
 
 ## 5. Proyecto Supabase de pruebas
 
-`vicino-pruebas-2026-09-12` (ref `eubrewrdayqpruponkkd`, org Pro, micro: ~1 centavo por hora). Tiene las 158 migraciones replicadas, comunidades, el contrato de chat y usuarios de prueba. Claude lo borra al cerrar la jornada; si lo ves vivo después, bórralo desde el Dashboard (*Settings* → *General* → *Delete project*).
+`vicino-pruebas-2026-09-12` (ref `eubrewrdayqpruponkkd`) se **borró** al cerrar la jornada (DELETE por la Management API, 12-sep 23:2x; quedan solo VICINO, ATHENEA, el proyecto personal y C21-Batera). Si hace falta otro, el procedimiento que funcionó está en la memoria de la sesión: crear el proyecto Free/micro en la org, replicar `supabase/migrations` en orden con placeholders de las 3 policies legacy de `media_assets`, `CREATE INDEX CONCURRENTLY` fuera de bloque, y copiar las funciones que solo existen en producción.
 
-## 6. Lo que Alejandro tiene que integrar (no necesita tus manos)
+## 6. Comunidades: ya está en producción
 
-- **Contrato de chat** (`feat/chat-intencion-idempotente`, sin desplegar): `docs/CONTRATO-iniciar-conversacion.md`. Cuando lo apruebe, aplicar con `node scripts/apply-migration.mjs 20260912300000_iniciar_conversacion_idempotente.sql` y regenerar tipos.
-- **Liquid Glass**: los puntos candidatos en la página de comunidades están en `openspec/changes/2026-09-05-comunidades/LIQUID-GLASS-PUNTOS.md`, pendientes de tu plan.
+Cinco migraciones aplicadas con ledger (`20260912200000` base, `210000` enum, `220000` moderación, `230000` visibilidad/solicitudes/moderadores/centro, `240000` correcciones de la revisión adversarial) y el frontend en master (`15a2ab3`, `775f472`, `454dfd8`). Revisión: 53 hallazgos (1 crítico, corregido en `775f472`; 19 importantes, todos cerrados; sugerencias restantes anotadas en la memoria). Verificación con sesión real: 8 de 8 escenarios sobre lo corregido, con capturas.
+
+Lo que sigue siendo tuyo o de Alejandro:
+
+- **Liquid Glass**: los 15 puntos candidatos con ruta y componente están en `openspec/changes/2026-09-05-comunidades/LIQUID-GLASS-PUNTOS.md`; nada se implementó a la espera de tu plan.
+- **Contrato de chat** (`feat/chat-intencion-idempotente`, sin desplegar): `docs/CONTRATO-iniciar-conversacion.md`. Cuando Alejandro lo apruebe: `node scripts/apply-migration.mjs 20260912300000_iniciar_conversacion_idempotente.sql`, luego `20260912310000_get_or_create_chat_on_conflict.sql`, y `node scripts/gen-types.mjs`.
+- **Panel de moderación**: las seis páginas (`listings`, `messages`, `reviews`, `users`, `critical`, `community-posts`) tenían el mismo embed roto `reporter:profiles!reporter_id` (la FK apunta a `auth.users`, no a `profiles`) y devolvían «sin reportes» con reportes pendientes; ya van con una segunda consulta (`apps/web/lib/admin/reporteros.ts`). Conviene que alguien abra el panel en producción con tu cuenta admin y confirme que lista lo que hay.
+- **Sugerencias no bloqueantes que quedaron anotadas** (memoria de la sesión): oráculo débil de bloqueo con el mando vía el directorio, TOCTOU en la rama ENTRAR, interbloqueo teórico entre la cascada de `auth.users` y `alternar_membresia_comunidad`, «Volver» con `router.back()` desde una notificación en pestaña nueva, hilo localizado por cursor con empate exacto de `created_at`, y lecturas paginadas sin freno propio.
