@@ -1,8 +1,21 @@
 import { z } from "zod";
 
 // Espejo de los enums de Postgres definidos en
-// supabase/migrations/20260429120000_moderation_reports.sql
-export const REPORT_TARGET_TYPES = ["listing", "user", "message", "review"] as const;
+// supabase/migrations/20260429120000_moderation_reports.sql y ampliados en
+// supabase/migrations/20260912210000_comunidades_report_target.sql
+// ('community_post': publicacion o comentario del muro de una comunidad).
+//
+// ESTE ARRAY ES UN ESPEJO QUE EL BUILD NO VIGILA. Si la base gana un valor y
+// aqui falta, /api/reports responde 400 al reportarlo y report-modal.tsx hace
+// REPORT_REASONS_BY_TARGET[targetType].map sobre undefined. Cada valor nuevo
+// entra en los TRES mapas de abajo a la vez.
+export const REPORT_TARGET_TYPES = [
+  "listing",
+  "user",
+  "message",
+  "review",
+  "community_post",
+] as const;
 
 export const REPORT_REASONS = [
   "spam",
@@ -75,6 +88,17 @@ export const REPORT_REASONS_BY_TARGET: Record<ReportTargetType, readonly ReportR
     "fraud_or_scam",
     "other",
   ],
+  // Muro de comunidad: texto libre entre vecinos. Se parece mas a un mensaje
+  // que a un producto: acoso y spam delante; illegal_product no aplica porque
+  // una publicacion no vende nada.
+  community_post: [
+    "spam",
+    "harassment",
+    "inappropriate_content",
+    "fraud_or_scam",
+    "child_safety",
+    "other",
+  ],
 };
 
 export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
@@ -82,4 +106,5 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   user: "usuario",
   message: "mensaje",
   review: "reseña",
+  community_post: "publicación",
 };

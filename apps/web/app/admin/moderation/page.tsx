@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Star, ShoppingBag, User, MessageSquare, AlertOctagon } from "lucide-react";
+import { Star, ShoppingBag, User, MessageSquare, AlertOctagon, Users } from "lucide-react";
+import type { ReportTargetType } from "@vicino/shared";
 
 export const metadata = { title: "Admin — Moderación" };
 
@@ -13,15 +14,18 @@ export default async function ModerationIndexPage() {
     .select("target_type")
     .eq("status", "pending");
 
-  const counts: Record<string, number> = {
+  // Claves fijas tipadas contra el enum compartido: un target_type nuevo sin su
+  // card aqui es un error de type-check, no un reporte que nadie ve.
+  const counts: Record<ReportTargetType, number> = {
     listing: 0,
     user: 0,
     message: 0,
     review: 0,
+    community_post: 0,
   };
   (pendingRows ?? []).forEach((r) => {
-    counts[r.target_type as keyof typeof counts] =
-      (counts[r.target_type as keyof typeof counts] ?? 0) + 1;
+    const key = r.target_type as ReportTargetType;
+    if (key in counts) counts[key] += 1;
   });
 
   // Conteo de critical_reports pendientes de denuncia
@@ -83,6 +87,12 @@ export default async function ModerationIndexPage() {
           label="Reseñas reportadas"
           icon={<Star className="w-5 h-5" />}
           count={counts.review ?? 0}
+        />
+        <ModerationCard
+          href="/admin/moderation/community-posts"
+          label="Publicaciones de comunidad reportadas"
+          icon={<Users className="w-5 h-5" />}
+          count={counts.community_post ?? 0}
         />
       </div>
     </div>

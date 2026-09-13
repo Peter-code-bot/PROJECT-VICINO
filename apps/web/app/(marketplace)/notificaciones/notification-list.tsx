@@ -17,6 +17,10 @@ import {
   CalendarCheck,
   Calendar,
   BellRing,
+  MessageSquareText,
+  UserPlus,
+  Users,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +104,49 @@ const TIPO_CONFIG: Record<string, TipoConfig> = {
     tag: null,
     accent: false,
   },
+  // Comunidades (20260912200000 y 20260912230000). Sin push en v1: basta el
+  // badge de la campana (decision 11). Cada una abre el hilo o la comunidad.
+  comunidad_comentario: {
+    icon: MessageSquareText,
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
+    tag: "Comunidad",
+    tagBg: "bg-[color:var(--brand-tint)]",
+    tagColor: "text-[color:var(--brand-hi)]",
+    accent: false,
+  },
+  comunidad_solicitud: {
+    icon: UserPlus,
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
+    tag: "Solicitud",
+    tagBg: "bg-[color:var(--brand-tint)]",
+    tagColor: "text-[color:var(--brand-hi)]",
+    accent: true,
+  },
+  comunidad_solicitud_resuelta: {
+    icon: Users,
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
+    tag: "Comunidad",
+    tagBg: "bg-[color:var(--brand-tint)]",
+    tagColor: "text-[color:var(--brand-hi)]",
+    accent: false,
+  },
+  comunidad_moderador: {
+    icon: Shield,
+    iconBg: "bg-[color:var(--fg)]",
+    iconColor: "text-[color:var(--bg)]",
+    tag: "Comunidad",
+    tagBg: "bg-[color:var(--brand-tint)]",
+    tagColor: "text-[color:var(--brand-hi)]",
+    accent: false,
+  },
 };
+
+function esUuid(v: unknown): v is string {
+  return typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
+}
 
 function getNotificationHref(tipo: string, data: Record<string, unknown>): string | null {
   switch (tipo) {
@@ -120,6 +166,19 @@ function getNotificationHref(tipo: string, data: Record<string, unknown>): strin
       return "/perfil";
     case "dispute":
       return "/historial";
+    // Deep link al hilo (decision 11): data.post_id es la publicacion madre,
+    // no el comentario; el hilo ya carga los comentarios.
+    case "comunidad_comentario":
+      return esUuid(data.community_id) && esUuid(data.post_id)
+        ? `/comunidades/${data.community_id}/publicacion/${data.post_id}`
+        : esUuid(data.community_id)
+          ? `/comunidades/${data.community_id}`
+          : "/?feed=comunidades";
+    case "comunidad_solicitud":
+      return esUuid(data.community_id) ? `/comunidades/${data.community_id}/administrar` : "/?feed=comunidades";
+    case "comunidad_solicitud_resuelta":
+    case "comunidad_moderador":
+      return esUuid(data.community_id) ? `/comunidades/${data.community_id}` : "/?feed=comunidades";
     default:
       return null;
   }
