@@ -1,20 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, startTransition } from "react";
-
-interface NominatimAddress {
-  suburb?: string;
-  neighbourhood?: string;
-  quarter?: string;
-  city?: string;
-  town?: string;
-  municipality?: string;
-  postcode?: string;
-}
-
-interface NominatimReverseResponse {
-  address?: NominatimAddress;
-}
+import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 interface Result {
   name: string | null;
@@ -24,25 +11,6 @@ interface Result {
 
 const DRIFT_DEGREES = 0.001;
 
-function buildName(addr: NominatimAddress | undefined): {
-  name: string | null;
-  fullName: string | null;
-} {
-  if (!addr) return { name: null, fullName: null };
-  const barrio = addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? null;
-  const ciudad = addr.city ?? addr.town ?? addr.municipality ?? null;
-
-  let name: string | null = null;
-  if (barrio && ciudad) name = `${barrio}, ${ciudad}`;
-  else if (barrio) name = barrio;
-  else if (ciudad) name = ciudad;
-
-  const fullName =
-    name && addr.postcode ? `${name}, CP ${addr.postcode}` : name;
-
-  return { name, fullName };
-}
-
 export function useReverseGeocode(
   position: { lat: number; lng: number; name?: string; fullName?: string } | null,
 ): Result {
@@ -51,8 +19,13 @@ export function useReverseGeocode(
   const [loading, setLoading] = useState(false);
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
 
+  const posLat = position?.lat;
+  const posLng = position?.lng;
+  const posName = position?.name;
+  const posFullName = position?.fullName;
+
   useEffect(() => {
-    if (!position) {
+    if (posLat === undefined || posLng === undefined) {
       lastFetchRef.current = null;
       startTransition(() => {
         setName(null);
@@ -62,20 +35,20 @@ export function useReverseGeocode(
     }
 
     // Si ya viene con nombre cacheado, usarlo instantáneamente
-    if (position.name) {
+    if (posName) {
       startTransition(() => {
-        setName(position.name!);
-        setFullName(position.fullName ?? position.name!);
+        setName(posName);
+        setFullName(posFullName ?? posName);
       });
-      lastFetchRef.current = { lat: position.lat, lng: position.lng };
+      lastFetchRef.current = { lat: posLat, lng: posLng };
       return;
     }
 
     const prev = lastFetchRef.current;
     if (
       prev &&
-      Math.abs(prev.lat - position.lat) < DRIFT_DEGREES &&
-      Math.abs(prev.lng - position.lng) < DRIFT_DEGREES
+      Math.abs(prev.lat - posLat) < DRIFT_DEGREES &&
+      Math.abs(prev.lng - posLng) < DRIFT_DEGREES
     ) {
       return;
     }
@@ -83,18 +56,17 @@ export function useReverseGeocode(
     const controller = new AbortController();
     startTransition(() => setLoading(true));
 
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${position.lat}&lon=${position.lng}&format=json&addressdetails=1`;
-
-    fetch(url, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP error"))))
-      .then((data: NominatimReverseResponse) => {
-        const built = buildName(data.address);
-        setName(built.name);
-        setFullName(built.fullName);
-        lastFetchRef.current = { lat: position.lat, lng: position.lng };
+    reverseGeocodeWithApple(posLat, posLng, controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        if (data) {
+          setName(data.name);
+          setFullName(data.fullName);
+          lastFetchRef.current = { lat: posLat, lng: posLng };
+        }
       })
       .catch(() => {
-        // Silenciar: red, JSON inválido o abort — el UI muestra fallback.
+        // Silenciar fallback
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -103,7 +75,7 @@ export function useReverseGeocode(
     return () => {
       controller.abort();
     };
-  }, [position?.lat, position?.lng]);
+  }, [posLat, posLng, posName, posFullName]);
 
   return { name, fullName, loading };
 }

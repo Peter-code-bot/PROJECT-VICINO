@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
@@ -8,8 +9,12 @@ import { Search, LocateFixed, Check, X, Loader2, MapPin, ChevronDown } from "luc
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useRouter } from "next/navigation";
-import { searchLocations, type LocationSearchResult } from "@/lib/geo/location-search";
+import {
+  searchLocations,
+  resolveLocationCoordinates,
+  type LocationSearchResult,
+} from "@/lib/geo/location-search";
+import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -31,22 +36,6 @@ export interface SavedLocation {
   name: string;
   fullName: string;
   timestamp: number;
-}
-
-interface NominatimResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
-interface NominatimAddress {
-  suburb?: string;
-  neighbourhood?: string;
-  quarter?: string;
-  city?: string;
-  town?: string;
-  municipality?: string;
-  postcode?: string;
 }
 
 interface Props {
@@ -114,34 +103,16 @@ function sameLoc(
   );
 }
 
-function buildNameFromAddress(addr: NominatimAddress | undefined): {
-  name: string;
-  fullName: string;
-} {
-  const barrio = addr?.suburb ?? addr?.neighbourhood ?? addr?.quarter ?? null;
-  const ciudad = addr?.city ?? addr?.town ?? addr?.municipality ?? null;
-  let name = "";
-  if (barrio && ciudad) name = `${barrio}, ${ciudad}`;
-  else if (barrio) name = barrio;
-  else if (ciudad) name = ciudad;
-  const fullName = name && addr?.postcode ? `${name}, CP ${addr.postcode}` : name;
-  return { name, fullName };
-}
-
 async function reverseGeocodeOnce(
   lat: number,
   lng: number,
   signal?: AbortSignal,
 ): Promise<{ name: string; fullName: string }> {
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-      { signal },
-    );
-    if (!r.ok) throw new Error("HTTP error");
-    const data = (await r.json()) as { address?: NominatimAddress };
-    const built = buildNameFromAddress(data.address);
-    if (built.name) return built;
+    const res = await reverseGeocodeWithApple(lat, lng, signal);
+    if (res?.name) {
+      return { name: res.name, fullName: res.fullName };
+    }
   } catch {
     // silenciar
   }
@@ -226,29 +197,53 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     return () => controller.abort();
   }, [open, center.lat, center.lng]);
 
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      searchAbortRef.current?.abort();
+    };
+  }, []);
+
   const handleSearchChange = useCallback(
     (v: string) => {
       setQuery(v);
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (v.trim().length < 2) {
+      searchAbortRef.current?.abort();
+
+      if (v.trim().length < 3) {
         setResults([]);
         setSearching(false);
         return;
       }
       setSearching(true);
+      const currentSeq = ++searchSeqRef.current;
+
       debounceRef.current = setTimeout(async () => {
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+
         try {
           const data = await searchLocations(v, {
             center: { lat: center.lat, lng: center.lng },
             limit: 5,
+            signal: controller.signal,
           });
-          setResults(data);
+          if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
+            setResults(data);
+          }
         } catch {
-          setResults([]);
+          if (searchSeqRef.current === currentSeq) {
+            setResults([]);
+          }
         } finally {
-          setSearching(false);
+          if (searchSeqRef.current === currentSeq) {
+            setSearching(false);
+          }
         }
-      }, 400);
+      }, 350);
     },
     [center.lat, center.lng],
   );
@@ -266,16 +261,20 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   );
 
   const handleSelectResult = useCallback(
-    (r: LocationSearchResult) => {
+    async (r: LocationSearchResult) => {
+      const resolved = await resolveLocationCoordinates(r, {
+        lat: center.lat,
+        lng: center.lng,
+      });
       commit({
-        lat: r.lat,
-        lng: r.lng,
-        name: r.name,
-        fullName: r.fullName,
+        lat: resolved.lat,
+        lng: resolved.lng,
+        name: resolved.name,
+        fullName: resolved.fullName,
         timestamp: Date.now(),
       });
     },
-    [commit],
+    [commit, center.lat, center.lng],
   );
 
   const handleUseMyLocation = useCallback(() => {

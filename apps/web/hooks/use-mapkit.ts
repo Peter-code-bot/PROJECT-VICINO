@@ -1,6 +1,71 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+export interface MapKitCoordinate {
+  latitude: number;
+  longitude: number;
+}
+
+export interface MapKitStructuredAddress {
+  countryCode?: string;
+  [key: string]: unknown;
+}
+
+export interface MapKitPlace {
+  name?: string;
+  formattedAddress?: string;
+  coordinate?: MapKitCoordinate;
+  countryCode?: string;
+  structuredAddress?: MapKitStructuredAddress;
+  subLocality?: string;
+  subThoroughfare?: string;
+  locality?: string;
+  administrativeArea?: string;
+  postCode?: string;
+  postalCode?: string;
+  displayLines?: string[];
+}
+
+export interface MapKitSearchResponse {
+  places?: MapKitPlace[];
+}
+
+export interface MapKitAutocompleteResult {
+  name?: string;
+  formattedAddress?: string;
+  coordinate?: MapKitCoordinate;
+  countryCode?: string;
+  structuredAddress?: MapKitStructuredAddress;
+  displayLines?: string[];
+}
+
+export interface MapKitAutocompleteResponse {
+  results?: MapKitAutocompleteResult[];
+  places?: MapKitPlace[];
+}
+
+export interface MapKitGeocoderResponse {
+  results?: MapKitPlace[];
+}
+
+export interface MapKitSearchInstance {
+  search: (
+    query: string,
+    callback: (error: Error | null, data: MapKitSearchResponse | null) => void
+  ) => void;
+  autocomplete?: (
+    query: string,
+    callback: (error: Error | null, data: MapKitAutocompleteResponse | null) => void
+  ) => void;
+}
+
+export interface MapKitGeocoderInstance {
+  reverseLookup: (
+    coordinate: unknown,
+    callback: (error: Error | null, data: MapKitGeocoderResponse | null) => void
+  ) => void;
+}
 
 export interface MapKitGlobal {
   init: (options: {
@@ -50,6 +115,14 @@ export interface MapKitGlobal {
     Hidden: unknown;
     Visible: unknown;
   };
+  Search: new (options?: {
+    limitToCountries?: string;
+    region?: unknown;
+    language?: string;
+  }) => MapKitSearchInstance;
+  Geocoder: new (options?: {
+    language?: string;
+  }) => MapKitGeocoderInstance;
 }
 
 declare global {
@@ -59,9 +132,39 @@ declare global {
   }
 }
 
-const MAPKIT_SCRIPT_URL = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
+import * as Sentry from "@sentry/nextjs";
 
-async function loadMapKitScript(): Promise<boolean> {
+const MAPKIT_SCRIPT_URL = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
+const LOAD_TIMEOUT_MS = 8000;
+
+let sentryReported = false;
+function reportMapKitError(reason: string, extra?: unknown) {
+  if (sentryReported) return;
+  sentryReported = true;
+  try {
+    Sentry.captureMessage(`[MapKit] ${reason}`, {
+      level: "warning",
+      tags: { mapkit: "true" },
+      extra: { extra },
+    });
+  } catch {
+    // Sentry no disponible o inicializado
+  }
+}
+
+async function fetchTokenFresh(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/mapkit/token");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.token === "string" ? data.token : null;
+  } catch (err) {
+    console.warn("[MapKit] Error al obtener token:", err);
+    return null;
+  }
+}
+
+export async function loadMapKitScript(): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   if (window.mapkit) {
@@ -72,13 +175,32 @@ async function loadMapKitScript(): Promise<boolean> {
     return window.__mapkit_init_promise;
   }
 
-  window.__mapkit_init_promise = new Promise((resolve) => {
-    // 1. Obtener token del endpoint
-    fetch("/api/mapkit/token")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data?.token) {
-          resolve(false);
+  const promise = new Promise<boolean>((resolve) => {
+    let resolved = false;
+    const finish = (success: boolean, failureReason?: string) => {
+      if (resolved) return;
+      resolved = true;
+      if (!success) {
+        // No cachear el resultado negativo para permitir reintentos posteriores
+        delete window.__mapkit_init_promise;
+        if (failureReason) {
+          reportMapKitError(failureReason);
+        }
+      }
+      resolve(success);
+    };
+
+    // Timeout de carga de 8 segundos
+    const timer = setTimeout(() => {
+      finish(false, "Timeout al inicializar MapKit (8s)");
+    }, LOAD_TIMEOUT_MS);
+
+    // 1. Verificar disponibilidad de token fresco
+    fetchTokenFresh()
+      .then((initialToken) => {
+        if (!initialToken) {
+          clearTimeout(timer);
+          finish(false, "Token de MapKit no disponible o credenciales ausentes");
           return;
         }
 
@@ -86,21 +208,31 @@ async function loadMapKitScript(): Promise<boolean> {
         const existingScript = document.querySelector(`script[src="${MAPKIT_SCRIPT_URL}"]`);
         const onScriptLoaded = () => {
           if (!window.mapkit) {
-            resolve(false);
+            clearTimeout(timer);
+            finish(false, "Script de MapKit cargó pero window.mapkit no está definido");
             return;
           }
 
           try {
             window.mapkit.init({
+              // B-3: Refresco dinámico de token cada vez que Apple lo solicite (expiración de 30 min)
               authorizationCallback: (done: (token: string) => void) => {
-                done(data.token);
+                fetchTokenFresh().then((freshToken) => {
+                  if (freshToken) {
+                    done(freshToken);
+                  } else {
+                    console.warn("[MapKit] Falló refresco dinámico de token");
+                  }
+                });
               },
               language: "es",
             });
-            resolve(true);
+            clearTimeout(timer);
+            finish(true);
           } catch (e) {
             console.warn("[MapKit] Error en mapkit.init:", e);
-            resolve(false);
+            clearTimeout(timer);
+            finish(false, "Error durante mapkit.init()");
           }
         };
 
@@ -115,13 +247,20 @@ async function loadMapKitScript(): Promise<boolean> {
         script.crossOrigin = "anonymous";
         script.async = true;
         script.onload = onScriptLoaded;
-        script.onerror = () => resolve(false);
+        script.onerror = () => {
+          clearTimeout(timer);
+          finish(false, "Error de red al cargar el script CDN de MapKit");
+        };
         document.head.appendChild(script);
       })
-      .catch(() => resolve(false));
+      .catch((err) => {
+        clearTimeout(timer);
+        finish(false, `Error inesperado al inicializar: ${String(err)}`);
+      });
   });
 
-  return window.__mapkit_init_promise;
+  window.__mapkit_init_promise = promise;
+  return promise;
 }
 
 export function useMapKit() {
@@ -129,20 +268,32 @@ export function useMapKit() {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
     loadMapKitScript().then((ok) => {
-      if (!mounted) return;
+      if (!active) return;
       setIsAvailable(ok);
       setIsReady(true);
     });
     return () => {
-      mounted = false;
+      active = false;
     };
+  }, []);
+
+  const retry = useCallback(() => {
+    if (typeof window !== "undefined") {
+      delete window.__mapkit_init_promise;
+    }
+    setIsReady(false);
+    loadMapKitScript().then((ok) => {
+      setIsAvailable(ok);
+      setIsReady(true);
+    });
   }, []);
 
   return {
     isReady,
     isAvailable: !!isAvailable,
     mapkit: typeof window !== "undefined" ? window.mapkit : undefined,
+    retry,
   };
 }

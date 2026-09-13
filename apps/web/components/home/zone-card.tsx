@@ -19,7 +19,7 @@ interface ZoneCardProps {
    *      el primer render coincida con el del servidor y no haya error de
    *      hidratacion. O sea que en el primer pintado NO hay ubicacion.
    *   2. tras hidratar      -> «Cerca de ti», cuando el efecto lee el cache.
-   *   3. tras ir a la red   -> el nombre de la colonia (Nominatim).
+   *   3. tras ir a la red   -> el nombre de la colonia (Apple Maps Geocoder).
    *
    * Las categorias, en cambio, son marcado del servidor: entran con el HTML.
    * De ahi el desfase — no era que «Cerca de ti» fuese lento, es que salia

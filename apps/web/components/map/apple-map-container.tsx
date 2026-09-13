@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useMapKit, type MapKitGlobal } from "@/hooks/use-mapkit";
 import { useTheme } from "next-themes";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCw } from "lucide-react";
 
 interface AppleMapProps {
   center: [number, number]; // [lat, lng]
@@ -14,6 +14,8 @@ interface AppleMapProps {
   onMarkerDragEnd?: (lat: number, lng: number) => void;
   onMapClick?: (lat: number, lng: number) => void;
   radiusKm?: number;
+  circleCenter?: [number, number];
+  circleColor?: string;
   height?: string | number;
   className?: string;
 }
@@ -30,6 +32,8 @@ export default function AppleMapContainer({
   onMarkerDragEnd,
   onMapClick,
   radiusKm,
+  circleCenter,
+  circleColor,
   height = "100%",
   className = "",
 }: AppleMapProps) {
@@ -37,7 +41,7 @@ export default function AppleMapContainer({
   const mapInstanceRef = useRef<MapInstance | null>(null);
   const markerRef = useRef<MarkerInstance | null>(null);
   const circleRef = useRef<unknown>(null);
-  const { isReady, isAvailable, mapkit } = useMapKit();
+  const { isReady, isAvailable, mapkit, retry } = useMapKit();
   const { resolvedTheme } = useTheme();
 
   const onMapClickRef = useRef(onMapClick);
@@ -144,12 +148,15 @@ export default function AppleMapContainer({
     }
 
     if (radiusKm && radiusKm > 0) {
-      const circleCoord = new mapkit.Coordinate(markerLat, markerLng);
+      const circleLat = circleCenter ? circleCenter[0] : markerLat;
+      const circleLng = circleCenter ? circleCenter[1] : markerLng;
+      const circleCoord = new mapkit.Coordinate(circleLat, circleLng);
+      const stroke = circleColor || "#E8734A";
       const circle = new mapkit.CircleOverlay(circleCoord, radiusKm * 1000, {
         style: new mapkit.Style({
-          fillColor: "#E8734A",
+          fillColor: stroke,
           fillOpacity: 0.18,
-          strokeColor: "#E8734A",
+          strokeColor: stroke,
           lineWidth: 2,
           lineDash: [6, 4],
         }),
@@ -169,6 +176,8 @@ export default function AppleMapContainer({
     interactive,
     draggableMarker,
     radiusKm,
+    circleCenter,
+    circleColor,
     resolvedTheme,
   ]);
 
@@ -210,7 +219,7 @@ export default function AppleMapContainer({
     );
   }
 
-  // Fallback si no está configurado el token de MapKit aún
+  // Fallback si el mapa no pudo inicializar o no hay red (P1-4, P1-5)
   return (
     <div
       className={`relative flex flex-col items-center justify-center bg-[color:var(--card-2)] p-4 text-center text-xs text-[color:var(--fg-muted)] rounded-2xl ${className}`}
@@ -222,9 +231,17 @@ export default function AppleMapContainer({
           {centerLat.toFixed(4)}, {centerLng.toFixed(4)}
         </span>
       </div>
-      <p className="max-w-[280px]">
-        Configura tu credencial de Apple Developer en <code className="text-primary font-mono text-[10px]">NEXT_PUBLIC_MAPKIT_TOKEN</code> para visualizar Apple Maps en alta definición.
+      <p className="max-w-[280px] text-[color:var(--fg-dim)] mb-2.5">
+        El mapa interactivo no está disponible temporalmente. Puedes continuar buscando o escribiendo tu zona.
       </p>
+      <button
+        type="button"
+        onClick={retry}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[color:var(--brand)] text-white font-medium text-xs hover:opacity-90 active:scale-95 transition-transform shadow-sm"
+      >
+        <RotateCw className="h-3 w-3" />
+        Reintentar cargar mapa
+      </button>
     </div>
   );
 }

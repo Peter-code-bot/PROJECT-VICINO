@@ -3,14 +3,15 @@
 import { useState, useCallback, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export interface GeoPosition {
-  lat: number;
-  lng: number;
-  accuracy?: number;
-  radius?: number;
-  name?: string;
-  fullName?: string;
-}
+import {
+  readLocation,
+  writeLocation,
+  STORAGE_KEY,
+  type GeoPosition,
+} from "@/lib/geo/location-storage";
+
+export { STORAGE_KEY };
+export type { GeoPosition };
 
 type GeoState =
   | { status: "idle" }
@@ -18,87 +19,32 @@ type GeoState =
   | { status: "success"; position: GeoPosition }
   | { status: "error"; message: string };
 
-/**
- * Se exporta porque este hook NO comparte estado entre instancias: cada
- * llamada tiene su propio useState, no hay contexto. Dos componentes que lo
- * usen a la vez no se enteran de los cambios del otro, y el unico punto en
- * comun es esta clave. Quien necesite ver un cambio hecho desde OTRO sitio
- * tiene que releer el cache — no le va a llegar por el estado.
- */
-export const STORAGE_KEY = "vicino_last_location";
-
-function readCache(): GeoPosition | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as GeoPosition;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(pos: GeoPosition) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
-    if (typeof document !== "undefined") {
-      const lat3 = pos.lat.toFixed(3);
-      const lng3 = pos.lng.toFixed(3);
-      document.cookie = `vicino_location=${lat3},${lng3}; path=/; max-age=31536000; SameSite=Lax`;
-      if (pos.radius) {
-        document.cookie = `vicino_radius=${pos.radius}; path=/; max-age=31536000; SameSite=Lax`;
-      }
-    }
-  } catch {
-    // quota exceeded o modo privado — ignorar
-  }
-}
-
 export function useGeolocation() {
   const [state, setState] = useState<GeoState>({ status: "idle" });
-
   const router = useRouter();
 
   useEffect(() => {
-    // Mover la lectura del caché a useEffect evita el "React Hydration Error" 
-    // porque el primer render coincidirá siempre con el servidor (idle).
-    const cached = readCache();
+    const cached = readLocation();
     if (cached) {
-      const lat3 = cached.lat.toFixed(3);
-      const lng3 = cached.lng.toFixed(3);
-      const expectedCookieVal = `${lat3},${lng3}`;
-      const cookies = document.cookie.split("; ");
-      const locationCookie = cookies.find((c) => c.startsWith("vicino_location="));
-      const hasCorrectCookie = locationCookie === `vicino_location=${expectedCookieVal}`;
-      
-      const expectedRadius = cached.radius ? `${cached.radius}` : "10000";
-      const radiusCookie = cookies.find((c) => c.startsWith("vicino_radius="));
-      const hasCorrectRadius = radiusCookie === `vicino_radius=${expectedRadius}`;
-
-      if (!hasCorrectCookie || (!hasCorrectRadius && cached.radius)) {
-        writeCache(cached);
-        let synced = false;
-        try {
-          synced = sessionStorage.getItem("vicino_geo_synced") === "1";
-        } catch (e) {
-          console.warn("Storage access restricted by browser privacy settings");
-          synced = true;
-        }
-        if (!synced) {
-          try {
-            sessionStorage.setItem("vicino_geo_synced", "1");
-          } catch (e) {
-            console.warn("Storage access restricted by browser privacy settings");
-          }
-          router.refresh();
-        }
-      }
-
       startTransition(() => {
         setState({ status: "success", position: cached });
       });
     }
-  }, [router]);
+
+    const onLocationUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<GeoPosition | null>;
+      if (customEvent.detail) {
+        startTransition(() => {
+          setState({ status: "success", position: customEvent.detail! });
+        });
+      }
+    };
+
+    window.addEventListener("vicino_location_updated", onLocationUpdated);
+    return () => {
+      window.removeEventListener("vicino_location_updated", onLocationUpdated);
+    };
+  }, []);
 
   const request = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -111,14 +57,14 @@ export function useGeolocation() {
     );
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const cached = readCache();
+        const cached = readLocation();
         const position: GeoPosition = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
           radius: cached?.radius ?? 10000,
         };
-        writeCache(position);
+        writeLocation(position);
         setState({ status: "success", position });
       },
       (err) => {
@@ -141,11 +87,9 @@ export function useGeolocation() {
       Math.abs(pos.lat) > 90 ||
       Math.abs(pos.lng) > 180
     ) {
-      // Rechazo silencioso — el caller pasó coords inválidas, no contaminamos
-      // el caché. La app sigue con la posición anterior.
       return;
     }
-    const cached = readCache();
+    const cached = readLocation();
     const position: GeoPosition = { 
       lat: pos.lat, 
       lng: pos.lng, 
@@ -153,7 +97,7 @@ export function useGeolocation() {
       name: pos.name,
       fullName: pos.fullName
     };
-    writeCache(position);
+    writeLocation(position);
     setState({ status: "success", position });
   }, []);
 
@@ -161,7 +105,7 @@ export function useGeolocation() {
     setState((prev) => {
       if (prev.status !== "success") return prev;
       const position = { ...prev.position, radius };
-      writeCache(position);
+      writeLocation(position);
       return { ...prev, position };
     });
     router.refresh();

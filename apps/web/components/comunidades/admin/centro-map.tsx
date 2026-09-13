@@ -1,8 +1,16 @@
 "use client";
 
-import { MapContainer, TileLayer, Circle, useMapEvents } from "react-leaflet";
-import { MapPin } from "lucide-react";
-import "leaflet/dist/leaflet.css";
+import dynamic from "next/dynamic";
+import { Loader2 } from "lucide-react";
+
+const AppleMapContainer = dynamic(() => import("@/components/map/apple-map-container"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[240px] items-center justify-center rounded-2xl bg-[color:var(--card-2)]">
+      <Loader2 className="h-5 w-5 animate-spin text-[color:var(--brand)]" />
+    </div>
+  ),
+});
 
 interface Props {
   /** Punto inicial del centro del mapa. */
@@ -14,46 +22,28 @@ interface Props {
   onMove: (lat: number, lng: number) => void;
 }
 
-function Seguidor({ onMove }: { onMove: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    moveend: (e) => {
-      const c = e.target.getCenter();
-      onMove(c.lat, c.lng);
-    },
-  });
-  return null;
-}
-
 /**
- * Mapa arrastrable para mover el centro (decision 6). El pin es un icono
- * fijo en el centro del contenedor (no un Marker de Leaflet: asi no se queda
- * atras mientras se arrastra) y el circulo pinta el kilometro permitido
- * desde el punto de fundacion. Se importa con next/dynamic y ssr:false.
+ * Mapa interactivo para mover el centro de la comunidad (Decisión 3).
+ * Utiliza AppleMapContainer unificado con pin arrastrable y círculo de radio.
  */
 export default function CentroMap({ lat, lng, fundacion, radioMetros, onMove }: Props) {
+  const radiusKm = radioMetros / 1000;
+
   return (
     <div className="relative h-[240px] overflow-hidden rounded-2xl">
-      <MapContainer
+      <AppleMapContainer
         center={[lat, lng]}
-        zoom={15}
-        zoomControl={false}
-        attributionControl={false}
-        scrollWheelZoom={false}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Circle
-          center={[fundacion.lat, fundacion.lng]}
-          radius={radioMetros}
-          pathOptions={{ color: "#2E8773", fillColor: "#2E8773", fillOpacity: 0.08, weight: 1.5 }}
-        />
-        <Seguidor onMove={onMove} />
-      </MapContainer>
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-full">
-        <MapPin className="h-9 w-9 fill-[color:var(--brand)] text-white drop-shadow-md" strokeWidth={1.5} />
-      </div>
+        markerPosition={[lat, lng]}
+        draggableMarker
+        onMarkerDragEnd={onMove}
+        onMapClick={onMove}
+        radiusKm={radiusKm}
+        circleCenter={[fundacion.lat, fundacion.lng]}
+        circleColor="#2E8773"
+        height={240}
+      />
       <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-xl bg-[color:var(--bg)]/85 px-2.5 py-1 text-xs text-[color:var(--fg-muted)] backdrop-blur-sm">
-        Arrastra el mapa para mover el centro
+        Arrastra o toca el mapa para mover el centro
       </div>
     </div>
   );

@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Search, MapPin, Loader2, X } from "lucide-react";
-import { searchLocations, type LocationSearchResult } from "@/lib/geo/location-search";
+import {
+  searchLocations,
+  resolveLocationCoordinates,
+  type LocationSearchResult,
+} from "@/lib/geo/location-search";
+import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
   ssr: false,
@@ -37,10 +42,13 @@ export default function DeliveryMap({
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [showMap, setShowMap] = useState(hasInitial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inversaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inversaAbortRef = useRef<AbortController | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchSeqRef = useRef<number>(0);
 
   const handleDrag = useCallback(
     (lat: number, lng: number) => {
@@ -55,17 +63,13 @@ export default function DeliveryMap({
       inversaRef.current = setTimeout(() => {
         const control = new AbortController();
         inversaAbortRef.current = control;
-        fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-          { signal: control.signal }
-        )
-          .then((r) => r.json())
+        reverseGeocodeWithApple(lat, lng, control.signal)
           .then((data) => {
             if (control.signal.aborted) return;
-            if (data?.display_name) onLocationChange(lat, lng, data.display_name);
+            if (data?.fullName) onLocationChange(lat, lng, data.fullName);
           })
           .catch(() => {});
-      }, 1100);
+      }, 800);
     },
     [onLocationChange]
   );
@@ -73,46 +77,75 @@ export default function DeliveryMap({
   useEffect(() => {
     return () => {
       if (inversaRef.current) clearTimeout(inversaRef.current);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       inversaAbortRef.current?.abort();
+      searchAbortRef.current?.abort();
     };
   }, []);
 
   function handleSearch(q: string) {
     setSearchQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.length < 2) {
+    searchAbortRef.current?.abort();
+
+    if (q.trim().length < 3) {
       setSuggestions([]);
       setSearching(false);
+      setHasSearched(false);
       return;
     }
+
     setSearching(true);
+    const currentSeq = ++searchSeqRef.current;
+
     debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
       try {
         const results = await searchLocations(q, {
           center: { lat: position[0], lng: position[1] },
           limit: 5,
+          signal: controller.signal,
         });
-        setSuggestions(results);
+
+        if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
+          setSuggestions(results);
+          setHasSearched(true);
+        }
       } catch {
-        setSuggestions([]);
+        if (searchSeqRef.current === currentSeq) {
+          setSuggestions([]);
+          setHasSearched(true);
+        }
       } finally {
-        setSearching(false);
+        if (searchSeqRef.current === currentSeq) {
+          setSearching(false);
+        }
       }
-    }, 400);
+    }, 350);
   }
 
-  function selectSuggestion(s: LocationSearchResult) {
-    setPosition([s.lat, s.lng]);
+  async function selectSuggestion(s: LocationSearchResult) {
     setSearchQuery(s.name);
     setSuggestions([]);
+    setHasSearched(false);
+
+    const resolved = await resolveLocationCoordinates(s, {
+      lat: position[0],
+      lng: position[1],
+    });
+
+    setPosition([resolved.lat, resolved.lng]);
     setShowMap(true);
-    onLocationChange(s.lat, s.lng, s.fullName);
+    onLocationChange(resolved.lat, resolved.lng, resolved.fullName);
   }
 
   function clearLocation() {
     setShowMap(false);
     setSearchQuery("");
     setSuggestions([]);
+    setHasSearched(false);
     onLocationChange(0, 0, "");
   }
 
@@ -145,6 +178,13 @@ export default function DeliveryMap({
           <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl border bg-card shadow-2xl p-4 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             Buscando ubicaciones...
+          </div>
+        )}
+
+        {/* Empty results indicator */}
+        {!searching && hasSearched && suggestions.length === 0 && searchQuery.trim().length >= 3 && (
+          <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl border bg-card shadow-2xl p-4 text-center text-sm text-muted-foreground">
+            No se encontraron ubicaciones para esa búsqueda.
           </div>
         )}
 
