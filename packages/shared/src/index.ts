@@ -14,6 +14,7 @@ export * from "./validators/favorite";
 export * from "./validators/notification";
 export * from "./validators/admin";
 export * from "./validators/moderation";
+export * from "./validators/community";
 
 // Utils
 export * from "./utils/format";

@@ -32,9 +32,9 @@ Reparto en tres archivos, en este orden:
 
 | # | Archivo | Contenido |
 |---|---|---|
-| 1 | `supabase/migrations/20260905200000_comunidades_base.sql` | Las 5 tablas con sus CHECK, los 17 índices explícitos, los 6 helpers `SECURITY DEFINER`, `comunidades_limite`, `comunidad_traspasa_mando` (la única implementación del traspaso de mando), las 3 policies, los grants (por columna en `communities`, de tabla en `community_members` y `community_posts`, **ninguno** en `community_post_likes` ni en `community_post_quota` —ni en su secuencia de identidad, que es un objeto con ACL propia—), la purga programada del ledger, los 7 triggers que **no** mencionan el enum, y las 13 RPC. |
-| 2 | `supabase/migrations/20260905210000_comunidades_report_target.sql` | **Solo** `alter type public.report_target_type add value if not exists 'community_post';` |
-| 3 | `supabase/migrations/20260905220000_comunidades_moderacion.sql` | Las cuatro funciones de moderación con su rama nueva, `publicacion_cierra_sus_reportes` + su trigger, el parche a `delete_user_data`, y los dos `DO $comprobacion$` ampliados. |
+| 1 | `supabase/migrations/20260912200000_comunidades_base.sql` | Las 5 tablas con sus CHECK, los 17 índices explícitos, los 6 helpers `SECURITY DEFINER`, `comunidades_limite`, `comunidad_traspasa_mando` (la única implementación del traspaso de mando), las 3 policies, los grants (por columna en `communities`, de tabla en `community_members` y `community_posts`, **ninguno** en `community_post_likes` ni en `community_post_quota` —ni en su secuencia de identidad, que es un objeto con ACL propia—), la purga programada del ledger, los 7 triggers que **no** mencionan el enum, y las 13 RPC. |
+| 2 | `supabase/migrations/20260912210000_comunidades_report_target.sql` | **Solo** `alter type public.report_target_type add value if not exists 'community_post';` |
+| 3 | `supabase/migrations/20260912220000_comunidades_moderacion.sql` | Las cuatro funciones de moderación con su rama nueva, `publicacion_cierra_sus_reportes` + su trigger, el parche a `delete_user_data`, y los dos `DO $comprobacion$` ampliados. |
 
 El enum va **solo, en su propio archivo y con su propio commit** porque un valor de enum recién añadido no se puede *usar* hasta que su transacción cierre: meterlo en el archivo 1 produce un error que parece de sintaxis y no lo es. Y porque es **irreversible** — en Postgres los valores de enum no se pueden borrar — así que merece ser suyo.
 

@@ -3,10 +3,10 @@
 -- TERCERA y ultima migracion de la entrega de comunidades. El orden de
 -- aplicacion NO es negociable:
 --
---   1. 20260905200000_comunidades_base.sql          (tablas, indices, policies,
+--   1. 20260912200000_comunidades_base.sql          (tablas, indices, policies,
 --                                                    grants, triggers y RPC)
---   2. 20260905210000_comunidades_report_target.sql (ALTER TYPE)  <-- COMMIT
---   3. 20260905220000_comunidades_moderacion.sql    (este archivo)
+--   2. 20260912210000_comunidades_report_target.sql (ALTER TYPE)  <-- COMMIT
+--   3. 20260912220000_comunidades_moderacion.sql    (este archivo)
 --
 -- Todo lo que hay aqui escribe el literal 'community_post', y un valor de enum
 -- recien anadido NO se puede usar dentro de la transaccion que lo anade. Si
@@ -63,7 +63,7 @@
 --                                 puede hacer sola, que es el traspaso de mando
 --                                 de las comunidades que esa persona manda.
 --                                 Las tablas de comunidades son CINCO (las
---                                 mismas cinco que crea 20260905200000), pero
+--                                 mismas cinco que crea 20260912200000), pero
 --                                 el bloque deja SEIS entradas en
 --                                 deleted_summary, porque communities aporta
 --                                 dos -- communities_traspasadas y
@@ -121,7 +121,7 @@
 -- y obligatoria; el VERIFY de abajo no la cubre.
 -- ---------------------------------------------------------------------------
 
-begin;
+-- (sin begin/commit propios: apply-migration.mjs envuelve el archivo entero en UNA transaccion junto con su fila del ledger; un COMMIT anidado la cerraria antes de tiempo y dejaria la anotacion fuera)
 
 -- ---------------------------------------------------------------------------
 -- 0. PREFLIGHT
@@ -139,7 +139,7 @@ DO $preflight$
 BEGIN
   IF to_regclass('public.community_posts') IS NULL THEN
     RAISE EXCEPTION
-      'falta aplicar 20260905200000_comunidades_base.sql: no existe public.community_posts'
+      'falta aplicar 20260912200000_comunidades_base.sql: no existe public.community_posts'
       USING ERRCODE = '42P01';
   END IF;
 
@@ -151,7 +151,7 @@ BEGIN
   -- cuenta real, con la transaccion a medias.
   IF to_regclass('public.community_post_quota') IS NULL THEN
     RAISE EXCEPTION
-      'falta aplicar la version actual de 20260905200000_comunidades_base.sql: no existe public.community_post_quota'
+      'falta aplicar la version actual de 20260912200000_comunidades_base.sql: no existe public.community_post_quota'
       USING ERRCODE = '42P01';
   END IF;
 
@@ -162,7 +162,7 @@ BEGIN
   -- y el fallo saldria dentro de un borrado de cuenta real.
   IF to_regprocedure('public.comunidad_traspasa_mando(uuid, uuid)') IS NULL THEN
     RAISE EXCEPTION
-      'falta aplicar la version actual de 20260905200000_comunidades_base.sql: no existe public.comunidad_traspasa_mando(uuid, uuid)'
+      'falta aplicar la version actual de 20260912200000_comunidades_base.sql: no existe public.comunidad_traspasa_mando(uuid, uuid)'
       USING ERRCODE = '42883';
   END IF;
 
@@ -176,7 +176,7 @@ BEGIN
        AND e.enumlabel = 'community_post'
   ) THEN
     RAISE EXCEPTION
-      'falta aplicar (y COMMITEAR) 20260905210000_comunidades_report_target.sql: report_target_type no tiene community_post'
+      'falta aplicar (y COMMITEAR) 20260912210000_comunidades_report_target.sql: report_target_type no tiene community_post'
       USING ERRCODE = '42704';
   END IF;
 END
@@ -521,7 +521,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.moderate_set_content_hidden(text, uuid, boolean) IS
-  'Boton ocultar/restaurar del panel de admin. p_target_type es TEXTO y su vocabulario NO es el del enum reports: profile | product | review | message | community_post (el panel traduce con MODERATION_TARGET). Suspender un perfil exige admin; el resto admite tambien moderator. Versionada por primera vez en 20260905220000; antes solo existia en la base.';
+  'Boton ocultar/restaurar del panel de admin. p_target_type es TEXTO y su vocabulario NO es el del enum reports: profile | product | review | message | community_post (el panel traduce con MODERATION_TARGET). Suspender un perfil exige admin; el resto admite tambien moderator. Versionada por primera vez en 20260912220000; antes solo existia en la base.';
 
 -- Los grants se declaran, no se heredan de memoria. CREATE OR REPLACE conserva
 -- el ACL previo, asi que esto es sobre todo constancia: la funcion la llama el
@@ -799,7 +799,7 @@ BEGIN
   deleted_summary := deleted_summary || jsonb_build_object('user_roles', cnt);
 
   -- ---------------------------------------------------------------------
-  -- COMUNIDADES (bloque nuevo, 20260905220000).
+  -- COMUNIDADES (bloque nuevo, 20260912220000).
   --
   -- El orden importa: primero el MANDO, luego el CONTENIDO. Si se borraran
   -- antes las membresias, el traspaso ya no encontraria ni al saliente ni a
@@ -808,7 +808,7 @@ BEGIN
 
   -- 1. Traspaso de mando ANTES de borrar nada -- y archivado de la que se
   --    quede sin nadie, que es la otra cara del mismo acto. Los dos los hace
-  --    public.comunidad_traspasa_mando (20260905200000, seccion 4.2b), que es
+  --    public.comunidad_traspasa_mando (20260912200000, seccion 4.2b), que es
   --    la UNICA implementacion del traspaso que existe en el producto: la
   --    llaman tambien la rama SALIR de alternar_membresia_comunidad y el
   --    trigger comunidad_releva_mando.
@@ -940,7 +940,7 @@ BEGIN
   -- y el motor NO lo rechazaria -- la comprobacion referencial se salta cuando
   -- la clave no cambia: referencia colgante silenciosa, y un borrado de cuenta
   -- que deja el identificador dentro. Por eso comunidad_normaliza congela solo
-  -- el RE-APUNTADO y deja pasar el vaciado (20260905200000, seccion 4.1). Si
+  -- el RE-APUNTADO y deja pasar el vaciado (20260912200000, seccion 4.1). Si
   -- C9 devuelve un uuid en vez de NULL, el arreglo va alli y no aqui: en esta
   -- funcion no hay ninguna sentencia que pueda esquivarlo.
   -- ---------------------------------------------------------------------
@@ -1109,7 +1109,7 @@ $comprobacion_enganches$;
 -- los grants existen para la API.
 notify pgrst, 'reload schema';
 
-commit;
+-- (fin del archivo: el COMMIT lo pone apply-migration.mjs)
 
 -- ---------------------------------------------------------------------------
 -- VERIFY (correr DESPUES de aplicar, en el mismo editor SQL).
@@ -1302,7 +1302,7 @@ commit;
 --     -- viejo la fila quedaria apuntando a un perfil borrado SIN que el motor
 --     -- se queje (la comprobacion referencial se salta cuando la clave no
 --     -- cambia). Si aqui sale un uuid en vez de NULL, hay una referencia
---     -- colgante y el arreglo va en 20260905200000, no aqui.
+--     -- colgante y el arreglo va en 20260912200000, no aqui.
 --     --
 --     -- Y el invariante entero, que es lo unico que detecta una carrera de
 --     -- traspaso sobre datos reales: toda comunidad tocada esta archivada o

@@ -9,7 +9,7 @@
 -- Desde Postgres 12 `ALTER TYPE ... ADD VALUE` si se puede ejecutar dentro de
 -- un bloque de transaccion, pero el valor recien anadido NO se puede USAR hasta
 -- que esa transaccion cierre. Si esta linea viviera dentro de
--- 20260905220000_comunidades_moderacion.sql, la primera funcion que escribiera
+-- 20260912220000_comunidades_moderacion.sql, la primera funcion que escribiera
 -- el literal 'community_post' fallaria con un error que parece de sintaxis y no
 -- lo es:
 --
@@ -17,9 +17,9 @@
 --
 -- De ahi el orden obligatorio de aplicacion:
 --
---   1. 20260905200000_comunidades_base.sql         (no menciona el enum)
---   2. 20260905210000_comunidades_report_target.sql (este archivo)  <-- COMMIT
---   3. 20260905220000_comunidades_moderacion.sql   (ya puede usarlo)
+--   1. 20260912200000_comunidades_base.sql         (no menciona el enum)
+--   2. 20260912210000_comunidades_report_target.sql (este archivo)  <-- COMMIT
+--   3. 20260912220000_comunidades_moderacion.sql   (ya puede usarlo)
 --
 -- Por eso este archivo tampoco lleva `begin;` / `commit;` propios: se aplica
 -- como sentencia suelta y su commit es justo lo que habilita al archivo 3.

@@ -23,7 +23,7 @@
 --
 -- De ahi el reparto:
 --
---   20260905200000_comunidades_base.sql          <- ESTE. Las 5 tablas (las 4
+--   20260912200000_comunidades_base.sql          <- ESTE. Las 5 tablas (las 4
 --     del producto mas el ledger de cuotas community_post_quota), sus CHECK,
 --     los 17 indices explicitos, los 5 helpers de RLS mas hay_bloqueo_con,
 --     comunidades_limite(), comunidad_traspasa_mando(), las 3 policies, los
@@ -31,11 +31,11 @@
 --     el enum y las 13 RPC. No toca report_target_type, asi que si falla no ha
 --     cambiado nada de moderacion.
 --
---   20260905210000_comunidades_report_target.sql <- SOLO el ALTER TYPE. Va
+--   20260912210000_comunidades_report_target.sql <- SOLO el ALTER TYPE. Va
 --     solo y con su propio commit porque es IRREVERSIBLE: los valores de enum
 --     de Postgres no se pueden borrar.
 --
---   20260905220000_comunidades_moderacion.sql    <- auto_hide_on_threshold,
+--   20260912220000_comunidades_moderacion.sql    <- auto_hide_on_threshold,
 --     handle_child_safety_report, moderate_set_content_hidden (versionada por
 --     primera vez), el trigger publicacion_cierra_sus_reportes y el parche a
 --     delete_user_data. Todo eso escribe 'community_post' y por tanto no puede
@@ -96,7 +96,7 @@
 --    mensaje legible.
 -- ---------------------------------------------------------------------------
 
-begin;
+-- (sin begin/commit propios: apply-migration.mjs envuelve el archivo entero en UNA transaccion junto con su fila del ledger; un COMMIT anidado la cerraria antes de tiempo y dejaria la anotacion fuera)
 
 -- ===========================================================================
 -- 1. LAS CINCO TABLAS
@@ -842,14 +842,21 @@ comment on function public.es_moderador_de_comunidad(uuid) is
 -- en CUALQUIERA de las dos direcciones, o si el autor esta suspendido; la
 -- primera responde SOLO por el bloqueo.
 --
--- ESTA FUNCION CIERRA UN AGUJERO QUE YA ESTA ABIERTO EN PRODUCCION.
+-- EL AGUJERO QUE ESTA FUNCION DESCRIBIA YA SE CERRO EN 20260912100000 (R-01).
 -- public.user_blocks tiene la policy "users_manage_own_blocks" FOR ALL TO
 -- authenticated USING (auth.uid() = blocker_id) (20260429120001:57-61), y no
 -- hay ninguna otra que le deje leer la fila al bloqueado. Por tanto, un NOT
 -- EXISTS bidireccional escrito DENTRO de una policy solo ve la mitad en la que
 -- YO bloqueo: la direccion contraria queda filtrada y el NOT EXISTS da true por
--- falta de PERMISO, no por falta de bloqueo. Es exactamente lo que le pasa hoy
--- a block_aware_profiles_select (20260429120001:87-95) y a sus tres hermanas.
+-- falta de PERMISO, no por falta de bloqueo. Era lo que le pasaba a
+-- block_aware_profiles_select y a sus tres hermanas hasta el 12-sep-2026.
+--
+-- Desde R-01 la definicion del bloqueo bidireccional es UNA y vive en
+-- vicino_guard.bloqueados_conmigo() (SECURITY DEFINER, fuera de public para
+-- que no sea un endpoint REST). hay_bloqueo_con(uuid) DELEGA en ella: es la
+-- forma "por un uuid" de la misma pregunta, para los caminos de escritura de
+-- este archivo. Este archivo por tanto DEPENDE de 20260912100000, y por eso se
+-- renumero a 20260912200000: en orden de version, R-01 va antes.
 --
 -- Se fusionan bloqueo y suspension en una sola funcion por dos motivos: una
 -- llamada por fila en vez de dos, y -- lo importante -- porque asi la
@@ -884,16 +891,12 @@ stable
 security definer
 set search_path to ''
 as $function$
-  select (select auth.uid()) is not null
-     and exists (
-       select 1 from public.user_blocks ub
-        where (ub.blocker_id = (select auth.uid()) and ub.blocked_id = p_otro)
-           or (ub.blocker_id = p_otro and ub.blocked_id = (select auth.uid()))
-     );
+  select p_otro is not null
+     and p_otro = any (vicino_guard.bloqueados_conmigo());
 $function$;
 
 comment on function public.hay_bloqueo_con(uuid) is
-  'Bloqueo BIDIRECCIONAL y SOLO bloqueo, sin la suspension. DEFINER por el mismo motivo que autor_vetado_para_mi: user_blocks tiene RLS USING (auth.uid() = blocker_id) y la direccion contraria se filtraria por falta de permiso. Existe porque hay dos sitios donde la pregunta es sobre el MANDO de una comunidad de 500 personas, y la suspension de UNA cuenta no puede apagarla para todos -- ni reencenderla al borrarla.';
+  'Bloqueo BIDIRECCIONAL y SOLO bloqueo, sin la suspension. Delega en vicino_guard.bloqueados_conmigo() (20260912100000), que es la UNICA definicion del bloqueo bidireccional del proyecto y la misma que consumen las policies block_aware_*. Existe porque hay dos sitios donde la pregunta es sobre el MANDO de una comunidad de 500 personas, y la suspension de UNA cuenta no puede apagarla para todos -- ni reencenderla al borrarla.';
 
 
 create or replace function public.autor_vetado_para_mi(p_autor uuid)
@@ -1002,7 +1005,7 @@ comment on function public.comunidades_limite(text) is
 -- 4. TRIGGERS DE DERIVADAS, CONTADORES Y AVISOS
 --
 -- Son SIETE (el septimo, comunidad_releva_mando, entra por el hallazgo I-9). El
--- octavo, publicacion_cierra_sus_reportes, vive en el archivo 3 (20260905220000)
+-- octavo, publicacion_cierra_sus_reportes, vive en el archivo 3 (20260912220000)
 -- porque su cuerpo escribe el literal 'community_post', que no existe hasta que
 -- el archivo 2 haya commiteado el ALTER TYPE.
 -- ===========================================================================
@@ -3511,7 +3514,7 @@ grant  execute on function public.alternar_like_publicacion(uuid) to authenticat
 -- ===========================================================================
 notify pgrst, 'reload schema';
 
-commit;
+-- (fin del archivo: el COMMIT lo pone apply-migration.mjs)
 
 -- ===========================================================================
 -- VERIFY -- correr DESPUES de aplicar, en el editor SQL o por la Management

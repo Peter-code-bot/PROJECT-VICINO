@@ -11,7 +11,7 @@
   - [x] `SELECT ... FROM pg_policies WHERE tablename LIKE 'communit%'` → 0 filas (nada creado desde el Dashboard que se OR-ee con lo nuevo)
   - [x] Confirmar PostGIS en el esquema `public` (3.3.7): `SET search_path TO 'public'` basta en los `SECURITY DEFINER`
 
-- [x] **1. Migración base — `supabase/migrations/20260905200000_comunidades_base.sql`**
+- [x] **1. Migración base — `supabase/migrations/20260912200000_comunidades_base.sql`**
   - [x] Tabla `communities` con `centro geography(POINT, 4326)`, RLS habilitada y los CHECK: nombre 3–40, nombre de una sola línea (con `chr()`, sin bytes raros), descripción ≤300, contadores no negativos y **`communities_centro_en_rejilla`** (centro a 2 decimales, tolerancia `1e-9`)
   - [x] `nombre_norm` no puede quedar **cadena vacía**: un nombre sin una sola letra ni dígito latino (emojis, cirílico, chino) normalizaba a `''` y ocupaba la ranura del nombre vacío para toda la celda de ~1.1 km y para siempre. Se resuelve en el trigger, con el `md5` del nombre recortado, y **no** con un CHECK — con el trigger el invariante ya se cumple siempre y un CHECK solo añadiría un modo de fallo
   - [x] Columna `fundador_id` en `communities`, separada de `owner_id`: las tres cuotas de fundación cuelgan de ella, porque `owner_id` se traspasa y una cuota colgada de una columna traspasable no es una cuota
@@ -42,12 +42,12 @@
   - [x] `notify pgrst, 'reload schema'` al final
   - [x] Envuelto en `begin;`/`commit;`, ASCII puro, idempotente de punta a punta, `COMMENT ON` en tablas / columnas no obvias / funciones, y bloque VERIFY comentado que ejercita los ataques dentro de `BEGIN; SET LOCAL ROLE authenticated; ... ROLLBACK;`
 
-- [x] **2. Migración del enum — `supabase/migrations/20260905210000_comunidades_report_target.sql`**
+- [x] **2. Migración del enum — `supabase/migrations/20260912210000_comunidades_report_target.sql`**
   - [x] `alter type public.report_target_type add value if not exists 'community_post';` y **nada más**
   - [x] Archivo y commit propios: el valor nuevo **no se puede usar** hasta que su transacción cierre, y es **irreversible** (en Postgres los valores de enum no se borran)
   - [x] Se añade **uno** y no dos: `'community'` (reportar la comunidad entera) queda fuera de v1 a propósito — se puede añadir después sin migrar datos, quitarlo nunca
 
-- [x] **3. Migración de moderación — `supabase/migrations/20260905220000_comunidades_moderacion.sql`**
+- [x] **3. Migración de moderación — `supabase/migrations/20260912220000_comunidades_moderacion.sql`**
   - [x] `auto_hide_on_threshold` partiendo del **cuerpo vivo** de `pg_proc`, con la rama `community_post` (umbral de 3 reportes activos)
   - [x] `handle_child_safety_report` partiendo del cuerpo vivo, con la rama `community_post` en el bloque de auto-ocultado, conservando el límite de 3 por cuenta y el encolado a `critical_reports`
   - [x] `moderate_set_content_hidden` **versionada por primera vez en el repo** (hoy es un objeto fantasma) con su rama `community_post`, misma firma `(text, uuid, boolean)`
@@ -57,7 +57,7 @@
   - [x] Ya no hace falta acotar el archivado con un `EXISTS` de pertenencia viva (hallazgo I-15): el cursor solo enumera comunidades donde esa persona es `owner` **vivo**, así que una membresía muerta de hace meses no puede arrastrar a la comunidad de otra gente. El filtro es el driver, no un cinturón
   - [x] Preflight y `DO $comprobacion$` comprueban que `comunidad_traspasa_mando(uuid, uuid)` existe y que el cuerpo de `delete_user_data` la **llama**: plpgsql no resuelve nombres de función al definir, así que sin esa línea una base con el archivo base viejo aceptaría la migración en verde y el fallo saldría dentro de un borrado de cuenta real
   - [x] `community_post_quota` entra con `DELETE` **explícito** aunque su FK sea `ON DELETE CASCADE`: la cascada la borra igual, pero `deleted_summary` es evidencia de cumplimiento y el ledger es un diario de actividad con marca de tiempo. Decidido a conciencia y escrito en el archivo, no heredado por inercia
-  - [x] `communities.fundador_id` **no** lleva sentencia propia: es `ON DELETE SET NULL` y no se traspasa (quien fundó es un hecho histórico; el relevo hereda el mando, no la autoría). El riesgo que el archivo anotaba **era real y estaba materializado**: el congelador de `comunidad_normaliza` revertía la acción referencial y dejaba una referencia colgante silenciosa. Arreglado en `20260905200000` —se congela el re-apuntado, no el vaciado— y el C9 del VERIFY es la prueba
+  - [x] `communities.fundador_id` **no** lleva sentencia propia: es `ON DELETE SET NULL` y no se traspasa (quien fundó es un hecho histórico; el relevo hereda el mando, no la autoría). El riesgo que el archivo anotaba **era real y estaba materializado**: el congelador de `comunidad_normaliza` revertía la acción referencial y dejaba una referencia colgante silenciosa. Arreglado en `20260912200000` —se congela el re-apuntado, no el vaciado— y el C9 del VERIFY es la prueba
   - [x] Preflight ampliado: se comprueba también `to_regclass('public.community_post_quota')`, porque plpgsql no resuelve nombres de tabla al definir la función y el fallo saldría dentro de un borrado de cuenta real
   - [x] Los dos `DO $comprobacion$` ampliados con `public.community_posts` (y el de `delete_user_data`, también con `public.community_post_quota`), para que perder la rama nueva **no pase en verde**
   - [x] `notify pgrst, 'reload schema'` y bloque VERIFY propio, con las pruebas nuevas C9 (`fundador_id` acaba en NULL **y** toda comunidad tocada queda archivada o con exactamente un `owner` vivo) y C11 (una membresía muerta no archiva la comunidad de otra gente)
@@ -97,12 +97,12 @@
 ---
 
 - [ ] **5. Aplicación en producción** — `supabase db push` está bloqueado (ledger desincronizado); va por la Management API
-  - [ ] Aplicar `20260905200000_comunidades_base.sql` completo
+  - [ ] Aplicar `20260912200000_comunidades_base.sql` completo
   - [ ] Correr su VERIFY entero: privilegios (`has_*_privilege`, nunca leyendo la ACL), policies (rol **real**, no el nombre), los ataques de la sección C, la deriva de contadores y los `EXPLAIN`
   - [ ] Tener listas **dos** cuentas de prueba antes de empezar, no una: el índice único `(celda, nombre_norm)` solo se puede ejercitar con dos fundadores distintos, porque con uno solo la cuota de 24 h dispara antes y la prueba nunca llega al índice que dice probar
   - [ ] Ejercitar los ataques nuevos de la revisión: publicar 10 → borrar las 10 → la 11.ª sigue dando `23514`; fundar → soltar el mando → fundar da `23514`; comentar la publicación de quien te bloqueó da `P0002`; salir de una comunidad archivada **funciona** y entrar sigue dando `P0002`
-  - [ ] Aplicar `20260905210000_comunidades_report_target.sql` **en su propia transacción** y confirmar que commiteó antes de seguir
-  - [ ] Aplicar `20260905220000_comunidades_moderacion.sql` y correr su VERIFY (las cuatro funciones conocen `community_posts`; `handle_child_safety_report` **no** menciona `public.communities`; en C9 `fundador_id` acaba en **NULL**, que es la prueba de que el congelador de `comunidad_normaliza` no revierte la acción referencial, **y** toda comunidad tocada queda archivada o con exactamente un `owner` vivo)
+  - [ ] Aplicar `20260912210000_comunidades_report_target.sql` **en su propia transacción** y confirmar que commiteó antes de seguir
+  - [ ] Aplicar `20260912220000_comunidades_moderacion.sql` y correr su VERIFY (las cuatro funciones conocen `community_posts`; `handle_child_safety_report` **no** menciona `public.communities`; en C9 `fundador_id` acaba en **NULL**, que es la prueba de que el congelador de `comunidad_normaliza` no revierte la acción referencial, **y** toda comunidad tocada queda archivada o con exactamente un `owner` vivo)
   - [ ] Comprobar las tres aserciones que salieron de la segunda vuelta y que no cuestan nada: `SELECT count(*) FROM cron.job WHERE jobname = 'purga_community_post_quota'` → 1; `has_sequence_privilege('authenticated','public.community_post_quota_id_seq','SELECT')` → false; y la de referencias colgantes, `SELECT count(*) FROM communities c WHERE c.fundador_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = c.fundador_id)` → 0, que hay que poder correr **siempre**, no solo hoy
   - [ ] `NOTIFY pgrst, 'reload schema'` — sin esto PostgREST sigue sirviendo el esquema viejo y los grants nuevos no existen para la API
   - [ ] `node scripts/gen-types.mjs` y commitear el `database.types.ts` regenerado junto a las migraciones
@@ -161,7 +161,7 @@
   - [ ] **R-01** — pasar las policies de `profiles`, `reviews`, `products_services` y `messages` a `NOT public.autor_vetado_para_mi(...)`. Hoy, si A bloquea a B, **B sigue viendo a A**: el `NOT EXISTS` bidireccional escrito dentro de una policy solo ve la mitad en la que yo bloqueo. Comprobarlo primero con `SET LOCAL ROLE authenticated` y el `sub` del **bloqueado**
   - [ ] **R-04** — `feed_nearby_requests` devuelve la distancia **al metro** con `(CEIL(ST_Distance(...)))::INT`: la pestaña Solicitudes es hoy un trilaterador de domicilios de compradores. El arreglo es una línea
   - [ ] **R-05** — la suspensión (`profiles.is_hidden`) sigue sin impedir publicar en `products_services` y `purchase_requests`. Comunidades lo cierra solo para sí misma
-  - [x] ~~**Purga del ledger de cuotas**~~ — ya **no** es una migración aparte. La segunda revisión encontró que "va en el cron de mantenimiento" era prosa que no ejecuta nadie: ninguna migración del repo programaba ese trabajo. El `cron.schedule('purga_community_post_quota', ...)` y el índice que ese `DELETE` necesita entran en `20260905200000`, y el VERIFY falla si el job no está
+  - [x] ~~**Purga del ledger de cuotas**~~ — ya **no** es una migración aparte. La segunda revisión encontró que "va en el cron de mantenimiento" era prosa que no ejecuta nadie: ninguna migración del repo programaba ese trabajo. El `cron.schedule('purga_community_post_quota', ...)` y el índice que ese `DELETE` necesita entran en `20260912200000`, y el VERIFY falla si el job no está
 
 - [ ] **12. Fase 2 — fuera de alcance, con el camino ya escrito**
   - [ ] Imágenes en publicaciones (`media_assets` con `owner_type = 'community_post'`, bucket **privado propio**; `product-media` no sirve: su policy de DELETE deja a cualquier autenticado borrar cualquier objeto)

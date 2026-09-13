@@ -29,30 +29,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, getClientIp, reportRateLimit, reportIpRateLimit } from "@/lib/rate-limit";
+import { createReportSchema, type ReportTargetType } from "@vicino/shared";
 
-const REPORT_TARGET_TYPES = ["listing", "user", "message", "review"] as const;
-
-const REPORT_REASONS = [
-  "spam",
-  "inappropriate_content",
-  "fraud_or_scam",
-  "harassment",
-  "fake_profile",
-  "illegal_product",
-  "copyright_violation",
-  "child_safety",
-  "other",
-] as const;
-
-const reportSchema = z.object({
-  target_type: z.enum(REPORT_TARGET_TYPES),
-  target_id: z.string().uuid(),
-  reason: z.enum(REPORT_REASONS),
-  description: z.string().max(500).optional().nullable(),
-});
+// El esquema vive en packages/shared (validators/moderation.ts) y es el MISMO
+// que usa report-modal.tsx. Esta ruta tenia una copia local de los dos enums,
+// y una copia es un espejo mas que el build no vigila: cuando la base gano
+// 'community_post' la copia se quedo atras y el reporte moria aqui con 400
+// antes de llegar a checkSelfReport.
+const reportSchema = createReportSchema;
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -159,7 +145,7 @@ type SelfReportCheck = "ok" | "self" | "not_found";
 async function checkSelfReport(
   supabase: Awaited<ReturnType<typeof createClient>>,
   reporterId: string,
-  targetType: (typeof REPORT_TARGET_TYPES)[number],
+  targetType: ReportTargetType,
   targetId: string
 ): Promise<SelfReportCheck> {
   if (targetType === "user") {
@@ -215,6 +201,24 @@ async function checkSelfReport(
     if (error) return "ok";
     if (!data) return "not_found";
     return data.autor_id === reporterId ? "self" : "ok";
+  }
+
+  // Publicacion o comentario del muro de una comunidad. Sin esta rama el tipo
+  // caia en el "ok" final y cualquier uuid inventado entraba como reporte
+  // valido (con su correo URGENTE por Resend). La lookup va con la sesion de
+  // quien reporta, asi que la policy del muro decide que existe: una
+  // publicacion de una comunidad privada ajena, o ya oculta, no se puede
+  // reportar porque no se puede ver -- que es lo correcto, no hay nada que
+  // denunciar de lo que no se ha visto.
+  if (targetType === "community_post") {
+    const { data, error } = await supabase
+      .from("community_posts")
+      .select("author_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (error) return "ok";
+    if (!data) return "not_found";
+    return data.author_id === reporterId ? "self" : "ok";
   }
 
   return "ok";
