@@ -69,7 +69,9 @@ export function ReportMenuButton({
         ? "usuario"
         : targetType === "message"
           ? "mensaje"
-          : "reseña";
+          : targetType === "community_post"
+            ? "publicación"
+            : "reseña";
 
   function openReportModal() {
     setMenuOpen(false);

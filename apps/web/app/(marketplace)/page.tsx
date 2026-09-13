@@ -42,15 +42,29 @@ function RankingSkeleton() {
 }
 
 interface Props {
-  searchParams: Promise<{ feed?: string; cats?: string | string[] }>;
+  searchParams: Promise<{ feed?: string; cats?: string | string[]; tab?: string }>;
 }
 
 import type { FeedProduct } from "@/types/feed";
 import { parseRadiusCookie } from "@/lib/geo/radius";
+import { ComunidadesFeed } from "@/components/comunidades/comunidades-feed";
+import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
+import { cursorDeUltimo } from "@/components/comunidades/muro-comunidad";
+import { leerEstadoCuota } from "@/lib/comunidades/tipos";
+import { traducirErrorComunidad } from "@/lib/comunidades/errores";
 
 export default async function HomePage({ searchParams }: Props) {
-  const { feed: feedParam, cats: catsParam } = await searchParams;
-  const feed = feedParam === "following" ? "following" : feedParam === "solicitudes" ? "solicitudes" : "parati";
+  const { feed: feedParam, cats: catsParam, tab: tabParam } = await searchParams;
+  const feed =
+    feedParam === "following"
+      ? "following"
+      : feedParam === "solicitudes"
+        ? "solicitudes"
+        : feedParam === "comunidades"
+          ? "comunidades"
+          : "parati";
+  const subTabComunidades: SubTabComunidades =
+    tabParam === "mias" ? "mias" : tabParam === "descubrir" ? "descubrir" : "muro";
 
   const supabase = await createClient();
 
@@ -384,6 +398,55 @@ export default async function HomePage({ searchParams }: Props) {
       };
     })();
 
+  // Feed de comunidades: cinco lecturas independientes en PARALELO, solo
+  // cuando esta pestana esta activa y hay sesion (las RPC exigen auth.uid()).
+  // allSettled y no all: que falle Descubrir no debe tirar el muro. Cada
+  // error se traduce en un solo sitio y llega al cliente como texto.
+  const comunidades = await (async () => {
+    if (feed !== "comunidades" || !user) return null;
+    const [perfil, muroR, miasR, solicitudesR, cuotaR, cercanasR] = await Promise.allSettled([
+      supabase.from("profiles").select("nombre, foto").eq("id", user.id).maybeSingle(),
+      supabase.rpc("feed_comunidades_explorar", { result_limit: 30 }),
+      supabase.rpc("mis_comunidades"),
+      supabase.rpc("mis_solicitudes_union"),
+      supabase.rpc("estado_cuota_fundacion"),
+      hasLocation
+        ? supabase.rpc("descubrir_comunidades", { p_lat: userLat!, p_lng: userLng!, result_limit: 30 })
+        : Promise.resolve(null),
+    ]);
+
+    const valor = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === "fulfilled" ? r.value : null);
+    const perfilData = valor(perfil)?.data ?? null;
+    const muroData = valor(muroR);
+    const miasData = valor(miasR);
+    const solicitudesData = valor(solicitudesR);
+    const cuotaData = valor(cuotaR);
+    const cercanasData = valor(cercanasR);
+
+    for (const [nombre, r] of [
+      ["feed_comunidades_explorar", muroData],
+      ["mis_comunidades", miasData],
+      ["descubrir_comunidades", cercanasData],
+    ] as const) {
+      if (r?.error) Sentry.captureException(r.error, { tags: { action: nombre, section: "comunidades" } });
+    }
+
+    const posts = muroData?.data ?? [];
+    return {
+      user: { id: user.id, nombre: perfilData?.nombre ?? "Tu", foto: perfilData?.foto ?? null },
+      muro: { posts, cursor: cursorDeUltimo(posts, 30) },
+      mias: miasData?.data ?? [],
+      misSolicitudes: solicitudesData?.data ?? [],
+      cercanas: hasLocation && cercanasData && !cercanasData.error ? (cercanasData.data ?? []) : null,
+      cuota: leerEstadoCuota(cuotaData?.error ? null : cuotaData?.data),
+      errores: {
+        muro: muroData?.error ? traducirErrorComunidad(muroData.error) : undefined,
+        mias: miasData?.error ? traducirErrorComunidad(miasData.error) : undefined,
+        cercanas: cercanasData?.error ? traducirErrorComunidad(cercanasData.error) : undefined,
+      },
+    };
+  })();
+
   return (
     <div data-navigation-kind="home" data-navigation-ready={crypto.randomUUID()} className="w-full min-w-0 min-h-screen">
       <HomeTabs active={feed} />
@@ -596,6 +659,22 @@ export default async function HomePage({ searchParams }: Props) {
             userLng={userLng}
             radiusMeters={validRadius}
             userId={user?.id ?? null}
+          />
+        </div>
+      ) : feed === "comunidades" ? (
+        /* ─── COMUNIDADES FEED ─────────────────────────────── */
+        <div className="pt-3">
+          <ComunidadesFeed
+            user={comunidades?.user ?? null}
+            userLat={userLat}
+            userLng={userLng}
+            initialTab={subTabComunidades}
+            muro={comunidades?.muro ?? { posts: [], cursor: null }}
+            mias={comunidades?.mias ?? []}
+            misSolicitudes={comunidades?.misSolicitudes ?? []}
+            cercanas={comunidades?.cercanas ?? null}
+            cuota={comunidades?.cuota ?? leerEstadoCuota(null)}
+            errores={comunidades?.errores}
           />
         </div>
       ) : (

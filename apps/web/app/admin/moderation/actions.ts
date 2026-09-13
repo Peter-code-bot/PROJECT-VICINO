@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
-import { moderateReviewSchema } from "@vicino/shared";
+import { moderateReviewSchema, type ReportTargetType } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
 /**
@@ -19,15 +19,20 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
  * `reports.target_type` habla el idioma del reporte y el RPC habla el de la tabla.
  * Sin este mapeo, ocultar un "listing" o un "user" revienta con `target_type
  * invalido`.
+ *
+ * `community_post` se llama igual en los dos idiomas (es el nombre de la tabla;
+ * rama anadida a moderate_set_content_hidden en 20260912220000). El tipo del
+ * mapa es `Record<ReportTargetType, ...>` a proposito: el dia que el enum
+ * compartido gane un valor, aqui falla el type-check en vez de devolver
+ * "Tipo de contenido no soportado" en produccion.
  */
-const MODERATION_TARGET = {
+const MODERATION_TARGET: Record<ReportTargetType, string> = {
   listing: "product",
   review: "review",
   message: "message",
   user: "profile",
-} as const;
-
-type ReportTargetType = keyof typeof MODERATION_TARGET;
+  community_post: "community_post",
+};
 
 export async function hideReview(reviewId: string) {
   const { supabase, user } = await requireAdmin();
@@ -204,7 +209,7 @@ export async function dismissReport(reportId: string, notes?: string) {
  * Útil cuando el admin determina que el contenido es OK tras la primera revisión.
  */
 export async function dismissReportsForTarget(
-  targetType: "listing" | "user" | "message" | "review",
+  targetType: ReportTargetType,
   targetId: string,
 ) {
   const ctx = await requireAdminOrModerator();
@@ -328,6 +333,48 @@ export async function unhideListing(listingId: string) {
 
   revalidatePath("/admin/moderation");
   return { success: true };
+}
+
+/**
+ * Ocultar / restaurar una publicacion o comentario del muro de una comunidad.
+ * Analogo a unhideListing: la misma RPC, con la rama 'community_post'. Vale
+ * para las dos direcciones porque el boton "Restaurar" del panel necesita
+ * deshacer lo que auto_hide_on_threshold hizo solo a los 3 reportes.
+ */
+async function setCommunityPostHidden(postId: string, hidden: boolean) {
+  const ctx = await requireAdminOrModerator();
+  if (!ctx) return { error: "No autorizado" };
+
+  const rate = await enforce(writeRateLimit, `write:${ctx.user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("moderate_set_content_hidden", {
+    p_target_type: MODERATION_TARGET.community_post,
+    p_target_id: postId,
+    p_hidden: hidden,
+  });
+
+  if (error) return { error: error.message };
+
+  await supabase.from("audit_log").insert({
+    actor_id: ctx.user.id,
+    action: hidden ? "hide_community_post" : "unhide_community_post",
+    target_type: "community_post",
+    target_id: postId,
+    metadata: {},
+  });
+
+  revalidatePath("/admin/moderation");
+  return { success: true };
+}
+
+export async function hideCommunityPost(postId: string) {
+  return setCommunityPostHidden(postId, true);
+}
+
+export async function unhideCommunityPost(postId: string) {
+  return setCommunityPostHidden(postId, false);
 }
 
 // =============================================================================

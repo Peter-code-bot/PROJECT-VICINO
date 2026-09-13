@@ -9,6 +9,7 @@ import {
   suspendUser,
   unsuspendUser,
   unhideListing,
+  unhideCommunityPost,
 } from "./actions";
 import type { ReportTargetType } from "@vicino/shared";
 
@@ -67,6 +68,18 @@ export function ReportRowActions({
           className="px-2 py-1 rounded-md text-green-600 hover:bg-green-500/10 disabled:opacity-50"
         >
           Restaurar producto
+        </button>
+      )}
+
+      {/* auto_hide_on_threshold oculta la publicacion sola a los 3 reportes;
+          sin este boton el panel no tendria como deshacerlo. */}
+      {targetType === "community_post" && targetHidden && (
+        <button
+          onClick={() => handle(() => unhideCommunityPost(targetId), "Publicación restaurada")}
+          disabled={busy || pending}
+          className="px-2 py-1 rounded-md text-green-600 hover:bg-green-500/10 disabled:opacity-50"
+        >
+          Restaurar publicación
         </button>
       )}
 

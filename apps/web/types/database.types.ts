@@ -321,6 +321,295 @@ export type Database = {
           },
         ]
       }
+      communities: {
+        Row: {
+          archived_at: string | null
+          celda: string
+          centro: unknown
+          centro_fundacion: unknown
+          created_at: string
+          descripcion: string | null
+          es_privada: boolean
+          fundador_id: string | null
+          id: string
+          is_hidden: boolean
+          miembros_count: number
+          nombre: string
+          nombre_norm: string
+          owner_id: string | null
+          publicaciones_count: number
+          ultima_publicacion_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          celda?: string
+          centro: unknown
+          centro_fundacion?: unknown
+          created_at?: string
+          descripcion?: string | null
+          es_privada?: boolean
+          fundador_id?: string | null
+          id?: string
+          is_hidden?: boolean
+          miembros_count?: number
+          nombre: string
+          nombre_norm?: string
+          owner_id?: string | null
+          publicaciones_count?: number
+          ultima_publicacion_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          celda?: string
+          centro?: unknown
+          centro_fundacion?: unknown
+          created_at?: string
+          descripcion?: string | null
+          es_privada?: boolean
+          fundador_id?: string | null
+          id?: string
+          is_hidden?: boolean
+          miembros_count?: number
+          nombre?: string
+          nombre_norm?: string
+          owner_id?: string | null
+          publicaciones_count?: number
+          ultima_publicacion_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communities_fundador_id_fkey"
+            columns: ["fundador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communities_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_join_requests: {
+        Row: {
+          community_id: string
+          created_at: string
+          id: string
+          mensaje: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          id?: string
+          mensaje?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          id?: string
+          mensaje?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_join_requests_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_members: {
+        Row: {
+          community_id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_post_quota: {
+        Row: {
+          created_at: string
+          id: number
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_quota_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          author_id: string
+          comentarios_count: number
+          community_id: string
+          created_at: string
+          cuerpo: string
+          id: string
+          is_hidden: boolean
+          likes_count: number
+          parent_post_id: string | null
+        }
+        Insert: {
+          author_id: string
+          comentarios_count?: number
+          community_id: string
+          created_at?: string
+          cuerpo: string
+          id?: string
+          is_hidden?: boolean
+          likes_count?: number
+          parent_post_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          comentarios_count?: number
+          community_id?: string
+          created_at?: string
+          cuerpo?: string
+          id?: string
+          is_hidden?: boolean
+          likes_count?: number
+          parent_post_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_parent_fkey"
+            columns: ["parent_post_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           activo: boolean | null
@@ -641,6 +930,7 @@ export type Database = {
           attachments: Json | null
           autor_id: string
           chat_id: string
+          clave_idempotencia: string | null
           created_at: string | null
           id: string
           is_hidden: boolean
@@ -655,6 +945,7 @@ export type Database = {
           attachments?: Json | null
           autor_id: string
           chat_id: string
+          clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
           is_hidden?: boolean
@@ -669,6 +960,7 @@ export type Database = {
           attachments?: Json | null
           autor_id?: string
           chat_id?: string
+          clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
           is_hidden?: boolean
@@ -2236,10 +2528,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      alternar_like_publicacion: { Args: { p_post_id: string }; Returns: Json }
+      alternar_membresia_comunidad: {
+        Args: { p_community_id: string }
+        Returns: Json
+      }
       approve_verification_atomic: {
         Args: { p_user_id: string; p_verification_id: string }
         Returns: Json
       }
+      archivar_comunidad: { Args: { p_community_id: string }; Returns: Json }
+      autor_vetado_para_mi: { Args: { p_autor: string }; Returns: boolean }
       avanzar_alta_vendedor: { Args: { p_paso?: string }; Returns: string }
       avisos_legales_pendientes: {
         Args: never
@@ -2254,12 +2553,62 @@ export type Database = {
         Args: { p_reason?: string; p_sale_id: string }
         Returns: undefined
       }
+      cancelar_solicitud_union: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
+      centro_de_mi_comunidad: {
+        Args: { p_community_id: string }
+        Returns: {
+          es_privada: boolean
+          lat: number
+          lat_fundacion: number
+          lng: number
+          lng_fundacion: number
+          movimientos_restantes_24h: number
+          radio_metros: number
+        }[]
+      }
       chat_attachments_validos: {
         Args: { p_attachments: Json; p_autor_id: string; p_chat_id: string }
         Returns: boolean
       }
       cleanup_old_deletion_logs: { Args: never; Returns: number }
+      comentarios_de_publicacion: {
+        Args: {
+          cursor_id?: string
+          cursor_time?: string
+          p_post_id: string
+          result_limit?: number
+        }
+        Returns: {
+          author_foto: string
+          author_id: string
+          author_nombre: string
+          created_at: string
+          cuerpo: string
+          id: string
+          puedo_borrar: boolean
+        }[]
+      }
       complete_user_onboarding: { Args: never; Returns: undefined }
+      comunidad_fundacion_estado: { Args: { p_viewer: string }; Returns: Json }
+      comunidad_notifica: {
+        Args: {
+          p_data: Json
+          p_mensaje: string
+          p_tipo: string
+          p_titulo: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      comunidad_traspasa_mando: {
+        Args: { p_community_id: string; p_saliente: string }
+        Returns: undefined
+      }
+      comunidades_limite: { Args: { p_clave: string }; Returns: number }
+      comunidades_publicas_ids: { Args: never; Returns: string[] }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
       count_nearby_vendors: {
         Args: { radius_meters?: number; user_lat: number; user_lng: number }
@@ -2276,6 +2625,40 @@ export type Database = {
         Returns: undefined
       }
       delete_user_data: { Args: { target_user_id: string }; Returns: Json }
+      descubrir_comunidades: {
+        Args: { p_lat: number; p_lng: number; result_limit?: number }
+        Returns: {
+          descripcion: string
+          distancia_m: number
+          es_privada: boolean
+          id: string
+          mi_rol: string
+          miembros_count: number
+          nombre: string
+          publicaciones_count: number
+          solicitud_pendiente: boolean
+          soy_miembro: boolean
+          ultima_publicacion_at: string
+        }[]
+      }
+      detalle_comunidad: {
+        Args: { p_community_id: string }
+        Returns: {
+          created_at: string
+          descripcion: string
+          disponible: boolean
+          es_privada: boolean
+          id: string
+          mi_rol: string
+          miembros_count: number
+          nombre: string
+          publicaciones_count: number
+          solicitud_pendiente: boolean
+          soy_fundador: boolean
+          soy_miembro: boolean
+          ultima_publicacion_at: string
+        }[]
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -2307,9 +2690,79 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
+      editar_centro_comunidad: {
+        Args: { p_community_id: string; p_lat: number; p_lng: number }
+        Returns: Json
+      }
+      editar_descripcion_comunidad: {
+        Args: { p_community_id: string; p_descripcion?: string }
+        Returns: Json
+      }
+      editar_visibilidad_comunidad: {
+        Args: { p_community_id: string; p_privada: boolean }
+        Returns: Json
+      }
+      eliminar_publicacion_comunidad: {
+        Args: { p_post_id: string }
+        Returns: Json
+      }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      es_miembro_de_comunidad: {
+        Args: { p_community_id: string }
+        Returns: boolean
+      }
+      es_moderador_de_comunidad: {
+        Args: { p_community_id: string }
+        Returns: boolean
+      }
+      estado_cuota_fundacion: { Args: never; Returns: Json }
       expire_stale_confirmations: { Args: never; Returns: number }
+      feed_comunidades_explorar: {
+        Args: {
+          cursor_id?: string
+          cursor_time?: string
+          result_limit?: number
+        }
+        Returns: {
+          author_foto: string
+          author_id: string
+          author_nombre: string
+          author_trust_level: string
+          comentarios_count: number
+          community_es_privada: boolean
+          community_id: string
+          community_nombre: string
+          created_at: string
+          cuerpo: string
+          id: string
+          le_di_like: boolean
+          likes_count: number
+        }[]
+      }
+      feed_muro_comunidad: {
+        Args: {
+          cursor_id?: string
+          cursor_time?: string
+          p_community_id: string
+          result_limit?: number
+        }
+        Returns: {
+          author_foto: string
+          author_id: string
+          author_nombre: string
+          author_trust_level: string
+          comentarios_count: number
+          community_es_privada: boolean
+          community_id: string
+          community_nombre: string
+          created_at: string
+          cuerpo: string
+          id: string
+          le_di_like: boolean
+          likes_count: number
+        }[]
+      }
       feed_nearby_requests: {
         Args: {
           cat_slug?: string
@@ -2334,6 +2787,15 @@ export type Database = {
           status: Database["public"]["Enums"]["request_status"]
           title: string
         }[]
+      }
+      fundar_comunidad: {
+        Args: {
+          p_descripcion?: string
+          p_lat: number
+          p_lng: number
+          p_nombre: string
+        }
+        Returns: Json
       }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
@@ -2551,7 +3013,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      hay_bloqueo_con: { Args: { p_otro: string }; Returns: boolean }
       increment_product_view: { Args: { p_id: string }; Returns: undefined }
+      iniciar_conversacion: {
+        Args: {
+          p_clave?: string
+          p_intencion?: string
+          p_producto_id?: string
+          p_vendedor_id: string
+        }
+        Returns: Json
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       make_admin: { Args: { p_email: string }; Returns: undefined }
       manage_user_role: {
@@ -2565,6 +3037,35 @@ export type Database = {
       mark_messages_as_read: {
         Args: { p_chat_id: string; p_user_id: string }
         Returns: undefined
+      }
+      mis_comunidades: {
+        Args: never
+        Returns: {
+          descripcion: string
+          es_privada: boolean
+          id: string
+          mi_rol: string
+          miembros_count: number
+          nombre: string
+          publicaciones_count: number
+          solicitud_pendiente: boolean
+          soy_fundador: boolean
+          soy_miembro: boolean
+          ultima_publicacion_at: string
+        }[]
+      }
+      mis_comunidades_ids: { Args: never; Returns: string[] }
+      mis_solicitudes_union: {
+        Args: never
+        Returns: {
+          community_id: string
+          community_nombre: string
+          created_at: string
+          id: string
+          mensaje: string
+          resolved_at: string
+          status: string
+        }[]
       }
       moderate_review: {
         Args: {
@@ -2600,6 +3101,10 @@ export type Database = {
           vendedor_reviews: number
           vendedor_trust: string
         }[]
+      }
+      nombrar_moderador_comunidad: {
+        Args: { p_community_id: string; p_user_id: string }
+        Returns: Json
       }
       notify_user_as_staff: {
         Args: {
@@ -2651,6 +3156,19 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      publicar_en_comunidad: {
+        Args: {
+          p_community_id: string
+          p_parent_post_id?: string
+          p_texto: string
+        }
+        Returns: Json
+      }
+      puedo_ver_publicacion: { Args: { p_post_id: string }; Returns: boolean }
+      quitar_moderador_comunidad: {
+        Args: { p_community_id: string; p_user_id: string }
+        Returns: Json
+      }
       recompute_seller_rankings: { Args: { p_period: string }; Returns: number }
       recompute_seller_rankings_for_category: {
         Args: { p_category_id: string; p_period: string }
@@ -2674,6 +3192,10 @@ export type Database = {
           p_nota: string
         }
         Returns: string
+      }
+      resolver_solicitud_union: {
+        Args: { p_aceptar: boolean; p_request_id: string }
+        Returns: Json
       }
       ruta_de_chat_referenciada: { Args: { p_ruta: string }; Returns: boolean }
       search_nearby_products: {
@@ -2732,6 +3254,27 @@ export type Database = {
         }[]
       }
       set_username: { Args: { p_username: string }; Returns: string }
+      solicitar_union_comunidad: {
+        Args: { p_community_id: string; p_mensaje?: string }
+        Returns: Json
+      }
+      solicitudes_de_comunidad: {
+        Args: {
+          cursor_id?: string
+          cursor_time?: string
+          p_community_id: string
+          result_limit?: number
+        }
+        Returns: {
+          created_at: string
+          id: string
+          mensaje: string
+          user_foto: string
+          user_id: string
+          user_nombre: string
+          user_trust_level: string
+        }[]
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -3372,7 +3915,12 @@ export type Database = {
         | "child_safety"
         | "other"
       report_status: "pending" | "reviewed" | "resolved" | "dismissed"
-      report_target_type: "listing" | "user" | "message" | "review"
+      report_target_type:
+        | "listing"
+        | "user"
+        | "message"
+        | "review"
+        | "community_post"
       request_status: "open" | "closed" | "expired"
       review_type: "buyer_to_seller" | "seller_to_buyer"
       sale_status:
@@ -3550,7 +4098,13 @@ export const Constants = {
         "other",
       ],
       report_status: ["pending", "reviewed", "resolved", "dismissed"],
-      report_target_type: ["listing", "user", "message", "review"],
+      report_target_type: [
+        "listing",
+        "user",
+        "message",
+        "review",
+        "community_post",
+      ],
       request_status: ["open", "closed", "expired"],
       review_type: ["buyer_to_seller", "seller_to_buyer"],
       sale_status: [
