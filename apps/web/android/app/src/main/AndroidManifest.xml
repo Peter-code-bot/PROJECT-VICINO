@@ -35,13 +35,19 @@
                 <data android:scheme="vicino" />
             </intent-filter>
 
-            <!-- App Links: https://vicinomarket.com (canonical, autoVerify) -->
+            <!-- App Links: https://vicinomarket.com (canonical, autoVerify).
+                 SOLO el apex va aqui. Un intent-filter con autoVerify exige
+                 que TODOS sus hosts verifiquen, y www.vicinomarket.com
+                 responde 308 al apex: el verificador de Google no sigue
+                 redirecciones, asi que con www dentro fallaba la verificacion
+                 del filtro entero (comprobado el 12-sep-2026: "dominios no
+                 verificados" en Play Console). www baja al filtro manual de
+                 abajo; el navegador ya lo redirige al apex de todas formas. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="vicinomarket.com" />
-                <data android:scheme="https" android:host="www.vicinomarket.com" />
             </intent-filter>
 
             <!-- Legacy host (Play Data Safety URL). No autoVerify because
@@ -54,6 +60,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="startup-marketplace-web.vercel.app" />
+                <data android:scheme="https" android:host="www.vicinomarket.com" />
             </intent-filter>
         </activity>
 
