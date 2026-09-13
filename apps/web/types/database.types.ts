@@ -930,7 +930,6 @@ export type Database = {
           attachments: Json | null
           autor_id: string
           chat_id: string
-          clave_idempotencia: string | null
           created_at: string | null
           id: string
           is_hidden: boolean
@@ -945,7 +944,6 @@ export type Database = {
           attachments?: Json | null
           autor_id: string
           chat_id: string
-          clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
           is_hidden?: boolean
@@ -960,7 +958,6 @@ export type Database = {
           attachments?: Json | null
           autor_id?: string
           chat_id?: string
-          clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
           is_hidden?: boolean
@@ -3015,15 +3012,6 @@ export type Database = {
       }
       hay_bloqueo_con: { Args: { p_otro: string }; Returns: boolean }
       increment_product_view: { Args: { p_id: string }; Returns: undefined }
-      iniciar_conversacion: {
-        Args: {
-          p_clave?: string
-          p_intencion?: string
-          p_producto_id?: string
-          p_vendedor_id: string
-        }
-        Returns: Json
-      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       make_admin: { Args: { p_email: string }; Returns: undefined }
       manage_user_role: {
