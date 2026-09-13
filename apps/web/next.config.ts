@@ -173,15 +173,30 @@ function sentryCspReportUri(): string | null {
   }
 }
 
-const cspReportUri = sentryCspReportUri();
+/**
+ * Solo PRODUCCION reporta.
+ *
+ * Estas cabeceras tambien las sirve Vercel en cada preview, y encima de la
+ * pagina de deployment-protection, que es suya y no nuestra. De ahi salian los
+ * "Blocked 'font' from 'vercel.com'" y los "Blocked 'connect' from
+ * 'vicinomarket-<hash>-peters-projects-*.vercel.app'": violaciones reales de
+ * una pagina que no es de la app, mezcladas con las nuestras en el mismo
+ * proyecto de Sentry. Ademas el flujo de despliegue no usa el preview como
+ * puerta, asi que esos reportes no tenian lector.
+ */
+const cspReportUri =
+  process.env.VERCEL_ENV === "production" ? sentryCspReportUri() : null;
 
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.apple-mapkit.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co https://firebasestorage.googleapis.com https://picsum.photos https://i.pravatar.cc https://images.unsplash.com https://*.googleusercontent.com https://*.apple-mapkit.com https://*.apple.com",
+  // media-src: los .mov/.mp4 de product-media en Supabase y las previsualizaciones blob: de /vender y de la reseña
+  "media-src 'self' blob: https://*.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://*.apple-mapkit.com https://*.apple.com",
+  // connect-src: Supabase, Upstash, Apple MapKit y Sentry Ingest (en fallback de Capacitor nativo)
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://*.apple-mapkit.com https://*.apple.com https://*.ingest.us.sentry.io",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-ancestors 'none'",

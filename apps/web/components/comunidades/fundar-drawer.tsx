@@ -57,9 +57,16 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
   // Refresca la cuota al abrir: la del servidor puede tener minutos.
   useEffect(() => {
     let vivo = true;
-    estadoCuotaFundacion().then((c) => {
-      if (vivo) setCuota(c);
-    });
+    estadoCuotaFundacion().then(
+      (c) => {
+        if (vivo) setCuota(c);
+      },
+      () => {
+        // Refresco oportunista: `cuotaInicial` ya vino del servidor y sigue
+        // sirviendo. El brazo solo tiene que existir para que la promesa no
+        // quede flotando y acabe en Sentry como "Load failed".
+      },
+    );
     return () => {
       vivo = false;
     };

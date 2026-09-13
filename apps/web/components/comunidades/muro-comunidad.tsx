@@ -24,11 +24,6 @@ interface MuroComunidadProps {
   vacio?: { titulo: string; texto: string };
 }
 
-export function cursorDeUltimo(posts: PostComunidad[], pagina: number = PAGINA): CursorComunidad | null {
-  const ultimo = posts[posts.length - 1];
-  return posts.length === pagina && ultimo ? { time: ultimo.created_at, id: ultimo.id } : null;
-}
-
 /**
  * Muro paginado por cursor (created_at, id) con carga al llegar abajo. El
  * composer va arriba, como en cualquier muro; publicar hace prependLive sin

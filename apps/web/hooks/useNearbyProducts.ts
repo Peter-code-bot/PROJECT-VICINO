@@ -2,6 +2,7 @@
 
 import { useState, useEffect, startTransition } from "react";
 import { getNearbyProducts } from "@/lib/geo/actions";
+import { esFalloDeRed } from "@/lib/net/fallo-de-red";
 import type { NearbyProduct } from "@/lib/geo/consulta-cercanos";
 import type { GeoPosition } from "./useGeolocation";
 
@@ -36,15 +37,28 @@ export function useNearbyProducts({
       lng: position.lng,
       radiusMeters,
       limit,
-    }).then((result) => {
-      if (cancelled) return;
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setProducts(result.products);
-      }
-      setLoading(false);
-    });
+    }).then(
+      (result) => {
+        if (cancelled) return;
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setProducts(result.products);
+        }
+        setLoading(false);
+      },
+      (err: unknown) => {
+        // La server action es un fetch: sin este brazo, quedarse sin senal
+        // dejaba `loading` en true para siempre (el spinner de "Cerca de ti"
+        // no paraba nunca) y el rechazo salia por onunhandledrejection.
+        if (cancelled) return;
+        setLoading(false);
+        // Sin red nos quedamos con los productos que ya trajo el servidor.
+        if (!esFalloDeRed(err)) {
+          setError("No se pudieron cargar los productos cercanos.");
+        }
+      },
+    );
 
     return () => {
       cancelled = true;

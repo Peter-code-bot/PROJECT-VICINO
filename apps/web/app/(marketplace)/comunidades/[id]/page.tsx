@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { DetalleCabecera } from "@/components/comunidades/detalle-cabecera";
-import { MuroComunidad, cursorDeUltimo } from "@/components/comunidades/muro-comunidad";
+import { MuroComunidad } from "@/components/comunidades/muro-comunidad";
 import { MuroDifuminado } from "@/components/comunidades/muro-difuminado";
 import { ComunidadNoDisponible } from "@/components/comunidades/no-disponible";
-import { esMando } from "@/lib/comunidades/tipos";
+import { esMando, cursorDeUltimo } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad, esErrorDePermiso } from "@/lib/comunidades/errores";
 import { Archive } from "lucide-react";
 

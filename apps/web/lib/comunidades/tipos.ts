@@ -58,6 +58,21 @@ export interface CursorComunidad {
   id: string;
 }
 
+/** Tamano de pagina compartido por el muro y las paginas que lo pintan. */
+export const PAGINA_MURO = 30;
+
+/**
+ * Cursor para pedir la siguiente pagina: solo si la pagina vino llena. Vive
+ * aqui (modulo sin "use client") porque lo llaman Server Components: una
+ * funcion exportada desde un modulo cliente no se puede invocar en el
+ * servidor (React lanza "Attempted to call ... from the server") y tsc no
+ * lo detecta.
+ */
+export function cursorDeUltimo(posts: PostComunidad[], pagina: number = PAGINA_MURO): CursorComunidad | null {
+  const ultimo = posts[posts.length - 1];
+  return posts.length === pagina && ultimo ? { time: ultimo.created_at, id: ultimo.id } : null;
+}
+
 export type RolComunidad = "owner" | "moderator" | "member";
 
 export function esMando(rol: string | null | undefined): boolean {

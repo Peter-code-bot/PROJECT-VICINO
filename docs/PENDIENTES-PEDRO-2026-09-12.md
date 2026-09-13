@@ -52,7 +52,14 @@ Es el build de las **13:30**, regenerado a petición de la sesión de Play Store
 
 La sesión de Play Store ya dejó guardado en la consola (12-sep): declaración de ID de publicidad = No, Seguridad de los datos (ubicación precisa + registros de fallas y diagnóstico por Sentry), 12 listas de verificadores seleccionadas y el sitio web en Configuración de la tienda. El bump 6→7 y el cambio del manifest están commiteados juntos (`ef721b9`).
 
-Lo único que queda es tuyo, en [Play Console](https://play.google.com/console) → `com.vicino.mx` → *Testing* → *Closed testing* → el borrador de la versión: **quita el AAB 6**, sube `VICINO-1.6-versionCode7.aab`, notas de la versión, *Review release* y envía a revisión. La declaración de permisos de fotos y videos desaparece sola cuando el AAB 6 deje de estar en la versión. Si además quieres una pista interna sin revisión para los 15 testers de hoy, *Internal testing* acepta el mismo AAB.
+Lo que queda es tuyo, en [Play Console](https://play.google.com/console) → `com.vicino.mx`:
+
+1. *Testing* → *Closed testing* → el borrador de la versión: **quita el AAB 6**, sube `VICINO-1.6-versionCode7.aab`, notas de la versión, *Review release* y envía a revisión. La declaración de permisos de fotos y videos desaparece sola cuando el AAB 6 deje de estar en la versión. Si ya lo hiciste, salta este punto.
+2. **Verificadores**: la cuenta es personal y Google exige **12 verificadores que acepten el enlace de participación y sigan 14 días seguidos** antes de poder pedir acceso a producción. Hoy hay exactamente 12 listas seleccionadas, cero margen: consigue 15-20 correos y confirma en *Panel* → *Prueba cerrada* cuántos han aceptado. El calendario real es de ~3 semanas desde que envíes la prueba.
+3. **Verificación de desarrolladores de Android** (aviso de Google): registra el paquete `com.vicino.mx` antes del **30-sep-2026**. La página ya muestra 1 paquete registrado; confirma que sea ese.
+4. **Deep links («dominios no verificados»)**, no bloquea la revisión, pero conviene cerrarlo en el siguiente AAB (versionCode 8):
+   - `www.vicinomarket.com` responde 308 al apex y el verificador de Google no sigue redirecciones; con www dentro del filtro `autoVerify` fallaba la verificación entera. Ya lo moví al filtro manual en `AndroidManifest.xml` (entra con el próximo build; el AAB 7 lo lleva como antes).
+   - `apps/web/public/.well-known/assetlinks.json` solo trae la huella de la **upload key** (`2C:81:C7…`). Play firma la app con **otra** clave: copia la huella SHA-256 de *Configuración* → *Integridad de la app* → *Firma de apps* → *Certificado de clave de firma de apps* y pásamela (o añádela tú como segundo elemento del arreglo `sha256_cert_fingerprints`). Sin eso, los enlaces `https://vicinomarket.com/...` no abrirán la app instalada desde Play.
 
 ## 4. Decisión: el secreto JWT del proyecto salió en una transcripción
 
