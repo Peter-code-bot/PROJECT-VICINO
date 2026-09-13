@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { cargarDescubrir, cancelarSolicitud } from "@/app/(marketplace)/comunidades/actions";
 import { tiempoQueFalta } from "@/lib/comunidades/errores";
+import { esFalloDeRed } from "@/lib/net/fallo-de-red";
 import type {
   PostComunidad,
   ComunidadMia,
@@ -93,11 +94,25 @@ export function ComunidadesFeed({
   useEffect(() => {
     if (tab !== "descubrir" || cercanas !== null || errorCercanas !== null || lat === null || lng === null || !user) return;
     let vivo = true;
-    cargarDescubrir({ lat, lng }).then((r) => {
-      if (!vivo) return;
-      if (r.error) setErrorCercanas(r.error);
-      else setCercanas(r.items);
-    });
+    cargarDescubrir({ lat, lng }).then(
+      (r) => {
+        if (!vivo) return;
+        if (r.error) setErrorCercanas(r.error);
+        else setCercanas(r.items);
+      },
+      (err: unknown) => {
+        // Sin este brazo, quedarse sin senal dejaba el spinner girando para
+        // siempre: cargandoCercanas se deriva de que `cercanas` y
+        // `errorCercanas` sigan en null, y la guarda del efecto impide
+        // reintentar. Encima el rechazo salia a Sentry como bug.
+        if (!vivo) return;
+        setErrorCercanas(
+          esFalloDeRed(err)
+            ? "Sin conexion. Revisa tu red e intentalo de nuevo."
+            : "No se pudieron cargar las comunidades cercanas.",
+        );
+      },
+    );
     return () => {
       vivo = false;
     };
@@ -124,7 +139,21 @@ export function ComunidadesFeed({
   async function cancelarMia(s: SolicitudMia) {
     const previo = solicitudes;
     setSolicitudes((prev) => prev.filter((x) => x.id !== s.id));
-    const r = await cancelarSolicitud(s.id, s.community_id);
+    let r: Awaited<ReturnType<typeof cancelarSolicitud>>;
+    try {
+      r = await cancelarSolicitud(s.id, s.community_id);
+    } catch (err) {
+      // El onClick la llama con `void`: sin este catch el fallo de red salia
+      // como rechazo no capturado y la fila se quedaba borrada de la lista
+      // aunque el servidor no se hubiera enterado.
+      setSolicitudes(previo);
+      toast.error(
+        esFalloDeRed(err)
+          ? "Sin conexion. No se cancelo la solicitud."
+          : "No se pudo cancelar la solicitud.",
+      );
+      return;
+    }
     if ("error" in r) {
       setSolicitudes(previo);
       toast.error(r.error);
