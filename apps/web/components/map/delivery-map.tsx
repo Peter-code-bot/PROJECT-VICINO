@@ -108,6 +108,10 @@ export default function DeliveryMap({
   function selectSuggestion(s: { display_name: string; lat: string; lon: string }) {
     const lat = parseFloat(s.lat);
     const lng = parseFloat(s.lon);
+    // Nominatim es un tercero: si devuelve algo que no es un numero, el NaN
+    // acaba en mapkit.Coordinate y ademas se guardaria como ubicacion. Mismo
+    // criterio que change-location-sheet.tsx:268.
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     setPosition([lat, lng]);
     setSearchQuery(s.display_name.split(",")[0] ?? s.display_name);
     setSuggestions([]);

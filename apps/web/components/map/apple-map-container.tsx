@@ -14,6 +14,22 @@ interface AppleMapProps {
   onMarkerDragEnd?: (lat: number, lng: number) => void;
   onMapClick?: (lat: number, lng: number) => void;
   radiusKm?: number;
+  /**
+   * Punto azul de MapKit. Apagado por defecto a proposito.
+   *
+   * Su anillo de precision se dibuja en el rAF interno de mapkit.js y, en el
+   * primer frame, el `_worldSize` que usa para calcular la opacidad todavia es
+   * undefined; la multiplicacion da NaN y la propia guarda de MapKit lanza
+   * "[MapKit] Expected a number value for Style.fillOpacity, but got `NaN`"
+   * una vez por frame (CAPACITOR-6). El fallo esta dentro del bundle de Apple
+   * y no se puede parchear desde aqui: lo unico que controlamos es si el
+   * anillo llega a existir. De regalo, cada mapa con punto azul arma su propio
+   * watchPosition ademas del que ya usa la app.
+   *
+   * Ningun mapa lo necesita hoy: todos situan la posicion con su propio marker
+   * y las pantallas con GPS tienen su boton explicito.
+   */
+  showsUserLocation?: boolean;
   height?: string | number;
   className?: string;
 }
@@ -30,6 +46,7 @@ export default function AppleMapContainer({
   onMarkerDragEnd,
   onMapClick,
   radiusKm,
+  showsUserLocation = false,
   height = "100%",
   className = "",
 }: AppleMapProps) {
@@ -85,7 +102,7 @@ export default function AppleMapContainer({
           : mapkit.FeatureVisibility.Hidden,
         showsMapTypeControl: false,
         showsZoomControl: false,
-        showsUserLocation: true,
+        showsUserLocation,
       });
 
       mapInstanceRef.current = map;
@@ -169,6 +186,9 @@ export default function AppleMapContainer({
     interactive,
     draggableMarker,
     radiusKm,
+    // Solo se lee al crear el mapa, igual que `interactive`. Va en las
+    // dependencias por coherencia con el resto de props, no porque cambie.
+    showsUserLocation,
     resolvedTheme,
   ]);
 

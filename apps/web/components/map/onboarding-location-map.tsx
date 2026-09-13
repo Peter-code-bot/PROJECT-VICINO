@@ -119,6 +119,9 @@ export default function OnboardingLocationMap({
   const selectSuggestion = (s: { display_name: string; lat: string; lon: string }) => {
     const lat = parseFloat(s.lat);
     const lng = parseFloat(s.lon);
+    // commitPosition pinta el mapa ANTES de que el hook valide, asi que la
+    // guarda tiene que estar aqui o el NaN llega igual a mapkit.Coordinate.
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const parts = s.display_name.split(",").map((p) => p.trim());
     const shortLabel = parts.slice(0, 2).join(", ");
     setSearchQuery(shortLabel);
