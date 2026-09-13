@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice } from "@vicino/shared";
+import { formatPrice, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { getOrCreateChat } from "./actions";
 import { ChatItemCard } from "./chat-item-card";
@@ -130,26 +130,16 @@ export default async function ChatPage({ searchParams }: Props) {
   const showSelfChatBanner = params.selfChatError === "1";
 
   return (
-    <div data-navigation-kind="chat_list" data-navigation-ready={crypto.randomUUID()} className="max-w-2xl mx-auto px-4 py-8">
+    <div data-navigation-kind="chat_list" data-navigation-ready={crypto.randomUUID()} className="max-w-2xl mx-auto px-4 pt-2 pb-8 sm:pt-4">
       {showSelfChatBanner && (
         <div className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
           No puedes iniciar un chat contigo mismo. Estabas en modo vista visitante de tu propio producto.
         </div>
       )}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
-            Confianza local
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-[color:var(--fg)]">
-            Mensajes
-          </h1>
-        </div>
-        {visibleChats.length > 0 && (
-          <span className="inline-flex items-center rounded-full bg-[color:var(--fg)] px-3 py-1 text-xs font-semibold text-[color:var(--bg)]">
-            {visibleChats.length} conversaciones
-          </span>
-        )}
+      <div className="mb-5">
+        <h1 className="font-heading text-2xl font-bold text-[color:var(--fg)]">
+          Mensajes
+        </h1>
       </div>
 
       {visibleChats.length > 0 ? (
@@ -171,7 +161,7 @@ export default async function ChatPage({ searchParams }: Props) {
                   id: chat.id,
                   updated_at: chat.updated_at,
                   otherUser: otherProfile
-                    ? { id: otherProfile.id, nombre: otherProfile.nombre, foto: otherProfile.foto }
+                    ? { id: otherProfile.id, nombre: cleanDisplayName(otherProfile.nombre), foto: otherProfile.foto }
                     : null,
                   unread: unread ?? 0,
                   productoTitulo: producto?.titulo ?? null,

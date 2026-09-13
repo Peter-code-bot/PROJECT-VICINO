@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Search, MapPin, Loader2, X } from "lucide-react";
+import { searchLocations, type LocationSearchResult } from "@/lib/geo/location-search";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
   ssr: false,
@@ -34,9 +35,7 @@ export default function DeliveryMap({
   );
   const [radius, setRadius] = useState(initialRadius);
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<
-    Array<{ display_name: string; lat: string; lon: string }>
-  >([]);
+  const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showMap, setShowMap] = useState(hasInitial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,36 +86,27 @@ export default function DeliveryMap({
       return;
     }
     setSearching(true);
-    debounceRef.current = setTimeout(() => {
-      fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          q
-        )}&format=json&countrycodes=mx&limit=5`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          setSuggestions(Array.isArray(data) ? data : []);
-          setSearching(false);
-        })
-        .catch(() => {
-          setSuggestions([]);
-          setSearching(false);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchLocations(q, {
+          center: { lat: position[0], lng: position[1] },
+          limit: 5,
         });
-    }, 500);
+        setSuggestions(results);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
   }
 
-  function selectSuggestion(s: { display_name: string; lat: string; lon: string }) {
-    const lat = parseFloat(s.lat);
-    const lng = parseFloat(s.lon);
-    // Nominatim es un tercero: si devuelve algo que no es un numero, el NaN
-    // acaba en mapkit.Coordinate y ademas se guardaria como ubicacion. Mismo
-    // criterio que change-location-sheet.tsx:268.
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    setPosition([lat, lng]);
-    setSearchQuery(s.display_name.split(",")[0] ?? s.display_name);
+  function selectSuggestion(s: LocationSearchResult) {
+    setPosition([s.lat, s.lng]);
+    setSearchQuery(s.name);
     setSuggestions([]);
     setShowMap(true);
-    onLocationChange(lat, lng, s.display_name);
+    onLocationChange(s.lat, s.lng, s.fullName);
   }
 
   function clearLocation() {
@@ -161,15 +151,29 @@ export default function DeliveryMap({
         {/* Results dropdown */}
         {suggestions.length > 0 && (
           <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl product-card-custom shadow-2xl max-h-60 overflow-y-auto">
-            {suggestions.map((s, i) => (
+            {suggestions.map((s) => (
               <button
-                key={i}
+                key={s.id}
                 type="button"
                 onClick={() => selectSuggestion(s)}
-                className="w-full text-left px-4 py-3 text-sm hover:bg-primary/10 transition-colors border-b border-border/20 last:border-0 flex items-start gap-2"
+                className="w-full text-left px-4 py-3 text-sm hover:bg-primary/10 transition-colors border-b border-border/20 last:border-0 flex items-start gap-2.5"
               >
                 <MapPin className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                <span>{s.display_name}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium truncate">{s.name}</span>
+                    {s.distanceKm !== undefined && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {s.distanceKm < 1 ? "< 1 km" : `${s.distanceKm.toFixed(1)} km`}
+                      </span>
+                    )}
+                  </div>
+                  {s.subtitle && (
+                    <p className="line-clamp-1 text-xs text-muted-foreground mt-0.5">
+                      {s.subtitle}
+                    </p>
+                  )}
+                </div>
               </button>
             ))}
           </div>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Trash2, MoreVertical } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { formatRelativeTime } from "@vicino/shared";
+import { formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { toast } from "sonner";
 import { hideChat } from "./actions";
 import {
@@ -81,7 +81,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
         <div className="relative shrink-0">
           <UserAvatar
             src={chat.otherUser?.foto}
-            name={chat.otherUser?.nombre ?? "?"}
+            name={cleanDisplayName(chat.otherUser?.nombre)}
             size="lg"
             className="shadow-[0_0_0_2px_#121212]"
           />
@@ -101,7 +101,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
                   : "font-medium text-[color:var(--fg)] group-hover:opacity-70"
               }`}
             >
-              {chat.otherUser?.nombre ?? "Usuario"}
+              {cleanDisplayName(chat.otherUser?.nombre)}
             </span>
             <span className="ml-2 whitespace-nowrap text-xs text-[color:var(--fg-dim)]">
               {chat.updated_at ? formatRelativeTime(chat.updated_at) : null}

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
-import { updateProfileSchema, usernameSchema } from "@vicino/shared";
+import { updateProfileSchema, usernameSchema, cleanDisplayName } from "@vicino/shared";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -23,7 +23,7 @@ export async function updateProfile(formData: FormData) {
   const es_vendedor = formData.get("es_vendedor") === "on";
 
   const raw = {
-    nombre: ((formData.get("nombre") as string) ?? "").trim(),
+    nombre: cleanDisplayName(((formData.get("nombre") as string) ?? "").trim()),
     bio: ((formData.get("bio") as string) ?? "").trim() || null,
     foto: ((formData.get("foto") as string) ?? "").trim() || null,
     ubicacion: ((formData.get("ubicacion") as string) ?? "").trim() || null,

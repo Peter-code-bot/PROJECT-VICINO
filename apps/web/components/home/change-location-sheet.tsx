@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useRouter } from "next/navigation";
+import { searchLocations, type LocationSearchResult } from "@/lib/geo/location-search";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -161,7 +162,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     city: string | null;
   }>({ zone: null, city: null });
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [recents, setRecents] = useState<SavedLocation[]>([]);
   const [requestingGps, setRequestingGps] = useState(false);
@@ -225,29 +226,32 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     return () => controller.abort();
   }, [open, center.lat, center.lng]);
 
-  const handleSearchChange = useCallback((v: string) => {
-    setQuery(v);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (v.trim().length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    debounceRef.current = setTimeout(() => {
-      fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          v,
-        )}&format=json&countrycodes=mx&limit=5`,
-      )
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data: NominatimResult[]) => {
-          setResults(Array.isArray(data) ? data : []);
-        })
-        .catch(() => setResults([]))
-        .finally(() => setSearching(false));
-    }, 500);
-  }, []);
+  const handleSearchChange = useCallback(
+    (v: string) => {
+      setQuery(v);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (v.trim().length < 2) {
+        setResults([]);
+        setSearching(false);
+        return;
+      }
+      setSearching(true);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const data = await searchLocations(v, {
+            center: { lat: center.lat, lng: center.lng },
+            limit: 5,
+          });
+          setResults(data);
+        } catch {
+          setResults([]);
+        } finally {
+          setSearching(false);
+        }
+      }, 400);
+    },
+    [center.lat, center.lng],
+  );
 
   const commit = useCallback(
     (loc: SavedLocation) => {
@@ -262,17 +266,12 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   );
 
   const handleSelectResult = useCallback(
-    (r: NominatimResult) => {
-      const lat = parseFloat(r.lat);
-      const lng = parseFloat(r.lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-      const segments = r.display_name.split(",").map((s) => s.trim());
-      const name = segments[0] ?? r.display_name;
+    (r: LocationSearchResult) => {
       commit({
-        lat,
-        lng,
-        name,
-        fullName: r.display_name,
+        lat: r.lat,
+        lng: r.lng,
+        name: r.name,
+        fullName: r.fullName,
         timestamp: Date.now(),
       });
     },
@@ -391,18 +390,32 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
                 {results.length > 0 && (
                   <div className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded-2xl bg-[color:var(--card-2)] shadow-[0_0_0_1px_var(--border),0_8px_24px_rgba(0,0,0,0.4)]">
-                    {results.map((r, i) => (
+                    {results.map((r) => (
                       <button
-                        key={`${r.lat},${r.lon},${i}`}
+                        key={r.id}
                         type="button"
                         onClick={() => handleSelectResult(r)}
-                        className="flex min-h-[48px] w-full items-start gap-2 px-4 py-3 text-left text-sm text-[color:var(--fg)] transition-colors hover:bg-[color:var(--card)] active:bg-[color:var(--card)]"
+                        className="flex min-h-[48px] w-full items-start gap-2.5 px-4 py-3 text-left text-sm text-[color:var(--fg)] transition-colors hover:bg-[color:var(--card)] active:bg-[color:var(--card)] border-b border-[color:var(--border)]/40 last:border-0"
                       >
                         <MapPin
-                          size={14}
+                          size={16}
                           className="mt-0.5 flex-shrink-0 text-[color:var(--brand-hi)]"
                         />
-                        <span className="line-clamp-2">{r.display_name}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium truncate">{r.name}</span>
+                            {r.distanceKm !== undefined && (
+                              <span className="shrink-0 text-[11px] text-[color:var(--fg-dim)]">
+                                {r.distanceKm < 1 ? "< 1 km" : `${r.distanceKm.toFixed(1)} km`}
+                              </span>
+                            )}
+                          </div>
+                          {r.subtitle && (
+                            <p className="line-clamp-1 text-xs text-[color:var(--fg-dim)] mt-0.5">
+                              {r.subtitle}
+                            </p>
+                          )}
+                        </div>
                       </button>
                     ))}
                   </div>
