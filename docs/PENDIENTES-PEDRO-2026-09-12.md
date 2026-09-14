@@ -65,7 +65,34 @@ Lo que queda es tuyo, en [Play Console](https://play.google.com/console) → `co
 
 Al leer la configuración de PostgREST por la Management API (`GET /v1/projects/<ref>/postgrest`) la respuesta incluye `jwt_secret` y se imprimió en la sesión de Claude del 12-sep. No se usó para nada. Con ese secreto se pueden firmar JWT válidos para cualquier usuario mientras esté vigente.
 
-Opciones: (a) rotarlo en Supabase → *Settings* → *API* → *JWT Settings* → *Generate a new JWT secret*: invalida todas las sesiones activas y las claves `anon`/`service_role` legacy (hay que actualizar `NEXT_PUBLIC_SUPABASE_ANON_KEY` en Vercel y `.env.local`, y el vault `service_role_key` que usan los triggers de push); (b) no rotar, asumiendo que la transcripción es privada. Es tu llamada; si rotas, hazlo fuera de horario y con el runbook de claves filtradas (`docs/RUNBOOK-claves-filtradas.md`) a mano.
+> **CORREGIDO EL 13-SEP: este apartado decía algo falso y caro.**
+>
+> Decía que rotar «invalida todas las sesiones activas». **No es cierto.** El
+> JWKS del proyecto anuncia únicamente **ES256**, así que los tokens de usuario
+> van firmados con la asimétrica y rotar el secreto HS256 **no desloguea a
+> nadie**:
+>
+> ```
+> curl -s https://oxxdkwywprkfghhbnoto.supabase.co/auth/v1/.well-known/jwks.json
+> → algoritmos: ES256/EC
+> ```
+>
+> Esa frase convertía una rotación barata en una que parecía exigir ventana
+> nocturna. No hace falta: la ventana de riesgo real son los pasos 4-5 del
+> runbook, en los que las push devuelven 401.
+
+Rotarlo en Supabase → *Settings* → *API* → *JWT Settings* → *Generate a new JWT
+secret* invalida las claves `anon`/`service_role` **legacy**, y eso sí obliga a
+preparar antes sus consumidores. El inventario completo y verificado —doce, de
+los que cinco se ven afectados— está ahora en `docs/RUNBOOK-claves-filtradas.md`.
+
+**Y hay algo más urgente que esto.** Comprobado el 13-sep: el repositorio es
+**PÚBLICO** y el commit `8416eee` sigue teniendo dentro una clave
+`service_role` vigente hasta 2036, con las claves legacy **encendidas**. O sea
+que hoy funciona. Eso no es una decisión pendiente, es una fuga activa; el
+`jwt_secret` de este apartado salió en una transcripción privada y no se usó.
+Mitigación reversible mientras se ejecuta la rotación:
+`gh repo edit Peter-code-bot/PROJECT-VICINO --visibility private`.
 
 ## 5. Proyecto Supabase de pruebas
 

@@ -2252,6 +2252,33 @@ export type Database = {
         }
         Relationships: []
       }
+      vicino_cobertura: {
+        Row: {
+          actualizado: string
+          centro_lat: number | null
+          centro_lng: number | null
+          clave: string
+          modo: string
+          radio_km: number | null
+        }
+        Insert: {
+          actualizado?: string
+          centro_lat?: number | null
+          centro_lng?: number | null
+          clave: string
+          modo: string
+          radio_km?: number | null
+        }
+        Update: {
+          actualizado?: string
+          centro_lat?: number | null
+          centro_lng?: number | null
+          clave?: string
+          modo?: string
+          radio_km?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       geography_columns: {
@@ -2656,6 +2683,10 @@ export type Database = {
         Returns: undefined
       }
       delete_user_data: { Args: { target_user_id: string }; Returns: Json }
+      dentro_de_cobertura: {
+        Args: { p_lat: number; p_lng: number }
+        Returns: boolean
+      }
       descubrir_comunidades: {
         Args: { p_lat: number; p_lng: number; result_limit?: number }
         Returns: {
