@@ -2149,6 +2149,32 @@ export type Database = {
         }
         Relationships: []
       }
+      verificacion_ia_consumo: {
+        Row: {
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verificacion_ia_consumo_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verification_consent: {
         Row: {
           aceptado_at: string
@@ -2614,6 +2640,7 @@ export type Database = {
       comunidades_limite: { Args: { p_clave: string }; Returns: number }
       comunidades_publicas_ids: { Args: never; Returns: string[] }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
+      consumir_cuota_verificacion_ia: { Args: never; Returns: Json }
       count_nearby_vendors: {
         Args: { radius_meters?: number; user_lat: number; user_lng: number }
         Returns: number
@@ -3175,6 +3202,7 @@ export type Database = {
         Returns: Json
       }
       puedo_ver_publicacion: { Args: { p_post_id: string }; Returns: boolean }
+      purgar_verificacion_ia_consumo: { Args: never; Returns: undefined }
       quitar_moderador_comunidad: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: Json

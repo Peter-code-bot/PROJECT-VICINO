@@ -37,11 +37,50 @@ export async function verifyDocument(
   // Va despues de comprobar la sesion para que nadie pueda gastarle la cuota a
   // otro, y antes del consentimiento para que ni siquiera se consulte la base
   // en el caso abusivo.
+  //
+  // DOS CAPAS, y la que de verdad cuenta es la segunda.
+  //
+  // La de Upstash sigue primero porque es la barata: corta sin tocar la base.
+  // Pero enforce() FALLA ABIERTO por dos caminos — sin credenciales, y ante
+  // cualquier error de red — y hoy en produccion entra siempre por el primero,
+  // porque Vercel Production no tiene las variables de Upstash. O sea que por
+  // si sola no frena nada.
+  //
+  // Para el unico limite que protege DINERO, "si el guardia no esta, pasa" es
+  // justo la regla contraria a la que hace falta. Por eso debajo va una cuota
+  // que vive en Postgres y que falla CERRADO: si no se puede comprobar, no se
+  // gasta. No quita funcionalidad, porque sin base esta accion no puede hacer
+  // nada util de todos modos (ni leer la imagen, ni guardar el resultado).
   const cuota = await enforce(verificacionRateLimit, `verificacion:${userId}`);
   if (!cuota.ok) {
     return {
       success: false,
       error: "Has hecho demasiados intentos de verificación. Vuelve a intentarlo en una hora.",
+    };
+  }
+
+  const { data: cuotaBase, error: errorCuotaBase } = await supabase.rpc(
+    "consumir_cuota_verificacion_ia",
+  );
+
+  if (errorCuotaBase) {
+    Sentry.captureException(errorCuotaBase, {
+      tags: { action: "verifyDocument", paso: "cuota_ia" },
+      extra: { code: errorCuotaBase.code, details: errorCuotaBase.details },
+    });
+    // Cerrado. Preferimos negarle un intento a una persona antes que dejar
+    // abierta la llave del gasto porque una consulta fallo.
+    return {
+      success: false,
+      error: "No pudimos comprobar tus intentos de verificación. Inténtalo en unos minutos.",
+    };
+  }
+
+  const permiso = cuotaBase as { permitido?: boolean; se_libera_en?: string | null } | null;
+  if (!permiso?.permitido) {
+    return {
+      success: false,
+      error: mensajeDeEspera(permiso?.se_libera_en ?? null),
     };
   }
 
@@ -246,4 +285,31 @@ Analiza esta imagen y retorna SOLO un JSON válido (sin backticks, texto crudo) 
     const detalle = error instanceof Error ? error.message : null;
     return { success: false, error: detalle || "Error al analizar la credencial." };
   }
+}
+
+/**
+ * Texto de la cuota agotada, con la espera REAL cuando la base la sabe.
+ *
+ * Antes decia "Vuelve a intentarlo en una hora", que es falso casi siempre:
+ * la ventana es deslizante, asi que lo que se libera dentro de una hora es el
+ * intento mas viejo, no la cuota entera, y quien agoto los cinco hace
+ * cincuenta minutos solo tiene que esperar diez. Decir "una hora" a esa
+ * persona la manda a irse.
+ *
+ * Y sobre todo: el texto ya no sugiere pedir un codigo nuevo. Eso no libera
+ * esta cuota — es otra distinta — asi que lo unico que conseguia era quemarle
+ * a la persona tambien la de reenvio de codigos.
+ */
+function mensajeDeEspera(seLiberaEn: string | null): string {
+  if (!seLiberaEn) {
+    return "Has agotado tus intentos de verificación por ahora. Inténtalo más tarde.";
+  }
+  const faltaMs = new Date(seLiberaEn).getTime() - Date.now();
+  if (!Number.isFinite(faltaMs) || faltaMs <= 0) {
+    return "Has agotado tus intentos de verificación por ahora. Vuelve a intentarlo.";
+  }
+  const minutos = Math.max(1, Math.ceil(faltaMs / 60_000));
+  return minutos === 1
+    ? "Has agotado tus intentos de verificación. Podrás volver a intentarlo en 1 minuto."
+    : `Has agotado tus intentos de verificación. Podrás volver a intentarlo en ${minutos} minutos.`;
 }

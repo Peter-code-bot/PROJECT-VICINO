@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { oauthCallbackRateLimit, check, getClientIp } from "@/lib/rate-limit";
+import {
+  oauthCallbackRateLimit,
+  readHeavyRateLimit,
+  check,
+  getClientIp,
+} from "@/lib/rate-limit";
 
 // MED-3 (CODEX Tanda A SEC/AUTH follow-up): replace the previous plain-text
 // 429 response ("Demasiadas solicitudes...") with the same 303 redirect +
@@ -56,7 +61,75 @@ export async function proxy(request: NextRequest) {
     if (!success) return tooManyRequests(request);
   }
 
+  // Las dos superficies mas caras del sitio, y las unicas dos que no tenian
+  // cuota en ninguna capa.
+  //
+  // El home hace en su primer render una RPC de 150 filas con dos subconsultas
+  // JSONB por fila, otra de 20 para "Cerca de ti", el getUser, el perfil y la
+  // verificacion. /buscar suma un ilike '%...%' sobre profiles por cada
+  // termino distinto. Y el unico guard de lectura pesada que existia
+  // (getMoreFeedProducts) protege la pagina 2 en adelante: la 1, que es la
+  // cara, estaba abierta a un bucle de curl.
+  //
+  // Va AQUI y no dentro de las paginas por dos razones. Cortar en el
+  // middleware ahorra el render entero, no solo las consultas; y el matcher
+  // compilado lleva el sufijo de RSC, asi que esto cubre tambien la navegacion
+  // por cliente y los prefetch, que cuestan lo mismo que una visita.
+  //
+  // Identificador propio (`pagina:`) y no `feed:` ni `read:`: son cubos
+  // distintos a proposito, con el mismo criterio que ya documenta
+  // (marketplace)/actions.ts — raspar el feed no debe dejar sin home a quien
+  // comparte NAT.
+  //
+  // 60/min por IP viene de readHeavyRateLimit. Es holgado a proposito: una IP
+  // no es una persona (Telcel e Izzi meten barrios enteros detras del mismo
+  // NAT), y 60 cargas de pagina por minuto desde una sola IP ya no es gente
+  // navegando. Si aparecieran falsos positivos, el arreglo es subir el tope,
+  // no volver a dejarlo pasar.
+  //
+  // OJO: hoy esto es un no-op en produccion. Sin UPSTASH_REDIS_REST_URL ni
+  // UPSTASH_REDIS_REST_TOKEN, check() devuelve success siempre. El codigo
+  // queda listo y empieza a frenar el dia que existan esas credenciales.
+  if (path === "/" || path === "/buscar") {
+    const ip = getClientIp(request.headers);
+    const { success } = await check(readHeavyRateLimit, `pagina:${ip}`);
+    if (!success) return demasiadasPaginas();
+  }
+
   return await updateSession(request);
+}
+
+/**
+ * 429 para las paginas publicas.
+ *
+ * NO reusa tooManyRequests(): ese redirige a /login, que para un rastreador en
+ * el home no tiene ningun sentido, y para una persona seria peor todavia —
+ * mandarla a iniciar sesion cuando lo que pasa es que hay que esperar un
+ * minuto. Aqui se responde en el sitio, con Retry-After y una pagina minima
+ * que se explica.
+ */
+function demasiadasPaginas(): NextResponse {
+  return new NextResponse(
+    `<!doctype html><html lang="es"><head><meta charset="utf-8">` +
+      `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+      `<title>Demasiadas solicitudes — VICINO</title>` +
+      `<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;` +
+      `font:16px/1.5 system-ui,sans-serif;background:#faf9f7;color:#1b1b1b;padding:24px}` +
+      `main{max-width:28rem;text-align:center}h1{font-size:1.25rem;margin:0 0 .5rem}` +
+      `p{margin:0;color:#5b5b5b}</style></head><body><main>` +
+      `<h1>Demasiadas solicitudes</h1>` +
+      `<p>Hemos recibido muchas peticiones desde tu conexión. ` +
+      `Espera un minuto y vuelve a intentarlo.</p>` +
+      `</main></body></html>`,
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Retry-After": "60",
+        "Cache-Control": "private, no-store",
+      },
+    },
+  );
 }
 
 export const config = {
