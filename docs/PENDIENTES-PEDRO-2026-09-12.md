@@ -108,3 +108,44 @@ Lo que sigue siendo tuyo o de Alejandro:
 - **Contrato de chat** (`feat/chat-intencion-idempotente`, sin desplegar): `docs/CONTRATO-iniciar-conversacion.md`. Cuando Alejandro lo apruebe: `node scripts/apply-migration.mjs 20260912300000_iniciar_conversacion_idempotente.sql`, luego `20260912310000_get_or_create_chat_on_conflict.sql`, y `node scripts/gen-types.mjs`.
 - **Panel de moderación**: las seis páginas (`listings`, `messages`, `reviews`, `users`, `critical`, `community-posts`) tenían el mismo embed roto `reporter:profiles!reporter_id` (la FK apunta a `auth.users`, no a `profiles`) y devolvían «sin reportes» con reportes pendientes; ya van con una segunda consulta (`apps/web/lib/admin/reporteros.ts`). Conviene que alguien abra el panel en producción con tu cuenta admin y confirme que lista lo que hay.
 - **Sugerencias no bloqueantes que quedaron anotadas** (memoria de la sesión): oráculo débil de bloqueo con el mando vía el directorio, TOCTOU en la rama ENTRAR, interbloqueo teórico entre la cascada de `auth.users` y `alternar_membresia_comunidad`, «Volver» con `router.back()` desde una notificación en pestaña nueva, hilo localizado por cursor con empate exacto de `created_at`, y lecturas paginadas sin freno propio.
+
+
+---
+
+# Añadido el 13-sep: los ajustes de Auth que hay que fijar ANTES del SMTP
+
+Leído de la configuración real del proyecto el 13-sep (Management API,
+`/config/auth`). Esto es lo que el plan pedía comprobar antes de tocar el SMTP,
+y explica por qué ese orden no es cosmético.
+
+| Ajuste | Valor HOY | Qué significa |
+|---|---|---|
+| `smtp_host` | `null` | No hay SMTP propio |
+| `rate_limit_email_sent` | **2** | **2 correos por hora para TODO el proyecto** |
+| `security_captcha_enabled` | **false** | Nada distingue a un humano en `/auth/v1/signup`, `/otp` y `/recover` |
+| `rate_limit_verify` | 30 | Intentos de verificación por hora y por IP |
+| `rate_limit_otp` | 30 | Envíos de OTP por hora |
+| `smtp_max_frequency` | 60 | Segundos mínimos entre envíos al mismo correo |
+| `mailer_otp_exp` | 600 | Vida del código, en segundos (10 min) |
+
+**Por qué el orden importa.** Hoy el techo de 2 correos/hora es, de hecho, el
+freno: la tercera persona que se registra en una hora no recibe su código. En
+cuanto pongas el SMTP de Resend ese techo sube, y entonces el único límite que
+queda es `rate_limit_email_sent` — **sin captcha debajo**. Subir el techo sin
+haber puesto antes algo que distinga a un humano es abrir el mail bombing por
+el botón de reenviar.
+
+**Lo que no cubren los guards de Next.** Los limitadores de OTP de
+`lib/rate-limit.ts` protegen las Server Actions. Un atacante no las usa: llama
+directamente a `https://<ref>.supabase.co/auth/v1/otp` y `/auth/v1/verify` con
+la llave anon, que viaja en el bundle del cliente. Por ese camino el único
+freno son los `rate_limit_*` de la tabla de arriba. Por eso el plan pedía
+comprobarlos **antes**, y por eso son los que hay que fijar.
+
+**Orden recomendado:**
+
+1. Activar captcha (hCaptcha ya está preseleccionado como proveedor) —
+   *Authentication → Settings → Bot and Abuse Protection*.
+2. Fijar `rate_limit_email_sent` a un valor consciente, no al que venga por
+   defecto al activar SMTP.
+3. Entonces sí, el SMTP de Resend (apartado 2 de este documento).
