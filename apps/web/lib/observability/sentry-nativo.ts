@@ -65,6 +65,17 @@ export function crearInicializadorSentry(load: () => Promise<Modules>) {
               ? (process.env.NEXT_PUBLIC_SENTRY_DSN_IOS ?? process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE)
               : process.env.NEXT_PUBLIC_SENTRY_DSN_MOBILE,
             environment: `${plataforma}-production`,
+            // NEXT_PUBLIC_VERSION y NEXT_PUBLIC_ANDROID_BUILD ya NO hay que
+            // definirlas a mano: next.config.ts las lee de
+            // android/app/build.gradle en cada build y las inyecta. Antes esa
+            // variable no existia en ningun sitio del repo, asi que el release
+            // en produccion era la cadena "vicino@dev" y el dist "1" mientras
+            // en Play estaba el versionCode 7: un crash del AAB real llegaba
+            // indistinguible del emulador de un martes.
+            //
+            // Leerlo del gradle y no pedirlo por variable es lo que impide que
+            // vuelva a pasar: el dia que suba el AAB 8, Sentry dira 8 sin que
+            // nadie tenga que acordarse de nada.
             release: `vicino@${process.env.NEXT_PUBLIC_VERSION ?? "dev"}`,
             dist: (plataforma === "ios"
               ? process.env.NEXT_PUBLIC_IOS_BUILD

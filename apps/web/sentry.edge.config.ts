@@ -3,6 +3,10 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.VERCEL_ENV ?? "development",
+  // Release: el SHA del commit desplegado. Lo inyecta next.config.ts. Sin esto
+  // ningun evento de produccion es atribuible a un despliegue, y "que se rompio
+  // hoy" no se puede contestar.
+  release: process.env.NEXT_PUBLIC_RELEASE,
   // Al 0.05 solo se veia 1 de cada 20 navegaciones, insuficiente para
   // sacar una linea base. onRouterTransitionStart ya esta exportado en
   // instrumentation-client, asi que cada navegacion del App Router emite

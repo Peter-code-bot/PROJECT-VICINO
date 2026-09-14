@@ -16,6 +16,9 @@ if (!isCapacitor) {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? "development",
+    // Mismo release que el servidor, para que un evento de navegador y uno de
+    // servidor del mismo despliegue caigan bajo la misma version.
+    release: process.env.NEXT_PUBLIC_RELEASE,
     // ERRORS: capture everything; quota is generous for typical pre-launch.
     sampleRate: 1.0,
     // Conservar muestreo durante verificacion; las cuotas requieren consumo real.

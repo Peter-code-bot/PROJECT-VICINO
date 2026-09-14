@@ -1,7 +1,56 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 import bundleAnalyzer from "@next/bundle-analyzer";
+
+// ---------------------------------------------------------------------------
+// Identidad de los despliegues para Sentry.
+//
+// EL PROBLEMA QUE RESUELVE. Ni las tres Sentry.init ni withSentryConfig
+// declaraban `release`. Sin release, Sentry agrupa todo bajo una version que se
+// inventa el SDK y que no esta ligada a ningun commit, asi que la pregunta
+// operativa -- "que eventos son NUEVOS en este despliegue" -- no se puede
+// contestar, y una alerta despues de una migracion o una rotacion de claves no
+// distingue lo que rompiste hoy de lo que llevaba semanas fallando.
+//
+// WEB: el SHA del commit que Vercel ya expone. No hace falta configurar nada.
+const RELEASE_WEB = process.env.VERCEL_GIT_COMMIT_SHA ?? "local";
+
+// MOVIL: la version se LEE de android/app/build.gradle en cada build, en vez de
+// pedir tres variables de entorno a mano.
+//
+// Por que asi y no con variables: el release movil ya declaraba
+// `vicino@${NEXT_PUBLIC_VERSION}`, pero esa variable no existia en ningun sitio
+// del repo -- ni en .env.example, ni en Vercel, ni en Gradle -- asi que en
+// produccion el release era literalmente "vicino@dev" y el dist "1", mientras
+// el AAB que esta en Play es el versionCode 7. Un crash del AAB 7 llegaba
+// etiquetado igual que el emulador de un martes.
+//
+// Definirlas a mano lo habria arreglado solo hasta el siguiente AAB: en cuanto
+// alguien suba el 8 sin acordarse de tocar Vercel, Sentry vuelve a mentir y en
+// verde. Leyendo el gradle no hay nada que recordar y no se pueden
+// desincronizar. El shell de Capacitor carga el bundle remoto, asi que estos
+// valores se hornean aqui, en el build de Vercel, y no en Gradle.
+function leerVersionAndroid(): { version: string; build: string } {
+  try {
+    const gradle = readFileSync(
+      join(process.cwd(), "android", "app", "build.gradle"),
+      "utf8",
+    );
+    const version = /versionName\s+"([^"]+)"/.exec(gradle)?.[1];
+    const build = /versionCode\s+(\d+)/.exec(gradle)?.[1];
+    if (version && build) return { version, build };
+  } catch {
+    // En un entorno sin la carpeta android (CI parcial, un contenedor sin el
+    // proyecto nativo) no se rompe el build por esto.
+  }
+  return { version: "desconocida", build: "0" };
+}
+
+const VERSION_MOVIL = leerVersionAndroid();
 
 // El HTML de navegacion NO se cachea. Es el punto 0 del plan de onboarding, y
 // es un arreglo independiente de el.
@@ -257,6 +306,16 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // VERCEL_GIT_COMMIT_SHA no es NEXT_PUBLIC_, asi que el navegador no la ve.
+  // Aqui se expone con nombre propio para que la Sentry.init del cliente pueda
+  // etiquetar sus eventos con el mismo release que el servidor. Las dos de
+  // movil salen del build.gradle leido arriba, no de variables que alguien
+  // tenga que acordarse de actualizar.
+  env: {
+    NEXT_PUBLIC_RELEASE: RELEASE_WEB,
+    NEXT_PUBLIC_VERSION: VERSION_MOVIL.version,
+    NEXT_PUBLIC_ANDROID_BUILD: VERSION_MOVIL.build,
+  },
   async headers() {
     return [
       {
@@ -359,6 +418,10 @@ export default withSentryConfig(withBundleAnalyzer(withPWA(nextConfig)), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   tunnelRoute: "/sentry-tunnel",
+  // Crea el release en Sentry y le asocia los source maps que ya se suben
+  // abajo. Sin esto, los mapas se suben huerfanos y los stack traces de
+  // produccion siguen sin desminificar.
+  release: { name: RELEASE_WEB },
   // hideSourceMaps was removed in @sentry/nextjs 8+. The equivalent is now
   // nested under sourcemaps — uploads still happen, but the public client
   // bundle does not ship the .map files alongside.
