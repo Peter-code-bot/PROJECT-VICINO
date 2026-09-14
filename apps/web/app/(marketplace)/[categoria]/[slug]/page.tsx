@@ -80,11 +80,40 @@ export default async function ProductDetailPage({ params }: Props) {
   // pretty-print de categoria TEXT). categoria TEXT sigue en el SELECT (`*`)
   // y el render lo usa como fallback si por algun edge case el pivote
   // estuviera vacio (logueado a Sentry abajo).
+  // Las 34 columnas que esta página usa, una a una, en vez de `*`.
+  //
+  // No es manía: products_services tiene 36 columnas y una de ellas es
+  // `ubicacion_geo`, la coordenada EXACTA de la publicación. El feed público
+  // solo expone la distancia redondeada a 100 m, y `get_product_location`
+  // está revocada a anon precisamente para no revelar la posición de un
+  // vendedor — pero mientras esta consulta pidiera `*`, la columna cruda
+  // viajaba al cliente en cada ficha, y el rol anon necesitaba privilegio de
+  // lectura sobre ella para que la página no reventara.
+  //
+  // Con la lista explícita, quitar ese privilegio es seguro. El orden y los
+  // nombres salen de information_schema; si se añade una columna nueva y hace
+  // falta aquí, hay que añadirla también a esta lista (que es justo la
+  // revisión que `*` se saltaba).
+  //
+  // Faltan dos a propósito: `ubicacion_geo`, por lo de arriba, y
+  // `search_vector`, un tsvector que sólo sirve para el índice de búsqueda y
+  // que `*` venía arrastrando hasta el navegador sin que nadie lo leyera.
+  //
+  // ORDEN DE DESPLIEGUE: este cambio va a producción ANTES de revocar el
+  // privilegio. Al revés rompe la ficha para todo el mundo mientras dure el
+  // despliegue.
   const { data: product, error: productError } = await supabase
     .from("products_services")
     .select(
       `
-      *,
+      id, creador_id, titulo, titulo_en, descripcion, descripcion_en, slug,
+      precio, tipo, categoria, categoria_id, imagen_principal,
+      galeria_imagenes, ubicacion, tipo_entrega, estatus, ventas_count,
+      vistas_count, favoritos_count, created_at, updated_at,
+      delivery_radius_km, gallery_layout, gallery_sizes, allow_appointments,
+      appointment_start_time, appointment_end_time,
+      appointment_duration_minutes, precio_negociable, is_hidden, estado,
+      color, modo_precio, sort_order,
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
         average_rating, reviews_count, total_sales
