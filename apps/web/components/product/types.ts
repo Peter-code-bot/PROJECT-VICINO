@@ -97,6 +97,20 @@ export interface ProductDetailData {
   // ProductDetailMobile/Desktop a MetaRow que renderea con fallback al
   // pretty-print de categoria TEXT cuando esto es null.
   categoryName: string | null;
+  /**
+   * Clave de idempotencia de la intencion de compra (contrato
+   * iniciar_conversacion, 20260912300000). La genera el Server Component de la
+   * ficha UNA vez por render y la reciben LOS DOS detalles —movil y
+   * escritorio— porque ambos estan en el DOM a la vez (page.tsx los oculta con
+   * CSS, no con una rama). Si cada componente generara la suya, una misma
+   * ficha tendria dos claves y el aviso se duplicaria segun que boton se
+   * pulsara: exactamente el bug que el contrato viene a cerrar.
+   *
+   * Una clave por VISTA de la ficha, no por sesion: F5 en /chat, el boton
+   * atras o un doble toque reusan la misma y no duplican; recargar la ficha
+   * produce una clave nueva, que es una intencion nueva en el mismo chat.
+   */
+  claveIntencion: string;
 }
 
 export interface ProductDetailExtras {

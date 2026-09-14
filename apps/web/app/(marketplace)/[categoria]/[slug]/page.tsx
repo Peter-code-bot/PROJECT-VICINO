@@ -213,6 +213,15 @@ export default async function ProductDetailPage({ params }: Props) {
     isOwner,
     deliveryLabel,
     categoryName,
+    // Una sola clave por render de la ficha, compartida por el detalle movil y
+    // el de escritorio: los dos se pintan a la vez y solo los separa el CSS de
+    // abajo (`md:hidden` / `hidden md:block`). Generarla en cada componente
+    // daria dos claves distintas para una misma ficha y el aviso "quiere
+    // comprar" se duplicaria segun el ancho de pantalla desde el que se
+    // pulsara. Esta pagina es dinamica (lee la sesion con getUser), asi que
+    // cada visita trae una clave nueva, que es lo que el contrato define como
+    // una intencion nueva.
+    claveIntencion: crypto.randomUUID(),
   };
 
   return (

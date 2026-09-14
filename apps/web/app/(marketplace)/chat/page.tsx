@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, cleanDisplayName } from "@vicino/shared";
-import { priceFallbackLabel } from "@/lib/price-mode";
-import { getOrCreateChat } from "./actions";
+import { cleanDisplayName } from "@vicino/shared";
+import { claveHeredada } from "@/lib/chat/iniciar-conversacion";
+import { iniciarConversacion } from "./actions";
 import { ChatItemCard } from "./chat-item-card";
+
+/** Un uuid, en cualquiera de sus versiones. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata = {
   title: "Chat — VICINO",
@@ -16,7 +18,10 @@ interface Props {
     seller?: string;
     product?: string;
     intent?: string;
+    /** Clave de idempotencia que pinta la ficha del producto en sus dos CTA. */
+    k?: string;
     selfChatError?: string;
+    chatError?: string;
   }>;
 }
 
@@ -29,78 +34,63 @@ export default async function ChatPage({ searchParams }: Props) {
 
   if (!user) redirect("/login?next=/chat");
 
-  // If seller param is present, create/get chat and redirect
+  // Con `seller` en la URL esto deja de ser un indice y pasa a ser una
+  // operacion: abrir la conversacion y, si venia con intencion de compra,
+  // registrar el aviso. Antes eran DOS pasos sueltos —getOrCreateChat y un
+  // INSERT manual en messages— y entre uno y otro no habia nada que atara el
+  // resultado a la pulsacion que lo origino: un F5, el boton atras o un doble
+  // toque mandaban un segundo "quiere comprar" al mismo vendedor. Ahora los
+  // dos pasos son UNA transaccion en la base (iniciar_conversacion,
+  // 20260912300000) y la clave de idempotencia decide si esto es la misma
+  // pulsacion o una nueva.
   if (params.seller) {
-    const result = await getOrCreateChat(params.seller, params.product);
-    // Self-chat guard: owner reached /chat?seller={ownId} (typically from
-    // a CTA tapped while in ?preview=visitor mode on their own listing).
-    // Server action returns { error }; surface it as a banner on the chat
-    // index so the owner understands why no chat opened.
+    const quiereComprar = params.intent === "buy" && !!params.product;
+
+    // La clave buena viene de la ficha (`k`). Si el enlace es viejo y no la
+    // trae, se deriva una por (comprador, vendedor, producto, hora): ver
+    // claveHeredada. Con intencion de contacto la clave ni se usa.
+    let clave: string | undefined;
+    if (quiereComprar) {
+      clave =
+        params.k && UUID.test(params.k)
+          ? params.k
+          : claveHeredada(user.id, params.seller, params.product!);
+    }
+
+    const result = await iniciarConversacion({
+      sellerId: params.seller,
+      productId: params.product,
+      intencion: quiereComprar ? "compra" : "contacto",
+      clave,
+    });
+    // Antes CUALQUIER error de aqui redirigia a ?selfChatError=1, que pinta
+    // "No puedes iniciar un chat contigo mismo. Estabas en modo vista
+    // visitante de tu propio producto." Eso ya mentia cuando el vendedor te
+    // tenia bloqueado, y 20260912310000 anade dos motivos mas —cuenta
+    // suspendida y producto que no es de ese vendedor— que habrian acabado
+    // leyendose igual de mal. El caso de chat-consigo-mismo se distingue por
+    // lo que la propia accion comprueba antes de ir a la base; el resto viaja
+    // ya traducido por traducirErrorIniciarConversacion, que nunca deja pasar
+    // el texto crudo del motor.
     if (result.error) {
-      redirect(`/chat?selfChatError=1`);
+      if (result.error.includes("contigo mismo")) {
+        redirect("/chat?selfChatError=1");
+      }
+      redirect(`/chat?chatError=${encodeURIComponent(result.error)}`);
     }
     if (result.chatId) {
-      // Send buy intent message if intent=buy
-      if (params.intent === "buy" && params.product) {
-        const { data: product, error: productErr } = await supabase
-          .from("products_services")
-          .select("titulo, precio, modo_precio").throwOnError()
-          .eq("id", params.product)
-          .single();
-        // El producto puede no ser visible para ESTE comprador: la policy
-        // block_aware_products_select solo devuelve la fila con estatus
-        // 'disponible' e is_hidden = false, y la esconde si hay bloqueo
-        // mutuo en user_blocks. Antes ese caso moria en el `if (product)`
-        // y salia por el redirect sin decir nada: el comprador aterrizaba
-        // en un chat vacio creyendo que ya habia avisado, y el vendedor no
-        // recibia mensaje, ni no_leidos, ni push.
-        if (!product) {
-          console.error("[chat] buy-intent product lookup:", productErr);
-          Sentry.captureException(
-            productErr ?? new Error("buy intent: producto no visible para el comprador"),
-            {
-              tags: { action: "chat_buy_intent", step: "product_lookup" },
-              extra: { productId: params.product, chatId: result.chatId },
-            }
-          );
-          redirect(`/chat/${result.chatId}?intentFailed=1`);
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("nombre").throwOnError()
-          .eq("id", user.id)
-          .single();
-        // El precio es nullable desde que existe modo_precio. El
-        // Number(precio) anterior convertia null en 0 y guardaba en la base
-        // un "por $0 MXN" que se lee como una oferta real de cero pesos.
-        // formatPrice devuelve null cuando no hay monto, y ahi la etiqueta
-        // del modo dice la verdad ("Cotizacion" / "Reservacion").
-        const precioFmt = formatPrice(product.precio);
-        // Mismo manejo que sendMessage en actions.ts:179. El INSERT puede
-        // fallar por RLS (42501), por un trigger (increment_unread_count y
-        // unhide_chat_on_new_message no tienen bloque EXCEPTION, asi que
-        // una excepcion suya aborta el INSERT) o por red. El redirect de
-        // abajo es incondicional: sin este chequeo el fallo es invisible
-        // para las dos partes.
-        const { error: intentMsgErr } = await supabase.from("messages").insert({
-          chat_id: result.chatId,
-          autor_id: user.id,
-          texto: `🛒 ${profile?.nombre ?? "Un comprador"} quiere comprar: ${product.titulo} ${
-            precioFmt
-              ? `por ${precioFmt} MXN`
-              : `(${priceFallbackLabel(product.modo_precio)})`
-          }`,
-        });
-        if (intentMsgErr) {
-          console.error("[chat] buy-intent message insert:", intentMsgErr);
-          Sentry.captureException(intentMsgErr, {
-            tags: { action: "chat_buy_intent", step: "message_insert" },
-            extra: { productId: params.product, chatId: result.chatId },
-          });
-          redirect(`/chat/${result.chatId}?intentFailed=1`);
-        }
-      }
+      // El aviso "quiere comprar" ya viaja dentro de la misma transaccion
+      // que abrio el chat: lo compone la base con el nombre, el titulo y el
+      // precio formateado, y no hay INSERT que hacer aqui. Lo que antes eran
+      // dos consultas (producto + perfil) y un INSERT que podia fallar en
+      // solitario —dejando al comprador en un chat vacio convencido de que ya
+      // habia avisado— son ahora cero viajes extra: si el aviso no se pudo
+      // registrar, la RPC ya devolvio { error } mas arriba y no hay chat a
+      // medias que explicar.
+      //
+      // `repetida` distingue el reintento de la intencion nueva: cuando es
+      // true no ha nacido ninguna fila, asi que el comprador vuelve a la
+      // misma conversacion y el vendedor no recibe un segundo aviso.
       redirect(`/chat/${result.chatId}`);
     }
   }
@@ -128,12 +118,28 @@ export default async function ChatPage({ searchParams }: Props) {
   }) ?? [];
 
   const showSelfChatBanner = params.selfChatError === "1";
+  // Motivo real cuando la conversacion no se pudo abrir: vendedor o producto
+  // ya no disponibles, cuenta suspendida, cuota diaria agotada. Viene ya
+  // traducido desde la accion; se recorta porque el parametro es de la URL y
+  // no hay razon para pintar mas de una frase.
+  const chatErrorBanner =
+    typeof params.chatError === "string" && params.chatError.length > 0
+      ? params.chatError.slice(0, 160)
+      : null;
 
   return (
     <div data-navigation-kind="chat_list" data-navigation-ready={crypto.randomUUID()} className="max-w-2xl mx-auto px-4 pt-2 pb-8 sm:pt-4">
       {showSelfChatBanner && (
         <div className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
           No puedes iniciar un chat contigo mismo. Estabas en modo vista visitante de tu propio producto.
+        </div>
+      )}
+      {chatErrorBanner && (
+        <div
+          role="status"
+          className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]"
+        >
+          {chatErrorBanner}
         </div>
       )}
       <div className="mb-5">

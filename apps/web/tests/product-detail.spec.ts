@@ -65,6 +65,24 @@ test.describe("Producto detalle - matriz visitor/owner", () => {
     await expect(buyCta).toBeVisible();
     const buyHref = await buyCta.getAttribute("href");
     expect(buyHref).toMatch(/intent=buy/);
+    // La clave de idempotencia del contrato iniciar_conversacion.
+    expect(buyHref).toMatch(
+      /[?&]k=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+    );
+
+    // El detalle de movil y el de escritorio estan LOS DOS en el DOM (solo los
+    // separa el CSS), asi que esta pagina pinta dos "Quiero comprarlo". Tienen
+    // que llevar la MISMA clave: si cada componente generara la suya, pulsar en
+    // movil y luego en escritorio mandaria dos avisos "quiere comprar" al
+    // vendedor por una sola ficha. Es el bug que el contrato cierra, y este es
+    // el unico sitio donde se puede vigilar desde fuera.
+    const todosLosBuy = await page
+      .getByRole("link", { name: /quiero comprarlo/i })
+      .evaluateAll((els) =>
+        els.map((el) => new URL((el as HTMLAnchorElement).href).searchParams.get("k")),
+      );
+    expect(todosLosBuy.length).toBeGreaterThan(0);
+    expect(new Set(todosLosBuy).size).toBe(1);
 
     await expect(
       // El mismo control se llama distinto segun el viewport: "Contactar

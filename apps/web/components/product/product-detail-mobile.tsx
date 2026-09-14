@@ -36,6 +36,7 @@ export function ProductDetailMobile({
   isOwner,
   deliveryLabel,
   categoryName,
+  claveIntencion,
 }: ProductDetailMobileProps) {
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
@@ -169,6 +170,7 @@ export function ProductDetailMobile({
         sellerId={seller.id}
         isOwner={isOwner}
         hasSession={!!user}
+        claveIntencion={claveIntencion}
       />
 
     </div>

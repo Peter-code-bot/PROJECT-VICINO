@@ -38,6 +38,7 @@ export function ProductDetailDesktop({
   isOwner,
   deliveryLabel,
   categoryName,
+  claveIntencion,
 }: ProductDetailDesktopProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -61,7 +62,12 @@ export function ProductDetailDesktop({
   // `next`, no `redirect`: ver la nota en sticky-cta.tsx. Nadie leia
   // ?redirect=, asi que el comprador perdia el producto al iniciar sesion.
   const loginRedirect = `/login?next=${encodeURIComponent(pathname)}`;
-  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy`;
+  // `k` es la clave de idempotencia que nace en el Server Component de la
+  // ficha y que este detalle comparte con el de movil (StickyCta). Sin ella el
+  // enlace sigue funcionando —chat/page.tsx deriva una de respaldo— pero
+  // entonces la proteccion contra el doble aviso es por ventana de tiempo y no
+  // exacta.
+  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy&k=${claveIntencion}`;
   const contactHref = `/chat?seller=${seller.id}&product=${product.id}`;
 
   return (

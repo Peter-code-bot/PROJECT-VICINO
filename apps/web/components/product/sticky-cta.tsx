@@ -9,6 +9,13 @@ interface StickyCtaProps {
   sellerId: string;
   isOwner: boolean;
   hasSession: boolean;
+  /**
+   * Clave de idempotencia de la intencion de compra. Viene del Server
+   * Component de la ficha, NO se genera aqui: el detalle de escritorio pinta
+   * su propio boton "Quiero comprarlo" con la misma clave, y los dos estan en
+   * el DOM al mismo tiempo. Ver components/product/types.ts.
+   */
+  claveIntencion: string;
 }
 
 const SHELL =
@@ -20,6 +27,7 @@ export function StickyCta({
   sellerId,
   isOwner,
   hasSession,
+  claveIntencion,
 }: StickyCtaProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,6 +81,8 @@ export function StickyCta({
   // Authenticated visitor (or owner-in-preview).
   // intent=buy must be preserved exactly: analytics + chat backend consume it
   // to insert the "comprador quiere comprar" message (see chat/page.tsx).
+  // `k` viaja junto a intent=buy y es la MISMA clave que usa el detalle de
+  // escritorio: pulsar aqui o alli produce un solo aviso, no dos.
   return (
     <div className={SHELL} style={{ paddingBottom: SAFE_PAD }}>
       <Link
@@ -83,7 +93,7 @@ export function StickyCta({
         <MessageCircle className="h-5 w-5" />
       </Link>
       <Link
-        href={`/chat?seller=${sellerId}&product=${productId}&intent=buy`}
+        href={`/chat?seller=${sellerId}&product=${productId}&intent=buy&k=${claveIntencion}`}
         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
       >
         <ShoppingBag className="h-4 w-4" />
