@@ -17,7 +17,9 @@ import { SolicitudesFeed } from "@/components/solicitudes/solicitudes-feed";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
 import { makeFeedCursor } from "@/lib/feed-cursor";
-import { consultarProductosCercanos } from "@/lib/geo/consulta-cercanos";
+import { consultarProductosCercanos, type ConsultaCercanosResult } from "@/lib/geo/consulta-cercanos";
+import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
+import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 import {
   GraduationCap,
   ArrowRight,
@@ -100,41 +102,33 @@ export default async function HomePage({ searchParams }: Props) {
   }
   const hasLocation = userLat !== null && userLng !== null;
 
-  // Estas TRES consultas son independientes entre si y se esperaban una detras
-  // de otra. El feed no mira `user` en ningun punto —solo hasLocation, las
-  // coordenadas y el radio, todos resueltos arriba— y el perfil y la
-  // verificacion solo miran user.id. Para un usuario autenticado eran tres
-  // idas de red en serie donde cabe una.
-  //
-  // Promise.all y no allSettled a proposito: los constructores de postgrest-js
-  // NUNCA rechazan mientras no se llame a .throwOnError(), que aqui no se
-  // llama. Un fallo de cualquiera de las tres llega como valor resuelto con
-  // { data: null, error }, no como excepcion. El feed va ademas envuelto en su
-  // propia funcion, que ya captura su error y lo reporta.
+  // Estas consultas son independientes. Cada una puede fallar sin borrar
+  // el resultado de las otras; el feed conserva su propio estado de error.
   const feedPromise = (async (): Promise<{
     products: FeedProduct[] | null;
-    fallo: boolean;
+    failure: CatalogFailure | null;
   }> => {
-    if (hasLocation) {
-      const { data, error } = await supabase.rpc("search_nearby_products_v4", {
-        user_lat: userLat!,
-        user_lng: userLng!,
-        radius_meters: validRadius,
-        result_limit: 150,
-      }).throwOnError();
-      if (error) {
-        Sentry.captureException(error, {
-          tags: { action: "feed_nearby_products", section: "para_ti" },
-        });
-        return { products: null, fallo: true };
+    try {
+      if (hasLocation) {
+        const { data, error } = await supabase.rpc("search_nearby_products_v4", {
+          user_lat: userLat!,
+          user_lng: userLng!,
+          radius_meters: validRadius,
+          result_limit: 150,
+        }).throwOnError();
+        if (error) {
+          Sentry.captureException(error, {
+            tags: { action: "feed_nearby_products", section: "para_ti" },
+          });
+          return { products: null, failure: catalogFailure(error) };
+        }
+        return { products: data as FeedProduct[], failure: null };
       }
-      return { products: data as FeedProduct[], fallo: false };
-    }
 
-    const { data } = await supabase
-      .from("products_services")
-      .select(
-        `
+      const { data } = await supabase
+        .from("products_services")
+        .select(
+          `
         id,
         titulo,
         precio,
@@ -146,12 +140,16 @@ export default async function HomePage({ searchParams }: Props) {
         modo_precio,
         profiles!inner(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
-      `
-      ).throwOnError()
-      .eq("estatus", "disponible")
-      .order("created_at", { ascending: false })
-      .limit(150);
-    return { products: data as FeedProduct[] | null, fallo: false };
+          `
+        ).throwOnError()
+        .eq("estatus", "disponible")
+        .order("created_at", { ascending: false })
+        .limit(150);
+      return { products: data as FeedProduct[] | null, failure: null };
+    } catch (error) {
+      Sentry.captureException(error, { tags: { action: "feed_initial", section: "para_ti" } });
+      return { products: null, failure: catalogFailure(error) };
+    }
   })();
 
   const perfilPromise = user
@@ -177,11 +175,11 @@ export default async function HomePage({ searchParams }: Props) {
   // De ahi que aparecieran primero las categorias —que son marcado del
   // servidor— y «Cerca de ti» despues.
   //
-  // Entra en este Promise.all y no en una espera aparte: es una consulta mas en
+  // Entra en el grupo concurrente y no en una espera aparte: es una consulta mas en
   // PARALELO, no una cascada. Y usa el mismo RPC y el mismo difuminado de
   // coordenadas que usaba el cliente, solo que ordenando por distancia; la
   // unica diferencia es quien lo pide.
-  const cercaDeTiPromise = hasLocation
+  const cercaDeTiPromise: Promise<ConsultaCercanosResult> = hasLocation
     ? consultarProductosCercanos({
         lat: userLat!,
         lng: userLng!,
@@ -190,13 +188,20 @@ export default async function HomePage({ searchParams }: Props) {
       })
     : Promise.resolve({ products: [] });
 
-  const [feedResultado, perfilResultado, verificacionResultado, cercaDeTiResultado] =
-    await Promise.all([
+  const [feedSettled, perfilSettled, verificacionSettled, cercaSettled] =
+    await Promise.allSettled([
       feedPromise,
       perfilPromise,
       verificacionPromise,
       cercaDeTiPromise,
     ]);
+
+  const feedResultado = feedSettled.status === "fulfilled"
+    ? feedSettled.value : { products: null, failure: catalogFailure(feedSettled.reason) };
+  const perfilResultado = perfilSettled.status === "fulfilled" ? perfilSettled.value : null;
+  const verificacionResultado = verificacionSettled.status === "fulfilled" ? verificacionSettled.value : null;
+  const cercaDeTiResultado: ConsultaCercanosResult = cercaSettled.status === "fulfilled"
+    ? cercaSettled.value : { products: [], error: "No se pudo consultar cercanía" };
 
   const viewerIsVendedor = perfilResultado?.data?.es_vendedor ?? false;
   const viewerUniversity: string | null =
@@ -259,11 +264,14 @@ export default async function HomePage({ searchParams }: Props) {
     }
 
     return uProducts ?? [];
-  })();
+  })().catch((error) => {
+    Sentry.captureException(error, { tags: { action: "feed_initial", section: "university" } });
+    return [];
+  });
 
   // El feed ya se resolvio arriba, en paralelo con perfil y verificacion.
   const products = feedResultado.products;
-  const feedRpcFailed = feedResultado.fallo;
+  const feedRpcFailed = feedResultado.failure !== null;
 
   const showGeoEmptyState = hasLocation;
 
@@ -543,6 +551,7 @@ export default async function HomePage({ searchParams }: Props) {
             <div className="max-w-7xl mx-auto">
               <LocationBar
                 productosIniciales={cercaDeTiResultado.products}
+                  initialFailure={cercaDeTiResultado.error ? catalogFailure(cercaDeTiResultado) : null}
                 hayUbicacionEnServidor={hasLocation}
               />
             </div>
@@ -587,7 +596,9 @@ export default async function HomePage({ searchParams }: Props) {
                 lng={!feedRpcFailed ? (userLng ?? undefined) : undefined}
               />
             }
-            empty={showGeoEmptyState ? (
+            empty={feedResultado.failure ? (
+              <section className="px-4 pb-8"><CatalogQueryState failure={feedResultado.failure} section="los productos" /></section>
+            ) : showGeoEmptyState ? (
             /* ─── EMPTY STATE GEO ─────────────────────────────── */
             <section className="px-4 pb-8">
               <div className="px-4 py-20 text-center">

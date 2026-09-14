@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Search, LocateFixed, Loader2, MapPin, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
+  clasificarResultado,
   searchLocations,
   resolveLocationCoordinates,
   type LocationSearchResult,
@@ -46,6 +47,7 @@ export default function OnboardingLocationMap({
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
+  const [outsideMexico, setOutsideMexico] = useState(false);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
@@ -58,6 +60,13 @@ export default function OnboardingLocationMap({
   // Guardar posición en hook y sincronizar cookies / localStorage
   const commitPosition = useCallback(
     (lat: number, lng: number, label: string) => {
+      const valid = clasificarResultado({ lat, lng }, null);
+      if (valid !== "ok") {
+        setGpsError(valid === "fuera-de-mexico"
+          ? "La ubicación debe estar en México."
+          : "No pudimos comprobar las coordenadas de esa ubicación.");
+        return;
+      }
       setPosition([lat, lng]);
       setAddressLabel(label);
       setManualPosition({
@@ -74,6 +83,10 @@ export default function OnboardingLocationMap({
   // Reverse geocoding diferido con Apple MapKit Geocoder (P1-1)
   const handlePositionChange = useCallback(
     (lat: number, lng: number) => {
+      if (clasificarResultado({ lat, lng }, null) !== "ok") {
+        setGpsError("El punto debe tener coordenadas válidas dentro de México.");
+        return false;
+      }
       setPosition([lat, lng]);
       const provisional = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       commitPosition(lat, lng, provisional);
@@ -94,6 +107,7 @@ export default function OnboardingLocationMap({
           })
           .catch(() => {});
       }, 800);
+      return true;
     },
     [commitPosition]
   );
@@ -139,12 +153,14 @@ export default function OnboardingLocationMap({
         if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
           setSuggestions(results.results);
           setOutOfCoverage(results.outOfCoverage);
+          setOutsideMexico(results.reason === "fuera-de-mexico");
           setHasSearched(true);
         }
       } catch {
         if (searchSeqRef.current === currentSeq) {
           setSuggestions([]);
           setOutOfCoverage(false);
+          setOutsideMexico(false);
           setHasSearched(true);
         }
       } finally {
@@ -171,23 +187,25 @@ export default function OnboardingLocationMap({
     // en el centro del mapa con el nombre del sitio que habia elegido.
     if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
       setOutOfCoverage(!!resolved.outOfCoverage);
+      setOutsideMexico(resolved.rejectionReason === "fuera-de-mexico");
       setHasSearched(true);
       return;
     }
 
     setHasSearched(false);
     setOutOfCoverage(false);
+    setOutsideMexico(false);
     commitPosition(resolved.lat, resolved.lng, resolved.name);
   };
 
   // Confirmar dirección escrita manualmente (P1-5: salida sin bloqueo de mapa)
   const handleConfirmManualText = () => {
-    const trimmed = searchQuery.trim();
-    if (trimmed.length > 0) {
-      commitPosition(position[0], position[1], trimmed);
-      setSuggestions([]);
-      setHasSearched(false);
-    }
+    const [lat, lng] = position;
+    // El texto no se geocodificó: se conserva el punto visible, identificado
+    // por sus coordenadas, sin adjudicarle el nombre que no se encontró.
+    commitPosition(lat, lng, `Punto del mapa (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+    setSuggestions([]);
+    setHasSearched(false);
   };
 
   // Botón GPS
@@ -257,25 +275,20 @@ export default function OnboardingLocationMap({
         {!searching && hasSearched && suggestions.length === 0 && searchQuery.trim().length >= 3 && (
           <div className="absolute left-0 right-0 z-[60] mt-1.5 rounded-2xl bg-[color:var(--card-2)] p-3 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.35)] border border-[color:var(--border)] space-y-2">
             <p className="text-[color:var(--fg-dim)]">
-              {outOfCoverage
+              {outsideMexico
+                ? "Ese lugar está fuera de México."
+                : outOfCoverage
                 ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
                 : "No encontramos lugares con ese nombre."}
             </p>
-            {/*
-              Esta salida manual guarda el CENTRO ACTUAL del mapa con el texto
-              que escribio el usuario como etiqueta. Vale cuando no encontramos
-              el nombre —el pin esta a la vista y el usuario lo esta aceptando—
-              pero NO cuando el sitio esta fuera de cobertura: ahi ofrecerlo
-              seria volver a prometer "Monterrey" y guardar Puebla, que es
-              justo el fallo que se acaba de corregir.
-            */}
-            {!outOfCoverage && (
+            {/* El escape usa el pin visible sin adjudicarle el texto no resuelto. */}
+            {!outOfCoverage && !outsideMexico && (
               <button
                 type="button"
                 onClick={handleConfirmManualText}
                 className="w-full rounded-xl bg-[color:var(--brand)]/15 px-3 py-1.5 text-center font-medium text-[color:var(--brand)] hover:bg-[color:var(--brand)]/25"
               >
-                Usar &ldquo;{searchQuery.trim()}&rdquo; como mi zona
+                Usar el punto del mapa sin asociarlo al texto buscado
               </button>
             )}
           </div>

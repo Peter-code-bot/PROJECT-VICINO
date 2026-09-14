@@ -66,6 +66,7 @@ interface ChatWindowProps {
   salesSeed?: Promise<SalesSeed>;
   readinessToken?: string;
   buyIntentFailed?: boolean;
+  missingPurchaseIntent?: boolean;
   deletedAt: string | null;
 }
 
@@ -80,6 +81,7 @@ export function ChatWindow({
   salesSeed,
   readinessToken,
   buyIntentFailed = false,
+  missingPurchaseIntent = false,
   deletedAt,
 }: ChatWindowProps) {
   // A5.1: cursor-based load-older via the shared hook. The hook owns
@@ -625,6 +627,11 @@ export function ChatWindow({
           className="mx-4 mb-2 shrink-0 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]"
         >
           No pudimos avisarle al vendedor que te interesa. Escríbele tú aquí abajo para que se entere.
+        </div>
+      )}
+      {missingPurchaseIntent && (
+        <div role="status" className="mx-4 mb-2 shrink-0 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
+          Se abrió el chat sin avisar de una compra. Vuelve a la publicación y pulsa Quiero comprarlo para avisar al vendedor.
         </div>
       )}
 

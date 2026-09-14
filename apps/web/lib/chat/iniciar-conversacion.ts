@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database.types";
@@ -62,56 +60,6 @@ function esResultado(v: unknown): v is IniciarConversacionResultado {
     typeof o.mensaje_nuevo === "boolean" &&
     typeof o.repetida === "boolean"
   );
-}
-
-/** Ventana de la clave de respaldo, en milisegundos. Una hora. */
-const VENTANA_CLAVE_HEREDADA_MS = 60 * 60 * 1000;
-
-/**
- * Clave de idempotencia DERIVADA, para enlaces antiguos.
- *
- * El contrato exige clave cuando la intencion es de compra, y los enlaces que
- * ya estan por ahi —un WhatsApp reenviado, una pestana abierta desde ayer, un
- * marcador— no la llevan: nacieron antes de que existiera. Rechazarlos seria
- * romper el momento de mayor intencion de compra de la app por un parametro
- * que el comprador nunca vio; dejarlos pasar sin clave devolveria justo el
- * duplicado que este contrato viene a cerrar.
- *
- * La salida es determinista sobre (comprador, vendedor, producto, hora), asi
- * que un F5 o un doble toque dentro de la misma hora reusan la clave y no
- * duplican. Pasada la hora, la clave cambia y un aviso nuevo vuelve a ser
- * posible: sin ese corte, un enlace viejo quedaria inservible para siempre
- * despues del primer uso.
- *
- * Es una red de seguridad, no el camino principal. Los CTA de la ficha mandan
- * `k` y consiguen idempotencia exacta, sin depender del reloj.
- *
- * `ahoraMs` se inyecta para poder probar el borde de la ventana.
- */
-export function claveHeredada(
-  compradorId: string,
-  vendedorId: string,
-  productoId: string,
-  ahoraMs: number = Date.now(),
-): string {
-  const ventana = Math.floor(ahoraMs / VENTANA_CLAVE_HEREDADA_MS);
-  const material = `vicino:intencion-heredada:${compradorId}:${vendedorId}:${productoId}:${ventana}`;
-  const h = createHash("sha256").update(material).digest();
-  // Formato UUID v8 (variante RFC 4122): la columna es `uuid`, asi que el
-  // valor tiene que ser un UUID valido, no un hash cualquiera. Se marcan los
-  // bits de version y variante para que ningun generador aleatorio pueda
-  // producir por accidente una de estas claves.
-  const b = Buffer.from(h.subarray(0, 16));
-  b.writeUInt8((b.readUInt8(6) & 0x0f) | 0x80, 6); // version 8
-  b.writeUInt8((b.readUInt8(8) & 0x3f) | 0x80, 8); // variante RFC 4122
-  const hex = b.toString("hex");
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    hex.slice(12, 16),
-    hex.slice(16, 20),
-    hex.slice(20, 32),
-  ].join("-");
 }
 
 /**

@@ -26,6 +26,7 @@ interface ProductDetailMobileProps extends ProductDetailData {
 }
 
 export function ProductDetailMobile({
+  purchaseIntentKey,
   product,
   seller,
   reviews,
@@ -36,7 +37,6 @@ export function ProductDetailMobile({
   isOwner,
   deliveryLabel,
   categoryName,
-  claveIntencion,
 }: ProductDetailMobileProps) {
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
@@ -166,11 +166,11 @@ export function ProductDetailMobile({
       </div>
 
       <StickyCta
+        purchaseIntentKey={purchaseIntentKey}
         productId={product.id}
         sellerId={seller.id}
         isOwner={isOwner}
         hasSession={!!user}
-        claveIntencion={claveIntencion}
       />
 
     </div>

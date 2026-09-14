@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "../actions";
+import { conTope, esTope } from "@/lib/auth/con-tope";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError("");
     setLoading(true);
-
+    try {
     // /auth/callback is the CLIENT loader page (no code exchange happens
     // there; web hits this path only as an APK-shared legacy and gets a
     // safety-net redirect to /). /auth/callback-server is the server
@@ -24,16 +28,22 @@ export default function ForgotPasswordPage() {
     // a session; otherwise the user is redirected to / unauthenticated
     // and the editar-password flow never gets a usable session.
     const redirectTo = `${window.location.origin}/auth/callback-server?next=/perfil/editar`;
-    const result = await requestPasswordReset(email, redirectTo);
+    const result = await conTope(requestPasswordReset(email, redirectTo));
 
     if (result.error) {
       setError(result.error);
-      setLoading(false);
       return;
     }
 
     setSent(true);
-    setLoading(false);
+    } catch (err) {
+      setError(esTope(err)
+        ? "Tardó demasiado. El correo podría estar en camino; revisa tu bandeja antes de pedir otro enlace."
+        : "No pudimos conectar. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
   }
 
   return (

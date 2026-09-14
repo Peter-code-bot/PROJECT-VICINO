@@ -28,6 +28,7 @@ interface ProductDetailDesktopProps extends ProductDetailData {
 }
 
 export function ProductDetailDesktop({
+  purchaseIntentKey,
   product,
   seller,
   reviews,
@@ -38,7 +39,6 @@ export function ProductDetailDesktop({
   isOwner,
   deliveryLabel,
   categoryName,
-  claveIntencion,
 }: ProductDetailDesktopProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -63,11 +63,10 @@ export function ProductDetailDesktop({
   // ?redirect=, asi que el comprador perdia el producto al iniciar sesion.
   const loginRedirect = `/login?next=${encodeURIComponent(pathname)}`;
   // `k` es la clave de idempotencia que nace en el Server Component de la
-  // ficha y que este detalle comparte con el de movil (StickyCta). Sin ella el
-  // enlace sigue funcionando —chat/page.tsx deriva una de respaldo— pero
-  // entonces la proteccion contra el doble aviso es por ventana de tiempo y no
-  // exacta.
-  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy&k=${claveIntencion}`;
+  // ficha y que este detalle comparte con el de movil (StickyCta): pulsar aqui
+  // o alli produce UN solo aviso, no dos. Un enlace sin `k` —uno viejo, o uno
+  // truncado al reenviarlo— abre la conversacion pero no afirma una compra.
+  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy&k=${purchaseIntentKey}`;
   const contactHref = `/chat?seller=${seller.id}&product=${product.id}`;
 
   return (

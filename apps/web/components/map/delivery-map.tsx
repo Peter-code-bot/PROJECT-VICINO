@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Search, MapPin, Loader2, X } from "lucide-react";
 import {
+  clasificarResultado,
   searchLocations,
   resolveLocationCoordinates,
   type LocationSearchResult,
@@ -44,6 +45,7 @@ export default function DeliveryMap({
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
+  const [outsideMexico, setOutsideMexico] = useState(false);
   const [showMap, setShowMap] = useState(hasInitial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inversaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +55,11 @@ export default function DeliveryMap({
 
   const handleDrag = useCallback(
     (lat: number, lng: number) => {
+      if (clasificarResultado({ lat, lng }, null) !== "ok") {
+        setOutOfCoverage(true);
+        setHasSearched(true);
+        return false;
+      }
       setPosition([lat, lng]);
 
       const provisional = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -71,6 +78,7 @@ export default function DeliveryMap({
           })
           .catch(() => {});
       }, 800);
+      return true;
     },
     [onLocationChange]
   );
@@ -113,12 +121,14 @@ export default function DeliveryMap({
         if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
           setSuggestions(results.results);
           setOutOfCoverage(results.outOfCoverage);
+          setOutsideMexico(results.reason === "fuera-de-mexico");
           setHasSearched(true);
         }
       } catch {
         if (searchSeqRef.current === currentSeq) {
           setSuggestions([]);
           setOutOfCoverage(false);
+          setOutsideMexico(false);
           setHasSearched(true);
         }
       } finally {
@@ -144,12 +154,14 @@ export default function DeliveryMap({
     // porque la resolucion fallo es peor que no hacer nada.
     if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
       setOutOfCoverage(!!resolved.outOfCoverage);
+      setOutsideMexico(resolved.rejectionReason === "fuera-de-mexico");
       setHasSearched(true);
       return;
     }
 
     setHasSearched(false);
     setOutOfCoverage(false);
+    setOutsideMexico(false);
     setPosition([resolved.lat, resolved.lng]);
     setShowMap(true);
     onLocationChange(resolved.lat, resolved.lng, resolved.fullName);
@@ -198,7 +210,9 @@ export default function DeliveryMap({
         {/* Empty results indicator */}
         {!searching && hasSearched && suggestions.length === 0 && searchQuery.trim().length >= 3 && (
           <div className="absolute z-[9999] top-full left-0 right-0 mt-1 rounded-xl border bg-card shadow-2xl p-4 text-center text-sm text-muted-foreground">
-            {outOfCoverage
+            {outsideMexico
+              ? "Ese lugar está fuera de México."
+              : outOfCoverage
               ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
               : "No se encontraron ubicaciones para esa búsqueda."}
           </div>

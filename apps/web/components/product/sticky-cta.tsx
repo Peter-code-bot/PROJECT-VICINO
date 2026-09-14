@@ -5,17 +5,17 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Edit3, Eye, MessageCircle, ShoppingBag } from "lucide-react";
 
 interface StickyCtaProps {
-  productId: string;
-  sellerId: string;
-  isOwner: boolean;
-  hasSession: boolean;
   /**
    * Clave de idempotencia de la intencion de compra. Viene del Server
    * Component de la ficha, NO se genera aqui: el detalle de escritorio pinta
    * su propio boton "Quiero comprarlo" con la misma clave, y los dos estan en
    * el DOM al mismo tiempo. Ver components/product/types.ts.
    */
-  claveIntencion: string;
+  purchaseIntentKey: string;
+  productId: string;
+  sellerId: string;
+  isOwner: boolean;
+  hasSession: boolean;
 }
 
 const SHELL =
@@ -23,11 +23,11 @@ const SHELL =
 const SAFE_PAD = "calc(env(safe-area-inset-bottom) + 0.75rem)";
 
 export function StickyCta({
+  purchaseIntentKey,
   productId,
   sellerId,
   isOwner,
   hasSession,
-  claveIntencion,
 }: StickyCtaProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -93,7 +93,7 @@ export function StickyCta({
         <MessageCircle className="h-5 w-5" />
       </Link>
       <Link
-        href={`/chat?seller=${sellerId}&product=${productId}&intent=buy&k=${claveIntencion}`}
+        href={`/chat?seller=${sellerId}&product=${productId}&intent=buy&k=${purchaseIntentKey}`}
         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
       >
         <ShoppingBag className="h-4 w-4" />

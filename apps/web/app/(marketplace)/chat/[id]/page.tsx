@@ -5,7 +5,7 @@ import type { SalesSeed } from "@/hooks/use-deferred-sales";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ intentFailed?: string }>;
+  searchParams: Promise<{ intentFailed?: string; sinIntencion?: string }>;
 }
 
 export async function generateMetadata() {
@@ -19,7 +19,7 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
   // vivir DENTRO de ChatWindow: chat/[id]/layout.tsx es un flex column de
   // altura fija con overflow-hidden y ChatWindow monta con h-full, asi que
   // un hermano encima lo desbordaria y quedaria recortado.
-  const { intentFailed } = await searchParams;
+  const { intentFailed, sinIntencion } = await searchParams;
   const supabase = await createClient();
 
   // `getUser()` VA SOLO Y VA PRIMERO. NO LO METAS EN EL Promise.all DE ABAJO.
@@ -132,6 +132,7 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
       salesSeed={salesSeed}
       readinessToken={crypto.randomUUID()}
       buyIntentFailed={intentFailed === "1"}
+      missingPurchaseIntent={sinIntencion === "1"}
     />
   );
 }

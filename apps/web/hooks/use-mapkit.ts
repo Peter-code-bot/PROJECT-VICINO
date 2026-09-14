@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface MapKitCoordinate {
   latitude: number;
@@ -156,23 +156,91 @@ function reportMapKitError(reason: string, extra?: unknown) {
   }
 }
 
-async function fetchTokenFresh(): Promise<string | null> {
+export type MapKitFailure = { reason: "rate_limited" | "unavailable" | "forbidden" | "network_failure"; retryAfter?: number };
+let currentFailure: MapKitFailure | null = null;
+let retryAllowedAt = 0;
+const failureListeners = new Set<(failure: MapKitFailure | null) => void>();
+function publishFailure(failure: MapKitFailure | null) {
+  currentFailure = failure;
+  retryAllowedAt = failure?.retryAfter ? Date.now() + failure.retryAfter * 1000 : 0;
+  for (const listener of failureListeners) listener(failure);
+}
+
+type TokenResult = { ok: true; token: string } | { ok: false; failure: MapKitFailure };
+async function fetchTokenFresh(): Promise<TokenResult> {
   try {
     const res = await fetch("/api/mapkit/token");
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const retryHeader = res.headers.get("Retry-After");
+      const retrySeconds = retryHeader === null ? NaN : Number(retryHeader);
+      const failure: MapKitFailure = {
+        reason: res.status === 429 ? "rate_limited" : res.status === 403 ? "forbidden" : "unavailable",
+        ...(Number.isFinite(retrySeconds) && retrySeconds > 0 ? { retryAfter: retrySeconds } : {}),
+      };
+      return { ok: false, failure };
+    }
     const data = await res.json();
-    return typeof data?.token === "string" ? data.token : null;
-  } catch (err) {
-    console.warn("[MapKit] Error al obtener token:", err);
-    return null;
+    return typeof data?.token === "string" && data.token
+      ? { ok: true, token: data.token }
+      : { ok: false, failure: { reason: "unavailable" } };
+  } catch {
+    return { ok: false, failure: { reason: "network_failure" } };
   }
 }
 
-export async function loadMapKitScript(): Promise<boolean> {
+function initializeMapKit(mapkit: MapKitGlobal, initialToken: string) {
+  let firstTokenAvailable = true;
+  mapkit.init({
+    authorizationCallback: (done) => {
+      if (firstTokenAvailable) {
+        firstTokenAvailable = false;
+        done(initialToken);
+        return;
+      }
+      void fetchTokenFresh().then((result) => {
+        if (result.ok) {
+          publishFailure(null);
+          done(result.token);
+        } else {
+          publishFailure(result.failure);
+          reportMapKitError(`Refresco de token: ${result.failure.reason}`);
+          done("");
+        }
+      });
+    },
+    language: "es",
+  });
+  publishFailure(null);
+}
+
+let reauthorizePromise: Promise<boolean> | null = null;
+async function reauthorizeMapKit(): Promise<boolean> {
+  if (reauthorizePromise) return reauthorizePromise;
+  reauthorizePromise = (async () => {
+    const token = await fetchTokenFresh();
+    if (!token.ok) {
+      publishFailure(token.failure);
+      reportMapKitError(`Token de MapKit: ${token.failure.reason}`);
+      return false;
+    }
+    try {
+      initializeMapKit(window.mapkit!, token.token);
+      return true;
+    } catch {
+      publishFailure({ reason: "unavailable" });
+      reportMapKitError("Error durante mapkit.init()");
+      return false;
+    }
+  })().finally(() => { reauthorizePromise = null; });
+  return reauthorizePromise;
+}
+
+export async function loadMapKitScript(forceReauthorize = false): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  if (currentFailure && !forceReauthorize) return false;
 
   if (window.mapkit) {
-    return true;
+    return forceReauthorize ? reauthorizeMapKit() : currentFailure === null;
   }
 
   if (window.__mapkit_init_promise) {
@@ -202,13 +270,12 @@ export async function loadMapKitScript(): Promise<boolean> {
     // 1. Verificar disponibilidad de token fresco
     fetchTokenFresh()
       .then((initialToken) => {
-        if (!initialToken) {
+        if (!initialToken.ok) {
           clearTimeout(timer);
-          finish(false, "Token de MapKit no disponible o credenciales ausentes");
+          publishFailure(initialToken.failure);
+          finish(false, `Token de MapKit: ${initialToken.failure.reason}`);
           return;
         }
-
-        let primerTokenConsumido = false;
 
         // 2. Inyectar script si no existe
         const existingScript = document.querySelector(`script[src="${MAPKIT_SCRIPT_URL}"]`);
@@ -220,37 +287,7 @@ export async function loadMapKitScript(): Promise<boolean> {
           }
 
           try {
-            window.mapkit.init({
-              // B-3: Refresco dinámico de token cada vez que Apple lo solicite (expiración de 30 min)
-              authorizationCallback: (done: (token: string) => void) => {
-                // El primer token ya esta en la mano: reusarlo evita una segunda
-                // peticion identica en cada arranque en frio.
-                if (!primerTokenConsumido) {
-                  primerTokenConsumido = true;
-                  done(initialToken);
-                  return;
-                }
-                fetchTokenFresh()
-                  .then((freshToken) => {
-                    if (freshToken) {
-                      done(freshToken);
-                      return;
-                    }
-                    // done() SIEMPRE. Si no se llama, MapKit se queda esperando
-                    // un token para siempre: el mapa se congela sin error, sin
-                    // reintento y sin nada en consola que lo explique. Un token
-                    // vacio hace que Apple falle de forma visible, que es lo que
-                    // queremos.
-                    reportMapKitError("Falló el refresco dinámico del token de MapKit");
-                    done("");
-                  })
-                  .catch((e) => {
-                    reportMapKitError("Excepción al refrescar el token de MapKit", String(e));
-                    done("");
-                  });
-              },
-              language: "es",
-            });
+            initializeMapKit(window.mapkit, initialToken.token);
             clearTimeout(timer);
             finish(true);
           } catch (e) {
@@ -290,9 +327,23 @@ export async function loadMapKitScript(): Promise<boolean> {
 export function useMapKit() {
   const [isReady, setIsReady] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [failure, setFailure] = useState<MapKitFailure | null>(currentFailure);
+  const [retryAt, setRetryAt] = useState(retryAllowedAt);
+  const [now, setNow] = useState(() => Date.now());
+  const retryingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
+    const onFailure = (next: MapKitFailure | null) => {
+      if (!active) return;
+      setFailure(next);
+      setRetryAt(retryAllowedAt);
+      if (next) {
+        setIsAvailable(false);
+        setIsReady(true);
+      }
+    };
+    failureListeners.add(onFailure);
     loadMapKitScript().then((ok) => {
       if (!active) return;
       setIsAvailable(ok);
@@ -300,21 +351,31 @@ export function useMapKit() {
     });
     return () => {
       active = false;
+      failureListeners.delete(onFailure);
     };
   }, []);
 
+  useEffect(() => {
+    if (retryAt <= now) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [retryAt, now]);
+
   const retry = useCallback(() => {
+    if (retryingRef.current || Date.now() < retryAllowedAt) return;
+    retryingRef.current = true;
     if (typeof window !== "undefined") {
       delete window.__mapkit_init_promise;
+      if (!window.mapkit) document.querySelector(`script[src="${MAPKIT_SCRIPT_URL}"]`)?.remove();
     }
     // Un reintento explicito del usuario es un evento nuevo: si vuelve a fallar,
     // queremos verlo en Sentry aunque ya hubieramos reportado ese mismo motivo.
     motivosReportados.clear();
     setIsReady(false);
-    loadMapKitScript().then((ok) => {
+    loadMapKitScript(true).then((ok) => {
       setIsAvailable(ok);
       setIsReady(true);
-    });
+    }).finally(() => { retryingRef.current = false; });
   }, []);
 
   return {
@@ -322,5 +383,7 @@ export function useMapKit() {
     isAvailable: !!isAvailable,
     mapkit: typeof window !== "undefined" ? window.mapkit : undefined,
     retry,
+    failure,
+    retryWaitSeconds: retryAt > now ? Math.ceil((retryAt - now) / 1000) : 0,
   };
 }

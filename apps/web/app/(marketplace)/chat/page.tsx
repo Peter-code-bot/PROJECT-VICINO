@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
 import { cleanDisplayName } from "@vicino/shared";
-import { claveHeredada } from "@/lib/chat/iniciar-conversacion";
 import { iniciarConversacion } from "./actions";
 import { ChatItemCard } from "./chat-item-card";
-
-/** Un uuid, en cualquiera de sus versiones. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata = {
   title: "Chat — VICINO",
@@ -44,24 +41,18 @@ export default async function ChatPage({ searchParams }: Props) {
   // 20260912300000) y la clave de idempotencia decide si esto es la misma
   // pulsacion o una nueva.
   if (params.seller) {
-    const quiereComprar = params.intent === "buy" && !!params.product;
-
-    // La clave buena viene de la ficha (`k`). Si el enlace es viejo y no la
-    // trae, se deriva una por (comprador, vendedor, producto, hora): ver
-    // claveHeredada. Con intencion de contacto la clave ni se usa.
-    let clave: string | undefined;
-    if (quiereComprar) {
-      clave =
-        params.k && UUID.test(params.k)
-          ? params.k
-          : claveHeredada(user.id, params.seller, params.product!);
-    }
+    // Las ligas antiguas o truncadas abren contacto, sin afirmar una compra:
+    // sin clave no hay forma de distinguir un reintento de una intencion nueva,
+    // y mandar el aviso igual seria volver al duplicado. El comprador lo ve
+    // dicho (?sinIntencion=1) y tiene el camino de vuelta a la publicacion.
+    const hasPurchaseKey = z.string().uuid().safeParse(params.k).success;
+    const quiereComprar = params.intent === "buy" && !!params.product && hasPurchaseKey;
 
     const result = await iniciarConversacion({
       sellerId: params.seller,
       productId: params.product,
       intencion: quiereComprar ? "compra" : "contacto",
-      clave,
+      clave: quiereComprar ? params.k : undefined,
     });
     // Antes CUALQUIER error de aqui redirigia a ?selfChatError=1, que pinta
     // "No puedes iniciar un chat contigo mismo. Estabas en modo vista
@@ -79,18 +70,20 @@ export default async function ChatPage({ searchParams }: Props) {
       redirect(`/chat?chatError=${encodeURIComponent(result.error)}`);
     }
     if (result.chatId) {
-      // El aviso "quiere comprar" ya viaja dentro de la misma transaccion
-      // que abrio el chat: lo compone la base con el nombre, el titulo y el
-      // precio formateado, y no hay INSERT que hacer aqui. Lo que antes eran
-      // dos consultas (producto + perfil) y un INSERT que podia fallar en
-      // solitario —dejando al comprador en un chat vacio convencido de que ya
-      // habia avisado— son ahora cero viajes extra: si el aviso no se pudo
-      // registrar, la RPC ya devolvio { error } mas arriba y no hay chat a
-      // medias que explicar.
+      // El aviso "quiere comprar" ya viaja dentro de la misma transaccion que
+      // abrio el chat: lo compone la base con el nombre, el titulo y el precio
+      // formateado. Lo que antes eran dos consultas (producto + perfil) y un
+      // INSERT que podia fallar en solitario —dejando al comprador en un chat
+      // vacio convencido de que ya habia avisado— son ahora cero viajes extra:
+      // si el aviso no se pudo registrar, la RPC ya devolvio { error } mas
+      // arriba y no hay chat a medias que explicar.
       //
       // `repetida` distingue el reintento de la intencion nueva: cuando es
-      // true no ha nacido ninguna fila, asi que el comprador vuelve a la
-      // misma conversacion y el vendedor no recibe un segundo aviso.
+      // true no ha nacido ninguna fila, asi que el comprador vuelve a la misma
+      // conversacion y el vendedor no recibe un segundo aviso.
+      if (params.intent === "buy" && !quiereComprar) {
+        redirect(`/chat/${result.chatId}?sinIntencion=1`);
+      }
       redirect(`/chat/${result.chatId}`);
     }
   }
