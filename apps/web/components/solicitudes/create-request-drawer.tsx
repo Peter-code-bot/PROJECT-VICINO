@@ -149,7 +149,15 @@ export function CreateRequestDrawer({
             .remove([uploadedFilePath])
             .catch(() => {});
         }
-        setError("Error al publicar. Intenta de nuevo.");
+        // 22023 lo levanta el trigger exigir_cobertura_purchase_requests: la
+        // ubicación cae fuera de la zona donde VICINO opera. Esta pantalla no
+        // tiene Server Action — el INSERT sale directo del navegador a
+        // PostgREST — así que este es el único sitio donde se puede traducir.
+        setError(
+          insertError.code === "22023"
+            ? "Esa ubicación está fuera de la zona donde VICINO opera. Elige un punto dentro de la zona."
+            : "Error al publicar. Intenta de nuevo."
+        );
         setSubmitting(false);
         return;
       }

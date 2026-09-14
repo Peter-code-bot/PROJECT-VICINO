@@ -57,13 +57,27 @@ export const MEXICO_BBOX = {
 };
 
 /**
- * Radio de cobertura de VICINO, en km, medido contra el centro de la busqueda.
+ * Radio con el que este buscador recorta los resultados de geocodificacion, en
+ * km, medido contra el centro de la busqueda.
  *
- * Esto NO es una optimizacion, es la decision de producto de hasta donde llega
- * el marketplace, y por eso se configura sin tocar codigo:
- * NEXT_PUBLIC_COVERAGE_RADIUS_KM en Vercel. OJO: al ser NEXT_PUBLIC_ se inlinea
- * en el bundle del cliente durante el build, asi que cambiarla en Vercel exige
- * un redeploy — no basta con guardar la variable.
+ * QUE ES Y QUE NO ES. Esto filtra SUGERENCIAS DE DIRECCIONES en las tres
+ * pantallas de ubicacion. No es la regla de donde se puede operar, y no puede
+ * serlo: al ser NEXT_PUBLIC_ se inlinea en el bundle del cliente, o sea que
+ * viaja al navegador y cualquiera lo esquiva moviendo el pin del mapa a mano,
+ * que ni siquiera pasa por aqui.
+ *
+ * LA REGLA DE VERDAD vive en la base: la tabla `vicino_cobertura` y el trigger
+ * `exigir_cobertura_operacion` sobre products_services y purchase_requests
+ * (20260913160000). Esa si obliga, tambien para el INSERT de solicitudes, que
+ * sale directo del navegador sin Server Action. Y se cambia con un UPDATE, sin
+ * redesplegar nada.
+ *
+ * Esto de aqui sigue existiendo porque mejora la experiencia — no ensenar
+ * sugerencias que el servidor va a rechazar — pero si los dos se contradicen,
+ * manda la base. Al cambiar la cobertura, cambia los dos.
+ *
+ * Cambiar esta variable en Vercel exige un redeploy: NEXT_PUBLIC_ se inlinea
+ * durante el build, no se lee en caliente.
  *
  * Importa mas de lo que parece porque el centro por defecto es Puebla y un
  * recien instalado todavia no tiene ubicacion: con 200 km, desde Puebla,

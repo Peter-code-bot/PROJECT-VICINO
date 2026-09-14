@@ -353,7 +353,22 @@ export async function createProduct(formData: FormData) {
     .single();
 
   if (error) {
-    return { error: error.message };
+    // 22023 es la cobertura de operacion: el trigger
+    // exigir_cobertura_products_services rechaza una ubicacion fuera de la
+    // zona donde VICINO opera. Se nombra aqui para que no caiga en el
+    // `error.message` crudo de abajo, que es la misma leccion del 42501 de
+    // modo_precio: un mensaje del motor no le dice nada a quien publica.
+    if (error.code === "22023") {
+      return {
+        error:
+          "Esa ubicación está fuera de la zona donde VICINO opera. Mueve el punto del mapa a una dirección dentro de la zona.",
+      };
+    }
+    Sentry.captureException(error, {
+      tags: { action: "createProduct" },
+      contexts: { supabase: { code: error.code, details: error.details } },
+    });
+    return { error: "No se pudo publicar. Inténtalo de nuevo." };
   }
 
   // 5b dual-write to media_assets (best-effort; failures captured to Sentry
@@ -664,6 +679,13 @@ export async function updateProductFull(
     // 0-row de abajo. Aqui es un problema de permisos del lado nuestro.
     if (updateErr.code === "42501") {
       return { error: "No se pudo guardar por un problema de permisos. Ya lo estamos revisando." };
+    }
+    // Cobertura de operacion: el pin del mapa quedo fuera de la zona.
+    if (updateErr.code === "22023") {
+      return {
+        error:
+          "Esa ubicación está fuera de la zona donde VICINO opera. Mueve el punto del mapa a una dirección dentro de la zona.",
+      };
     }
     return { error: "No se pudo guardar. Intenta de nuevo." };
   }
