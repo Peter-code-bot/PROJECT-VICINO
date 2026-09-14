@@ -159,6 +159,44 @@ export const otpVerifyIpRateLimit = makeLimiter("15 m", 30, "rl:otp-verify-ip");
 export const otpResendRateLimit = makeLimiter("1 h", 5, "rl:otp-resend");
 export const otpResendIpRateLimit = makeLimiter("1 h", 15, "rl:otp-resend-ip");
 
+// Emision de tokens de MapKit (/api/mapkit/token). Cada peticion firma un
+// ES256 y devuelve una credencial de 30 minutos contra la cuenta de Apple
+// Developer del proyecto: sin freno, un bucle gasta cuota de Apple que se
+// paga y que no es nuestra de reponer.
+//
+// LOS NUMEROS SALEN DE LA CADENCIA MEDIDA, no de la intuicion. Un cliente
+// legitimo gasta UNA peticion por CARGA DE DOCUMENTO que llegue a montar un
+// mapa -- no una por pagina ni una por montaje: use-mapkit.ts sale antes de
+// pedir si `window.mapkit` ya existe, memoiza la promesa de arranque para que
+// varios mapas del mismo commit de React compartan una sola peticion, y reusa
+// el primer token en el primer authorizationCallback. Sumar despues: una por
+// cada refresco que pida Apple pasados los 30 minutos, y una por cada clic de
+// "Reintentar cargar mapa". El peor caso honesto es alguien en /vender
+// recargando mientras ajusta su direccion: del orden de 10-15 en cinco
+// minutos.
+//
+// 60 cada 5 minutos, y no algo apretado tipo 5/min, PORQUE LA IP NO ES UNA
+// PERSONA. Telcel e Izzi meten barrios enteros detras del mismo NAT: una
+// cuota estrecha aqui no frena a un recolector, apaga el mapa a todo un
+// vecindario. 60 deja sitio a varios dispositivos exigentes a la vez y aun
+// asi corta a cualquiera que pase de 12/min sostenidos.
+export const mapkitTokenRateLimit = makeLimiter("5 m", 60, "rl:mapkit");
+
+// Mismo endpoint, cubo aparte y mas estrecho, para las peticiones que no
+// traen NI Origin NI Referer.
+//
+// Ese caso existe de forma legitima -- un GET de mismo origen no lleva Origin,
+// y el Referer lo puede recortar un navegador con privacidad estricta, una
+// extension o un WebView de terceros -- asi que no se rechaza. Pero tampoco
+// hay ningun navegador normal que caiga ahi de forma SOSTENIDA, y es la unica
+// forma de pedir tokens desde fuera del sitio.
+//
+// Dicho claro porque se presta a confusion: Origin y Referer NO AUTENTICAN a
+// nadie. Cualquiera las falsifica con una linea de curl. No son una puerta,
+// son una etiqueta para elegir cubo: quien las falsifique cae en el cubo
+// holgado, y ahi lo frena la cuota, no la lista de origenes.
+export const mapkitTokenAnonRateLimit = makeLimiter("5 m", 15, "rl:mapkit-anon");
+
 type EnforceResult = { ok: true } | { ok: false; error: string };
 
 /**

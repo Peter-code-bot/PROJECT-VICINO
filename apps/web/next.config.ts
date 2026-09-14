@@ -119,6 +119,29 @@ const withPWA = withPWAInit({
         handler: "NetworkOnly",
         options: { cacheName: "supabase-sin-cache" },
       },
+      {
+        // El token de MapKit NUNCA se cachea.
+        //
+        // La regla por defecto de next-pwa para todo /api/ es NetworkFirst con
+        // maxAgeSeconds 86400 y networkTimeoutSeconds 10. El token vive 1800
+        // segundos. Junta las dos cosas: basta con que la red tarde mas de 10
+        // segundos —un metro, un ascensor, datos flojos— para que workbox
+        // sirva el token guardado, que puede tener horas. MapKit recibe
+        // entonces un JWT caducado y el mapa falla de una forma que no explica
+        // ni la ruta ni el hook: el servidor no ve la peticion y el cliente
+        // cree que le dieron un token bueno.
+        //
+        // Ademas ensuciaba el contador del limite nuevo: parte del trafico de
+        // arranque salia de la cache y no llegaba nunca a contarse.
+        //
+        // La condicion va en crudo y sin helpers a proposito: workbox la
+        // serializa con toString() dentro de sw.js, y cualquier cosa del
+        // ambito de este archivo alli no existe (ver la nota de arriba).
+        urlPattern: ({ url: { pathname }, sameOrigin }) =>
+          sameOrigin && pathname === "/api/mapkit/token",
+        handler: "NetworkOnly",
+        options: { cacheName: "mapkit-token-sin-cache" },
+      },
     ],
   },
 });
