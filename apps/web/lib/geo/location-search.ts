@@ -19,6 +19,7 @@ export interface LocationSearchResult {
   needsResolution?: boolean;
   /** El sitio existe y Apple lo encontro, pero cae fuera del radio de cobertura. */
   outOfCoverage?: boolean;
+  rejectionReason?: MotivoRechazo;
 }
 
 import type { MapKitAutocompleteResponse } from "@/hooks/use-mapkit";
@@ -40,6 +41,7 @@ export interface LocationSearchOutcome {
    * problema es la cobertura y no su forma de escribir.
    */
   outOfCoverage: boolean;
+  reason?: MotivoRechazo;
 }
 
 // Centro por defecto: Puebla, Pue.
@@ -206,11 +208,18 @@ async function searchWithMapKit(
     // unico motivo por el que la lista quedo vacia fue la distancia, la UI tiene
     // que poder decirlo en vez de fingir que el sitio no existe.
     let huboFueraDeCobertura = false;
+    let huboFueraDeMexico = false;
 
     const finish = (results: LocationSearchResult[]) => {
       if (finished) return;
       cleanup();
-      resolve({ results, outOfCoverage: results.length === 0 && huboFueraDeCobertura });
+      resolve({
+        results,
+        outOfCoverage: results.length === 0 && huboFueraDeCobertura,
+        reason: results.length > 0 ? undefined
+          : huboFueraDeCobertura ? "fuera-de-cobertura"
+          : huboFueraDeMexico ? "fuera-de-mexico" : undefined,
+      });
     };
 
     const timer = setTimeout(() => {
@@ -271,6 +280,7 @@ async function searchWithMapKit(
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
             const motivo = clasificarResultado({ lat, lng, countryCode }, center, maxDistanceKm);
             if (motivo === "fuera-de-cobertura") huboFueraDeCobertura = true;
+            if (motivo === "fuera-de-mexico") huboFueraDeMexico = true;
             if (motivo === "ok") {
               const dist = calculateDistanceKm(center.lat, center.lng, lat, lng);
               items.push({
@@ -331,6 +341,7 @@ async function searchWithMapKit(
 
               const motivo = clasificarResultado({ lat, lng, countryCode }, center, maxDistanceKm);
               if (motivo === "fuera-de-cobertura") huboFueraDeCobertura = true;
+              if (motivo === "fuera-de-mexico") huboFueraDeMexico = true;
               if (lat !== undefined && lng !== undefined && motivo === "ok") {
                 const dist = calculateDistanceKm(center.lat, center.lng, lat, lng);
                 const name = place.name || place.formattedAddress || "Ubicación";
@@ -438,7 +449,7 @@ export async function resolveLocationCoordinates(
           }
 
           // El sitio existe, solo esta lejos: eso se le dice al usuario.
-          resolve(fallo({ outOfCoverage: motivo === "fuera-de-cobertura" }));
+          resolve(fallo({ outOfCoverage: motivo === "fuera-de-cobertura", rejectionReason: motivo }));
           return;
         }
         resolve(fallo());

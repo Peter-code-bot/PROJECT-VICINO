@@ -32,10 +32,15 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
  * dedup via inFlightRef collapses rapid IntersectionObserver fires).
  */
 
+export type CursorLoadResult =
+  | { status: "loaded"; hasMore: boolean }
+  | { status: "failed"; error: string; code?: string; retryAfter?: number }
+  | { status: "skipped" };
+
 export type CursorAction<T, C> = (input: {
   cursor: C | null;
   limit: number;
-}) => Promise<{ items: T[]; nextCursor: C | null; error?: string }>;
+}) => Promise<{ items: T[]; nextCursor: C | null; error?: string; code?: string; retryAfter?: number }>;
 
 export interface UseInfiniteCursorOptions<T, C> {
   action: CursorAction<T, C>;
@@ -43,6 +48,7 @@ export interface UseInfiniteCursorOptions<T, C> {
   initialCursor: C | null;
   limit?: number;
   prepend?: boolean;
+  getKey?: (item: T) => string;
 }
 
 export interface UseInfiniteCursorResult<T> {
@@ -50,7 +56,7 @@ export interface UseInfiniteCursorResult<T> {
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
-  loadMore: () => Promise<void>;
+  loadMore: () => Promise<CursorLoadResult>;
   prependLive: (item: T) => void;
   appendLive: (item: T) => void;
   removeItem: (predicate: (item: T) => boolean) => void;
@@ -62,7 +68,7 @@ const DEFAULT_LIMIT = 30;
 export function useInfiniteCursor<T, C>(
   opts: UseInfiniteCursorOptions<T, C>,
 ): UseInfiniteCursorResult<T> {
-  const { action, initialItems, initialCursor, limit = DEFAULT_LIMIT, prepend = false } = opts;
+  const { action, initialItems, initialCursor, limit = DEFAULT_LIMIT, prepend = false, getKey } = opts;
 
   const [items, setItems] = useState<T[]>(initialItems);
   const [cursor, setCursor] = useState<C | null>(initialCursor);
@@ -83,33 +89,43 @@ export function useInfiniteCursor<T, C>(
     };
   }, []);
 
-  const loadMore = useCallback(async (): Promise<void> => {
-    if (inFlightRef.current) return;
-    if (cursorRef.current === null) return;
+  const loadMore = useCallback(async (): Promise<CursorLoadResult> => {
+    if (inFlightRef.current || cursorRef.current === null) return { status: "skipped" };
     inFlightRef.current = true;
     setIsLoading(true);
     setError(null);
 
     try {
       const result = await action({ cursor: cursorRef.current, limit });
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return { status: "skipped" };
       if (result.error) {
         setError(result.error);
         // Cursor untouched: caller can retry the same boundary.
-        return;
+        return { status: "failed", error: result.error, code: result.code, retryAfter: result.retryAfter };
       }
-      setItems((prev) => (prepend ? [...result.items, ...prev] : [...prev, ...result.items]));
+      setItems((prev) => {
+        const seen = new Set(getKey ? prev.map(getKey) : []);
+        const added = getKey ? result.items.filter((item) => {
+          const key = getKey(item);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }) : result.items;
+        return prepend ? [...added, ...prev] : [...prev, ...added];
+      });
       cursorRef.current = result.nextCursor;
       setCursor(result.nextCursor);
+      return { status: "loaded", hasMore: result.nextCursor !== null };
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return { status: "skipped" };
       const message = err instanceof Error && err.message ? err.message : "No se pudo cargar mas contenido";
       setError(message);
+      return { status: "failed", error: message };
     } finally {
       if (mountedRef.current) setIsLoading(false);
       inFlightRef.current = false;
     }
-  }, [action, limit, prepend]);
+  }, [action, getKey, limit, prepend]);
 
   const prependLive = useCallback((item: T) => {
     setItems((prev) => [item, ...prev]);

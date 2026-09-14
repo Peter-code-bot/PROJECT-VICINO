@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 // Aislado: sin .env, setup de cuentas, storageState ni servidor de produccion.
 export default defineConfig({
-  testDir: "./tests", testMatch: "frontend-isolated.spec.ts", workers: 1,
+  testDir: "./tests", testMatch: ["frontend-isolated.spec.ts", "feed-recovery.spec.ts", "mapkit-recovery.spec.ts"], workers: 1,
   retries: 0, reporter: "list", outputDir: "../../../../reports/frontend-playwright",
   use: { channel: "chrome", headless: true, screenshot: "only-on-failure" },
   projects: [

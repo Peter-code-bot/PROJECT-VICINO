@@ -9,6 +9,8 @@ import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { parseRadiusCookie } from "@/lib/geo/radius";
+import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
+import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 
 const PAGE_SIZE = 20;
 
@@ -99,6 +101,7 @@ export default async function SearchPage({ searchParams }: Props) {
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
+  let sellersFailure: CatalogFailure | null = null;
   // Tres terminos, no uno, porque los tres caminos comparan de forma distinta:
   //
   //   nombreVendedorLike  va por PostgREST contra profiles.nombre. Ahi el guion
@@ -129,6 +132,7 @@ export default async function SearchPage({ searchParams }: Props) {
       .replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
 
     // Buscamos vendedores que coincidan con la búsqueda (ignorando acentos)
+    try {
     const { data: sellers, error: sellersError } = await supabase
       .from("profiles")
       .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count").throwOnError()
@@ -149,6 +153,10 @@ export default async function SearchPage({ searchParams }: Props) {
       topUsers = sellers;
       sellerIds = sellers.map((s) => s.id);
     }
+    } catch (error) {
+      sellersFailure = catalogFailure(error);
+      Sentry.captureException(error, { tags: { surface: "buscar", query: "sellers" } });
+    }
   }
 
   // MP#08 #5c-3: incluimos created_at + ventas_count en el SELECT para que
@@ -161,6 +169,12 @@ export default async function SearchPage({ searchParams }: Props) {
     .select(selectFields, { count: "exact" }).throwOnError();
 
   let query: typeof queryTypeRef;
+  type ProductsData = Awaited<ReturnType<typeof queryTypeRef.range>>["data"];
+  type ProductRow = NonNullable<ProductsData>[number];
+  let products: ProductsData = [];
+  let totalCount: number | null = null;
+  let searchFailure: CatalogFailure | null = null;
+  try {
   if (userLocation) {
     query = supabase
       .rpc(
@@ -286,10 +300,6 @@ export default async function SearchPage({ searchParams }: Props) {
   // Tipos: derivamos ProductsData del retorno inferido de supabase-js
   // (.select(...) preserva el shape de columnas seleccionadas) para no
   // romper el binding tipado al ProductCard mas abajo.
-  type ProductsData = Awaited<ReturnType<typeof query.range>>["data"];
-  type ProductRow = NonNullable<ProductsData>[number];
-  let products: ProductsData = [];
-  let totalCount: number | null = null;
 
   // Helper sortFn: comparador segun el sort param. Mismas keys que el
   // .order() de la rama no-category, asi un slug sin category y un slug
@@ -379,8 +389,12 @@ export default async function SearchPage({ searchParams }: Props) {
     totalCount = fullRanking.length;
     products = fullRanking.slice(offset, offset + PAGE_SIZE);
   }
+  } catch (error) {
+    searchFailure = catalogFailure(error);
+    Sentry.captureException(error, { tags: { surface: "buscar", query: "products" } });
+  }
 
-  const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE);
+  const totalPages = searchFailure ? 0 : Math.ceil((totalCount ?? 0) / PAGE_SIZE);
   const categoryName = params.category
     ? CATEGORIES.find((c) => c.slug === params.category)?.name
     : null;
@@ -409,7 +423,8 @@ export default async function SearchPage({ searchParams }: Props) {
         initialPriceMax={params.price_max}
       />
 
-      <div className="flex items-center justify-between">
+      {sellersFailure && <CatalogQueryState failure={sellersFailure} section="los vendedores" />}
+      {!searchFailure && <div className="flex items-center justify-between">
         <p className="text-sm text-[color:var(--fg-muted)]">
           <span className="font-semibold text-[color:var(--fg)]">
             {totalCount ?? 0}
@@ -435,7 +450,7 @@ export default async function SearchPage({ searchParams }: Props) {
             Página {currentPage} de {totalPages}
           </p>
         )}
-      </div>
+      </div>}
 
       {topUsers.length > 0 && currentPage === 1 && (
         <div className="space-y-3 mb-8">
@@ -474,7 +489,9 @@ export default async function SearchPage({ searchParams }: Props) {
         </div>
       )}
 
-      {products && products.length > 0 ? (
+      {searchFailure ? (
+        <CatalogQueryState failure={searchFailure} section="los resultados de búsqueda" />
+      ) : products && products.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {products.map((product, index) => {
             const profile = Array.isArray(product.profiles)

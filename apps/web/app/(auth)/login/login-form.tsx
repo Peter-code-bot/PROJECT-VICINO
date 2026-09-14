@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
 import { destinoSeguro } from "@/lib/auth/destino-seguro";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
 import { hapticLight } from "@/lib/haptics";
+import { conTope, esTope } from "@/lib/auth/con-tope";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export function LoginForm() {
@@ -14,6 +15,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const destino = searchParams.get("next");
@@ -23,36 +25,40 @@ export function LoginForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError("");
     setLoading(true);
-
-    const result = await signInWithPassword(email, password);
-
-    if (result.error) {
-      const msg = result.error.toLowerCase();
-      if (msg.includes("invalid login credentials")) {
-        setError("Email o contraseña incorrectos");
-      } else if (msg.includes("email not confirmed")) {
-        // El texto viejo ("revisa tu bandeja de entrada") describía el mundo de
-        // los enlaces mágicos y dejaba a la persona sin salida: ahora lo que le
-        // llegó es un código de 6 dígitos, y esta pantalla no tiene dónde
-        // escribirlo. La salida real es volver a "Crear cuenta" con el mismo
-        // correo: para una cuenta sin confirmar, signUp reenvía el código y
-        // devuelve a las casillas.
-        setError(
-          "Te falta confirmar tu correo. Vuelve a “Regístrate gratis” con este mismo correo y te enviamos un código nuevo.",
-        );
-      } else if (msg.includes("too many requests") || msg.includes("demasiadas")) {
-        setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
-      } else {
-        setError("Error al iniciar sesión. Intenta de nuevo.");
+    try {
+      const result = await conTope(signInWithPassword(email, password));
+      if (result.error) {
+        const msg = result.error.toLowerCase();
+        if (msg.includes("invalid login credentials")) {
+          setError("Email o contraseña incorrectos");
+        } else if (msg.includes("email not confirmed")) {
+          // La salida real es volver a "Crear cuenta" con el mismo correo:
+          // para una cuenta sin confirmar, signUp reenvía el código.
+          setError(
+            "Te falta confirmar tu correo. Vuelve a “Regístrate gratis” con este mismo correo y te enviamos un código nuevo.",
+          );
+        } else if (msg.includes("too many requests") || msg.includes("demasiadas")) {
+          setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
+        } else {
+          setError("Error al iniciar sesión. Intenta de nuevo.");
+        }
+        return;
       }
+      router.push(destinoSeguro(destino));
+      router.refresh();
+    } catch (err) {
+      setError(esTope(err)
+        ? "Tardó demasiado. Comprueba si ya iniciaste sesión antes de volver a intentarlo."
+        : "No pudimos conectar. Revisa tu conexión e intenta de nuevo.");
+      if (esTope(err)) router.refresh();
+    } finally {
+      submittingRef.current = false;
       setLoading(false);
-      return;
     }
-
-    router.push(destinoSeguro(destino));
-    router.refresh();
   }
 
   async function handleGoogleLogin() {

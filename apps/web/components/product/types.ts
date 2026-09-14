@@ -82,6 +82,7 @@ export interface ProductDetailUser {
 }
 
 export interface ProductDetailData {
+  purchaseIntentKey: string;
   product: ProductDetailProduct;
   seller: ProductDetailSeller;
   reviews: ProductDetailReview[];

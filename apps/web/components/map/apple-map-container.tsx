@@ -11,7 +11,7 @@ interface AppleMapProps {
   interactive?: boolean;
   markerPosition?: [number, number] | null;
   draggableMarker?: boolean;
-  onMarkerDragEnd?: (lat: number, lng: number) => void;
+  onMarkerDragEnd?: (lat: number, lng: number) => boolean | void;
   onMapClick?: (lat: number, lng: number) => void;
   radiusKm?: number;
   circleCenter?: [number, number];
@@ -58,7 +58,7 @@ export default function AppleMapContainer({
   const mapInstanceRef = useRef<MapInstance | null>(null);
   const markerRef = useRef<MarkerInstance | null>(null);
   const circleRef = useRef<unknown>(null);
-  const { isReady, isAvailable, mapkit, retry } = useMapKit();
+  const { isReady, isAvailable, mapkit, retry, failure, retryWaitSeconds } = useMapKit();
   const { resolvedTheme } = useTheme();
 
   const onMapClickRef = useRef(onMapClick);
@@ -76,6 +76,14 @@ export default function AppleMapContainer({
   const centerLng = center[1];
   const markerLat = markerPosition ? markerPosition[0] : centerLat;
   const markerLng = markerPosition ? markerPosition[1] : centerLng;
+
+  useEffect(() => {
+    if (isAvailable || !mapInstanceRef.current) return;
+    mapInstanceRef.current.destroy();
+    mapInstanceRef.current = null;
+    markerRef.current = null;
+    circleRef.current = null;
+  }, [isAvailable]);
 
   // Inicializar o actualizar mapa de Apple MapKit
   useEffect(() => {
@@ -151,7 +159,9 @@ export default function AppleMapContainer({
     if (draggableMarker) {
       marker.addEventListener("drag-end", () => {
         const c = marker.coordinate;
-        onMarkerDragEndRef.current?.(c.latitude, c.longitude);
+        if (onMarkerDragEndRef.current?.(c.latitude, c.longitude) === false) {
+          marker.coordinate = new mapkit.Coordinate(markerLat, markerLng);
+        }
       });
     }
 
@@ -252,15 +262,18 @@ export default function AppleMapContainer({
         </span>
       </div>
       <p className="max-w-[280px] text-[color:var(--fg-dim)] mb-2.5">
-        El mapa interactivo no está disponible temporalmente. Puedes continuar buscando o escribiendo tu zona.
+        {failure?.reason === "rate_limited"
+          ? "El mapa alcanzó el límite temporal de solicitudes. Puedes continuar buscando o escribiendo tu zona."
+          : "El mapa interactivo no está disponible temporalmente. Puedes continuar buscando o escribiendo tu zona."}
       </p>
       <button
         type="button"
         onClick={retry}
+        disabled={retryWaitSeconds > 0}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[color:var(--brand)] text-white font-medium text-xs hover:opacity-90 active:scale-95 transition-transform shadow-sm"
       >
         <RotateCw className="h-3 w-3" />
-        Reintentar cargar mapa
+        {retryWaitSeconds > 0 ? `Reintentar en ${retryWaitSeconds} s` : "Reintentar cargar mapa"}
       </button>
     </div>
   );

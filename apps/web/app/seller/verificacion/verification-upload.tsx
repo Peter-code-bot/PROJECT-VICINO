@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AVISO_PRIVACIDAD_VERSION } from "@vicino/shared";
 import { registrarConsentimientoBiometrico } from "@/app/actions/consentimiento";
@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
 import { Camera, ImagePlus, CheckCircle, Clock, XCircle, Bot, Trash2 } from "lucide-react";
 import { verifyDocument } from "@/app/actions/verify-document";
+import { conTope, esTope } from "@/lib/auth/con-tope";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 
 /**
@@ -84,6 +85,8 @@ export function VerificationUpload({
   const [uploading, setUploading] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const uploadInFlightRef = useRef(false);
   
   const [docType, setDocType] = useState<"INE" | "Credencial Universitaria">(
     (sellerVerification?.document_type as "INE" | "Credencial Universitaria") || "INE"
@@ -143,7 +146,9 @@ export function VerificationUpload({
   };
 
   async function handleUpload(key: string, file: File) {
+    if (uploadInFlightRef.current) return;
     setError("");
+    setNotice("");
 
     // Sin consentimiento no se sube nada. La comprobacion tambien esta en el
     // servidor (app/actions/verify-document.ts): una casilla solo de cliente
@@ -178,7 +183,9 @@ export function VerificationUpload({
       return;
     }
 
+    uploadInFlightRef.current = true;
     setUploading(key);
+    try {
 
     // Ruta DETERMINISTA, sin Date.now(). Antes cada resubida creaba un objeto
     // nuevo y el anterior se quedaba para siempre: por eso el bucket llego a
@@ -189,9 +196,9 @@ export function VerificationUpload({
     // Sin extension a proposito: si dependiera de ella, un JPG y un PNG del
     // mismo documento volverian a convivir. El tipo real viaja en contentType.
     const path = `${userId}/${key}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await conTope(supabase.storage
       .from("verification-documents")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, file, { upsert: true, contentType: file.type }));
 
     if (uploadError) {
       setError(uploadError.message);
@@ -216,7 +223,7 @@ export function VerificationUpload({
       submitted_at: new Date().toISOString(),
     };
 
-    const { error: dbError } = sellerVerification
+    const { error: dbError } = await conTope((async () => sellerVerification
       ? await supabase
           .from("seller_verification")
           .update(payload)
@@ -224,7 +231,7 @@ export function VerificationUpload({
       : await supabase.from("seller_verification").insert({
           user_id: userId,
           ...payload,
-        });
+        }))());
 
     if (dbError) {
       // La base no quedo actualizada: retiramos el archivo recien subido para
@@ -238,14 +245,18 @@ export function VerificationUpload({
     // Si es la foto frontal, lanzamos la IA
     if (key === "ine_front") {
       setIsAnalyzing(true);
-      const result = await verifyDocument(
+      const result = await conTope(verifyDocument(
         path, 
         docType, 
         docType === "Credencial Universitaria" ? university : undefined
-      );
+      ));
       
       if (!result.success && result.error) {
         setError(result.error);
+      } else if (result.success && (result.fallback || result.status === "pending")) {
+        setNotice("Documento recibido. Tu identidad quedó pendiente de revisión manual.");
+      } else if (result.success) {
+        setNotice("Análisis terminado. Actualizando el estado de tu verificación.");
       }
       setIsAnalyzing(false);
     }
@@ -253,6 +264,16 @@ export function VerificationUpload({
     setPreviews(prev => ({ ...prev, [key]: URL.createObjectURL(file) }));
     setUploading(null);
     router.refresh();
+    } catch (err) {
+      setError(esTope(err)
+        ? "La solicitud tardó demasiado. Comprueba el estado antes de volver a subir el documento."
+        : "No pudimos completar la solicitud. Revisa tu conexión e intenta de nuevo.");
+      router.refresh();
+    } finally {
+      uploadInFlightRef.current = false;
+      setUploading(null);
+      setIsAnalyzing(false);
+    }
   }
 
   async function handleDelete(key: string) {
@@ -400,6 +421,7 @@ export function VerificationUpload({
           {error}
         </div>
       )}
+      {notice && <p role="status" className="text-sm text-[color:var(--fg)]">{notice}</p>}
 
       <div className="space-y-4">
         <p className="text-sm font-medium">Tipo de documento</p>

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
+  clasificarResultado,
   searchLocations,
   resolveLocationCoordinates,
   type LocationSearchResult,
@@ -237,7 +238,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
           if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
             setResults(data.results);
             setSearchNotice(
-              data.outOfCoverage
+              data.reason === "fuera-de-mexico"
+                ? "Ese lugar está fuera de México."
+                : data.outOfCoverage
                 ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
                 : null,
             );
@@ -259,6 +262,13 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
   const commit = useCallback(
     (loc: SavedLocation) => {
+      const valid = clasificarResultado({ lat: loc.lat, lng: loc.lng }, null);
+      if (valid !== "ok") {
+        setSearchNotice(valid === "fuera-de-mexico"
+          ? "La ubicación debe estar en México."
+          : "No pudimos comprobar las coordenadas de esa ubicación.");
+        return;
+      }
       setManualPosition({ lat: loc.lat, lng: loc.lng, name: loc.name, fullName: loc.fullName });
       const next = dedupAndPrepend(recents, loc);
       setRecents(next);
@@ -283,7 +293,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
       // habia pedido: feed equivocado, etiqueta correcta, nadie se entera.
       if (resolved.needsResolution || !Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) {
         setSearchNotice(
-          resolved.outOfCoverage
+          resolved.rejectionReason === "fuera-de-mexico"
+            ? "Ese lugar está fuera de México."
+            : resolved.outOfCoverage
             ? "Ese lugar está fuera de la zona donde VICINO opera por ahora."
             : "No pudimos ubicar ese lugar. Intenta con otro nombre o usa tu ubicación actual.",
         );

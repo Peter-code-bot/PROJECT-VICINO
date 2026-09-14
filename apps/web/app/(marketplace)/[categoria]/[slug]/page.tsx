@@ -203,6 +203,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const categoryName = primaryCat?.nombre ?? null;
 
   const data: ProductDetailData = {
+    purchaseIntentKey: crypto.randomUUID(),
     product: product as unknown as ProductDetailData["product"],
     seller: seller as unknown as ProductDetailData["seller"],
     reviews: [],

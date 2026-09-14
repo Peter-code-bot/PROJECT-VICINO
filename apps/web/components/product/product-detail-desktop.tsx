@@ -28,6 +28,7 @@ interface ProductDetailDesktopProps extends ProductDetailData {
 }
 
 export function ProductDetailDesktop({
+  purchaseIntentKey,
   product,
   seller,
   reviews,
@@ -61,7 +62,7 @@ export function ProductDetailDesktop({
   // `next`, no `redirect`: ver la nota en sticky-cta.tsx. Nadie leia
   // ?redirect=, asi que el comprador perdia el producto al iniciar sesion.
   const loginRedirect = `/login?next=${encodeURIComponent(pathname)}`;
-  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy`;
+  const buyHref = `/chat?seller=${seller.id}&product=${product.id}&intent=buy&k=${purchaseIntentKey}`;
   const contactHref = `/chat?seller=${seller.id}&product=${product.id}`;
 
   return (

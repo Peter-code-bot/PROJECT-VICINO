@@ -3,6 +3,7 @@
 import { useState, useEffect, startTransition } from "react";
 import { getNearbyProducts } from "@/lib/geo/actions";
 import { esFalloDeRed } from "@/lib/net/fallo-de-red";
+import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
 import type { NearbyProduct } from "@/lib/geo/consulta-cercanos";
 import type { GeoPosition } from "./useGeolocation";
 
@@ -22,6 +23,8 @@ export function useNearbyProducts({
   const [products, setProducts] = useState<NearbyProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<CatalogFailure | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     if (!position) return;
@@ -30,6 +33,7 @@ export function useNearbyProducts({
     startTransition(() => {
       setLoading(true);
       setError(null);
+      setFailure(null);
     });
 
     getNearbyProducts({
@@ -42,8 +46,11 @@ export function useNearbyProducts({
         if (cancelled) return;
         if (result.error) {
           setError(result.error);
+          setFailure(catalogFailure(result));
         } else {
           setProducts(result.products);
+          setHasLoaded(true);
+          setFailure(null);
         }
         setLoading(false);
       },
@@ -54,9 +61,10 @@ export function useNearbyProducts({
         if (cancelled) return;
         setLoading(false);
         // Sin red nos quedamos con los productos que ya trajo el servidor.
-        if (!esFalloDeRed(err)) {
-          setError("No se pudieron cargar los productos cercanos.");
-        }
+        setError(esFalloDeRed(err)
+          ? "No hay conexión para cargar los productos cercanos."
+          : "No se pudieron cargar los productos cercanos.");
+        setFailure(catalogFailure(err));
       },
     );
 
@@ -65,5 +73,5 @@ export function useNearbyProducts({
     };
   }, [position?.lat, position?.lng, radiusMeters, limit]);
 
-  return { products, loading, error };
+  return { products, loading, error, failure, hasLoaded };
 }

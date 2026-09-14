@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPrice, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { getOrCreateChat } from "./actions";
+import { z } from "zod";
 import { ChatItemCard } from "./chat-item-card";
 
 export const metadata = {
@@ -16,6 +17,7 @@ interface Props {
     seller?: string;
     product?: string;
     intent?: string;
+    k?: string;
     selfChatError?: string;
   }>;
 }
@@ -31,6 +33,9 @@ export default async function ChatPage({ searchParams }: Props) {
 
   // If seller param is present, create/get chat and redirect
   if (params.seller) {
+    // Las ligas antiguas o truncadas abren contacto, sin afirmar una compra.
+    // La clave válida queda preparada para la RPC de B4; no se regenera aquí.
+    const hasPurchaseKey = z.string().uuid().safeParse(params.k).success;
     const result = await getOrCreateChat(params.seller, params.product);
     // Self-chat guard: owner reached /chat?seller={ownId} (typically from
     // a CTA tapped while in ?preview=visitor mode on their own listing).
@@ -40,8 +45,11 @@ export default async function ChatPage({ searchParams }: Props) {
       redirect(`/chat?selfChatError=1`);
     }
     if (result.chatId) {
+      if (params.intent === "buy" && (!hasPurchaseKey || !params.product)) {
+        redirect(`/chat/${result.chatId}?sinIntencion=1`);
+      }
       // Send buy intent message if intent=buy
-      if (params.intent === "buy" && params.product) {
+      if (params.intent === "buy" && params.product && hasPurchaseKey) {
         const { data: product, error: productErr } = await supabase
           .from("products_services")
           .select("titulo, precio, modo_precio").throwOnError()

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ProductCard } from "@/components/product/product-card";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { getMoreFeedProducts } from "@/app/(marketplace)/actions";
+import { catalogFailure } from "@/lib/catalogo/estado-consulta";
 import { normalizeCardCategories, type TrustLevel } from "@vicino/shared";
 
 /**
@@ -57,8 +58,16 @@ interface MasProductosProps {
   lng?: number;
 }
 
+const productKey = (product: MasProductosProduct) => product.id;
+
 export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const retryingRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [retryUntil, setRetryUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const { items, isLoading, hasMore, error, loadMore } = useInfiniteCursor<
     MasProductosProduct,
@@ -67,20 +76,60 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
     action: async ({ cursor, limit }) => {
       // The hook gates loadMore on cursor !== null (hasMore guard).
       const result = await getMoreFeedProducts(cursor as string, limit, lat, lng);
+      const failure = result.error ? catalogFailure(result) : null;
       return {
         items: result.items as MasProductosProduct[],
         nextCursor: result.nextCursor,
         error: result.error,
+        code: failure?.kind === "rate_limited" ? "rate_limited" : undefined,
+        retryAfter: failure?.retryAfter,
       };
     },
     initialItems: [],
     initialCursor,
     limit: 30,
     prepend: false,
+    getKey: productKey,
   });
 
+  const requestNext = useCallback(async () => {
+    pausedRef.current = true;
+    const result = await loadMore();
+    if (result.status === "failed") {
+      pausedRef.current = true;
+      setPaused(true);
+      setRateLimited(result.code === "rate_limited");
+      if (typeof result.retryAfter === "number" && result.retryAfter > 0) {
+        setRetryUntil(Date.now() + result.retryAfter * 1000);
+      } else {
+        setRetryUntil(null);
+      }
+    } else if (result.status === "loaded") {
+      pausedRef.current = false;
+      setPaused(false);
+      setRateLimited(false);
+      setRetryUntil(null);
+    }
+  }, [loadMore]);
+
   useEffect(() => {
-    if (!hasMore) return;
+    if (retryUntil === null || retryUntil <= now) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [retryUntil, now]);
+
+  const retry = useCallback(async () => {
+    if (retryingRef.current || isLoading || (retryUntil !== null && retryUntil > Date.now())) return;
+    retryingRef.current = true;
+    try {
+      await requestNext();
+    } finally {
+      retryingRef.current = false;
+    }
+  }, [isLoading, requestNext, retryUntil]);
+
+  useEffect(() => {
+    if (!hasMore || paused) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     // No container ref needed: the home scrolls on the window itself
@@ -90,14 +139,14 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
       (entries) => {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
-        if (isLoading) return;
-        void loadMore();
+        if (isLoading || pausedRef.current) return;
+        void requestNext();
       },
       { rootMargin: "200px 0px", threshold: 0 },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, loadMore]);
+  }, [hasMore, isLoading, paused, requestNext]);
 
   // Catalog smaller than the initial 150 -> nothing to load. Render
   // nothing (no header, no sentinel) to match the visual contract:
@@ -157,7 +206,7 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
             of 200px primes the next fetch BEFORE the user reaches the
             visual end of the grid -- the load feels seamless rather
             than gated on hitting an empty space. */}
-        {hasMore && <div ref={sentinelRef} className="h-px" aria-hidden="true" />}
+        {hasMore && !paused && <div ref={sentinelRef} className="h-px" aria-hidden="true" />}
 
         {isLoading && (
           <div className="flex justify-center py-6 text-[color:var(--fg-muted)]">
@@ -165,11 +214,14 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
           </div>
         )}
 
-        {error && (
-          <p className="px-2 py-3 text-center text-xs text-[color:var(--danger)]">
-            {error}
-          </p>
-        )}
+        {error && <div role="alert" className="px-2 py-3 text-center text-xs text-[color:var(--danger)]">
+          <p>{rateLimited ? "Demasiadas solicitudes. Espera antes de cargar más productos." : error}</p>
+          {hasMore && <button type="button" onClick={() => void retry()} disabled={isLoading || (retryUntil !== null && retryUntil > now)}>
+            {retryUntil !== null && retryUntil > now
+              ? `Reintentar en ${Math.ceil((retryUntil - now) / 1000)} s`
+              : "Reintentar"}
+          </button>}
+        </div>}
 
         {!hasMore && items.length > 0 && (
           <div className="py-8 text-center text-[13px] text-[color:var(--fg-muted)]">

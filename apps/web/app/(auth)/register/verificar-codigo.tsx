@@ -78,6 +78,7 @@ export function VerificarCodigo({
   // basta: entre el evento y el re-render caben dos llamadas, y la segunda
   // gastaría un intento de la cuota con un código que ya se está comprobando.
   const enVueloRef = useRef(false);
+  const reenvioEnVueloRef = useRef(false);
 
   useEffect(() => {
     if (segundos <= 0) return;
@@ -156,7 +157,8 @@ export function VerificarCodigo({
   );
 
   async function alReenviar() {
-    if (reenviando || segundos > 0) return;
+    if (reenvioEnVueloRef.current || segundos > 0) return;
+    reenvioEnVueloRef.current = true;
     setReenviando(true);
     setError("");
     setAviso("");
@@ -188,6 +190,7 @@ export function VerificarCodigo({
           : "No pudimos conectar. Revisa tu conexión e intenta de nuevo.",
       );
     } finally {
+      reenvioEnVueloRef.current = false;
       setReenviando(false);
     }
   }

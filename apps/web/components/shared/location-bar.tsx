@@ -7,6 +7,8 @@ import { useNearbyProducts } from "@/hooks/useNearbyProducts";
 import { RADIUS_DEFAULT_METERS } from "@/lib/geo/radius";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import type { NearbyProduct } from "@/lib/geo/consulta-cercanos";
+import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
+import { CatalogQueryState } from "./catalog-query-state";
 
 interface LocationBarProps {
   /**
@@ -26,11 +28,13 @@ interface LocationBarProps {
   productosIniciales?: NearbyProduct[];
   /** Si el servidor ya sabia que hay ubicacion, por la misma cookie. */
   hayUbicacionEnServidor?: boolean;
+  initialFailure?: CatalogFailure | null;
 }
 
 export function LocationBar({
   productosIniciales = [],
   hayUbicacionEnServidor = false,
+  initialFailure = null,
 }: LocationBarProps) {
   const { state } = useGeolocation();
   const position = state.status === "success" ? state.position : null;
@@ -42,7 +46,7 @@ export function LocationBar({
   // el usuario mueve su ubicacion o cambia el radio esta es la via por la que
   // la seccion se pone al dia sin recargar. Lo que cambia es que ya no es la
   // PRIMERA vez que se ven productos, solo una actualizacion.
-  const { products, loading } = useNearbyProducts({
+  const { products, loading, error, failure: clientFailure, hasLoaded } = useNearbyProducts({
     position,
     radiusMeters: radioMetros,
   });
@@ -50,7 +54,8 @@ export function LocationBar({
   // Mientras el cliente no haya traido lo suyo, mandan los del servidor. Sin
   // esto la seccion parpadearia: se pintaria con los del servidor y se vaciaria
   // al hidratar, hasta que respondiese la server action.
-  const visibles = products.length > 0 ? products : productosIniciales;
+  const visibles = hasLoaded ? products : productosIniciales;
+  const failure = error ? clientFailure ?? catalogFailure(error) : hasLoaded ? null : initialFailure;
   const hayUbicacion = position !== null || hayUbicacionEnServidor;
 
   if (!hayUbicacion) return null;
@@ -78,6 +83,7 @@ export function LocationBar({
           )}
         </div>
 
+        {failure && <CatalogQueryState failure={failure} section="los productos cercanos" />}
         {visibles.length > 0 ? (
           // Los badges de categoria ya salen, y RESULTO NO NECESITAR NADA DE
           // SQL. El TODO que vivia aqui daba tres pasos y el primero era
@@ -110,7 +116,7 @@ export function LocationBar({
               },
             }))}
           />
-        ) : !loading ? (
+        ) : !loading && !failure ? (
           <p className="py-4 text-sm text-[color:var(--fg-muted)]">
             {/* El «1 km» estaba escrito a mano y llevaba mintiendo desde que
                 esta seccion dejo de pedir 1.000 m y paso a usar el radio del

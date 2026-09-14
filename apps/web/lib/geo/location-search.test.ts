@@ -174,6 +174,7 @@ test("resolveLocationCoordinates nunca devuelve el centro disfrazado de resultad
   const lejos = await resolveLocationCoordinates(sugerencia, PUEBLA_CENTER, 200);
   assert.equal(lejos.needsResolution, true);
   assert.equal(lejos.outOfCoverage, true);
+  assert.equal(lejos.rejectionReason, "fuera-de-cobertura");
   assert.ok(!Number.isFinite(lejos.lat), "tampoco aqui debe filtrarse una coordenada");
 
   // 3. Camino bueno: dentro de cobertura, se resuelve y queda utilizable.
@@ -245,8 +246,29 @@ test("searchLocations avisa cuando lo unico que sobro fue la distancia", async (
     true,
     "lista vacia + outOfCoverage: la UI puede decir 'fuera de cobertura' en vez de 'no existe'"
   );
+  assert.equal(outcome.reason, "fuera-de-cobertura");
 
   g.window = previo;
+});
+
+test("la búsqueda distingue un lugar fuera de México de uno sin resultados", async () => {
+  const g = globalThis as unknown as { window?: unknown };
+  const previo = g.window;
+  g.window = {
+    mapkit: fakeMapkit([], [{
+      displayLines: ["Ciudad de Guatemala"],
+      countryCode: "GT",
+      coordinate: { latitude: GUATEMALA_CITY.lat, longitude: GUATEMALA_CITY.lng },
+    }]),
+  };
+  try {
+    const result = await searchLocations("ciudad guatemala fuera mexico", { center: PUEBLA_CENTER });
+    assert.deepEqual(result.results, []);
+    assert.equal(result.reason, "fuera-de-mexico");
+    assert.equal(result.outOfCoverage, false);
+  } finally {
+    g.window = previo;
+  }
 });
 
 /** MapKit de mentira: solo lo que resolveLocationCoordinates toca. */

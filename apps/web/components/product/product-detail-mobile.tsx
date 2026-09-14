@@ -26,6 +26,7 @@ interface ProductDetailMobileProps extends ProductDetailData {
 }
 
 export function ProductDetailMobile({
+  purchaseIntentKey,
   product,
   seller,
   reviews,
@@ -165,6 +166,7 @@ export function ProductDetailMobile({
       </div>
 
       <StickyCta
+        purchaseIntentKey={purchaseIntentKey}
         productId={product.id}
         sellerId={seller.id}
         isOwner={isOwner}
