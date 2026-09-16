@@ -121,7 +121,9 @@ test("receipt POST rejects cross-origin before executing the authenticated actio
 });
 
 const productPage = path.join(web, "app/(marketplace)/[categoria]/[slug]/page.tsx");
-const productMocks = { "@sentry/nextjs": "export const captureMessage=()=>{};export const captureException=()=>{};" };
+const productMocks = {
+  "@/lib/supabase/admin": "export const createAdminClient=()=>globalThis.__testClient;",
+  "@/lib/public-product": "export const publicProduct=row=>row;", "@sentry/nextjs": "export const captureMessage=()=>{};export const captureException=()=>{};" };
 
 test("product core returns while reviews and coupons are unresolved; RSC never counts a view", async () => {
   let release!: () => void;
@@ -150,48 +152,30 @@ test("product core returns while reviews and coupons are unresolved; RSC never c
   } finally { clearTimeout(timer); release(); }
 });
 
-test("profile header and products render before slow reviews and counts; no unused purchase query", async () => {
-  let release!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
+test("profile core and products are independent of slow reviews and counts", async () => {
   const operations: string[] = [];
   const sdk = client(async url => {
     operations.push(url.pathname);
     if (url.pathname.endsWith("/profiles")) return json({ id: userId, nombre: "Synthetic profile", es_vendedor: true });
     if (url.pathname.endsWith("/products_services")) return json([{ id: chatId, slug: null, sort_order: 4 }]);
-    await gate;
-    return json([]);
+    throw new Error("secondary read must be deferred");
   });
-  const loaded = await load(path.join(web, "app/(marketplace)/perfil/page.tsx"), sdk);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const tree = await Promise.race([loaded.default({}), new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error("header blocked by secondary data")), 1000);
-    })]) as { props: { children: Array<{ props: Record<string, any> }> } };
-    const header = tree.props.children.find(node => node?.props?.profile);
-    assert.equal(header?.props.profile.nombre, "Synthetic profile");
-    const tabs = tree.props.children.find(node => node?.props?.productsPanel);
-    const panel = tabs!.props.productsPanel.props.children;
-    const products = await panel.type(panel.props);
-    assert.equal(products.props.products[0].slug, null);
-    assert.equal(products.props.products[0].sort_order, 4);
-    assert.equal(operations.filter(op => op.endsWith("/sale_confirmations")).length, 0);
-    assert.equal(operations.length, 6);
-  } finally { clearTimeout(timer); release(); }
+  const loaded = await load(path.join(web, "lib/profile-session-data.ts"), sdk) as unknown as { getProfileSession: (part: string) => Promise<{value: any}> };
+  const core = await loaded.getProfileSession("core");
+  const products = await loaded.getProfileSession("products");
+  assert.equal(core.value.nombre, "Synthetic profile");
+  assert.equal(products.value[0].sort_order, 4);
+  assert.equal(operations.length, 2);
 });
 
-test("profile secondary failures expose retry panels while retaining the header", async () => {
+test("failed profile panels reject instead of fabricating empty products or reviews", async () => {
   const sdk = client(async url => url.pathname.endsWith("/profiles")
     ? json({ id: userId, nombre: "Synthetic profile", es_vendedor: true })
     : Response.json({ message: "synthetic unavailable" }, { status: 503 }));
-  const loaded = await load(path.join(web, "app/(marketplace)/perfil/page.tsx"), sdk);
-  const tree = await loaded.default({}) as { props: { children: Array<{ props: Record<string, any> }> } };
-  const tabs = tree.props.children.find(node => node?.props?.productsPanel);
-  for (const key of ["productsPanel", "reviewsPanel"]) {
-    const panel = tabs!.props[key].props.children;
-    const result = await panel.type(panel.props);
-    assert.ok(["publicaciones", "reseñas"].includes(result.props.label));
-    assert.equal(result.props.products, undefined);
-  }
+  const loaded = await load(path.join(web, "lib/profile-session-data.ts"), sdk) as unknown as { getProfileSession: (part: string) => Promise<{value: any}> };
+  assert.equal((await loaded.getProfileSession("core")).value.nombre, "Synthetic profile");
+  await assert.rejects(loaded.getProfileSession("products"));
+  await assert.rejects(loaded.getProfileSession("reviews"));
 });
 
 test("product read failure is recoverable instead of a false 404", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { invalidateSessionData } from "@/lib/session-events";
 
 /** A mounted, visible conversation acknowledges in the background. Rendering
  * or prefetching its RSC payload cannot send a receipt. Requests are coalesced,
@@ -29,6 +30,7 @@ export function useVisibleChatRead(chatId: string, userId: string, lastIncomingI
           cache: "no-store", signal: controller.signal,
         });
         ok = response.ok;
+        if (ok && !disposed) invalidateSessionData("/api/session/chats");
       } catch { /* Retry on the next visible message or foreground event. */ }
       finally {
         clearTimeout(timeout);

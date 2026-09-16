@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSessionUI } from "@/components/layout/session-data-provider";
 import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
@@ -155,7 +156,8 @@ export interface ProfileTabsProps {
 export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVendedor, currentUserId,
   productsPanel, reviewsPanel, reviewCount = reviewsAsSeller.length + reviewsAsBuyer.length,
 }: ProfileTabsProps & { productsPanel?: ReactNode; reviewsPanel?: ReactNode; reviewCount?: ReactNode }) {
-  const [tab, setTab] = useState<"products" | "reviews">("products");
+  const profilePath = usePathname();
+  const [tab, setTab] = useSessionUI<"products" | "reviews">(`profile-tab:${profilePath}:${currentUserId ?? "guest"}`, "products");
   return <div>
       {/* Tab bar */}
       <div className="mb-4 flex shadow-[inset_0_-1px_0_0_var(--border)]">

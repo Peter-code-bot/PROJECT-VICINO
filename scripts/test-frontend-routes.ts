@@ -32,6 +32,7 @@ export async function load(file: string, client: object, overrides: Record<strin
       if (name === 'fetchConLimite') value = '()=>globalThis.__testFetch';
       if (name === 'cookies') value = 'async()=>({get:()=>undefined})';
       if (name === 'redirect' || name === 'notFound') value = `()=>{throw new Error("UNEXPECTED_${name}")}`;
+      if (name === 'catalogFailure') value = '()=>({kind:"network",message:"unavailable"})';
       if (name === 'CATEGORIES') value = '[]';
       if (name === 'parseRadiusCookie') value = '()=>25000';
       lines.push(`export const ${name}=${value};`);
@@ -61,7 +62,7 @@ function clientWithTimeout() {
   return { requests: () => requests, client: { from: client.from.bind(client), rpc: client.rpc.bind(client), auth: { getUser: async () => ({ data: { user: { id: 'synthetic-user' } }, error: null }) } } };
 }
 
-for (const route of ['(marketplace)/page.tsx', '(marketplace)/buscar/page.tsx', '(marketplace)/perfil/page.tsx', '(marketplace)/chat/page.tsx', '(marketplace)/chat/[id]/page.tsx', 'seller/page.tsx', 'seller/layout.tsx']) {
+for (const route of ['(marketplace)/chat/[id]/page.tsx', 'seller/page.tsx', 'seller/layout.tsx']) {
   test(`timeout no produce exito vacio/404/redirect: ${route}`, async () => {
     const fixture = clientWithTimeout();
     const page = await load(path.join(web, 'app', route), fixture.client);
@@ -83,4 +84,23 @@ test('middleware: timeout devuelve 503 sin conceder acceso ni perder cookies ren
   assert.equal(response.headers.get('location'), null);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.ok(response.cookies.get('synthetic-refresh'));
+});
+
+for (const [file, name, input] of [["home-session-data.ts", "getHomeSession", {}], ["profile-session-data.ts", "getProfileSession", "core"], ["chat-list-data.ts", "getChatList", undefined]] as const) {
+  test(`session data timeout remains an error: ${file}`, async () => {
+    const fixture = clientWithTimeout();
+    const loaded = await load(path.join(web, "lib", file), fixture.client) as unknown as Record<string, (input: unknown) => Promise<unknown>>;
+    await assert.rejects(loaded[name]!(input));
+    assert.ok(fixture.requests() > 0);
+  });
+}
+
+test('buscar timeout renders failure instead of empty success', async () => {
+  const fixture = clientWithTimeout();
+  const page = await load(path.join(web, 'app/(marketplace)/buscar/page.tsx'), fixture.client);
+  const tree = await page.default({ searchParams: Promise.resolve({}) });
+  const serialized = JSON.stringify(tree);
+  assert.match(serialized, /los resultados de búsqueda/);
+  assert.match(serialized, /unavailable/);
+  assert.ok(fixture.requests() > 0);
 });

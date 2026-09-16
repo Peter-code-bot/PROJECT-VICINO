@@ -1,24 +1,20 @@
-import { Suspense } from "react";
+"use client";
+import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
-import { cookies } from "next/headers";
-import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
-import { RankingsHomeStripSection } from "@/components/rankings/rankings-home-strip";
 import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
 import { HomeTabs } from "@/components/home/home-tabs";
-import { FollowingRail, FollowedStore } from "@/components/home/following-rail";
+import { FollowingRail } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
 import { SolicitudesFeed } from "@/components/solicitudes/solicitudes-feed";
 import { UNIVERSITY_COLORS, getContrastYIQ } from "@/lib/utils";
 import { FollowButton } from "@/components/shared/follow-button";
-import { makeFeedCursor } from "@/lib/feed-cursor";
-import { consultarProductosCercanos, type ConsultaCercanosResult } from "@/lib/geo/consulta-cercanos";
-import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
+import { catalogFailure } from "@/lib/catalogo/estado-consulta";
 import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 import {
   GraduationCap,
@@ -29,434 +25,27 @@ import {
   MapPin,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
-/* ─── Category icon mapping ─────────────────────────────── */
-
-
-
-function RankingSkeleton() {
-  return (
-    <div className="px-4 pb-6 mt-4 animate-pulse">
-      <div className="h-[120px] w-full rounded-[20px] bg-[color:var(--card-2)] border" />
-    </div>
-  );
-}
-
-interface Props {
-  searchParams: Promise<{ feed?: string; cats?: string | string[]; tab?: string }>;
-}
-
-import type { FeedProduct } from "@/types/feed";
-import { parseRadiusCookie } from "@/lib/geo/radius";
 import { ComunidadesFeed } from "@/components/comunidades/comunidades-feed";
-import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
-import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
-import { traducirErrorComunidad } from "@/lib/comunidades/errores";
-
-export default async function HomePage({ searchParams }: Props) {
-  const { feed: feedParam, cats: catsParam, tab: tabParam } = await searchParams;
-  const feed =
-    feedParam === "following"
-      ? "following"
-      : feedParam === "solicitudes"
-        ? "solicitudes"
-        : feedParam === "comunidades"
-          ? "comunidades"
-          : "parati";
-  const subTabComunidades: SubTabComunidades =
-    tabParam === "mias" ? "mias" : tabParam === "descubrir" ? "descubrir" : "muro";
-
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("vicino_location")?.value;
-  const radiusCookie = cookieStore.get("vicino_radius")?.value;
-  // Esta era la unica de las cuatro lecturas del radio que estaba bien. Ahora
-  // las cuatro comparten la misma funcion, para que no vuelvan a divergir: el P0
-  // del feed de agosto fue exactamente eso, un `validRadius = 2000` en una
-  // pagina contra los 50 km que el usuario tenia configurados.
-  const validRadius = parseRadiusCookie(radiusCookie);
-
-  let userLat: number | null = null;
-  let userLng: number | null = null;
-  if (locationCookie) {
-    const [latStr, lngStr] = locationCookie.split(",");
-    const lat = parseFloat(latStr ?? "");
-    const lng = parseFloat(lngStr ?? "");
-    if (
-      Number.isFinite(lat) &&
-      Number.isFinite(lng) &&
-      lat >= -90 &&
-      lat <= 90 &&
-      lng >= -180 &&
-      lng <= 180
-    ) {
-      userLat = lat;
-      userLng = lng;
-    }
-  }
-  const hasLocation = userLat !== null && userLng !== null;
-
-  // Estas consultas son independientes. Cada una puede fallar sin borrar
-  // el resultado de las otras; el feed conserva su propio estado de error.
-  const feedPromise = (async (): Promise<{
-    products: FeedProduct[] | null;
-    failure: CatalogFailure | null;
-  }> => {
-    try {
-      if (hasLocation) {
-        const { data, error } = await supabase.rpc("search_nearby_products_v4", {
-          user_lat: userLat!,
-          user_lng: userLng!,
-          radius_meters: validRadius,
-          result_limit: 150,
-        }).throwOnError();
-        if (error) {
-          Sentry.captureException(error, {
-            tags: { action: "feed_nearby_products", section: "para_ti" },
-          });
-          return { products: null, failure: catalogFailure(error) };
-        }
-        return { products: data as FeedProduct[], failure: null };
-      }
-
-      const { data } = await supabase
-        .from("products_services")
-        .select(
-          `
-        id,
-        titulo,
-        precio,
-        imagen_principal,
-        categoria,
-        slug,
-        created_at,
-        precio_negociable,
-        modo_precio,
-        profiles!inner(nombre, trust_level, average_rating, reviews_count),
-        product_categories(is_primary, categories(slug, nombre))
-          `
-        ).throwOnError()
-        .eq("estatus", "disponible")
-        .order("created_at", { ascending: false })
-        .limit(150);
-      return { products: data as FeedProduct[] | null, failure: null };
-    } catch (error) {
-      Sentry.captureException(error, { tags: { action: "feed_initial", section: "para_ti" } });
-      return { products: null, failure: catalogFailure(error) };
-    }
-  })();
-
-  const perfilPromise = user
-    ? supabase.from("profiles").select("es_vendedor").throwOnError().eq("id", user.id).single()
-    : Promise.resolve(null);
-
-  const verificacionPromise = user
-    ? supabase
-        .from("seller_verification")
-        .select("university_name").throwOnError()
-        .eq("user_id", user.id)
-        .eq("status", "approved")
-        .eq("document_type", "Credencial Universitaria")
-        .maybeSingle()
-    : Promise.resolve(null);
-
-  // La seccion «Cerca de ti» se trae AQUI, en el servidor, y no desde un
-  // efecto del cliente como hasta ahora.
-  //
-  // Antes esa seccion no existia en el HTML: estaba entera detras de
-  // `{position && ...}` y `position` es null hasta que hidrata, asi que salia
-  // despues de descargar y ejecutar el JS, y solo ENTONCES pedia los productos.
-  // De ahi que aparecieran primero las categorias —que son marcado del
-  // servidor— y «Cerca de ti» despues.
-  //
-  // Entra en el grupo concurrente y no en una espera aparte: es una consulta mas en
-  // PARALELO, no una cascada. Y usa el mismo RPC y el mismo difuminado de
-  // coordenadas que usaba el cliente, solo que ordenando por distancia; la
-  // unica diferencia es quien lo pide.
-  const cercaDeTiPromise: Promise<ConsultaCercanosResult> = hasLocation
-    ? consultarProductosCercanos({
-        lat: userLat!,
-        lng: userLng!,
-        radiusMeters: validRadius,
-        limit: 20,
-      })
-    : Promise.resolve({ products: [] });
-
-  const [feedSettled, perfilSettled, verificacionSettled, cercaSettled] =
-    await Promise.allSettled([
-      feedPromise,
-      perfilPromise,
-      verificacionPromise,
-      cercaDeTiPromise,
-    ]);
-
-  const feedResultado = feedSettled.status === "fulfilled"
-    ? feedSettled.value : { products: null, failure: catalogFailure(feedSettled.reason) };
-  const perfilResultado = perfilSettled.status === "fulfilled" ? perfilSettled.value : null;
-  const verificacionResultado = verificacionSettled.status === "fulfilled" ? verificacionSettled.value : null;
-  const cercaDeTiResultado: ConsultaCercanosResult = cercaSettled.status === "fulfilled"
-    ? cercaSettled.value : { products: [], error: "No se pudo consultar cercanía" };
-
-  const viewerIsVendedor = perfilResultado?.data?.es_vendedor ?? false;
-  const viewerUniversity: string | null =
-    verificacionResultado?.data?.university_name ?? null;
-
-  // F10: IIFE so TypeScript infers universityProducts directly from the
-  // Supabase SELECT result. Single source of truth; if the SELECT shape
-  // changes the consumers fail to compile.
-  const universityProducts = await (async () => {
-    if (!viewerUniversity) return [];
-    const { data: uniSellers } = await supabase
-      .from("seller_verification")
-      .select("user_id").throwOnError()
-      .eq("university_name", viewerUniversity)
-      .eq("status", "approved");
-
-    const sellerIds = uniSellers?.map(s => s.user_id) || [];
-    if (sellerIds.length === 0) return [];
-
-    let uProducts: FeedProduct[] | null = null;
-    let rpcFailed = false;
-    if (hasLocation) {
-      const { data, error } = await supabase.rpc("search_nearby_products_v4", {
-        user_lat: userLat!,
-        user_lng: userLng!,
-        radius_meters: validRadius,
-        result_limit: 20,
-        seller_ids: sellerIds,
-        restrict_seller_mode: true,
-      }).throwOnError();
-      if (error) {
-        Sentry.captureException(error, { tags: { action: "feed_nearby_products", section: "university" } });
-        rpcFailed = true;
-      } else {
-        uProducts = data as FeedProduct[];
-      }
-    }
-    
-    if (!hasLocation) {
-      const { data } = await supabase
-        .from("products_services")
-        .select(`
-          id,
-          titulo,
-          precio,
-          imagen_principal,
-          categoria,
-          slug,
-          created_at,
-          precio_negociable,
-          modo_precio,
-          profiles!inner(nombre, trust_level, average_rating, reviews_count),
-          product_categories(is_primary, categories(slug, nombre))
-        `).throwOnError()
-        .eq("estatus", "disponible")
-        .in("creador_id", sellerIds)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      uProducts = data as FeedProduct[] | null;
-    }
-
-    return uProducts ?? [];
-  })().catch((error) => {
-    Sentry.captureException(error, { tags: { action: "feed_initial", section: "university" } });
-    return [];
-  });
-
-  // El feed ya se resolvio arriba, en paralelo con perfil y verificacion.
-  const products = feedResultado.products;
-  const feedRpcFailed = feedResultado.failure !== null;
-
-  const showGeoEmptyState = hasLocation;
-
-  const all = products ?? [];
-
-  // A5.2: cursor for <MasProductos>. The DESC fetch above puts the
-  // OLDEST of the initial 150 at the end of the array; getMoreFeedProducts
-  // filters strictly `< cursor` so the flat section starts at product
-  // 151 and never overlaps the carousels above. When the catalog is
-  // smaller than the initial 150 (length < 150), there is nothing more
-  // to load -> initialCursor null -> the section renders nothing.
-  const INITIAL_HOME_PAGE_SIZE = 150;
-  const masProductosInitialCursor =
-    all.length === INITIAL_HOME_PAGE_SIZE && all[all.length - 1]
-      ? makeFeedCursor(all[all.length - 1]!.created_at as string, all[all.length - 1]!.id)
-      : null;
-
-  // MP#08 #4 Fase 1A: agrupamos por la PRIMARY del pivote en vez de por
-  // categoria TEXT. El embed product_categories ya viene en el SELECT (5c-4).
-  // Fallback al TEXT preserva agrupacion para edge cases sin pivote (Fase 1A
-  // graceful; el writer-stop es 1C). Productos sin primary NI TEXT caen a
-  // "sin-categoria" y NO desaparecen del grouping (filter de carousels los
-  // descartara despues si <1 productos comparten ese bucket).
-  const byCategory = all.reduce<Record<string, typeof all>>((acc, p) => {
-    const key = primaryCategorySlug((p as { product_categories?: unknown }).product_categories)
-      ?? p.categoria
-      ?? "sin-categoria";
-    (acc[key] ??= []).push(p);
-    return acc;
-  }, {});
-
-  const categoryCarousels = Object.entries(byCategory)
-    .filter(([, ps]) => ps.length >= 1)
-    .sort((a, b) => b[1].length - a[1].length)
-    .slice(0, 15);
-
-  const firstSelectedCategory = (typeof catsParam === "string" ? catsParam : "")
-    .split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
-
-  // Fetch "Siguiendo" data.
-  // F10: single IIFE that returns the 4 vars so each is inferred from its
-  // actual Supabase SELECT result (no manual any[]). The three exit paths
-  // (not on following / no follows / has follows) each return a consistent
-  // shape; TypeScript unifies and widens to the broadest array type.
-  const { followingPosts, followedStoresData, noFollows, nearbyStores } =
-    await (async () => {
-      if (feed !== "following" || !user) {
-        return {
-          followingPosts: [],
-          followedStoresData: [] as FollowedStore[],
-          noFollows: false,
-          nearbyStores: [],
-        };
-      }
-      const { data: follows } = await supabase
-        .from("store_follows")
-        .select("store_id, profiles!store_id(id, nombre, foto)").throwOnError()
-        .eq("follower_id", user.id);
-
-      if (!follows || follows.length === 0) {
-        // Fetch some suggestions
-        const { data: suggestions } = await supabase
-          .from("profiles")
-          .select("id, nombre, foto, trust_level").throwOnError()
-          .eq("es_vendedor", true)
-          .limit(3);
-        return {
-          followingPosts: [],
-          followedStoresData: [] as FollowedStore[],
-          noFollows: true,
-          nearbyStores: suggestions ?? [],
-        };
-      }
-      const storeIds = follows.map((f) => f.store_id);
-
-      const { data: posts } = await supabase
-        .from("products_services")
-        .select(`
-          id,
-          creador_id,
-          titulo,
-          precio,
-          imagen_principal,
-          categoria,
-          slug,
-          created_at,
-          precio_negociable,
-          modo_precio,
-          profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count),
-          product_categories(is_primary, categories(slug, nombre))
-        `).throwOnError()
-        .eq("estatus", "disponible")
-        .in("creador_id", storeIds)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      // F10: normalize the `profiles` embed from supabase-js's default
-      // "array embed" shape into a single object so the JSX consumers
-      // (StorePost props at the bottom of this file) can keep accessing
-      // post.profiles.nombre etc. without per-site Array.isArray guards.
-      // The flatMap drops the (rare) row whose joined profile is missing,
-      // which a `posts.map` would have left as a half-built record.
-      const followingPosts = (posts ?? []).flatMap((p) => {
-        const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
-        return profile ? [{ ...p, profiles: profile }] : [];
-      });
-
-      // F10: `f` is now inferred from the typed `follows` array (was `f: any`).
-      // The `f.profiles` embed is typed as an array by supabase-js (it doesn't
-      // statically know the FK is single-target) -- narrow via the same
-      // Array.isArray pattern used elsewhere in the codebase. Filter the rare
-      // empty-embed case so the resulting list never has a half-built entry.
-      const followedStoresData: FollowedStore[] = follows.flatMap((f) => {
-        const store = Array.isArray(f.profiles) ? f.profiles[0] : f.profiles;
-        if (!store) return [];
-        const hasPosts = followingPosts.some((p) => p.creador_id === store.id);
-        return [{
-          id: store.id,
-          name: store.nombre,
-          letter: store.nombre.charAt(0).toUpperCase(),
-          imgUrl: store.foto,
-          hasRecentPosts: hasPosts,
-        }];
-      });
-
-      return {
-        followingPosts,
-        followedStoresData,
-        noFollows: false,
-        nearbyStores: [],
-      };
-    })();
-
-  // Feed de comunidades: cinco lecturas independientes en PARALELO, solo
-  // cuando esta pestana esta activa y hay sesion (las RPC exigen auth.uid()).
-  // allSettled y no all: que falle Descubrir no debe tirar el muro. Cada
-  // error se traduce en un solo sitio y llega al cliente como texto.
-  const comunidades = await (async () => {
-    if (feed !== "comunidades" || !user) return null;
-    const [perfil, muroR, miasR, solicitudesR, cuotaR, cercanasR] = await Promise.allSettled([
-      supabase.from("profiles").select("nombre, foto").eq("id", user.id).maybeSingle(),
-      supabase.rpc("feed_comunidades_explorar", { result_limit: 30 }),
-      supabase.rpc("mis_comunidades"),
-      supabase.rpc("mis_solicitudes_union"),
-      supabase.rpc("estado_cuota_fundacion"),
-      hasLocation
-        ? supabase.rpc("descubrir_comunidades", { p_lat: userLat!, p_lng: userLng!, result_limit: 30 })
-        : Promise.resolve(null),
-    ]);
-
-    const valor = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === "fulfilled" ? r.value : null);
-    const perfilData = valor(perfil)?.data ?? null;
-    const muroData = valor(muroR);
-    const miasData = valor(miasR);
-    const solicitudesData = valor(solicitudesR);
-    const cuotaData = valor(cuotaR);
-    const cercanasData = valor(cercanasR);
-
-    for (const [nombre, r] of [
-      ["feed_comunidades_explorar", muroData],
-      ["mis_comunidades", miasData],
-      ["descubrir_comunidades", cercanasData],
-    ] as const) {
-      if (r?.error) Sentry.captureException(r.error, { tags: { action: nombre, section: "comunidades" } });
-    }
-
-    const posts = muroData?.data ?? [];
-    return {
-      user: { id: user.id, nombre: perfilData?.nombre ?? "Tú", foto: perfilData?.foto ?? null },
-      muro: { posts, cursor: cursorDeUltimo(posts, 30) },
-      mias: miasData?.data ?? [],
-      misSolicitudes: solicitudesData?.data ?? [],
-      cercanas: hasLocation && cercanasData && !cercanasData.error ? (cercanasData.data ?? []) : null,
-      cuota: leerEstadoCuota(cuotaData?.error ? null : cuotaData?.data),
-      errores: {
-        muro: muroData?.error ? traducirErrorComunidad(muroData.error) : undefined,
-        mias: miasData?.error ? traducirErrorComunidad(miasData.error) : undefined,
-        cercanas: cercanasData?.error ? traducirErrorComunidad(cercanasData.error) : undefined,
-      },
-    };
-  })();
-
+import { leerEstadoCuota } from "@/lib/comunidades/tipos";
+import { SessionScroll, useSessionData, useLocationScope, DataRetry } from "@/components/layout/session-data-provider";
+import type { getHomeSession } from "@/lib/home-session-data";
+type Data = Awaited<ReturnType<typeof getHomeSession>>["value"];
+export function HomeSession({ ranking }: { ranking: ReactNode }) {
+  const search = useSearchParams();
+  const params = new URLSearchParams();
+  for (const name of ["feed"]) { const value = search.get(name); if (value) params.set(name, value); }
+  const zone = useLocationScope();
+  const key = `/api/session/home?${params}#${zone}`;
+  const { data, error, retry, updatedAt } = useSessionData<Data>(key);
+  if (!data) return <div className="px-4 py-6">{error ? <DataRetry error={error} retry={retry} /> : <p role="status">Cargando publicaciones…</p>}</div>;
+  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
+  const subTabComunidades = search.get("tab") === "mias" ? "mias" : search.get("tab") === "descubrir" ? "descubrir" : "muro";
+  const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
   return (
-    <div data-navigation-kind="home" data-navigation-ready={crypto.randomUUID()} className="w-full min-w-0 min-h-screen">
+    <div data-navigation-kind="home" data-navigation-ready={`home:${search.toString()}:${updatedAt}`} className="w-full min-w-0 min-h-screen">
+      <SessionScroll route="/" scope={`${key}:${search.toString()}`} />
       <HomeTabs active={feed} />
+      <DataRetry error={error} retry={retry} />
 
       {feed === "parati" ? (
         <>
@@ -511,9 +100,7 @@ export default async function HomePage({ searchParams }: Props) {
             }))}
             intro={<>
           {/* ─── RANKING STRIP ─────────────────────────────────── */}
-          <Suspense fallback={<RankingSkeleton />}>
-            <RankingsHomeStripSection />
-          </Suspense>
+          {ranking}
 
           {/* ─── TU UNIVERSIDAD (Exclusivo) ───────────────────────── */}
           {viewerUniversity && universityProducts.length > 0 && (
@@ -553,6 +140,7 @@ export default async function HomePage({ searchParams }: Props) {
                 productosIniciales={cercaDeTiResultado.products}
                   initialFailure={cercaDeTiResultado.error ? catalogFailure(cercaDeTiResultado) : null}
                 hayUbicacionEnServidor={hasLocation}
+                managed
               />
             </div>
           </section>

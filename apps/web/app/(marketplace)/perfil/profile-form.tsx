@@ -406,11 +406,11 @@ export function ProfileForm({
         </FieldRow>
 
         <FieldRow 
-          label="Usuario" 
+          label="Nombre de usuario"
           htmlFor="username"
           hint={
             <>
-              Visible en tu perfil · ID: {profile?.user_id ?? "—"}
+              Visible en tu perfil
               {usernameError && (
                 <span className="block text-destructive mt-1" role="alert">
                   3 a 30 caracteres · letras, números y guion bajo

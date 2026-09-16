@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { SessionDataProvider } from "@/components/layout/session-data-provider";
 import { NavigationPrefetch } from "@/components/layout/navigation-prefetch";
 import { Suspense } from "react";
 import { NavigationMetrics } from "@/components/layout/navigation-metrics";
@@ -128,6 +130,7 @@ export default async function MarketplaceLayout({
   }
 
   return (
+    <SessionDataProvider key={user?.id ?? "guest"} userId={user?.id ?? ""} revision={(await cookies()).get("vicino_data_revision")?.value ?? ""}>
     <ChatUnreadProvider userId={user?.id ?? ""} initialCount={unreadChatMessages}>
       <NotificationUnreadProvider
         userId={user?.id ?? ""}
@@ -180,5 +183,6 @@ export default async function MarketplaceLayout({
         </FavoritesProvider>
       </NotificationUnreadProvider>
     </ChatUnreadProvider>
+    </SessionDataProvider>
   );
 }

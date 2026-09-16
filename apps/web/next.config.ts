@@ -116,6 +116,12 @@ const withPWA = withPWAInit({
   workboxOptions: {
     runtimeCaching: [
       {
+        urlPattern: ({ url, sameOrigin }) => sameOrigin &&
+          (url.pathname.startsWith("/api/session/") || /^\/api\/products\/[^/]+\/location-map$/.test(url.pathname)),
+        handler: "NetworkOnly",
+        options: { cacheName: "session-data-no-cache" },
+      },
+      {
         urlPattern: ({ request, url: { pathname }, sameOrigin }) =>
           request.headers.get("RSC") === "1" &&
           request.headers.get("Next-Router-Prefetch") === "1" &&

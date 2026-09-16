@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -58,9 +58,9 @@ export async function activarModoVendedor(params: {
     return { error: error.message };
   }
 
-  revalidatePath("/perfil");
-  revalidatePath("/vender");
-  // Se quitó revalidatePath("/") porque revalidar la raíz invalida el árbol entero,
+  await revalidatePath("/perfil");
+  await revalidatePath("/vender");
+  // Se quitó await revalidatePath("/") porque revalidar la raíz invalida el árbol entero,
   // incluida /empezar-a-vender, y eso expulsaba al vendedor de su propia pantalla
   // de bienvenida antes de que la viera. El refresco del home se delega al cliente.
   return { success: true as const };
@@ -100,6 +100,6 @@ export async function avanzarAltaVendedor(paso: "ubicacion" | "publicacion" | nu
     return { error: error.message };
   }
 
-  revalidatePath("/perfil");
+  await revalidatePath("/perfil");
   return { success: true as const };
 }

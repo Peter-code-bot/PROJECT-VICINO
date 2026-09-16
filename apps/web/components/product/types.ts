@@ -14,6 +14,8 @@ export interface ProductDetailProduct {
   color: string | null;
   estatus: string | null;
   ubicacion: string | null;
+  updated_at?: string | null;
+  location_map_available?: boolean;
   tipo_entrega: string | null;
   imagen_principal: string | null;
   galeria_imagenes: string[] | null;

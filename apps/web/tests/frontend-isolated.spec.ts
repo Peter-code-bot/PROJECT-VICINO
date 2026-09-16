@@ -31,7 +31,7 @@ test.beforeAll(async () => {
   });
   js = result.outputFiles[0].text;
   // Usar CSS real; Tailwind se compila con los plugins ya instalados.
-  const postcss = localRequire("postcss") as (plugins: unknown[]) => { process: (source: string, options: object) => Promise<{ css: string }> };
+  const postcss = localRequire(localRequire.resolve("postcss", { paths: [localRequire.resolve("@tailwindcss/postcss")] })) as (plugins: unknown[]) => { process: (source: string, options: object) => Promise<{ css: string }> };
   const tailwind = localRequire("@tailwindcss/postcss") as () => unknown;
   css = (await postcss([tailwind()]).process(readFileSync(path.join(web, "app/globals.css"), "utf8"), { from: path.join(web, "app/globals.css") })).css;
 });

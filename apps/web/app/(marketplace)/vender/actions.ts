@@ -1,7 +1,8 @@
 "use server";
 
+import { z } from "zod";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { createProductSchema, updateProductSchema } from "@vicino/shared";
@@ -643,11 +644,13 @@ export async function updateProductFull(
     }
   }
 
-  // Only touch ubicacion_geo if user actually moved the map marker (both lat
-  // AND lng truthy). In edit mode the map widget starts at 0,0 so "no touch"
-  // means "preserve existing geo". A real coordinate at 0,0 is extremely
-  // unlikely (south of equator, on the Greenwich meridian).
-  if (ubicLat && ubicLng) {
+  const removal = z.enum(["true", "false"]).safeParse(formData.get("remove_location") ?? "false");
+  if (!removal.success) return { error: "Selección de ubicación inválida" };
+  if (removal.data === "true") {
+    updateObj.ubicacion_geo = null;
+    updateObj.ubicacion = null;
+    updateObj.delivery_radius_km = null;
+  } else if (ubicLat !== null && ubicLng !== null) {
     updateObj.ubicacion_geo = `SRID=4326;POINT(${ubicLng} ${ubicLat})`;
   }
 
@@ -723,7 +726,7 @@ export async function updateProductFull(
     await cleanupRemovedMedia(supabase, removedUrls);
   }
 
-  revalidatePath("/seller/listings");
+  await revalidatePath("/seller/listings");
   redirect("/seller/listings");
 }
 
@@ -793,7 +796,7 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
   // Sync the seller listings page so navigating back from elsewhere shows
   // the new estatus. The optimistic flip in listing-actions covers the
   // local UI feel; this covers cross-page consistency.
-  revalidatePath("/seller/listings");
+  await revalidatePath("/seller/listings");
 
   return { success: true };
 }

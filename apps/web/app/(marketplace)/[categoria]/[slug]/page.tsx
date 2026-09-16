@@ -1,3 +1,5 @@
+import { publicProduct } from "@/lib/public-product";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { ogImageUrl } from "@/lib/og-image";
 import Link from "next/link";
@@ -231,6 +233,14 @@ export default async function ProductDetailPage({ params }: Props) {
   }
   const categoryName = primaryCat?.nombre ?? null;
 
+  // Only a presence flag crosses the RSC boundary. The image endpoint rechecks RLS.
+  let locationMapAvailable = false;
+  try {
+    const { data: mapped } = await createAdminClient().from("products_services")
+      .select("id").eq("id", product.id).not("ubicacion_geo", "is", null).maybeSingle();
+    locationMapAvailable = Boolean(mapped);
+  } catch { /* The location text remains usable if the image service is unavailable. */ }
+
   const data: ProductDetailData = {
     // Una sola clave por render de la ficha, compartida por el detalle movil y
     // el de escritorio: los dos se pintan a la vez y solo los separa el CSS
@@ -240,7 +250,7 @@ export default async function ProductDetailPage({ params }: Props) {
     // pagina es dinamica (lee la sesion con getUser), asi que cada visita trae
     // una clave nueva, que es lo que el contrato define como intencion nueva.
     purchaseIntentKey: crypto.randomUUID(),
-    product: product as unknown as ProductDetailData["product"],
+    product: { ...publicProduct(product), location_map_available: locationMapAvailable },
     seller: seller as unknown as ProductDetailData["seller"],
     reviews: [],
     coupons: [],

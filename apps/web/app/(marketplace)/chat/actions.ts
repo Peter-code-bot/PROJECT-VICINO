@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -540,7 +540,7 @@ export async function createSaleConfirmation(data: {
     });
   }
 
-  revalidatePath(`/chat/${parsed.data.chat_id}`);
+  await revalidatePath(`/chat/${parsed.data.chat_id}`);
   return { confirmation };
 }
 
@@ -661,7 +661,7 @@ export async function confirmSale(saleConfirmationId: string) {
     }
   }
 
-  if (sc.chat_id) revalidatePath(`/chat/${sc.chat_id}`);
+  if (sc.chat_id) await revalidatePath(`/chat/${sc.chat_id}`);
   return { success: true };
 }
 
@@ -704,7 +704,7 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     return { error: "No se pudo cancelar: la confirmación ya fue modificada o no tienes permiso." };
   }
   
-  if (cancelled.chat_id) revalidatePath(`/chat/${cancelled.chat_id}`);
+  if (cancelled.chat_id) await revalidatePath(`/chat/${cancelled.chat_id}`);
   return { success: true };
 }
 
@@ -766,6 +766,6 @@ export async function hideChat(chatId: string) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/chat");
+  await revalidatePath("/chat");
   return { success: true };
 }
