@@ -68,7 +68,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2">
             {/* Budget text */}
             {data.budget_estimated && (
-              <span className="font-heading font-extrabold text-[15px] text-[color:var(--brand-hi)] tracking-tight">
+              <span className="font-heading font-extrabold text-[15px] text-foreground tracking-tight">
                 ${data.budget_estimated.toLocaleString()} MXN
               </span>
             )}
