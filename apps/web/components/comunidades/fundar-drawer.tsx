@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { X, Loader2, MapPin, Lock, Globe, LocateFixed, Clock } from "lucide-react";
+import { X, Loader2, Lock, Globe, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
-import { useGeolocation } from "@/hooks/useGeolocation";
+import LocationPicker, { type LocationSelection } from "@/components/map/location-picker";
 import {
   COMMUNITY_NOMBRE_MIN,
   COMMUNITY_NOMBRE_MAX,
@@ -37,7 +37,8 @@ interface FundarDrawerProps {
  */
 export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerProps) {
   const router = useRouter();
-  const { state, request } = useGeolocation();
+  const [posicion, setPosicion] = useState<LocationSelection | null>(() =>
+    lat !== null && lng !== null ? { lat, lng, address: "Zona inicial" } : null);
   const [mounted, setMounted] = useState(false);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -87,14 +88,6 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, enviando]);
 
-  // La ubicacion del servidor manda; si no la hay, la del hook (cache local o GPS).
-  const posicion =
-    lat !== null && lng !== null
-      ? { lat, lng }
-      : state.status === "success"
-        ? { lat: state.position.lat, lng: state.position.lng }
-        : null;
-
   const falta = tiempoQueFalta(cuota.siguiente_en, ahora);
   // Si la espera ya venció y el estado no se refrescó, no bloquear: la base decide.
   const bloqueadoPorCuota = !cuota.puede_fundar && (cuota.siguiente_en === null || falta !== null);
@@ -105,7 +98,7 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
   async function handleSubmit() {
     setError(null);
     if (!posicion) {
-      setError("Necesitamos tu ubicación para poner el centro de la comunidad.");
+      setError("Elige el centro de la comunidad en el buscador o usa tu ubicación.");
       return;
     }
     setEnviando(true);
@@ -243,34 +236,11 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground/80">Centro de la comunidad</label>
-            {posicion ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card-2)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--border)]">
-                <MapPin className="h-4 w-4 shrink-0 text-[color:var(--brand-hi)]" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[color:var(--fg)]">Tu ubicación actual</p>
-                  <p className="text-xs text-[color:var(--fg-muted)]">
-                    Se guarda como zona aproximada, no tu dirección. Podrás moverlo hasta 1 km después.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={request}
-                disabled={state.status === "loading"}
-                className="flex w-full items-center gap-3 rounded-2xl bg-[color:var(--card-2)] px-4 py-3 text-left shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand-hi)] disabled:opacity-60"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]">
-                  {state.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-                </span>
-                <span className="flex flex-col">
-                  <span className="font-heading text-sm font-semibold text-[color:var(--fg)]">Usar mi ubicación</span>
-                  <span className="text-xs text-[color:var(--fg-muted)]">
-                    {state.status === "error" ? state.message : "Necesaria para fijar el centro"}
-                  </span>
-                </span>
-              </button>
-            )}
+            <LocationPicker initialLat={posicion?.lat} initialLng={posicion?.lng}
+              onChange={setPosicion} allowGeolocation placeholder="Busca el centro de la comunidad…" />
+            <p className="text-xs text-fg-muted">
+              Elige una dirección y ajusta el marcador. Se guarda como zona aproximada; podrás mover el centro hasta 1 km después.
+            </p>
           </div>
         </div>
 

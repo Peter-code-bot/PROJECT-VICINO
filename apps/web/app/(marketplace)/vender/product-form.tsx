@@ -250,6 +250,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   const [categoryOpen, setCategoryOpen] = useState(false);
   // lat/lng nacen de lo guardado cuando se edita. Antes arrancaban en 0,0
    // siempre, y por eso el mapa salia en blanco al editar.
+  const [locationCleared, setLocationCleared] = useState(false);
   const [locationData, setLocationData] = useState({
     lat: initialValues?.ubicacion_lat ?? 0,
     lng: initialValues?.ubicacion_lng ?? 0,
@@ -1017,16 +1018,6 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             required
           />
 
-          {/* El required del input hidden no lo valida el navegador, y un
-              cambio de tipo puede vaciar la lista sin que el usuario lo pida.
-              Sin este aviso el formulario queda mudo hasta que falla al
-              enviar. */}
-          {categories.length === 0 && (
-            <p className="text-xs text-[color:var(--fg-muted)]">
-              Elige al menos una categoría. La primera que agregues queda como principal.
-            </p>
-          )}
-
           {/* Chips de las categorias seleccionadas */}
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -1239,6 +1230,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             La ubicación guardada se conserva si no tocas el mapa. Mueve el marcador solo si quieres cambiarla.
           </p>
         )}
+        <input type="hidden" name="remove_location" value={String(locationCleared)} />
         <input type="hidden" name="ubicacion" value={locationData.address} />
         <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
         <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
@@ -1251,7 +1243,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           initialLat={initialValues?.ubicacion_lat ?? undefined}
           initialLng={initialValues?.ubicacion_lng ?? undefined}
           initialRadius={initialValues?.delivery_radius_km ?? undefined}
-          onLocationChange={(lat, lng, address) => setLocationData((p) => ({ ...p, lat, lng, address }))}
+          onLocationChange={(lat, lng, address) => { setLocationCleared(lat === 0 && lng === 0 && address === ""); setLocationData((p) => ({ ...p, lat, lng, address })); }}
           onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
         />
       </div>

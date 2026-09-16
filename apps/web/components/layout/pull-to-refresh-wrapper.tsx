@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useTransition } from "react";
+import { invalidateSessionData } from "@/lib/session-events";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, useMotionValue, useTransform, animate, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -74,6 +75,7 @@ export function PullToRefreshWrapper({ children }: { children: React.ReactNode }
       inFlight.current = true;
       // React follows completion of the RSC transition; refresh itself is void.
       measurement.current = beginNavigation(window.location.href, "refresh");
+      invalidateSessionData();
       startTransition(() => router.refresh());
       void hapticLight();
     };

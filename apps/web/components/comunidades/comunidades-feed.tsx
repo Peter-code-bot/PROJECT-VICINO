@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Clock, LocateFixed, Loader2, Plus, Users, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, Clock, LocateFixed, Loader2, Plus, Users, MapPin } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -223,7 +223,7 @@ export function ComunidadesFeed({
         title={fundarBloqueado ? cuota.motivo ?? undefined : undefined}
         className="inline-flex h-11 items-center gap-2 rounded-full bg-[color:var(--brand)] px-5 text-[14px] font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:opacity-60 disabled:shadow-none"
       >
-        {fundarBloqueado ? <Clock className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+        {fundarBloqueado && <Clock className="h-4 w-4" />}
         {fundarBloqueado ? (falta ? `Podrás fundar en ${falta}` : "No puedes fundar por ahora") : "Fundar comunidad"}
       </button>
       {motivoSinReloj && (
@@ -244,7 +244,6 @@ export function ComunidadesFeed({
         {tab === "muro" && (
           miasVivas.length === 0 ? (
             <EstadoVacio
-              icono={<Users className="h-7 w-7" />}
               titulo="Aún no perteneces a ninguna comunidad"
               texto="Cuando te unas a una, sus publicaciones aparecerán aquí, todas juntas."
             >
@@ -310,7 +309,6 @@ export function ComunidadesFeed({
               <p className="py-10 text-center text-sm text-[color:var(--fg-muted)]">{errores.mias}</p>
             ) : mias.length === 0 ? (
               <EstadoVacio
-                icono={<Users className="h-7 w-7" />}
                 titulo="Todavía no estás en ninguna comunidad"
                 texto={
                   sinNada
@@ -365,7 +363,6 @@ export function ComunidadesFeed({
               // puede decir que nadie ha fundado ninguna).
               miasVivas.length > 0 ? (
                 <EstadoVacio
-                  icono={<Users className="h-7 w-7" />}
                   titulo="Ya estás en todas las comunidades cercanas"
                   texto="Aquí salen las que están a menos de 5 km y en las que aún no estás. Si te queda cupo, puedes fundar otra."
                 >
@@ -373,7 +370,6 @@ export function ComunidadesFeed({
                 </EstadoVacio>
               ) : (
                 <EstadoVacio
-                  icono={<Sparkles className="h-7 w-7" />}
                   titulo="Nadie ha fundado una comunidad por aquí"
                   texto="Tu zona todavía no tiene ninguna. Sé quien funde la primera: la verán las personas a menos de 5 km."
                 >
@@ -436,7 +432,7 @@ function EstadoVacio({
   texto,
   children,
 }: {
-  icono: React.ReactNode;
+  icono?: React.ReactNode;
   titulo: string;
   texto: string;
   children?: React.ReactNode;
@@ -444,9 +440,9 @@ function EstadoVacio({
   return (
     <div className="px-2 py-14 text-center">
       <div className="mx-auto max-w-sm">
-        <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[18px] bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
+        {icono && <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[18px] bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]">
           {icono}
-        </div>
+        </div>}
         <h3 className="mb-2 font-heading text-[20px] font-bold text-[color:var(--fg)]">{titulo}</h3>
         <p className="mb-5 text-[14.5px] leading-relaxed text-[color:var(--fg-muted)]">{texto}</p>
         {children}

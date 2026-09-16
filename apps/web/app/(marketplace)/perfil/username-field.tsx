@@ -15,7 +15,6 @@ import { setUsername } from "./actions";
  */
 export function UsernameField({
   inicial,
-  userId,
 }: {
   inicial: string | null | undefined;
   userId: string | null | undefined;
@@ -110,7 +109,7 @@ export function UsernameField({
         </p>
       )}
       <p className="text-[10px] text-muted-foreground">
-        3 a 30 caracteres · letras, numeros y guion bajo · ID interno: {userId ?? "—"}
+        3 a 30 caracteres · letras, numeros y guion bajo
       </p>
     </div>
   );

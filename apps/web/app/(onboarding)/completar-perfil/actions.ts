@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -116,6 +116,6 @@ export async function guardarPasoOnboarding(input: GuardarPasoInput) {
     return { error: "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo." };
   }
 
-  revalidatePath("/completar-perfil");
+  await revalidatePath("/completar-perfil");
   return { success: true };
 }

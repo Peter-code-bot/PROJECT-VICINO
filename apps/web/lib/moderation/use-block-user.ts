@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateSessionData } from "@/lib/session-events";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -39,6 +40,7 @@ export function useBlockUser() {
     if (error) {
       // 23505 = UNIQUE constraint → ya estaba bloqueado
       if (error.code === "23505") {
+        invalidateSessionData();
         toast.info("Ya tenías bloqueado a este usuario.");
         return true;
       }
@@ -46,6 +48,7 @@ export function useBlockUser() {
       return false;
     }
 
+    invalidateSessionData();
     toast.success("Usuario bloqueado. Ya no verás su contenido.");
     return true;
   }, []);
@@ -75,6 +78,7 @@ export function useUnblockUser() {
       return false;
     }
 
+    invalidateSessionData();
     toast.success("Usuario desbloqueado.");
     return true;
   }, []);

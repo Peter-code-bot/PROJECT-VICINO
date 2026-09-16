@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface ChatItemCardProps {
+  onHidden?: () => void;
   chat: {
     id: string;
     // Nulable en la base (DEFAULT now()).
@@ -26,7 +27,7 @@ interface ChatItemCardProps {
   };
 }
 
-export function ChatItemCard({ chat }: ChatItemCardProps) {
+export function ChatItemCard({ chat, onHidden }: ChatItemCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -52,6 +53,7 @@ export function ChatItemCard({ chat }: ChatItemCardProps) {
       setDeleting(false);
       setConfirming(false);
     } else {
+      onHidden?.();
       setMenuOpen(false);
       router.refresh();
     }

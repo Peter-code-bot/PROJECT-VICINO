@@ -14,7 +14,7 @@
  * useOptimisticMutation ya entiende.
  */
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -147,7 +147,7 @@ export async function fundarComunidad(input: {
     }
   }
 
-  revalidatePath("/");
+  await revalidatePath("/");
   return { data: { id, nombre: leerTexto(data, "nombre") ?? nombre, es_privada: privadaFinal } };
 }
 
@@ -177,8 +177,8 @@ export async function alternarMembresia(
     reportarSiInesperado(error, "alternar_membresia_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${communityId}`);
-  revalidatePath("/");
+  await revalidatePath(`/comunidades/${communityId}`);
+  await revalidatePath("/");
   return {
     data: {
       soy_miembro: leerBooleano(data, "soy_miembro", false),
@@ -220,7 +220,7 @@ export async function solicitarUnion(input: {
   }
   const id = leerTexto(data, "id");
   if (!id) return { error: "No se pudo enviar la solicitud. Intenta de nuevo." };
-  revalidatePath(`/comunidades/${parsed.data.community_id}`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}`);
   return { data: { id, repetida: leerBooleano(data, "repetida", false), entrarDirecto: false } };
 }
 
@@ -249,7 +249,7 @@ export async function cancelarSolicitudPropia(
   }
   // Ya no hay pendiente: idempotente, igual que la RPC.
   if (!fila) {
-    revalidatePath(`/comunidades/${communityId}`);
+    await revalidatePath(`/comunidades/${communityId}`);
     return { data: { cancelada: true } };
   }
   return cancelarSolicitud(fila.id, communityId);
@@ -272,9 +272,9 @@ export async function cancelarSolicitud(
     return { error: traducirErrorComunidad(error) };
   }
   if (communityId && uuid.safeParse(communityId).success) {
-    revalidatePath(`/comunidades/${communityId}`);
+    await revalidatePath(`/comunidades/${communityId}`);
   }
-  revalidatePath("/");
+  await revalidatePath("/");
   return { data: { cancelada: true } };
 }
 
@@ -309,8 +309,8 @@ export async function resolverSolicitud(input: {
     return { error: traducirErrorComunidad(error) };
   }
   if (uuid.safeParse(input.community_id).success) {
-    revalidatePath(`/comunidades/${input.community_id}`);
-    revalidatePath(`/comunidades/${input.community_id}/administrar`);
+    await revalidatePath(`/comunidades/${input.community_id}`);
+    await revalidatePath(`/comunidades/${input.community_id}/administrar`);
   }
   return {
     data: {
@@ -370,7 +370,7 @@ export async function nombrarModerador(input: {
     reportarSiInesperado(error, "nombrar_moderador_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
   return { data: { role: leerTexto(data, "role") ?? "moderator" } };
 }
 
@@ -391,7 +391,7 @@ export async function quitarModerador(input: {
     reportarSiInesperado(error, "quitar_moderador_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
   return { data: { role: leerTexto(data, "role") ?? "member" } };
 }
 
@@ -416,7 +416,7 @@ export async function editarDescripcion(input: {
     reportarSiInesperado(error, "editar_descripcion_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${parsed.data.community_id}`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}`);
   return { data: { descripcion: leerTexto(data, "descripcion") } };
 }
 
@@ -437,7 +437,7 @@ export async function editarVisibilidad(input: {
     reportarSiInesperado(error, "editar_visibilidad_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${parsed.data.community_id}`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}`);
   return { data: { es_privada: leerBooleano(data, "es_privada", parsed.data.es_privada) } };
 }
 
@@ -460,7 +460,7 @@ export async function editarCentro(input: {
     reportarSiInesperado(error, "editar_centro_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
+  await revalidatePath(`/comunidades/${parsed.data.community_id}/administrar`);
   return {
     data: {
       lat: leerNumero(data, "lat", parsed.data.lat),
@@ -484,8 +484,8 @@ export async function archivarComunidad(
     reportarSiInesperado(error, "archivar_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
-  revalidatePath(`/comunidades/${communityId}`);
-  revalidatePath("/");
+  await revalidatePath(`/comunidades/${communityId}`);
+  await revalidatePath("/");
   return { data: { archivada: leerBooleano(data, "archivada", true) } };
 }
 

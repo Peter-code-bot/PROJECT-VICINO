@@ -1,3 +1,5 @@
+import { publicProduct } from "@/lib/public-product";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { ogImageUrl } from "@/lib/og-image";
 import Link from "next/link";
@@ -84,7 +86,11 @@ export default async function ProductDetailPage({ params }: Props) {
     .from("products_services")
     .select(
       `
-      *,
+      id, slug, titulo, descripcion, precio, modo_precio, precio_negociable,
+      categoria, tipo, estado, color, estatus, ubicacion, tipo_entrega,
+      imagen_principal, galeria_imagenes, gallery_sizes, creador_id, vistas_count,
+      allow_appointments, appointment_start_time, appointment_end_time,
+      appointment_duration_minutes, created_at, updated_at, delivery_radius_km,
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
         average_rating, reviews_count, total_sales
@@ -202,9 +208,17 @@ export default async function ProductDetailPage({ params }: Props) {
   }
   const categoryName = primaryCat?.nombre ?? null;
 
+  // Only a presence flag crosses the RSC boundary. The image endpoint rechecks RLS.
+  let locationMapAvailable = false;
+  try {
+    const { data: mapped } = await createAdminClient().from("products_services")
+      .select("id").eq("id", product.id).not("ubicacion_geo", "is", null).maybeSingle();
+    locationMapAvailable = Boolean(mapped);
+  } catch { /* The location text remains usable if the image service is unavailable. */ }
+
   const data: ProductDetailData = {
     purchaseIntentKey: crypto.randomUUID(),
-    product: product as unknown as ProductDetailData["product"],
+    product: { ...publicProduct(product), location_map_available: locationMapAvailable },
     seller: seller as unknown as ProductDetailData["seller"],
     reviews: [],
     coupons: [],

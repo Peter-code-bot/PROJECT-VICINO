@@ -1,4 +1,5 @@
 "use client";
+import { invalidateSessionData } from "@/lib/session-events";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -34,7 +35,7 @@ export function useChatUnreadCount(userId: string, initialCount: number) {
     }, pending);
     const debounce = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => refresh.solicitar(), 300);
+      timer = setTimeout(() => { invalidateSessionData("/api/session/chats"); refresh.solicitar(); }, 300);
     };
     retryRef.current = debounce;
     const unregister = [

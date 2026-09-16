@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
@@ -73,8 +73,9 @@ export async function updateProfile(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/perfil");
-  revalidatePath("/seller/listings");
+  await revalidatePath("/perfil");
+  await revalidatePath(`/vendedor/${user.id}`);
+  await revalidatePath("/seller/listings");
   return { success: true };
 }
 
@@ -115,7 +116,8 @@ export async function setUsername(formData: FormData) {
     return { error: error.message };
   }
 
-  revalidatePath("/perfil");
+  await revalidatePath("/perfil");
+  await revalidatePath(`/vendedor/${user.id}`);
   return { success: true, username: data as string };
 }
 
@@ -156,7 +158,8 @@ export async function updateProductsOrder(updates: { id: string; sort_order: num
     return { error: "No se pudo guardar el nuevo orden. Intenta de nuevo." };
   }
 
-  revalidatePath("/perfil");
+  await revalidatePath("/perfil");
+  await revalidatePath(`/vendedor/${user.id}`);
   return { success: true };
 }
 
@@ -182,6 +185,6 @@ export async function completeOnboarding() {
     return { error: error.message };
   }
 
-  revalidatePath("/");
+  await revalidatePath("/");
   return { success: true };
 }

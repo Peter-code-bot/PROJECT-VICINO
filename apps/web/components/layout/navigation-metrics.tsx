@@ -24,7 +24,7 @@ export function NavigationMetrics() {
     const inspect = () => {
       frame = 0;
       if (!metrics.active()) return;
-      for (const node of markers()) metrics.ready(node.dataset.navigationReady!, node.dataset.navigationKind ?? "");
+      for (const node of markers().filter(node => node.getClientRects().length > 0)) metrics.ready(node.dataset.navigationReady!, node.dataset.navigationKind ?? "");
       if (!metrics.active()) clearTimeout(timeout);
     };
     const schedule = () => { if (metrics.active() && !frame) frame = requestAnimationFrame(inspect); };

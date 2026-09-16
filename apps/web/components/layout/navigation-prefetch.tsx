@@ -31,7 +31,7 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
       warmed.current.set(href, now);
       requests.current.push(now);
       try {
-        router.prefetch(href, { kind: PrefetchKind.AUTO, onInvalidate: () => {
+        router.prefetch(href, { kind: PrefetchKind.FULL, onInvalidate: () => {
           if (warmed.current.get(href) === now) warmed.current.delete(href);
         } });
       } catch {

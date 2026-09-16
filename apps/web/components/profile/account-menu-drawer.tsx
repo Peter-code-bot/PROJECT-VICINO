@@ -15,12 +15,12 @@ interface AccountMenuDrawerProps {
   trigger: React.ReactNode;
   userName?: string;
   userAvatar?: string | null;
-  userId?: string;
+  username?: string | null;
   /** Phase 9: hide /seller links when the user has not opted in to seller mode. */
   userIsVendedor?: boolean;
 }
 
-export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userIsVendedor = false }: AccountMenuDrawerProps) {
+export function AccountMenuDrawer({ trigger, userName, userAvatar, username, userIsVendedor = false }: AccountMenuDrawerProps) {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -75,7 +75,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, userId, userI
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground truncate">{userName}</p>
-                  {userId && <p className="text-xs text-muted-foreground">@{userId}</p>}
+                  {username && <p className="text-xs text-muted-foreground">@{username}</p>}
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </Link>

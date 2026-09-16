@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, cleanDisplayName } from "@vicino/shared";
+import { formatPrice } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { getOrCreateChat } from "./actions";
 import { z } from "zod";
-import { ChatItemCard } from "./chat-item-card";
+import { ChatList } from "./chat-list";
 
 export const metadata = {
   title: "Chat — VICINO",
@@ -24,6 +23,7 @@ interface Props {
 
 export default async function ChatPage({ searchParams }: Props) {
   const params = await searchParams;
+  if (!params.seller) return <ChatList />;
   const supabase = await createClient();
   const {
     data: { user },
@@ -113,90 +113,5 @@ export default async function ChatPage({ searchParams }: Props) {
     }
   }
 
-  // Get user's chats
-  const { data: chats } = await supabase
-    .from("chats")
-    .select(
-      `
-      id, updated_at, no_leidos_comprador, no_leidos_vendedor,
-      oculto_para_comprador, oculto_para_vendedor,
-      comprador:profiles!comprador_id(id, nombre, foto),
-      vendedor:profiles!vendedor_id(id, nombre, foto),
-      ultimo_producto:products_services!ultimo_producto_id(titulo)
-    `
-    ).throwOnError()
-    .or(`comprador_id.eq.${user.id},vendedor_id.eq.${user.id}`)
-    .order("updated_at", { ascending: false });
-
-  // Filtrar chats ocultos para este usuario (soft delete)
-  const visibleChats = chats?.filter((chat) => {
-    const compradorProfile = Array.isArray(chat.comprador) ? chat.comprador[0] : chat.comprador;
-    const isBuyer = compradorProfile?.id === user.id;
-    return isBuyer ? !chat.oculto_para_comprador : !chat.oculto_para_vendedor;
-  }) ?? [];
-
-  const showSelfChatBanner = params.selfChatError === "1";
-
-  return (
-    <div data-navigation-kind="chat_list" data-navigation-ready={crypto.randomUUID()} className="max-w-2xl mx-auto px-4 pt-2 pb-8 sm:pt-4">
-      {showSelfChatBanner && (
-        <div className="mb-4 rounded-xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">
-          No puedes iniciar un chat contigo mismo. Estabas en modo vista visitante de tu propio producto.
-        </div>
-      )}
-      <div className="mb-5">
-        <h1 className="font-heading text-2xl font-bold text-[color:var(--fg)]">
-          Mensajes
-        </h1>
-      </div>
-
-      {visibleChats.length > 0 ? (
-        <div className="space-y-3 stagger">
-          {visibleChats.map((chat) => {
-            const compradorProfile = Array.isArray(chat.comprador) ? chat.comprador[0] : chat.comprador;
-            const vendedorProfile = Array.isArray(chat.vendedor) ? chat.vendedor[0] : chat.vendedor;
-            const isBuyer = compradorProfile?.id === user.id;
-            const otherProfile = isBuyer ? vendedorProfile : compradorProfile;
-            const unread = isBuyer ? chat.no_leidos_comprador : chat.no_leidos_vendedor;
-            const producto = Array.isArray(chat.ultimo_producto)
-              ? chat.ultimo_producto[0]
-              : chat.ultimo_producto;
-
-            return (
-              <ChatItemCard
-                key={chat.id}
-                chat={{
-                  id: chat.id,
-                  updated_at: chat.updated_at,
-                  otherUser: otherProfile
-                    ? { id: otherProfile.id, nombre: cleanDisplayName(otherProfile.nombre), foto: otherProfile.foto }
-                    : null,
-                  unread: unread ?? 0,
-                  productoTitulo: producto?.titulo ?? null,
-                }}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <div className="rounded-3xl product-card-custom px-4 py-20 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl product-card-btn">
-            <span className="translate-y-1 text-4xl">💬</span>
-          </div>
-          <h2 className="mb-2 font-heading text-xl font-bold text-[color:var(--fg)]">
-            Sin conversaciones
-          </h2>
-          <p className="mx-auto max-w-xs text-sm text-[color:var(--fg-muted)]">
-            Tus chats con vendedores y compradores aparecerán aquí cuando empieces a interactuar.
-          </p>
-          <Link
-            href="/buscar"
-            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[color:var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)]"
-          >
-            Explorar productos
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+  return <ChatList />;
 }

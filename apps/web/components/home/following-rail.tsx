@@ -18,12 +18,7 @@ export function FollowingRail({ stores }: FollowingRailProps) {
   if (!stores || stores.length === 0) return null;
 
   return (
-    <section className="mb-6 pt-2">
-      <div className="flex items-center justify-between px-4 mb-3">
-        <h2 className="font-display font-medium text-[15.5px] text-[var(--fg)]">
-          Tiendas que sigues <span className="text-[var(--fg-muted)] font-normal">· {stores.length}</span>
-        </h2>
-      </div>
+    <section aria-label="Tiendas que sigues" className="mb-6 pt-2">
 
       <div className="flex overflow-x-auto gap-4 px-4 pb-2 snap-x scrollbar-none" style={{ scrollbarWidth: "none" }}>
         {stores.map((store) => (

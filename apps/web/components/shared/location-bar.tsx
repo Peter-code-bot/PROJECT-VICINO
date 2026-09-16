@@ -11,6 +11,7 @@ import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consu
 import { CatalogQueryState } from "./catalog-query-state";
 
 interface LocationBarProps {
+  managed?: boolean;
   /**
    * Los productos cercanos que el SERVIDOR ya trajo, leyendo la cookie
    * vicino_location al pintar el home.
@@ -35,6 +36,7 @@ export function LocationBar({
   productosIniciales = [],
   hayUbicacionEnServidor = false,
   initialFailure = null,
+  managed = false,
 }: LocationBarProps) {
   const { state } = useGeolocation();
   const position = state.status === "success" ? state.position : null;
@@ -47,7 +49,7 @@ export function LocationBar({
   // la seccion se pone al dia sin recargar. Lo que cambia es que ya no es la
   // PRIMERA vez que se ven productos, solo una actualizacion.
   const { products, loading, error, failure: clientFailure, hasLoaded } = useNearbyProducts({
-    position,
+    position: managed ? null : position,
     radiusMeters: radioMetros,
   });
 

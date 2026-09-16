@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
@@ -36,8 +36,8 @@ export async function toggleFollowStore(storeId: string, currentFollowingState: 
     if (error) return { error: error.message };
   }
 
-  revalidatePath(`/vendedor/${storeId}`);
-  revalidatePath("/");
+  await revalidatePath(`/vendedor/${storeId}`);
+  await revalidatePath("/");
   
   return { success: true };
 }
