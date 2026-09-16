@@ -81,6 +81,14 @@ export async function avanzarAltaVendedor(paso: "ubicacion" | "publicacion" | nu
 
   if (!user) return { error: "No autenticado" };
 
+  // Misma cubeta `write:` que el resto de escrituras, NO un identificador
+  // propio: en Upstash la clave es prefijo + identificador, asi que inventar
+  // uno nuevo aqui no compartiria cuota, abriria una paralela y subiria el
+  // techo real por usuario sin que nadie lo decidiera. Es el fallo que ya
+  // tiene `follow:`.
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   // paso null = el alta termino. Se omite el parametro y el DEFAULT NULL de
   // la funcion dice lo mismo.
   const { error } = await supabase.rpc("avanzar_alta_vendedor", {

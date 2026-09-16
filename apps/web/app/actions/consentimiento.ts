@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { AVISO_PRIVACIDAD_VERSION } from "@vicino/shared";
 
 /**
@@ -28,6 +29,14 @@ export async function registrarConsentimientoBiometrico() {
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "No autenticado" };
+
+  // Misma cubeta `write:` que el resto de escrituras, NO un identificador
+  // propio: en Upstash la clave es prefijo + identificador, asi que inventar
+  // uno nuevo aqui no compartiria cuota, abriria una paralela y subiria el
+  // techo real por usuario sin que nadie lo decidiera. Es el fallo que ya
+  // tiene `follow:`.
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
 
   const h = await headers();
   // x-forwarded-for puede traer varias IP separadas por coma; la primera es la

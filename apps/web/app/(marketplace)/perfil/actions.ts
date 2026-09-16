@@ -167,6 +167,14 @@ export async function completeOnboarding() {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
+  // Misma cubeta `write:` que el resto de escrituras, NO un identificador
+  // propio: en Upstash la clave es prefijo + identificador, asi que inventar
+  // uno nuevo aqui no compartiria cuota, abriria una paralela y subiria el
+  // techo real por usuario sin que nadie lo decidiera. Es el fallo que ya
+  // tiene `follow:`.
+  const rate = await enforce(writeRateLimit, `write:${user.id}`);
+  if (!rate.ok) return { error: rate.error };
+
   const { error } = await supabase.rpc("complete_user_onboarding");
 
   if (error) {

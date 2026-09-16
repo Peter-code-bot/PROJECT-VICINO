@@ -19,8 +19,10 @@
  *     dispara con net.http_post, que no reintenta ni lee el status, y el
  *     reporte ya quedó en la BD. El body lleva `emailed: false` y el fallo
  *     va a Sentry; un child_safety sin email se captura con level "fatal".
- *   - Header secret simple (no HMAC). TODO post-MVP migrar a HMAC con
- *     timing-safe compare. Ver docs/moderation-setup.md.
+ *   - Header secret simple (no HMAC). La comparacion YA es timing-safe, pero
+ *     un secreto compartido no firma el cuerpo: no prueba que el payload venga
+ *     de Supabase ni que no se haya alterado. TODO post-MVP migrar a HMAC.
+ *     Ver docs/moderation-setup.md.
  *
  * Configuración del webhook en Supabase Dashboard:
  *   Database > Webhooks > Create:
@@ -32,7 +34,11 @@
  *     - HTTP Headers: x-webhook-secret: <SUPABASE_WEBHOOK_SECRET>
  */
 
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
+
+import { check, getClientIp, reportIpRateLimit } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
 import { sendAdminEmail, escapeHtml } from "@/lib/email/resend";
 
@@ -143,8 +149,45 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  if (providedSecret !== expectedSecret) {
+  // Comparacion en tiempo constante. `!==` sobre cadenas corta en el primer
+  // byte distinto, asi que el tiempo de respuesta filtra cuantos caracteres
+  // acerto quien prueba: con suficientes intentos el secreto se adivina byte a
+  // byte sin conocerlo. timingSafeEqual siempre recorre los dos buffers.
+  //
+  // La longitud si se compara antes, y no pasa nada: timingSafeEqual exige
+  // buffers del mismo tamano, y la longitud del secreto no es lo que hay que
+  // proteger.
+  //
+  // Esto NO convierte el header en HMAC — sigue siendo un secreto compartido
+  // que viaja en claro y que no firma el cuerpo, o sea que no prueba que el
+  // payload venga de Supabase ni que no se haya alterado. El TODO de la
+  // cabecera sigue vigente; esto solo cierra el canal lateral de tiempo.
+  const esperado = Buffer.from(expectedSecret);
+  const recibido = Buffer.from(providedSecret ?? "");
+  if (
+    esperado.length !== recibido.length ||
+    !timingSafeEqual(esperado, recibido)
+  ) {
     return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  // Freno por IP, DESPUES del secreto.
+  //
+  // El orden importa: puesto antes, cualquiera podria agotarle la cuota al
+  // webhook legitimo de Supabase sin conocer el secreto, que es una denegacion
+  // de servicio sobre las notificaciones de moderacion — justo lo que no
+  // conviene apagar.
+  //
+  // Cubeta propia y holgada: el emisor legitimo es un solo origen y su
+  // cadencia la marca cuantos reportes entran. Esto no es la defensa, es el
+  // tope que impide que alguien con el secreto en la mano inunde la bandeja.
+  const ipWebhook = getClientIp(request.headers);
+  const cuotaWebhook = await check(reportIpRateLimit, `webhook:${ipWebhook}`);
+  if (!cuotaWebhook.success) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
   }
 
   // 2. Parsear payload

@@ -29,13 +29,33 @@ import {
 // Routing the credential submission through a server action puts our
 // throttle in front of every actual attempt.
 
-async function throttleAuth() {
+/**
+ * Freno de las acciones de credencial, con UNA CUBETA POR ACCION.
+ *
+ * Antes las tres compartian el identificador `auth:${ip}`, y en Upstash la
+ * clave es prefijo + identificador: no eran tres cubetas de 5, era UNA de 5
+ * repartida entre login, registro y recuperacion. El efecto practico, el dia
+ * que se enciendan las credenciales de Upstash, es el peor posible: quien
+ * falla cinco veces la contrasena NO PUEDE pedir recuperacion — que es
+ * exactamente lo que la pantalla le va a sugerir a continuacion. Y en una IP
+ * compartida (CGNAT movil, un cafe, una oficina) los cinco intentos se los
+ * puede haber gastado otra persona.
+ *
+ * Separandolas, la fuerza bruta sigue cortada a los 5 intentos de LOGIN, que
+ * es el unico flujo caro de adivinar, y recuperar la contrasena deja de estar
+ * bloqueado por haberla fallado.
+ *
+ * El precio, dicho para que nadie lo descubra midiendo: el techo agregado de
+ * una IP sube de 5 a 15 por cuarto de hora. Es el correcto — registrarse y
+ * pedir recuperacion no son ataques de adivinanza.
+ */
+async function throttleAuth(accion: "login" | "signup" | "reset") {
   const ip = getClientIp(await headers());
-  return enforce(authRateLimit, `auth:${ip}`);
+  return enforce(authRateLimit, `auth:${accion}:${ip}`);
 }
 
 export async function signInWithPassword(email: string, password: string) {
-  const rate = await throttleAuth();
+  const rate = await throttleAuth("login");
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
@@ -45,7 +65,7 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string, fullName: string) {
-  const rate = await throttleAuth();
+  const rate = await throttleAuth("signup");
   if (!rate.ok) return { error: rate.error };
 
   // El camino normal ahora es el codigo de 6 digitos, pero el correo sigue
@@ -234,7 +254,7 @@ export async function reenviarCodigo(email: string): Promise<ResultadoOtp> {
 }
 
 export async function requestPasswordReset(email: string, redirectTo: string) {
-  const rate = await throttleAuth();
+  const rate = await throttleAuth("reset");
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();

@@ -14,10 +14,11 @@
  * useOptimisticMutation ya entiende.
  */
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
-import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { enforce, getClientIp, readHeavyRateLimit, writeRateLimit } from "@/lib/rate-limit";
 import {
   fundarComunidadSchema,
   editarDescripcionComunidadSchema,
@@ -151,7 +152,39 @@ export async function fundarComunidad(input: {
   return { data: { id, nombre: leerTexto(data, "nombre") ?? nombre, es_privada: privadaFinal } };
 }
 
+/**
+ * Freno de las LECTURAS de comunidades.
+ *
+ * `sesionYFreno()` cubre las 16 escrituras del modulo; estas seis lecturas no
+ * pasaban por ningun sitio. Y no son lecturas baratas: `cargarMuroUnificado`
+ * es el fan-out que la propia migracion acota en 600
+ * (membresias_vivas x pagina_muro), y `cargarDescubrir` es una superficie de
+ * descubrimiento geografico. Son exactamente el perfil para el que existe
+ * readHeavyRateLimit.
+ *
+ * DECISION DEL IDENTIFICADOR, que hay que tomarla y no heredarla: se usa
+ * `read:` — el MISMO que lib/geo/actions.ts — y no uno nuevo tipo `com:`. En
+ * Upstash la clave es prefijo + identificador, asi que un identificador propio
+ * habria sido una cubeta MAS: el techo agregado de lectura pesada por IP
+ * habria pasado de 120/min a 180/min sin que nadie lo decidiera. Compartir
+ * cubeta mantiene el techo donde esta.
+ *
+ * Por IP y no por usuario: estas lecturas las hace tambien quien no ha entrado.
+ *
+ * Ojo con lo que esto NO cubre: la defensa real de este modulo esta en la base
+ * —toda escritura entra por RPC SECURITY DEFINER y `authenticated` no tiene
+ * INSERT/UPDATE/DELETE sobre las cinco tablas— pero eso protege ESCRITURAS,
+ * no el raspado de lecturas.
+ */
+async function frenoDeLectura(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ip = getClientIp(await headers());
+  return enforce(readHeavyRateLimit, `read:${ip}`);
+}
+
 export async function estadoCuotaFundacion(): Promise<EstadoCuotaFundacion> {
+  // Sin freno devuelve el estado neutro: esta lectura solo pinta un contador,
+  // y la RPC de fundar es la que de verdad decide.
+  if (!(await frenoDeLectura()).ok) return leerEstadoCuota(null);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("estado_cuota_fundacion");
   if (error) {
@@ -325,6 +358,8 @@ export async function cargarSolicitudes(input: {
   cursor: CursorComunidad | null;
   limit?: number;
 }): Promise<{ items: SolicitudEnCola[]; nextCursor: CursorComunidad | null; error?: string }> {
+  const freno = await frenoDeLectura();
+  if (!freno.ok) return { items: [], nextCursor: null, error: freno.error };
   const supabase = await createClient();
   if (!uuid.safeParse(input.community_id).success) {
     return { items: [], nextCursor: null, error: "Comunidad inválida." };
@@ -582,6 +617,8 @@ export async function cargarMuro(input: {
   cursor: CursorComunidad | null;
   limit?: number;
 }): Promise<{ items: PostComunidad[]; nextCursor: CursorComunidad | null; error?: string }> {
+  const freno = await frenoDeLectura();
+  if (!freno.ok) return { items: [], nextCursor: null, error: freno.error };
   const supabase = await createClient();
   if (!uuid.safeParse(input.community_id).success) {
     return { items: [], nextCursor: null, error: "Comunidad inválida." };
@@ -612,6 +649,8 @@ export async function cargarMuroUnificado(input: {
   cursor: CursorComunidad | null;
   limit?: number;
 }): Promise<{ items: PostComunidad[]; nextCursor: CursorComunidad | null; error?: string }> {
+  const freno = await frenoDeLectura();
+  if (!freno.ok) return { items: [], nextCursor: null, error: freno.error };
   const supabase = await createClient();
   const cursor = cursorSeguro(input.cursor);
   if (cursor === "invalido") return { items: [], nextCursor: null, error: "Cursor inválido." };
@@ -644,6 +683,8 @@ export async function cargarComentarios(input: {
   cursor: CursorComunidad | null;
   limit?: number;
 }): Promise<{ items: ComentarioComunidad[]; nextCursor: CursorComunidad | null; error?: string }> {
+  const freno = await frenoDeLectura();
+  if (!freno.ok) return { items: [], nextCursor: null, error: freno.error };
   const supabase = await createClient();
   if (!uuid.safeParse(input.post_id).success) {
     return { items: [], nextCursor: null, error: "Publicación inválida." };
@@ -674,6 +715,8 @@ export async function cargarDescubrir(input: {
   lat: number;
   lng: number;
 }): Promise<{ items: ComunidadCercana[]; error?: string }> {
+  const freno = await frenoDeLectura();
+  if (!freno.ok) return { items: [], error: freno.error };
   const { lat, lng } = input;
   const supabase = await createClient();
   if (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { check, writeRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,23 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(
         { error: "Sesión inválida. Inicia sesión nuevamente." },
         { status: 401 }
+      );
+    }
+
+    // Freno DESPUES de validar la sesion —para que la cuota sea del usuario y
+    // no de una IP anonima— y ANTES de invocar la Edge Function, que es el
+    // trabajo caro: cada peticion dispara una ejecucion de delete-account.
+    //
+    // Cubeta `write:` comun, no una propia: borrar la cuenta es una escritura
+    // mas, y un identificador nuevo abriria una cuota paralela.
+    //
+    // check() y no enforce() porque aqui se responde con un codigo HTTP, no
+    // con un string de Server Action.
+    const cuota = await check(writeRateLimit, `write:${session.user.id}`);
+    if (!cuota.success) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo." },
+        { status: 429, headers: { "Retry-After": "60", "Cache-Control": "private, no-store" } }
       );
     }
 
