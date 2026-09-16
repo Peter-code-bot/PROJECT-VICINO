@@ -66,12 +66,9 @@ export function RequestCard({ data }: { data: RequestCardData }) {
 
           {/* Bottom row: Budget, Location, Time, Offers */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2">
-            {/* Budget chip */}
+            {/* Budget text */}
             {data.budget_estimated && (
-              <span className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm",
-                "product-card-tab"
-              )}>
+              <span className="font-heading font-extrabold text-[15px] text-[color:var(--brand-hi)] tracking-tight">
                 ${data.budget_estimated.toLocaleString()} MXN
               </span>
             )}
