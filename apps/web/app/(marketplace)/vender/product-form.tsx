@@ -826,16 +826,19 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={allowAppointments}
               onClick={() => setAllowAppointments(!allowAppointments)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent p-0 transition-colors duration-200 ease-in-out focus:outline-none ${
                 allowAppointments
                   ? "bg-[color:var(--brand)]"
-                  : "bg-[color:var(--fg-dim)]/30"
+                  : "bg-neutral-300 dark:bg-neutral-700"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  allowAppointments ? "translate-x-5" : "translate-x-0.5"
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition duration-200 ease-in-out ${
+                  allowAppointments ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -984,16 +987,19 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={precioNegociable}
               onClick={() => setPrecioNegociable(!precioNegociable)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent p-0 transition-colors duration-200 ease-in-out focus:outline-none ${
                 precioNegociable
                   ? "bg-[color:var(--brand)]"
-                  : "bg-[color:var(--fg-dim)]/30"
+                  : "bg-neutral-300 dark:bg-neutral-700"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  precioNegociable ? "translate-x-5" : "translate-x-0.5"
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition duration-200 ease-in-out ${
+                  precioNegociable ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
