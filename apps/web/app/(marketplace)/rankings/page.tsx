@@ -189,7 +189,7 @@ async function RankingsContent({
 
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (
-    <section className="mx-4 mt-8 rounded-xl border border-border bg-card p-8 text-center">
+    <section className="mx-4 mt-8 rounded-2xl bg-[color:var(--card-2)] p-8 text-center shadow-sm">
       <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Trophy className="h-6 w-6" aria-hidden />
       </div>

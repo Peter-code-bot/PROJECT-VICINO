@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleFollowStore } from "@/app/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
@@ -50,15 +50,12 @@ export function FollowButton({
         full ? "flex-1 w-full" : "w-auto px-4",
         size === "lg" ? "h-[44px] text-[13.5px] rounded-full" : "h-[32px] text-[12px] rounded-full",
         following
-          ? "bg-[var(--card-2)] border border-[var(--border-strong)] text-[var(--fg)]"
+          ? "bg-[var(--card-2)] text-[var(--fg)]"
           : "bg-[var(--brand)] text-white shadow-[0_8px_18px_rgba(31,90,78,0.4)]"
       )}
     >
       {following ? (
-        <>
-          <Check className="w-4 h-4 mr-1.5 text-[var(--brand-hi)]" />
-          Siguiendo
-        </>
+        "Siguiendo"
       ) : (
         <>
           <Plus className="w-4 h-4 mr-1.5" />

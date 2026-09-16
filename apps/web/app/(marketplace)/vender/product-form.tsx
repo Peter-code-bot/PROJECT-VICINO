@@ -827,15 +827,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             <button
               type="button"
               onClick={() => setAllowAppointments(!allowAppointments)}
-              className={`relative h-6 w-11 rounded-full transition-colors ${
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
                 allowAppointments
-                  ? "bg-white"
-                  : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
+                  ? "bg-[color:var(--brand)]"
+                  : "bg-[color:var(--fg-dim)]/30"
               }`}
             >
               <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
-                  allowAppointments ? "translate-x-5 bg-black" : "bg-white"
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  allowAppointments ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </button>
@@ -985,15 +985,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             <button
               type="button"
               onClick={() => setPrecioNegociable(!precioNegociable)}
-              className={`relative h-6 w-11 rounded-full transition-colors ${
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
                 precioNegociable
-                  ? "bg-white"
-                  : "bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]"
+                  ? "bg-[color:var(--brand)]"
+                  : "bg-[color:var(--fg-dim)]/30"
               }`}
             >
               <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
-                  precioNegociable ? "translate-x-5 bg-black" : "bg-white"
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  precioNegociable ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </button>
