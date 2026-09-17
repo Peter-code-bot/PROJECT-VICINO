@@ -1297,6 +1297,7 @@ export type Database = {
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
+          notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
           reviews_count: number | null
@@ -1339,6 +1340,7 @@ export type Database = {
           metodos_pago_aceptados?: string | null
           nombre?: string
           nombre_negocio?: string | null
+          notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
           reviews_count?: number | null
@@ -1381,6 +1383,7 @@ export type Database = {
           metodos_pago_aceptados?: string | null
           nombre?: string
           nombre_negocio?: string | null
+          notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
           reviews_count?: number | null
@@ -2425,6 +2428,10 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      acepta_notificacion: {
+        Args: { p_tipo: string; p_user_id: string }
+        Returns: boolean
+      }
       activar_modo_vendedor: {
         Args: {
           p_categoria_negocio?: string
@@ -2499,6 +2506,7 @@ export type Database = {
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
+          notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
           reviews_count: number | null
@@ -2550,6 +2558,7 @@ export type Database = {
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
+          notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
           reviews_count: number | null
@@ -3016,6 +3025,7 @@ export type Database = {
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
+          notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
           reviews_count: number | null
@@ -3087,6 +3097,10 @@ export type Database = {
           p_nombre?: string
           p_paso?: string
         }
+        Returns: Json
+      }
+      guardar_preferencias_notificaciones: {
+        Args: { p_preferencias: Json }
         Returns: Json
       }
       has_role: {
@@ -3276,6 +3290,10 @@ export type Database = {
       registrar_consentimiento_biometrico: {
         Args: { p_aviso_version: string; p_ip?: string; p_user_agent?: string }
         Returns: string
+      }
+      reject_verification_atomic: {
+        Args: { p_note: string; p_verification_id: string }
+        Returns: Json
       }
       resolve_dispute_admin: {
         Args: {

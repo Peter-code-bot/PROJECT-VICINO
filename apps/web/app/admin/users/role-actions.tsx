@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { assignRole, removeRole } from "./actions";
@@ -95,68 +96,80 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
         {isMod ? "Quitar Mod" : "Hacer Mod"}
       </button>
 
-      {pendiente && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Confirmar acción de seguridad"
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => { if (!loading) cerrar(); }}
-        >
+      {/* El dialogo se porta a document.body y no se pinta aqui dentro.
+          app/admin/layout.tsx envuelve todo en un div con animate-fade-in-up,
+          que es `animation: ... forwards` y deja un transform final
+          (translateY(0)) en la pantalla. Un elemento transformado es el bloque
+          contenedor de sus descendientes `fixed`, asi que este inset-0 se
+          estiraba a lo ALTO DE LA LISTA DE USUARIOS en vez de cubrir la
+          pantalla: el dialogo de la clave se centraba dentro de la lista y
+          quedaba fuera de la vista con la pagina arriba. El panel solo existe
+          tras un clic, o sea que nunca se pinta en el servidor y no hace falta
+          detectar el montaje. */}
+      {pendiente &&
+        createPortal(
           <div
-            className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-[0_8px_40px_rgba(0,0,0,0.35)]"
-            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirmar acción de seguridad"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => { if (!loading) cerrar(); }}
           >
-            <h2 className="font-heading text-lg font-bold text-foreground">
-              Confirmar acción de seguridad
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {accion} para esta cuenta. Escribe la clave de seguridad del panel para continuar.
-            </p>
-            <form
-              className="mt-4 space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void confirmar();
-              }}
+            <div
+              className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-[0_8px_40px_rgba(0,0,0,0.35)]"
+              onClick={(event) => event.stopPropagation()}
             >
-              <input
-                ref={claveRef}
-                type="password"
-                value={clave}
-                onChange={(event) => setClave(event.target.value)}
-                autoComplete="off"
-                aria-label="Clave de seguridad del panel"
-                placeholder="Clave de seguridad"
-                className="w-full rounded-xl bg-[color:var(--card-2)] px-3 py-2.5 text-sm text-foreground shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-hi)]"
-              />
-              {error && (
-                <p role="alert" className="text-sm text-[color:var(--danger)]">
-                  {error}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={cerrar}
-                  disabled={loading}
-                  className="flex-1 rounded-xl bg-[color:var(--card-2)] px-4 py-2.5 text-sm font-semibold text-foreground shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading || clave.length === 0}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {loading ? "Aplicando…" : "Confirmar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <h2 className="font-heading text-lg font-bold text-foreground">
+                Confirmar acción de seguridad
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {accion} para esta cuenta. Escribe la clave de seguridad del panel para continuar.
+              </p>
+              <form
+                className="mt-4 space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void confirmar();
+                }}
+              >
+                <input
+                  ref={claveRef}
+                  type="password"
+                  value={clave}
+                  onChange={(event) => setClave(event.target.value)}
+                  autoComplete="off"
+                  aria-label="Clave de seguridad del panel"
+                  placeholder="Clave de seguridad"
+                  className="w-full rounded-xl bg-[color:var(--card-2)] px-3 py-2.5 text-sm text-foreground shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-hi)]"
+                />
+                {error && (
+                  <p role="alert" className="text-sm text-[color:var(--danger)]">
+                    {error}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={cerrar}
+                    disabled={loading}
+                    className="flex-1 rounded-xl bg-[color:var(--card-2)] px-4 py-2.5 text-sm font-semibold text-foreground shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || clave.length === 0}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {loading ? "Aplicando…" : "Confirmar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

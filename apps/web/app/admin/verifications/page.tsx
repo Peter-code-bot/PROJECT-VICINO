@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import * as Sentry from "@sentry/nextjs";
 import { VerificationActions } from "./verification-actions";
+import {
+  VisorDeImagenes,
+  type DocumentoDeVerificacion,
+} from "@/components/admin/visor-de-imagenes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const metadata = { title: "Admin — Verificaciones" };
@@ -127,6 +131,15 @@ export default async function VerificationsPage() {
         <div className="space-y-4">
           {verificationsWithUrls.map((v) => {
             const profile = Array.isArray(v.profiles) ? v.profiles[0] : v.profiles;
+            // Las etiquetas no dicen "INE": document_type tambien puede ser
+            // "Credencial Universitaria", y en ese caso nombrar la INE describe
+            // un documento que no es el que se esta mirando. El tipo real ya
+            // sale en la insignia de arriba.
+            const documentos: readonly DocumentoDeVerificacion[] = [
+              { etiqueta: "Selfie", url: v.selfieUrl },
+              { etiqueta: "Frente", url: v.ineFrontUrl },
+              { etiqueta: "Reverso", url: v.ineBackUrl },
+            ].filter((doc): doc is DocumentoDeVerificacion => doc.url !== null);
             return (
               <div key={v.id} className="rounded-lg border p-4 space-y-3 w-full">
                 <div className="flex items-start justify-between gap-4">
@@ -151,50 +164,44 @@ export default async function VerificationsPage() {
 
                 {motivoDeRechazo(v.ai_analysis_raw) && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
-                    <span className="font-bold">🤖 Gemini dice:</span> {motivoDeRechazo(v.ai_analysis_raw)}
+                    <span className="font-bold">🤖 La IA dice:</span> {motivoDeRechazo(v.ai_analysis_raw)}
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {v.selfieUrl && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Selfie</p>
-                      <a href={v.selfieUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
-                        Ver imagen →
-                      </a>
-                    </div>
-                  )}
-                  {v.ineFrontUrl && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">INE frente</p>
-                      <a href={v.ineFrontUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
-                        Ver imagen →
-                      </a>
-                    </div>
-                  )}
-                  {v.ineBackUrl && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">INE reverso</p>
-                      <a href={v.ineBackUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline break-all">
-                        Ver imagen →
-                      </a>
-                    </div>
-                  )}
+                {/* Las miniaturas y el visor son cliente, pero la firma sigue
+                    siendo del servidor: aqui solo baja la URL ya firmada, que
+                    es exactamente lo que antes viajaba en el href del enlace.
+                    El bucket es privado y el navegador del revisor es el unico
+                    que tiene por que pedir el documento. */}
+                <div className="space-y-2">
+                  <VisorDeImagenes documentos={documentos} />
+                  {/* Una firma que no se pudo generar se nombra aparte y no
+                      entra al visor: no es un fallo de carga que un reintento
+                      arregle, es la ruta guardada o el permiso del bucket, y el
+                      revisor tiene que ver que ese documento falta. */}
                   {v.selfie_url && !v.selfieUrl && (
-                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
+                    <p className="text-xs text-red-500 break-words">
                       Selfie: no se pudo generar URL firmada
                     </p>
                   )}
                   {v.ine_front_url && !v.ineFrontUrl && (
-                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
-                      INE frente: no se pudo generar URL firmada
+                    <p className="text-xs text-red-500 break-words">
+                      Frente: no se pudo generar URL firmada
                     </p>
                   )}
                   {v.ine_back_url && !v.ineBackUrl && (
-                    <p className="text-xs text-red-500 sm:col-span-3 break-words">
-                      INE reverso: no se pudo generar URL firmada
+                    <p className="text-xs text-red-500 break-words">
+                      Reverso: no se pudo generar URL firmada
                     </p>
                   )}
+                  {documentos.length === 0 &&
+                    !v.selfie_url &&
+                    !v.ine_front_url &&
+                    !v.ine_back_url && (
+                      <p className="text-xs text-muted-foreground">
+                        Esta solicitud no trae documentos.
+                      </p>
+                    )}
                 </div>
 
                 <VerificationActions id={v.id} userId={v.user_id} />

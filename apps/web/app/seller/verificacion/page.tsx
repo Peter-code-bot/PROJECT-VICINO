@@ -5,6 +5,21 @@ import { SellerBackButton } from "@/components/layout/seller-back-button";
 
 export const metadata = { title: "Verificación" };
 
+/**
+ * El techo de duracion, declarado y no heredado del plan.
+ *
+ * La revision automatica manda TRES imagenes en una sola llamada al modelo y
+ * su propio tope interno es de 28 segundos. Si el techo de la plataforma
+ * quedara por debajo, el resultado seria el peor de los dos mundos: la cuota ya
+ * consumida y la fila sin veredicto ni motivo, o sea un fallo que no deja ni
+ * rastro de por que no hubo respuesta. Con 60 hay margen para la llamada y para
+ * la escritura posterior.
+ *
+ * Aplica a esta ruta y a las Server Actions que se invocan desde ella, que es
+ * donde vive verifyDocument.
+ */
+export const maxDuration = 60;
+
 export default async function VerificacionPage() {
   const supabase = await createClient();
   const {
@@ -22,10 +37,20 @@ export default async function VerificacionPage() {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // El `id` no es decoracion: `user_id` NO es unico en seller_verification —el
+  // historial multi-fila es el diseno y aqui se lee la fila mas reciente—, asi
+  // que el formulario necesita saber A CUAL escribe. Sin el, su UPDATE iba con
+  // `.eq("user_id")` y tocaba TODAS las filas del vendedor: una solicitud de
+  // agosto ya rechazada resucitaba en la cola del panel arrastrando su
+  // reviewer_note y su reviewed_at viejos, que el admin ni puede limpiar porque
+  // esas dos columnas no estan en su GRANT.
+  //
+  // El SELECT de esta tabla es a nivel de tabla (20260826301000 solo revoca por
+  // columna INSERT y UPDATE), asi que pedir `id` no necesita ningun grant nuevo.
   const { data: sellerVerification } = await supabase
     .from("seller_verification")
     .select(
-      "status, ine_front_url, ine_back_url, selfie_url, document_type, university_name",
+      "id, status, ine_front_url, ine_back_url, selfie_url, document_type, university_name",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
