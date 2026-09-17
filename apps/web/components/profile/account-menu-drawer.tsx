@@ -53,9 +53,9 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
       {mounted && open && createPortal(
         <div className="fixed inset-0 z-50" data-modal-open="true">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-l border-border flex flex-col animate-slide-in-right">
+          <div className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-l border-border/15 flex flex-col animate-slide-in-right">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/15">
               <h2 className="text-base font-semibold text-foreground">Mi cuenta</h2>
               <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center">
                 <X className="w-4 h-4 text-muted-foreground" />
@@ -65,7 +65,7 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
             {/* User summary */}
             {userName && (
               <Link href="/perfil" onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-5 py-4 hover:bg-muted transition-colors border-b border-border">
+                className="flex items-center gap-3 px-5 py-4 hover:bg-muted transition-colors border-b border-border/15">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
                   {userAvatar ? (
                     <img src={userAvatar} alt={userName || "Avatar de usuario"} className="w-full h-full object-cover" />

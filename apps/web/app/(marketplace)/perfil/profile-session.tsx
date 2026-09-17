@@ -3,9 +3,7 @@ import type { ComponentProps } from "react";
 import { InvitacionVendedor } from "./invitacion-vendedor";
 import { ProfileHeader } from "./profile-header";
 import { ProfileTabs, ProfileProducts, ProfileReviews, type ProfileTabsProps } from "./profile-tabs";
-import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";
 import { SkeletonPerfil } from "@/components/shared/loading-skeletons";
-import { Menu } from "lucide-react";
 
 import { SessionScroll, DataRetry, useSessionData, type SessionSeed } from "@/components/layout/session-data-provider";
 
@@ -65,26 +63,10 @@ export function ProfileSession({ seeds }: ProfileSessionProps) {
     return <div className="max-w-3xl mx-auto pt-2"><SkeletonPerfil /></div>;
   }
   return (
-    <div data-navigation-kind="profile" data-navigation-ready={`profile:${userId}:${core.updatedAt}`} className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8">
+    <div data-navigation-kind="profile" data-navigation-ready={`profile:${userId}:${core.updatedAt}`} className="max-w-3xl mx-auto px-4 pt-1 sm:pt-2 pb-24 md:pb-8">
       <SessionScroll route="/perfil" />
       <DataRetry error={core.error ?? counts.error} retry={() => { void core.retry(); void counts.retry(); }} />
-      {/* Mobile drawer trigger */}
-      <div className="md:hidden flex justify-end mb-4">
-        <AccountMenuDrawer
-          userName={profile?.nombre}
-          userAvatar={profile?.foto}
-          username={profile?.username}
-          userIsVendedor={profile?.es_vendedor ?? false}
-          trigger={
-            <button
-              aria-label="Menú de cuenta"
-              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] text-[#1A1A2E] transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          }
-        />
-      </div>
+
       <ProfileHeader
         profile={profile}
         productCount={products.data?.length ?? <EnEspera dato={products} label="publicaciones" />}

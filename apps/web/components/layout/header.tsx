@@ -2,12 +2,24 @@
 
 import Link from "next/link";
 
-import { Bell, Trophy, Sparkles } from "lucide-react";
+import { Bell, Trophy, Sparkles, Menu } from "lucide-react";
+import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNotificationUnread } from "@/components/layout/notification-unread-provider";
 
-export function Header({ isAdmin }: { isAdmin?: boolean }) {
+export interface HeaderProps {
+  isAdmin?: boolean;
+  user?: { id: string } | null;
+  profile?: {
+    nombre?: string | null;
+    foto?: string | null;
+    username?: string | null;
+    es_vendedor?: boolean | null;
+  } | null;
+}
+
+export function Header({ isAdmin, user, profile }: HeaderProps) {
   const { count: unreadNotifications } = useNotificationUnread();
   const [scrolled, setScrolled] = useState(false);
 
@@ -76,6 +88,24 @@ export function Header({ isAdmin }: { isAdmin?: boolean }) {
               />
             )}
           </Link>
+
+          {/* Menu Drawer */}
+          {user && (
+            <AccountMenuDrawer
+              userName={profile?.nombre ?? undefined}
+              userAvatar={profile?.foto}
+              username={profile?.username}
+              userIsVendedor={profile?.es_vendedor ?? false}
+              trigger={
+                <button
+                  aria-label="Menú de cuenta"
+                  className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] text-[#1A1A2E] transition-colors"
+                >
+                  <Menu className="h-5 w-5 text-[#1A1A2E]" strokeWidth={2} />
+                </button>
+              }
+            />
+          )}
         </div>
       </div>
     </header>

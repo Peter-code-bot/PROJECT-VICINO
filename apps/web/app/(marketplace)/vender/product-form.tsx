@@ -1013,7 +1013,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <div className="space-y-2 relative">
           <div className="flex items-baseline justify-between gap-2">
             <label className="text-sm font-medium text-foreground/80">
-              Categorías <span className="text-muted-foreground/70 font-normal">(hasta 3, 1 principal)</span>
+              Categorías
             </label>
             <span className="text-xs text-muted-foreground/70">{categories.length}/3</span>
           </div>
@@ -1024,15 +1024,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             required
           />
 
-          {/* El required del input hidden no lo valida el navegador, y un
-              cambio de tipo puede vaciar la lista sin que el usuario lo pida.
-              Sin este aviso el formulario queda mudo hasta que falla al
-              enviar. */}
-          {categories.length === 0 && (
-            <p className="text-xs text-[color:var(--fg-muted)]">
-              Elige al menos una categoría. La primera que agregues queda como principal.
-            </p>
-          )}
+
 
           {/* Chips de las categorias seleccionadas */}
           {categories.length > 0 && (
@@ -1057,7 +1049,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                       className="inline-flex h-10 w-6 -ml-2 items-center justify-center transition-opacity hover:opacity-75 focus:outline-none"
                     >
                       <Star
-                        className={cn("category-chip__star", !cat.is_primary && "fill-none")}
+                        className={cn("category-chip__star", cat.is_primary && "is-primary")}
                         strokeWidth={2}
                       />
                     </button>

@@ -639,6 +639,10 @@ h1, h2, h3, h4, h5, h6 {
   width: 18px;
   height: 18px;
   color: #0B0B0D;
+  fill: none;
+}
+
+.category-chip__star.is-primary {
   fill: #0B0B0D;
 }
 

@@ -59,7 +59,7 @@ export default async function MarketplaceLayout({
     ] = await Promise.allSettled([
       supabase
         .from("profiles")
-        .select("nombre, foto, es_vendedor, has_seen_onboarding")
+        .select("nombre, foto, es_vendedor, has_seen_onboarding, username")
         .eq("id", user.id)
         .single(),
       supabase
@@ -164,7 +164,20 @@ export default async function MarketplaceLayout({
           />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="md:hidden">
-              <Header isAdmin={isAdmin} />
+              <Header
+                isAdmin={isAdmin}
+                user={user ? { id: user.id } : null}
+                profile={
+                  profile
+                    ? {
+                        nombre: profile.nombre,
+                        foto: profile.foto,
+                        username: profile.username,
+                        es_vendedor: isVendedor,
+                      }
+                    : null
+                }
+              />
             </div>
             {user && <RegistroAceptacionLegal />}
             <BannerCambioLegal avisos={(avisosLegales ?? []) as AvisoLegal[]} />
