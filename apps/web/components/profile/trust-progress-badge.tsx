@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
-import { TRUST_LEVELS } from "@vicino/shared";
-import { TrustLevelsModal } from "@/components/profile/trust-levels-modal";
+import { Shield, Check, Star, Crown } from "lucide-react";
+import { TRUST_LEVELS, type TrustLevel } from "@vicino/shared";
+import { TrustLevelsModal, VerifiedBadgeIcon } from "@/components/profile/trust-levels-modal";
 import { cn } from "@/lib/utils";
 
 interface TrustProgressBadgeProps {
@@ -15,6 +15,22 @@ interface TrustProgressBadgeProps {
   displayName?: string | null;
   createdAt?: string | null;
   className?: string;
+}
+
+function renderBadgeCenterIcon(level: string) {
+  switch (level) {
+    case "verificado":
+      return <VerifiedBadgeIcon className="w-5 h-5" />;
+    case "confiable":
+      return <Check className="w-4 h-4 text-[#2E8773] stroke-[3]" />;
+    case "estrella":
+      return <Star className="w-4 h-4 text-[#3D7FC9] fill-[#3D7FC9]" />;
+    case "elite":
+      return <Crown className="w-4 h-4 text-[#C99A3C] fill-[#C99A3C]" />;
+    case "nuevo":
+    default:
+      return <Shield className="w-5 h-5 text-neutral-900 dark:text-neutral-100 stroke-[1.75]" />;
+  }
 }
 
 export function TrustProgressBadge({
@@ -34,6 +50,9 @@ export function TrustProgressBadge({
   const progress = next
     ? Math.min(100, Math.max(0, ((points - currentMin) / (nextMin - currentMin)) * 100))
     : 100;
+
+  // Active level calculation
+  const currentLevelKey = (profile?.trust_level as TrustLevel) ?? (current?.[0] as TrustLevel) ?? "nuevo";
 
   // SVG circular geometry
   const size = 44;
@@ -83,9 +102,9 @@ export function TrustProgressBadge({
           />
         </svg>
 
-        {/* Center Icon */}
+        {/* Center Dynamic Icon based on User Level */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <ShieldCheck className="w-5 h-5 text-neutral-900 dark:text-neutral-100 stroke-[1.75]" />
+          {renderBadgeCenterIcon(currentLevelKey)}
         </div>
       </button>
 

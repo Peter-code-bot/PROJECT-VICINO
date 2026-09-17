@@ -93,7 +93,7 @@ export function PullToRefreshWrapper({ children }: { children: React.ReactNode }
   return (
     <div ref={containerRef} className="relative h-full w-full">
       {active && <motion.div aria-hidden style={{ y: reducedMotion ? 0 : y, opacity }}
-        className="pointer-events-none fixed left-1/2 top-0 z-[100] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-card shadow-md ring-1 ring-border">
+        className="pointer-events-none fixed left-1/2 top-0 z-[100] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-card shadow-md">
         <Loader2 className={isRefreshing ? "h-5 w-5 animate-spin text-brand motion-reduce:animate-none" : "h-5 w-5 text-brand"} />
       </motion.div>}
       {isRefreshing && active && <span role="status" className="sr-only">Actualizando</span>}

@@ -7,17 +7,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TrustLevel } from "@vicino/shared";
-import { Shield, BadgeCheck, Check, Star, Crown, Calendar } from "lucide-react";
+import { Shield, Check, Star, Crown, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export function VerifiedBadgeIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path
+        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+        fill="#7A4FCC"
+        stroke="#7A4FCC"
+      />
+      <path d="m9 12 2 2 4-4" stroke="#FFFFFF" strokeWidth="2.2" />
+    </svg>
+  );
+}
 
 interface TrustLevelInfo {
   key: TrustLevel;
   label: string;
   minPoints: number;
   description: string;
-  icon: React.ElementType;
-  iconContainerClass: string;
-  iconClass: string;
+  renderIcon: () => React.ReactNode;
 }
 
 const TRUST_LEVELS_DETAILS: TrustLevelInfo[] = [
@@ -26,45 +45,55 @@ const TRUST_LEVELS_DETAILS: TrustLevelInfo[] = [
     label: "Nuevo",
     minPoints: 0,
     description: "Perfil recién creado",
-    icon: Shield,
-    iconContainerClass: "bg-neutral-100 dark:bg-white/10 ring-1 ring-black/5 dark:ring-white/10",
-    iconClass: "text-neutral-500 dark:text-neutral-400",
+    renderIcon: () => (
+      <div className="w-12 h-12 flex items-center justify-center shrink-0">
+        <Shield className="w-7 h-7 text-neutral-500 dark:text-neutral-400 stroke-[1.8]" />
+      </div>
+    ),
   },
   {
     key: "verificado",
     label: "Verificado",
     minPoints: 50,
     description: "Identidad o datos confirmados",
-    icon: BadgeCheck,
-    iconContainerClass: "bg-[#7A4FCC]/15 dark:bg-[#7A4FCC]/25",
-    iconClass: "text-[#7A4FCC]",
+    renderIcon: () => (
+      <div className="w-12 h-12 rounded-full bg-[#7A4FCC]/25 dark:bg-[#7A4FCC]/35 flex items-center justify-center shrink-0">
+        <VerifiedBadgeIcon className="w-7 h-7" />
+      </div>
+    ),
   },
   {
     key: "confiable",
     label: "Confiable",
     minPoints: 200,
     description: "Buena actividad y reseñas",
-    icon: Check,
-    iconContainerClass: "bg-[#2E8773]/15 dark:bg-[#2E8773]/25",
-    iconClass: "text-[#2E8773] stroke-[2.5]",
+    renderIcon: () => (
+      <div className="w-12 h-12 rounded-full bg-[#2E8773]/15 dark:bg-[#2E8773]/25 flex items-center justify-center shrink-0">
+        <Check className="w-6 h-6 text-[#2E8773] stroke-[2.5]" />
+      </div>
+    ),
   },
   {
     key: "estrella",
     label: "Estrella",
     minPoints: 500,
     description: "Vendedor destacado en la comunidad",
-    icon: Star,
-    iconContainerClass: "bg-[#3D7FC9]/15 dark:bg-[#3D7FC9]/25",
-    iconClass: "text-[#3D7FC9] fill-current",
+    renderIcon: () => (
+      <div className="w-12 h-12 rounded-full bg-[#3D7FC9]/15 dark:bg-[#3D7FC9]/25 flex items-center justify-center shrink-0">
+        <Star className="w-6 h-6 text-[#3D7FC9] fill-current" />
+      </div>
+    ),
   },
   {
     key: "elite",
     label: "Élite",
     minPoints: 1000,
     description: "Mayor nivel de confianza",
-    icon: Crown,
-    iconContainerClass: "bg-gradient-to-br from-[#F5DCA0] to-[#C99A3C]",
-    iconClass: "text-[#3A2A06] fill-current",
+    renderIcon: () => (
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#F5DCA0] to-[#C99A3C] flex items-center justify-center shrink-0">
+        <Crown className="w-6 h-6 text-[#3A2A06] fill-current" />
+      </div>
+    ),
   },
 ];
 
@@ -118,7 +147,6 @@ export function TrustLevelsModal({
 
         <div className="flex flex-col gap-2.5 my-2">
           {TRUST_LEVELS_DETAILS.map((level) => {
-            const Icon = level.icon;
             const isCurrent = level.key === currentLevelObj.key;
 
             return (
@@ -131,14 +159,7 @@ export function TrustLevelsModal({
                     : "opacity-85 hover:opacity-100"
                 )}
               >
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                    level.iconContainerClass
-                  )}
-                >
-                  <Icon className={cn("w-6 h-6", level.iconClass)} />
-                </div>
+                {level.renderIcon()}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-heading font-bold text-base text-foreground leading-tight">
