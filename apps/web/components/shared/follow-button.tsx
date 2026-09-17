@@ -51,7 +51,7 @@ export function FollowButton({
         }}
         disabled={isPending}
         className={cn(
-          "flex-1 h-[54px] inline-flex items-center justify-center rounded-full bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] text-[#11162D] font-semibold text-[17px] shadow-[0_8px_18px_rgba(23,25,34,0.12),0_2px_5px_rgba(23,25,34,0.05)] active:translate-y-[1px] active:shadow-[0_3px_8px_rgba(23,25,34,0.10)] transition-[transform,box-shadow] duration-120 px-5 text-center leading-none disabled:opacity-70 disabled:cursor-not-allowed",
+          "flex-1 h-[46px] inline-flex items-center justify-center rounded-full bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] text-[#11162D] font-semibold text-[15px] shadow-[0_4px_14px_rgba(23,25,34,0.09),0_1px_4px_rgba(23,25,34,0.04)] active:translate-y-[1px] active:shadow-[0_2px_6px_rgba(23,25,34,0.08)] transition-[transform,box-shadow] duration-120 px-4 text-center leading-none disabled:opacity-70 disabled:cursor-not-allowed",
           className
         )}
       >
