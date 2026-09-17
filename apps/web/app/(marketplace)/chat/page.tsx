@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { getChatList, type ChatListContext } from "@/lib/chat-list-data";
 import { iniciarConversacion } from "./actions";
 import { ChatList } from "./chat-list";
 
@@ -88,5 +90,26 @@ export default async function ChatPage({ searchParams }: Props) {
 
   // Sin `seller` esto es un indice: la lista vive en el cliente y se conserva
   // en memoria durante la sesion (ver chat-list.tsx y SessionDataProvider).
-  return <ChatList />;
+  //
+  // La primera visita, en cambio, la sirve ESTE render: el HTML ya lleva la
+  // lista y la hidratacion no tiene que volver a pedirla. Se reutilizan el
+  // cliente y el usuario que acaban de decidir el redirect de invitados, para
+  // no ir a Auth dos veces por navegacion. El renderId distingue este render
+  // de una copia del mismo payload que el router de Next vuelva a entregar
+  // (ver SessionCache.seed).
+  const lista = await cargarSemilla({ supabase, userId: user.id });
+  return <ChatList seed={lista ? { value: lista.value, renderId: crypto.randomUUID() } : undefined} />;
+}
+
+// Si la consulta falla la pagina NO se cae: se pinta sin semilla, igual que
+// antes de sembrar, y es la memoria de sesion la que pide la lista y ofrece el
+// reintento en linea. Hasta ahora el servidor no tocaba la base en este
+// indice; una caida pasajera no tiene por que convertirse en un error de ruta.
+async function cargarSemilla(ctx: ChatListContext): Promise<Awaited<ReturnType<typeof getChatList>>> {
+  try {
+    return await getChatList(ctx);
+  } catch (error) {
+    Sentry.captureException(error, { tags: { surface: "chat", query: "chat_list_seed" } });
+    return null;
+  }
 }

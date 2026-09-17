@@ -191,6 +191,9 @@ export function OffersList({
                   {isOwner && isOpen && (
                     <Link
                       href={`/chat?seller=${offer.seller_id}`}
+                      // Esa URL abre una conversacion al renderizarse en el
+                      // servidor: una precarga jamas debe ejecutarla.
+                      prefetch={false}
                       className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       <MessageCircle className="h-3.5 w-3.5" />

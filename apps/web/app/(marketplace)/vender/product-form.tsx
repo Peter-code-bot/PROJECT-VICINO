@@ -1018,6 +1018,16 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             required
           />
 
+          {/* El required del input hidden no lo valida el navegador, y un
+              cambio de tipo puede vaciar la lista sin que el usuario lo pida.
+              Sin este aviso el formulario queda mudo hasta que falla al
+              enviar. */}
+          {categories.length === 0 && (
+            <p className="text-xs text-[color:var(--fg-muted)]">
+              Elige al menos una categoría. La primera que agregues queda como principal.
+            </p>
+          )}
+
           {/* Chips de las categorias seleccionadas */}
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2">

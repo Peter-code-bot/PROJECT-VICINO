@@ -266,6 +266,9 @@ export function ProfileHeader({
           )}
           <Link
             href={`/chat?seller=${profile.id}`}
+            // Esa URL abre una conversacion al renderizarse en el servidor:
+            // una precarga jamas debe ejecutarla.
+            prefetch={false}
             className={cn(
               "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-90",
               currentUserId && currentUserId !== profile.id && profile.es_vendedor

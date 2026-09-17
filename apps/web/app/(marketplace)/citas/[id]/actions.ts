@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 
@@ -47,8 +47,8 @@ export async function cancelAppointment(appointmentId: string): Promise<{ ok: bo
 
   if (error) return { ok: false, message: error.message };
 
-  revalidatePath("/citas");
-  revalidatePath(`/citas/${appointmentId}`);
+  await revalidatePath("/citas");
+  await revalidatePath(`/citas/${appointmentId}`);
 
   return { ok: true };
 }

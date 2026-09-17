@@ -189,6 +189,8 @@ export function StorePost({
           <FavoriteButton productId={id} initialFavorite={heart} variant="standalone" showLabel />
           <Link
             href={`/chat?seller=${storeId}&product=${id}`}
+            // Esa URL abre una conversacion al renderizarse en el servidor:
+            // una precarga jamas debe ejecutarla.
             prefetch={false}
             className="flex items-center justify-center h-9 px-3 rounded-full text-[13px] font-medium product-card-muted hover:opacity-80 transition-colors"
           >

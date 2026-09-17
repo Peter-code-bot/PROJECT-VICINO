@@ -163,6 +163,20 @@ export default async function ProductDetailPage({ params }: Props) {
     .or("fecha_expiracion.is.null,fecha_expiracion.gt." + new Date().toISOString())
     .limit(5);
 
+  // Arranca ya, en paralelo con reseñas, cupones y favoritos; se espera al
+  // final, cuando se arma `data`.
+  const locationMapAvailablePromise: Promise<boolean> = (async () => {
+    try {
+      const { data: mapped, error: mapError } = await createAdminClient().from("products_services")
+        .select("id").eq("id", product.id).not("ubicacion_geo", "is", null).maybeSingle();
+      if (mapError) throw mapError;
+      return Boolean(mapped);
+    } catch (error) {
+      Sentry.captureException(error, { tags: { action: "productDetailPage", step: "location_map_available" } });
+      return false;
+    }
+  })();
+
   // Start both queries now; only their local Suspense boundaries wait for them.
   const extras: Promise<ProductDetailExtras> = Promise.all([reviewsQuery, couponsQuery])
     .then(([reviewResult, couponResult]) => ({
@@ -233,13 +247,13 @@ export default async function ProductDetailPage({ params }: Props) {
   }
   const categoryName = primaryCat?.nombre ?? null;
 
-  // Only a presence flag crosses the RSC boundary. The image endpoint rechecks RLS.
-  let locationMapAvailable = false;
-  try {
-    const { data: mapped } = await createAdminClient().from("products_services")
-      .select("id").eq("id", product.id).not("ubicacion_geo", "is", null).maybeSingle();
-    locationMapAvailable = Boolean(mapped);
-  } catch { /* The location text remains usable if the image service is unavailable. */ }
+  // Solo un booleano de presencia cruza al RSC; la ruta de la imagen vuelve a
+  // comprobar RLS. Se resuelve aqui, tras las lecturas de reseñas, cupones y
+  // favoritos que ya estaban en vuelo, para no anadir un viaje en serie al
+  // TTFB de cada ficha. Y si falla, el texto de ubicacion sigue siendo util;
+  // el fallo queda en Sentry, porque un catch mudo aqui escondia una clave
+  // ausente o rotada para siempre.
+  const locationMapAvailable = await locationMapAvailablePromise;
 
   const data: ProductDetailData = {
     // Una sola clave por render de la ficha, compartida por el detalle movil y

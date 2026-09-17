@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { createCouponSchema } from "@vicino/shared";
@@ -86,7 +86,7 @@ export async function toggleCoupon(id: string, activo: boolean) {
     return { error: "Este cupón ya no existe. Actualiza la página." };
   }
 
-  revalidatePath("/seller/cupones");
+  await revalidatePath("/seller/cupones");
   return { success: true };
 }
 
@@ -124,6 +124,6 @@ export async function deleteCoupon(id: string) {
     return { error: "Este cupón ya no existe. Actualiza la página." };
   }
 
-  revalidatePath("/seller/cupones");
+  await revalidatePath("/seller/cupones");
   return { success: true };
 }

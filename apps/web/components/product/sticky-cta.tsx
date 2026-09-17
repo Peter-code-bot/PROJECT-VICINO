@@ -87,6 +87,9 @@ export function StickyCta({
     <div className={SHELL} style={{ paddingBottom: SAFE_PAD }}>
       <Link
         href={`/chat?seller=${sellerId}&product=${productId}`}
+        // Esa URL abre una conversacion al renderizarse en el servidor: una
+        // precarga jamas debe ejecutarla.
+        prefetch={false}
         aria-label="Contactar al vendedor"
         className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-card-2 text-fg-muted transition-colors hover:bg-card"
       >
@@ -94,6 +97,9 @@ export function StickyCta({
       </Link>
       <Link
         href={`/chat?seller=${sellerId}&product=${productId}&intent=buy&k=${purchaseIntentKey}`}
+        // Esa URL abre la conversacion Y registra la intencion de compra al
+        // renderizarse en el servidor: una precarga jamas debe ejecutarla.
+        prefetch={false}
         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-95"
       >
         <ShoppingBag className="h-4 w-4" />

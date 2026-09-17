@@ -1,7 +1,10 @@
 import "server-only";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
+import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { usuarioOInvitado } from "@/lib/session-auth";
 import { primaryCategorySlug } from "@vicino/shared";
 import type { FeedProduct } from "@/types/feed";
 import type { FollowedStore } from "@/components/home/following-rail";
@@ -12,7 +15,34 @@ import { parseRadiusCookie } from "@/lib/geo/radius";
 import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad } from "@/lib/comunidades/errores";
 import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
-export async function getHomeSession(searchParams: { feed?: string; cats?: string; tab?: string }) {
+
+/**
+ * Parametros de busqueda que acepta el inicio, tanto en la URL de la pagina
+ * como en GET /api/session/home. Un solo esquema para los dos: si divergieran,
+ * la semilla que siembra page.tsx y lo que la API devuelve para la misma clave
+ * podrian no ser el mismo feed.
+ */
+export const homeSearchSchema = z.object({
+  feed: z.enum(["parati", "following", "solicitudes", "comunidades"]).optional(),
+  tab: z.enum(["muro", "mias", "descubrir"]).optional(),
+  cats: z.string().max(1000).optional(),
+});
+export type HomeSearchInput = z.infer<typeof homeSearchSchema>;
+
+/**
+ * Cliente y usuario que el llamador ya resolvio en el mismo render. La pagina
+ * del inicio crea el cliente y llama a auth.getUser() una sola vez; sin esto
+ * el cargador repetiria el viaje a Auth que la pagina acaba de hacer.
+ */
+export interface HomeSessionContext {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  user: User | null;
+}
+
+export async function getHomeSession(
+  searchParams: { feed?: string; cats?: string; tab?: string },
+  ctx?: HomeSessionContext,
+) {
   const { feed: feedParam, cats: catsParam, tab: tabParam } = searchParams;
   const feed: "parati" | "following" | "solicitudes" | "comunidades" =
     feedParam === "following"
@@ -25,11 +55,15 @@ export async function getHomeSession(searchParams: { feed?: string; cats?: strin
   const subTabComunidades: SubTabComunidades =
     tabParam === "mias" ? "mias" : tabParam === "descubrir" ? "descubrir" : "muro";
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Con ctx no se crea otro cliente ni se vuelve a Auth: quien llama ya lo
+  // hizo en este mismo render. Las cookies de zona se leen aqui igual en los
+  // dos casos, porque no viajan en el ctx.
+  const supabase = ctx ? ctx.supabase : await createClient();
+  // Un fallo de Auth (red, 5xx, 429) NO es un visitante: si se tratara como
+  // tal, la API respondería con userId vacío y el cliente con sesión lo
+  // leería como cuenta ajena, vaciaría la memoria y lo mandaría a /login. Se
+  // lanza para que la ruta responda 503 y el cliente conserve lo que tenía.
+  const user = ctx ? ctx.user : await usuarioOInvitado(supabase);
 
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
@@ -413,6 +447,17 @@ export async function getHomeSession(searchParams: { feed?: string; cats?: strin
     };
   })();
 
-  if (feed === "parati" && feedResultado.failure) throw new Error("Home unavailable");
+  // Un feed caido NO se lanza: el valor lleva `feedResultado.failure` y el
+  // consumidor pinta CatalogQueryState con la causa (lo que master ensenaba
+  // dentro del home). La API decide aparte si eso merece un 503 (ver
+  // app/api/session/[resource]/route.ts): asi la revalidacion en segundo
+  // plano conserva lo que habia, y la primera visita explica que paso.
   return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
 }
+
+/**
+ * Lo que el inicio pinta. Es la misma forma que viaja como semilla desde
+ * page.tsx y como respuesta de GET /api/session/home; el consumidor cliente
+ * la importa solo como tipo, nunca el cargador (este modulo es server-only).
+ */
+export type HomeSessionValue = Awaited<ReturnType<typeof getHomeSession>>["value"];

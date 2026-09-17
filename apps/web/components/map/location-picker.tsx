@@ -87,7 +87,11 @@ export default function LocationPicker({
 
       setShowMap(true);
       setLocationError(null);
-      onChange({ lat, lng, address: "Zona seleccionada" });
+      // Provisional con las coordenadas, como hacia DeliveryMap: si la
+      // geocodificacion inversa no llega (o se publica antes de los 800 ms)
+      // lo que se guarda es un dato, no un texto de interfaz ("Zona
+      // seleccionada") que la ficha pintaria como si fuera una direccion.
+      onChange({ lat, lng, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
 
       if (inversaRef.current) clearTimeout(inversaRef.current);
       inversaAbortRef.current?.abort();
@@ -201,13 +205,25 @@ export default function LocationPicker({
     }
   }
 
-  function clearLocation() {
+  /**
+   * La X del buscador solo limpia el TEXTO. Antes llamaba a clearLocation y
+   * emitia onChange(null): al editar una publicacion, borrar lo escrito para
+   * probar otra direccion ya contaba como "quitar ubicacion", y si el vendedor
+   * guardaba sin elegir una sugerencia, la publicacion perdia ubicacion_geo,
+   * ubicacion y delivery_radius_km sin ninguna confirmacion, y desaparecia de
+   * "Cerca de ti". Quitar la ubicacion es el boton explicito de abajo.
+   */
+  function clearSearch() {
     cancelPending();
     setLocationError(null);
-    setShowMap(false);
     setSearchQuery("");
     setSuggestions([]);
     setHasSearched(false);
+  }
+
+  function clearLocation() {
+    clearSearch();
+    setShowMap(false);
     onChange(null);
   }
 
@@ -254,8 +270,8 @@ export default function LocationPicker({
           {searchQuery && (
             <button
               type="button"
-              onClick={clearLocation}
-              aria-label="Borrar ubicación"
+              onClick={clearSearch}
+              aria-label="Borrar búsqueda"
               className="text-muted-foreground hover:text-foreground"
             >
               <X className="w-3.5 h-3.5" />

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -88,6 +88,6 @@ export async function toggleFavorite(productId: string) {
     }
   }
 
-  revalidatePath("/favoritos");
+  await revalidatePath("/favoritos");
   return { isFavorite: !existing };
 }

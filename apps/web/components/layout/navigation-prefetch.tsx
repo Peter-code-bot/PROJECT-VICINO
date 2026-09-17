@@ -30,8 +30,16 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
       if ((previous !== undefined && now - previous < WINDOW_MS) || requests.current.length >= 4) return;
       warmed.current.set(href, now);
       requests.current.push(now);
+      // El inicio (y /buscar) es el render mas caro del sitio: la RPC de 150
+      // filas con dos subconsultas JSONB por fila. Su loading.tsx ya pinta lo
+      // que hay en memoria, asi que precargarlo FULL seria pagar esa consulta
+      // por CADA intento (cada pointerover, cada vecino al montar) para
+      // ahorrar un esqueleto que casi nunca se ve. AUTO trae solo el loading
+      // y deja la pagina para el toque. /chat y /perfil son baratos y FULL
+      // deja la primera visita lista antes del toque.
+      const kind = href === "/" || href === "/buscar" ? PrefetchKind.AUTO : PrefetchKind.FULL;
       try {
-        router.prefetch(href, { kind: PrefetchKind.FULL, onInvalidate: () => {
+        router.prefetch(href, { kind, onInvalidate: () => {
           if (warmed.current.get(href) === now) warmed.current.delete(href);
         } });
       } catch {

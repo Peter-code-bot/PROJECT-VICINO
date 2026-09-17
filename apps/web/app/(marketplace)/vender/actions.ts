@@ -412,6 +412,13 @@ export async function createProduct(formData: FormData) {
     console.warn("[alta] no se pudo cerrar el alta de vendedor:", e);
   }
 
+  // La publicacion nueva tiene que aparecer en el perfil y en el inicio del
+  // propio vendedor sin esperar los 30 s de la memoria de sesion: el
+  // envoltorio de revalidatePath cambia la revision que observa el layout y
+  // vacia esa memoria, ademas de purgar la cache del router.
+  await revalidatePath("/perfil");
+  await revalidatePath("/");
+
   // MP#08 #4 Fase 1B: redirect usa la local `primaryCategoria` (derivada del
   // input validado por zod en L252), NO `data.categoria` (TEXT espejo del
   // INSERT RETURNING). Cuando 1C deje de escribir el espejo, `data.categoria`

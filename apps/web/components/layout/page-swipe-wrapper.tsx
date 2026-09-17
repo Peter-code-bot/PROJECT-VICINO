@@ -6,6 +6,7 @@ import { motion, useMotionValue, animate, useReducedMotion } from "framer-motion
 import { hapticLight } from "@/lib/haptics";
 import { beginNavigation, navigationFeedback } from "@/lib/observability/navigation-metrics";
 import { gestureAxis, pageGestureBlocked } from "@/lib/navigation/gestures";
+import { consumirRestauracion, marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 
 import { TAB_ROUTES } from "@/lib/navigation/tab-routes";
 
@@ -36,6 +37,23 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
     x.set(0);
     return () => x.stop();
   }, [pathname, isPending, x]);
+
+  // Red de seguridad para las rutas de pestaña SIN SessionScroll (hoy
+  // /buscar). Los enlaces de pestaña navegan con scroll:false y dejan la
+  // marca para que el consumidor de la ruta coloque el scroll; si esa ruta no
+  // tiene consumidor, nadie lo coloca y la pagina nueva aparece con el scroll
+  // de la anterior. Aqui, ya con la ruta nueva pintada, se consume lo que
+  // quede pendiente y se sube arriba, que es lo que Next habria hecho.
+  //
+  // El orden lo garantiza React: los efectos de layout de los hijos
+  // (SessionScroll) corren antes que este efecto pasivo del padre, asi que en
+  // una ruta con consumidor y datos en memoria la marca ya llego consumida y
+  // esto no hace nada. En una primera visita sin datos el consumidor monta
+  // mas tarde, pero tampoco tenia nada que restaurar (el scroll guardado vive
+  // en la misma memoria que los datos): subir arriba es el mismo resultado.
+  useEffect(() => {
+    if (consumirRestauracion(pathname)) window.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
 
   useEffect(() => {
     const element = elementRef.current;
@@ -85,7 +103,12 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
       x.stop();
       x.set(0);
       measurement.current = beginNavigation(target, "swipe");
-      startTransition(() => router.push(target));
+      // Navegacion de pestaña: la marca va ANTES del push y el push va con
+      // scroll:false, para que SessionScroll restaure el scroll de esa
+      // pestaña en vez de que Next suba al inicio (ver
+      // lib/navigation/restauracion-ui.ts).
+      marcarRestauracionPendiente(target);
+      startTransition(() => router.push(target, { scroll: false }));
       void hapticLight();
     };
     element.addEventListener("touchstart", start, { passive: true });

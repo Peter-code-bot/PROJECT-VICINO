@@ -3,13 +3,25 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cleanDisplayName } from "@vicino/shared";
 import { ChatItemCard } from "./chat-item-card";
-import { SessionScroll, useSessionData, DataRetry } from "@/components/layout/session-data-provider";
+import { SessionScroll, useSessionData, DataRetry, type SessionSeed } from "@/components/layout/session-data-provider";
+import { SkeletonLista } from "@/components/shared/loading-skeletons";
 import type { getChatList } from "@/lib/chat-list-data";
 type Data = NonNullable<Awaited<ReturnType<typeof getChatList>>>["value"];
-export function ChatList() {
+export interface ChatListProps {
+  /** Lo que trajo el render del servidor; sin ella (loading.tsx) se pide a la memoria de sesion. */
+  seed?: SessionSeed<Data>;
+}
+export function ChatList({ seed }: ChatListProps) {
   const params = useSearchParams();
-  const { data, error, retry, userId, updatedAt, mutate } = useSessionData<Data>("/api/session/chats");
-  if (!data) return <div className="max-w-2xl mx-auto px-4 py-6"><h1 className="font-heading text-2xl font-bold">Mensajes</h1>{error ? <DataRetry error={error} retry={retry} /> : <p role="status">Cargando conversaciones…</p>}</div>;
+  const { data, error, retry, userId, updatedAt, mutate } = useSessionData<Data>("/api/session/chats", seed);
+  if (!data) {
+    // Sin datos utilizables ni error se pinta la FORMA de la lista, no una
+    // frase: es el mismo esqueleto que master pintaba desde loading.tsx y lo
+    // que evita el salto de maqueta cuando llegan las filas. Con error se
+    // conserva la cabecera para que el reintento tenga contexto.
+    if (!error) return <SkeletonLista etiqueta="Cargando tus chats" />;
+    return <div className="max-w-2xl mx-auto px-4 py-6"><h1 className="font-heading text-2xl font-bold">Mensajes</h1><DataRetry error={error} retry={retry} /></div>;
+  }
   const { visibleChats } = data;
   const user = { id: userId };
   const showSelfChatBanner = params.get("selfChatError") === "1";

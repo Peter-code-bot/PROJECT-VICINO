@@ -1,7 +1,8 @@
 "use client";
 
 import { isTabRoute } from "@/lib/navigation/tab-routes";
-import { useState } from "react";
+import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
+import { useState, type MouseEvent } from "react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import Link from "next/link";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -30,7 +31,23 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-
+/**
+ * Navegacion de PESTAÑA desde la barra lateral: marca la restauracion de
+ * scroll ANTES de navegar y el enlace navega con `scroll={false}`, para que
+ * SessionScroll coloque el scroll donde la persona lo dejo en vez de que Next
+ * suba al inicio (ver lib/navigation/restauracion-ui.ts). Pulsar la pestaña
+ * ya activa sube arriba, como en iOS, y no marca nada: no hay a donde volver.
+ */
+function alPulsarPestana(event: MouseEvent<HTMLAnchorElement>, href: string, active: boolean): void {
+  // Con una tecla modificadora (ctrl/cmd/shift/alt) next/link deja al
+  // navegador abrir otra pestaña y NO navega aqui. Una marca puesta en ese
+  // caso se quedaria pendiente y la consumiria el siguiente enlace cualquiera
+  // a esa ruta, que restauraria un scroll en vez de subir arriba. Mismo
+  // criterio que isModifiedEvent en next/link.
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (active) window.scrollTo({ top: 0, behavior: "smooth" });
+  else marcarRestauracionPendiente(href);
+}
 
 interface SidebarProps {
   user: { id: string } | null;
@@ -147,6 +164,8 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
               href="/perfil"
               prefetch={false}
               data-tab-prefetch="true"
+              scroll={false}
+              onClick={(event) => alPulsarPestana(event, "/perfil", isActive("/perfil"))}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive("/perfil")
@@ -228,11 +247,17 @@ function NavItem({
     );
   }
 
+  const pestana = isTabRoute(href);
   return (
     <Link
       href={href}
-      prefetch={isTabRoute(href) ? false : undefined}
-      data-tab-prefetch={isTabRoute(href) ? "true" : undefined}
+      prefetch={pestana ? false : undefined}
+      data-tab-prefetch={pestana ? "true" : undefined}
+      // Solo las pestañas restauran su scroll (ver alPulsarPestana). El resto
+      // conserva el scroll al inicio de Next: `undefined` es su valor por
+      // defecto, no un "false" disfrazado.
+      scroll={pestana ? false : undefined}
+      onClick={pestana ? (event) => alPulsarPestana(event, href, active) : undefined}
       className={cn(
         "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
         active

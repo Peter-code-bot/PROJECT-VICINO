@@ -76,7 +76,7 @@ test("markAsRead verifies session and membership before the SECURITY DEFINER RPC
       return new Response(null, { status: 204 });
     }, scenario === "guest" ? null : userId);
     const loaded = await load(path.join(web, "app/(marketplace)/chat/actions.ts"), sdk, {
-      "@vicino/shared": "export const {sendMessageSchema,getOrCreateChatSchema,markChatReadSchema,createSaleConfirmationSchema,confirmSaleSchema,cancelSaleSchema,formatPrice}=globalThis.__testShared;",
+      "@vicino/shared": "export const {sendMessageSchema,getOrCreateChatSchema,iniciarConversacionSchema,markChatReadSchema,createSaleConfirmationSchema,confirmSaleSchema,cancelSaleSchema,formatPrice}=globalThis.__testShared;",
       "@/lib/rate-limit": "export const writeRateLimit=null;export const chatReadRateLimit=null;export const enforce=async()=>({ok:true});",
     });
     const action = loaded as unknown as { markAsRead: (id: string) => Promise<{ ok: boolean; status: number }> };

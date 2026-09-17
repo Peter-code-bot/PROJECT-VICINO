@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { requireAdminOrModerator } from "@/lib/auth/require-admin-or-moderator";
@@ -60,7 +60,7 @@ export async function hideReview(reviewId: string) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -90,7 +90,7 @@ export async function approveReview(reviewId: string) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -164,7 +164,7 @@ export async function resolveReport(
     },
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -200,7 +200,7 @@ export async function dismissReport(reportId: string, notes?: string) {
     metadata: { notes: notes ?? null },
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -243,7 +243,7 @@ export async function dismissReportsForTarget(
     metadata: { dismissed_count: count ?? 0 },
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -275,7 +275,7 @@ export async function suspendUser(userId: string) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -303,7 +303,7 @@ export async function unsuspendUser(userId: string) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -331,7 +331,7 @@ export async function unhideListing(listingId: string) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -365,7 +365,7 @@ async function setCommunityPostHidden(postId: string, hidden: boolean) {
     metadata: {},
   });
 
-  revalidatePath("/admin/moderation");
+  await revalidatePath("/admin/moderation");
   return { success: true };
 }
 
@@ -419,6 +419,6 @@ export async function markAuthorityNotified(
     },
   });
 
-  revalidatePath("/admin/moderation/critical");
+  await revalidatePath("/admin/moderation/critical");
   return { success: true };
 }

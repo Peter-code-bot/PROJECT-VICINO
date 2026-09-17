@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -53,7 +53,7 @@ export async function markAsRead(notificationId: string) {
     return { error: "Esta notificación ya no existe." };
   }
 
-  revalidatePath("/notificaciones");
+  await revalidatePath("/notificaciones");
   return { success: true };
 }
 
@@ -81,7 +81,7 @@ export async function markAllAsRead() {
     return { error: "No se pudieron marcar como leídas. Intenta de nuevo." };
   }
 
-  revalidatePath("/notificaciones");
+  await revalidatePath("/notificaciones");
   return { success: true };
 }
 

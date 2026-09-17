@@ -8,7 +8,7 @@ import { MasProductos } from "@/components/home/mas-productos";
 import { LocationBar } from "@/components/shared/location-bar";
 import { ZoneCard } from "@/components/home/zone-card";
 import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
-import { HomeTabs } from "@/components/home/home-tabs";
+import { HomeTabs, type HomeFeed } from "@/components/home/home-tabs";
 import { FollowingRail } from "@/components/home/following-rail";
 import { StorePost } from "@/components/home/store-post";
 import { SolicitudesFeed } from "@/components/solicitudes/solicitudes-feed";
@@ -27,17 +27,54 @@ import {
 
 import { ComunidadesFeed } from "@/components/comunidades/comunidades-feed";
 import { leerEstadoCuota } from "@/lib/comunidades/tipos";
-import { SessionScroll, useSessionData, useLocationScope, DataRetry } from "@/components/layout/session-data-provider";
-import type { getHomeSession } from "@/lib/home-session-data";
-type Data = Awaited<ReturnType<typeof getHomeSession>>["value"];
-export function HomeSession({ ranking }: { ranking: ReactNode }) {
+import { SessionScroll, useSessionData, useLocationScope, DataRetry, type SessionSeed } from "@/components/layout/session-data-provider";
+import { homeSessionKey } from "@/lib/session-scope";
+import { SkeletonRejilla } from "@/components/shared/loading-skeletons";
+// Solo el tipo: el modulo es server-only y este componente es de cliente.
+import type { HomeSessionValue } from "@/lib/home-session-data";
+
+/**
+ * La misma tabla que aplica getHomeSession en el servidor: cualquier valor
+ * que no sea una pestaña conocida cae en «Para ti». Si el esqueleto
+ * encendiera otra pestaña que la que el servidor va a pintar, el tab activo
+ * saltaria al llegar los datos.
+ */
+function feedDesdeParametro(feed: string | null): HomeFeed {
+  return feed === "following" || feed === "solicitudes" || feed === "comunidades" ? feed : "parati";
+}
+
+export interface HomeSessionProps {
+  ranking: ReactNode;
+  /**
+   * Lo que trajo el render del servidor (page.tsx). loading.tsx no la pasa:
+   * entonces se pinta lo que haya en memoria para esta clave, y un esqueleto
+   * solo si no hay nada.
+   */
+  seed?: SessionSeed<HomeSessionValue>;
+}
+
+export function HomeSession({ ranking, seed }: HomeSessionProps) {
   const search = useSearchParams();
-  const params = new URLSearchParams();
-  for (const name of ["feed"]) { const value = search.get(name); if (value) params.set(name, value); }
   const zone = useLocationScope();
-  const key = `/api/session/home?${params}#${zone}`;
-  const { data, error, retry, updatedAt } = useSessionData<Data>(key);
-  if (!data) return <div className="px-4 py-6">{error ? <DataRetry error={error} retry={retry} /> : <p role="status">Cargando publicaciones…</p>}</div>;
+  // La misma funcion de clave que usa page.tsx para la semilla. Si el armado
+  // divergiera, la semilla quedaria bajo una clave que nadie lee y el cliente
+  // volveria a pedir lo que el HTML ya trajo.
+  const key = homeSessionKey(search.get("feed"), zone);
+  const { data, error, retry, updatedAt } = useSessionData<HomeSessionValue>(key, seed);
+  if (!data) {
+    if (error) return <div className="px-4 py-6"><DataRetry error={error} retry={retry} /></div>;
+    // Sin datos en memoria ni semilla (primera visita, pintada desde
+    // loading.tsx; o memoria vaciada): las pestañas ya responden y el
+    // esqueleto tiene la forma de la rejilla que viene, con el mismo
+    // contenedor que el render completo para que nada salte al llegar.
+    const feedActivo = feedDesdeParametro(search.get("feed"));
+    return (
+      <div className="w-full min-w-0 min-h-screen">
+        <HomeTabs active={feedActivo} />
+        <SkeletonRejilla etiqueta="Cargando publicaciones" />
+      </div>
+    );
+  }
   const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
   const subTabComunidades = search.get("tab") === "mias" ? "mias" : search.get("tab") === "descubrir" ? "descubrir" : "muro";
   const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));

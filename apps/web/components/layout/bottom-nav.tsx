@@ -6,6 +6,7 @@ import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatUnread } from "@/components/layout/chat-unread-provider";
 import { hapticLight } from "@/lib/haptics";
+import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 import { CATEGORIES } from "@vicino/shared";
 
 const NAV_ITEMS = [
@@ -47,6 +48,10 @@ interface BottomNavProps {
  *     y la caja de escribir necesitan el sitio, y dentro de la ficha de
  *     producto, donde manda el StickyCta y el circulo central se le encimaba.
  *   - `md:hidden`: en escritorio manda el Sidebar.
+ *   - `scroll={false}` y la marca de restauracion en cada item de la pildora:
+ *     sin ellas, volver a una pestaña pierde el scroll donde se dejo (ver
+ *     lib/navigation/restauracion-ui.ts). El FAB central no es pestaña y no
+ *     las lleva.
  */
 export function BottomNav({ isVendedor }: BottomNavProps) {
   const pathname = usePathname();
@@ -146,10 +151,23 @@ function ItemNav({
       href={href}
       prefetch={false}
       data-tab-prefetch="true"
+      // Navegacion de PESTAÑA: el scroll no lo pone Next, lo restaura
+      // SessionScroll donde la persona lo dejo (ver
+      // lib/navigation/restauracion-ui.ts). Con el scroll:true por defecto,
+      // Next subia al inicio en cuanto llegaba el render y pisaba la
+      // restauracion. La marca se pone ANTES de navegar: el primer consumidor
+      // que monte con datos utilizables para esa ruta la consume.
+      scroll={false}
       aria-label={label}
       aria-current={activo ? "page" : undefined}
       id={`nav-${label.toLowerCase()}`}
-      onClick={() => void hapticLight()}
+      onClick={() => {
+        void hapticLight();
+        // Tocar la pestaña ya activa sube arriba, como en iOS. No marca nada:
+        // no hay a donde "volver".
+        if (activo) window.scrollTo({ top: 0, behavior: "smooth" });
+        else marcarRestauracionPendiente(href);
+      }}
       className="relative inline-flex h-12 w-[52px] flex-col items-center justify-center rounded-2xl"
     >
       {/* El indicador es un elemento aparte del icono para poder

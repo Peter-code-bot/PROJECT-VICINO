@@ -72,6 +72,41 @@ test("confirmed hide removes a row immediately and cancels old refreshes", async
   assert.deepEqual(cache.snapshot(key).data, ["b"]);
   pending.resolve(response(["b"])); await cache.load(key);
 });
+test("seeded render shows server data immediately and skips the transport within the TTL", async () => {
+  let requests = 0;
+  const cache = new SessionCache("a", async () => { requests++; return response(["network"]); });
+  assert.equal(cache.seed(key, ["chat"], "r1"), true);
+  assert.deepEqual(cache.snapshot(key).data, ["chat"]);
+  assert.equal(cache.snapshot(key).pending, false);
+  await cache.load(key);
+  assert.equal(requests, 0);
+  assert.deepEqual(cache.snapshot(key).data, ["chat"]);
+});
+test("a repeated render id never overwrites newer memory", () => {
+  const cache = new SessionCache("a", async () => response([]));
+  assert.equal(cache.seed(key, ["a"], "r1"), true);
+  assert.equal(cache.seed(key, ["a", "b"], "r2"), true);
+  assert.equal(cache.seed(key, ["a"], "r1"), false);
+  assert.deepEqual(cache.snapshot(key).data, ["a", "b"]);
+});
+test("a fresh seed aborts an in-flight load", async () => {
+  const pending = deferred<Response>(); let signal: AbortSignal | undefined;
+  const cache = new SessionCache("a", async (_, options) => { signal = options?.signal as AbortSignal; return pending.promise; });
+  const request = cache.load(key);
+  assert.equal(cache.snapshot(key).pending, true);
+  assert.equal(cache.seed(key, ["fresh"], "r3"), true);
+  assert.ok(signal?.aborted);
+  assert.equal(cache.snapshot(key).pending, false);
+  pending.resolve(response(["old"])); await request;
+  assert.deepEqual(cache.snapshot(key).data, ["fresh"]);
+  assert.equal(cache.snapshot(key).error, undefined);
+});
+test("seed after clear is ignored", () => {
+  const cache = new SessionCache("a", async () => response([]));
+  cache.clear();
+  assert.equal(cache.seed(key, ["chat"], "r1"), false);
+  assert.equal(cache.snapshot(key).data, undefined);
+});
 function point(lat: number, lng: number, little = true) {
   const buffer = Buffer.alloc(25); buffer[0] = little ? 1 : 0;
   if (little) { buffer.writeUInt32LE(0x20000001, 1); buffer.writeUInt32LE(4326, 5); buffer.writeDoubleLE(lng, 9); buffer.writeDoubleLE(lat, 17); }

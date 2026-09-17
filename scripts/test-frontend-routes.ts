@@ -19,7 +19,9 @@ export async function load(file: string, client: object, overrides: Record<strin
   for (const statement of tree.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || statement.importClause?.isTypeOnly) continue;
     const specifier = statement.moduleSpecifier.text;
-    if (specifier === 'next/server' || specifier.startsWith('react')) continue;
+    // zod se carga de verdad: los cargadores validan con el (homeSearchSchema) y
+    // un stub `()=>null` deja `z.enum` sin funcion antes de llegar a la consulta.
+    if (specifier === 'next/server' || specifier === 'zod' || specifier.startsWith('react')) continue;
     const names = statement.importClause?.namedBindings;
     const lines: string[] = [];
     if (statement.importClause?.name) lines.push('export default ()=>null;');
@@ -35,6 +37,11 @@ export async function load(file: string, client: object, overrides: Record<strin
       if (name === 'catalogFailure') value = '()=>({kind:"network",message:"unavailable"})';
       if (name === 'CATEGORIES') value = '[]';
       if (name === 'parseRadiusCookie') value = '()=>25000';
+      // El resolutor de sesion de los cargadores de /api/session (lib/session-auth.ts):
+      // aqui se reproduce su contrato real —usuario del cliente sintetico, o
+      // error lanzado si Auth no contesta— para que las pruebas de timeout
+      // sigan llegando a la consulta y no se corten en un stub que devuelve null.
+      if (name === 'usuarioOInvitado') value = 'async(c)=>{const r=await c.auth.getUser();if(r.error&&r.error.name!=="AuthSessionMissingError")throw r.error;return r.data.user;}';
       lines.push(`export const ${name}=${value};`);
     }
     if (names && ts.isNamespaceImport(names)) lines.push('export const captureException=()=>{};');
@@ -86,7 +93,7 @@ test('middleware: timeout devuelve 503 sin conceder acceso ni perder cookies ren
   assert.ok(response.cookies.get('synthetic-refresh'));
 });
 
-for (const [file, name, input] of [["home-session-data.ts", "getHomeSession", {}], ["profile-session-data.ts", "getProfileSession", "core"], ["chat-list-data.ts", "getChatList", undefined]] as const) {
+for (const [file, name, input] of [["profile-session-data.ts", "getProfileSession", "core"], ["chat-list-data.ts", "getChatList", undefined]] as const) {
   test(`session data timeout remains an error: ${file}`, async () => {
     const fixture = clientWithTimeout();
     const loaded = await load(path.join(web, "lib", file), fixture.client) as unknown as Record<string, (input: unknown) => Promise<unknown>>;
@@ -94,6 +101,22 @@ for (const [file, name, input] of [["home-session-data.ts", "getHomeSession", {}
     assert.ok(fixture.requests() > 0);
   });
 }
+
+// El inicio NO lanza cuando cae el feed: devuelve el valor con
+// feedResultado.failure para que la portada pinte la causa (CatalogQueryState)
+// en vez de un exito vacio. Es la ruta /api/session/home la que convierte ese
+// estado en 503 para la revalidacion en segundo plano.
+test('home timeout is a visible failure, never an empty feed', async () => {
+  const fixture = clientWithTimeout();
+  const loaded = await load(path.join(web, 'lib', 'home-session-data.ts'), fixture.client) as unknown as {
+    getHomeSession: (input: unknown) => Promise<{ value: { feedResultado: { products: unknown; failure: unknown }; all: unknown[] } }>;
+  };
+  const result = await loaded.getHomeSession({});
+  assert.ok(result.value.feedResultado.failure, 'el fallo del feed viaja en el valor');
+  assert.equal(result.value.feedResultado.products, null);
+  assert.equal(result.value.all.length, 0);
+  assert.ok(fixture.requests() > 0);
+});
 
 test('buscar timeout renders failure instead of empty success', async () => {
   const fixture = clientWithTimeout();

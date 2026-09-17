@@ -116,6 +116,14 @@ export const chatReadRateLimit = makeLimiter("1 m", 60, "rl:chat-read");
 // reasonable UI cadence; below scraping speeds.
 export const readHeavyRateLimit = makeLimiter("1 m", 60, "rl:read");
 
+// Minimapa de la ficha (/api/products/[id]/location-map). Cada peticion que
+// pasa el filtro es una consulta con service_role mas un snapshot firmado de
+// Apple Maps, que se cobra por llamada. Tiene cubo propio a proposito y
+// documentado aqui, como el token de MapKit: 20/min por IP cubre a alguien
+// abriendo fichas a mano (una imagen por ficha y por tema, y el navegador la
+// guarda un dia), y corta un rastreador que recorra el catalogo por ids.
+export const productMapRateLimit = makeLimiter("1 m", 20, "rl:product-map");
+
 // Reportes de contenido. Dos limitadores para dos abusos distintos.
 //
 // Por cuenta: un reporte de child_safety oculta el anuncio reportado al

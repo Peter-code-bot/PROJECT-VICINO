@@ -33,9 +33,20 @@ export function useChatUnreadCount(userId: string, initialCount: number) {
       if (result.error || result.userId !== userId) { pending(); return; }
       setValue({ userId, count: result.count, pending: false });
     }, pending);
-    const debounce = () => {
+    /**
+     * `avisar` solo es true cuando la base dijo que algo cambio.
+     *
+     * El primer `debounce()` de cada montaje sale del SUBSCRIBED, que no es un
+     * cambio: es "el canal quedo abierto". Si eso invalidara la lista, cada
+     * carga de /chat tiraria la semilla que el servidor acaba de sembrar 300 ms
+     * despues de hidratar, y la pagina pediria lo que ya tenia en el HTML.
+     */
+    const debounce = (avisar = false) => {
       clearTimeout(timer);
-      timer = setTimeout(() => { invalidateSessionData("/api/session/chats"); refresh.solicitar(); }, 300);
+      timer = setTimeout(() => {
+        if (avisar) invalidateSessionData("/api/session/chats");
+        refresh.solicitar();
+      }, 300);
     };
     retryRef.current = debounce;
     const unregister = [
@@ -44,7 +55,7 @@ export function useChatUnreadCount(userId: string, initialCount: number) {
         return supabase
         .channel(`chat-unread-buyer:${userId}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "chats", filter: `comprador_id=eq.${userId}` },
-          () => { if (vigente()) debounce(); })
+          () => { if (vigente()) debounce(true); })
         .subscribe((status) => {
           if (!vigente()) return;
           if (status === "SUBSCRIBED") debounce();
@@ -56,7 +67,7 @@ export function useChatUnreadCount(userId: string, initialCount: number) {
         return supabase
         .channel(`chat-unread-seller:${userId}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "chats", filter: `vendedor_id=eq.${userId}` },
-          () => { if (vigente()) debounce(); })
+          () => { if (vigente()) debounce(true); })
         .subscribe((status) => {
           if (!vigente()) return;
           if (status === "SUBSCRIBED") debounce();

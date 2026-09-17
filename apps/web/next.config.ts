@@ -391,6 +391,21 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
+    // Cache del router en el cliente para las paginas dinamicas.
+    //
+    // Por defecto `dynamic` vale 0: cada vuelta a una pestaña ya visitada
+    // vuelve a pedir el RSC al servidor, y con el, en el inicio, la RPC de
+    // 150 filas. Con 30 s el ir y venir entre pestañas es instantaneo: el
+    // router sirve el payload que ya tiene y no toca la red.
+    //
+    // No deja datos viejos colgados: las Server Actions con revalidatePath
+    // purgan esta cache igual, y la memoria de sesion (SessionCache) sigue
+    // refrescando por su cuenta al volver. La contrapartida es que el router
+    // puede volver a entregar el MISMO payload de un render ya visto, y con
+    // el la misma semilla: por eso SessionCache.seed deduplica por renderId,
+    // para que una copia servida por el router no pise lo que Realtime o una
+    // revalidacion ya pusieron encima.
+    staleTimes: { dynamic: 30 },
     // A3 sub-fase 3.2: tree-shake barrel exports of the UI libraries we actually
     // import. Confirmed against apps/web/package.json — only these 6 packages
     // are direct deps. Next.js will silently skip any package here that isn't

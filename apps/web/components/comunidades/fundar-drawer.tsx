@@ -8,6 +8,7 @@ import { X, Loader2, Lock, Globe, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import LocationPicker, { type LocationSelection } from "@/components/map/location-picker";
+import { readLocation } from "@/lib/geo/location-storage";
 import {
   COMMUNITY_NOMBRE_MIN,
   COMMUNITY_NOMBRE_MAX,
@@ -37,8 +38,15 @@ interface FundarDrawerProps {
  */
 export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerProps) {
   const router = useRouter();
-  const [posicion, setPosicion] = useState<LocationSelection | null>(() =>
-    lat !== null && lng !== null ? { lat, lng, address: "Zona inicial" } : null);
+  // La ubicacion del servidor manda; si no la hay, la que la app ya conoce
+  // (cookie o espejo local, lib/geo/location-storage.ts). Sin este segundo
+  // paso, quien ya compartio su zona en el feed tenia que volver a buscarla o
+  // pedir un fix de GPS nuevo solo para fundar.
+  const [posicion, setPosicion] = useState<LocationSelection | null>(() => {
+    if (lat !== null && lng !== null) return { lat, lng, address: "Zona inicial" };
+    const conocida = readLocation();
+    return conocida ? { lat: conocida.lat, lng: conocida.lng, address: conocida.fullName ?? conocida.name ?? "Zona inicial" } : null;
+  });
   const [mounted, setMounted] = useState(false);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");

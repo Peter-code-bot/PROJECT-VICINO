@@ -26,8 +26,12 @@ export function LocationBanner({ ubicacion, productId, version, available, layou
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  return <section ref={container} aria-label="Ubicación" className="w-full space-y-2">
-    <h2 className="font-heading text-lg font-bold text-fg">Ubicación</h2>
+  // Sin texto de zona ni mapa no hay nada que anunciar: antes se pintaban dos
+  // lineas ("Ubicacion no indicada" y "La ubicacion es aproximada") que no
+  // describian nada.
+  if (!ubicacion && !available) return null;
+  return <section ref={container} aria-labelledby={`ubicacion-${layout}`} className="w-full space-y-2">
+    <h2 id={`ubicacion-${layout}`} className="font-heading text-lg font-bold text-fg">Ubicación</h2>
     {available && <div className="relative aspect-[32/9] overflow-hidden rounded-2xl bg-[var(--card-2)]">
       {visible && activeLayout && failed !== src && <>
         {/* Native image preserves attribution and avoids a public optimizer cache. */}
@@ -39,6 +43,6 @@ export function LocationBanner({ ubicacion, productId, version, available, layou
       {failed === src && <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-fg-muted">Mapa no disponible</p>}
     </div>}
     <p className="text-sm font-medium text-fg">{ubicacion || "Ubicación no indicada"}</p>
-    <p className="text-xs text-fg-muted">La ubicación es aproximada</p>
+    {available && <p className="text-xs text-fg-muted">La ubicación es aproximada</p>}
   </section>;
 }

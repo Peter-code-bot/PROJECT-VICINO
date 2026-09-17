@@ -190,6 +190,10 @@ export function ProductDetailDesktop({
                 <>
                   <Link
                     href={buyHref}
+                    // Esa URL abre la conversacion Y registra la intencion de
+                    // compra al renderizarse en el servidor: una precarga
+                    // jamas debe ejecutarla.
+                    prefetch={false}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4 text-base font-semibold text-white transition-transform active:scale-95"
                   >
                     <ShoppingBag className="h-5 w-5" />
@@ -213,6 +217,9 @@ export function ProductDetailDesktop({
                   <div className="flex gap-2">
                     <Link
                       href={contactHref}
+                      // Esa URL abre una conversacion al renderizarse en el
+                      // servidor: una precarga jamas debe ejecutarla.
+                      prefetch={false}
                       className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-card-2 px-4 py-3 text-sm font-semibold text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-brand-tint"
                     >
                       <MessageCircle className="h-4 w-4" />

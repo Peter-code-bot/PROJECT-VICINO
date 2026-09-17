@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { resolveDisputeSchema } from "@vicino/shared";
@@ -71,6 +71,6 @@ export async function resolveDispute(args: ResolveDisputeArgs) {
     return { error: "No se pudo resolver la disputa. Intenta de nuevo." };
   }
 
-  revalidatePath("/admin/disputes");
+  await revalidatePath("/admin/disputes");
   return { success: true };
 }

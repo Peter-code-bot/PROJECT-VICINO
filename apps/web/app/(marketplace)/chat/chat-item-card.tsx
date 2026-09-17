@@ -53,9 +53,17 @@ export function ChatItemCard({ chat, onHidden }: ChatItemCardProps) {
       setDeleting(false);
       setConfirming(false);
     } else {
-      onHidden?.();
       setMenuOpen(false);
-      router.refresh();
+      // La lista vive en memoria: onHidden la recorta al instante y la propia
+      // SessionCache vuelve a pedir /api/session/chats por su cuenta. Y la
+      // accion ya llamo a revalidatePath("/chat"), asi que Next devuelve el
+      // arbol fresco junto con su respuesta: el router.refresh() de antes era
+      // un SEGUNDO render completo del layout del marketplace (seis consultas)
+      // para llegar a la misma lista sin esta fila. Sin onHidden la tarjeta no
+      // cuelga de esa lista y el refresh sigue siendo el unico camino para que
+      // la pantalla refleje el borrado.
+      if (onHidden) onHidden();
+      else router.refresh();
     }
   }
 
