@@ -12,10 +12,17 @@ interface TrustProgressBadgeProps {
     trust_points: number | null;
     is_verified?: boolean | null;
   } | null;
+  displayName?: string | null;
+  createdAt?: string | null;
   className?: string;
 }
 
-export function TrustProgressBadge({ profile, className }: TrustProgressBadgeProps) {
+export function TrustProgressBadge({
+  profile,
+  displayName,
+  createdAt,
+  className,
+}: TrustProgressBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const points = profile?.trust_points ?? 0;
@@ -87,6 +94,8 @@ export function TrustProgressBadge({ profile, className }: TrustProgressBadgePro
         onOpenChange={setIsOpen}
         trustLevel={profile?.trust_level}
         trustPoints={profile?.trust_points}
+        displayName={displayName}
+        createdAt={createdAt}
       />
     </>
   );

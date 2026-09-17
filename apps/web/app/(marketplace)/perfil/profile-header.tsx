@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle, Calendar } from "lucide-react";
+import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { ChipCategoria } from "@/components/profile/chip-categoria";
-import { MetodosPagoChips } from "@/components/profile/metodos-pago-chips";
 import { TrustProgressBadge } from "@/components/profile/trust-progress-badge";
+import { PaymentMethodsBadge } from "@/components/profile/payment-methods-badge";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,12 @@ export function ProfileHeader({
   followingCount = 0,
 }: ProfileHeaderProps) {
 
+  const displayName = profile
+    ? profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio
+      ? profile.nombre_negocio
+      : (profile.nombre?.trim().split(" ")[0] ?? profile.nombre)
+    : "";
+
   if (!profile) {
     return (
       <div className="py-8 text-center text-sm text-[color:var(--fg-muted)]">
@@ -103,7 +109,19 @@ export function ProfileHeader({
                 </>
               )}
             </div>
-            <TrustProgressBadge profile={profile} />
+            <div className="flex items-center gap-2 shrink-0">
+              <TrustProgressBadge
+                profile={profile}
+                displayName={displayName}
+                createdAt={profile.created_at}
+              />
+              {profile.es_vendedor && (
+                <PaymentMethodsBadge
+                  metodosPagoAceptados={profile.metodos_pago_aceptados}
+                  displayName={displayName}
+                />
+              )}
+            </div>
           </div>
 
           {/* Stats — Fila Compacta */}
@@ -178,13 +196,7 @@ export function ProfileHeader({
         </div>
       )}
 
-      {/* Member since */}
-      {profile.created_at && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="w-3 h-3" />
-          Miembro desde {new Date(profile.created_at).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
-        </div>
-      )}
+
 
 
       {/* Seller info */}
@@ -197,12 +209,9 @@ export function ProfileHeader({
           preseleccionado — y el alta le promete lo contrario por escrito:
           "Tu categoria se ve en tu perfil". Cada chip decide por su cuenta;
           los dos componentes devuelven null cuando no tienen dato. */}
-      {profile.es_vendedor &&
-        (profile.categoria_negocio ||
-          profile.metodos_pago_aceptados) && (
+      {profile.es_vendedor && profile.categoria_negocio && (
         <div className="flex flex-wrap items-center gap-2">
           <ChipCategoria categoria={profile.categoria_negocio} />
-          <MetodosPagoChips metodosPagoAceptados={profile.metodos_pago_aceptados} />
         </div>
       )}
 

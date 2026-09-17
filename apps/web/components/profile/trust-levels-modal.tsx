@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TrustLevel } from "@vicino/shared";
-import { Shield, BadgeCheck, Check, Star, Crown } from "lucide-react";
+import { Shield, BadgeCheck, Check, Star, Crown, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TrustLevelInfo {
@@ -73,6 +73,8 @@ interface TrustLevelsModalProps {
   onOpenChange: (open: boolean) => void;
   trustLevel?: TrustLevel | string | null;
   trustPoints?: number | null;
+  displayName?: string | null;
+  createdAt?: string | null;
 }
 
 export function TrustLevelsModal({
@@ -80,6 +82,8 @@ export function TrustLevelsModal({
   onOpenChange,
   trustLevel,
   trustPoints,
+  displayName,
+  createdAt,
 }: TrustLevelsModalProps) {
   const points = trustPoints ?? 0;
 
@@ -102,9 +106,14 @@ export function TrustLevelsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px] rounded-[28px] p-6 shadow-2xl border border-border">
         <DialogHeader className="pb-1">
-          <DialogTitle className="font-heading font-extrabold text-xl text-foreground">
+          <DialogTitle className="font-heading font-extrabold text-xl text-foreground leading-tight">
             Niveles de confianza
           </DialogTitle>
+          {displayName && (
+            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              {displayName}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="flex flex-col gap-2.5 my-2">
@@ -151,7 +160,7 @@ export function TrustLevelsModal({
         </div>
 
         {/* User Progress Footer */}
-        <div className="mt-1 pt-3.5 border-t border-border/70 space-y-2">
+        <div className="mt-1 pt-3.5 border-t border-border/70 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-foreground">
               {points} pts acumulados
@@ -176,6 +185,15 @@ export function TrustLevelsModal({
               style={{ width: `${Math.max(5, progressPercent)}%` }}
             />
           </div>
+
+          {createdAt && (
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                Miembro desde {new Date(createdAt).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
+              </span>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
