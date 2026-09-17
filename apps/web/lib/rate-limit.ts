@@ -116,6 +116,13 @@ export const chatReadRateLimit = makeLimiter("1 m", 60, "rl:chat-read");
 // reasonable UI cadence; below scraping speeds.
 export const readHeavyRateLimit = makeLimiter("1 m", 60, "rl:read");
 
+// Contraseña de seguridad del panel de admin (cambios de rol). Por cuenta
+// admin. Sin un freno propio, el modal de confirmacion seria un oraculo:
+// quien ya tiene sesion de admin podria probar contraseñas hasta acertar y
+// repartirse el rol a si mismo o a otra cuenta. Diez intentos en quince
+// minutos deja margen a un dedo torpe y cierra la fuerza bruta.
+export const adminSecurityRateLimit = makeLimiter("15 m", 10, "rl:admin-seguridad");
+
 // Minimapa de la ficha (/api/products/[id]/location-map). Cada peticion que
 // pasa el filtro es una consulta con service_role mas un snapshot firmado de
 // Apple Maps, que se cobra por llamada. Tiene cubo propio a proposito y

@@ -4,14 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Lock, Globe, MapPin, Archive, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Lock, Globe, MapPin, Loader2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COMMUNITY_DESCRIPCION_MAX } from "@vicino/shared";
-import {
-  editarDescripcion,
-  editarVisibilidad,
-  archivarComunidad,
-} from "@/app/(marketplace)/comunidades/actions";
+import { editarDescripcion, editarVisibilidad } from "@/app/(marketplace)/comunidades/actions";
 import type {
   DetalleComunidad,
   CentroComunidad,
@@ -19,7 +15,6 @@ import type {
   MiembroComunidad,
   CursorComunidad,
 } from "@/lib/comunidades/tipos";
-import { ConfirmarDialog } from "../confirmar-dialog";
 import { MoverCentroSheet } from "./mover-centro-sheet";
 import { ModeradoresPanel } from "./moderadores-panel";
 import { SolicitudesCola } from "./solicitudes-cola";
@@ -68,8 +63,6 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
   const [cambiandoVis, setCambiandoVis] = useState(false);
   const [centro, setCentro] = useState<CentroComunidad | null>(centroInicial);
   const [moverAbierto, setMoverAbierto] = useState(false);
-  const [confirmarArchivar, setConfirmarArchivar] = useState(false);
-  const [archivando, setArchivando] = useState(false);
 
   const descCambiada = descripcion.trim() !== (detalle.descripcion ?? "").trim();
 
@@ -100,19 +93,6 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
     }
     setPrivada(r.data.es_privada);
     toast.success(r.data.es_privada ? "La comunidad ahora es privada" : "La comunidad ahora es pública");
-  }
-
-  async function archivar() {
-    setArchivando(true);
-    const r = await archivarComunidad(detalle.id);
-    setArchivando(false);
-    if ("error" in r) {
-      toast.error(r.error);
-      return;
-    }
-    setConfirmarArchivar(false);
-    toast.success("Comunidad archivada");
-    router.push("/?feed=comunidades&tab=mias");
   }
 
   return (
@@ -203,7 +183,7 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
 
           <Seccion
             titulo="Centro de la comunidad"
-            texto="Es una zona aproximada, no una dirección. Se puede mover hasta 1 km del punto de fundación."
+            texto="Es una zona aproximada, no una dirección."
           >
             {centro ? (
               <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--card-2)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--border)]">
@@ -213,10 +193,6 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-[color:var(--fg)]">
                     {centro.lat.toFixed(2)}, {centro.lng.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-[color:var(--fg-muted)]">
-                    {centro.movimientos_restantes_24h}{" "}
-                    {centro.movimientos_restantes_24h === 1 ? "movimiento disponible" : "movimientos disponibles"} hoy
                   </p>
                 </div>
                 <button
@@ -249,27 +225,6 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
               miembros={miembros.items}
               topeModeradores={topeModeradores}
               error={miembros.error}
-            />
-          </Seccion>
-
-          <Seccion titulo="Archivar" texto="La comunidad deja de verse y nadie puede leer ni publicar en ella, tampoco quienes ya son miembros; solo les queda salir.">
-            <button
-              type="button"
-              onClick={() => setConfirmarArchivar(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-[color:var(--danger)]/10 px-5 text-[14px] font-semibold text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/15"
-            >
-              <Archive className="h-4 w-4" />
-              Archivar comunidad
-            </button>
-            <ConfirmarDialog
-              open={confirmarArchivar}
-              onOpenChange={setConfirmarArchivar}
-              titulo={`Archivar ${detalle.nombre}`}
-              cuerpo="La comunidad desaparecerá de Descubrir y del muro unificado. Nadie podrá leerla, publicar ni unirse, tampoco quienes ya son miembros. No se puede deshacer desde la app."
-              confirmar="Archivar"
-              peligroso
-              pendiente={archivando}
-              onConfirmar={() => void archivar()}
             />
           </Seccion>
         </>

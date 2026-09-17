@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Heart, MessageCircle, MoreVertical, Flag, Trash2, Lock } from "lucide-react";
+import {
+  Heart,
+  ImageOff,
+  MessageCircle,
+  MoreVertical,
+  Flag,
+  Send,
+  Trash2,
+  Lock,
+  X,
+} from "lucide-react";
 import { formatRelativeTime, TRUST_LEVELS, type TrustLevel } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
@@ -12,11 +22,195 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { ReportModal } from "@/components/moderation/report-modal";
 import { alternarLike, eliminarPublicacion } from "@/app/(marketplace)/comunidades/actions";
+import { createClient } from "@/lib/supabase/client";
+import {
+  FIRMA_TTL_SEGUNDOS,
+  firmarImagenesComunidad,
+  leerImagenes,
+} from "@/lib/comunidades/media";
 import type { PostComunidad } from "@/lib/comunidades/tipos";
 import { ConfirmarDialog } from "./confirmar-dialog";
 
 function esTrustLevel(v: string | null | undefined): v is TrustLevel {
   return typeof v === "string" && v in TRUST_LEVELS;
+}
+
+/** Identidad estable para el caso sin firmas: evita repintados por un Map nuevo. */
+const SIN_FIRMAS: ReadonlyMap<string, string> = new Map<string, string>();
+
+/** Se renueva la firma 5 minutos antes de que caduque la de una hora. */
+const MARGEN_FIRMA_MS = 5 * 60 * 1000;
+
+/**
+ * Convierte rutas del bucket privado community-media en URLs utilizables.
+ *
+ * NO se reutiliza useFirmasAdjuntos: ese hook firma contra chat-media, con el
+ * bucket escrito dentro de firmarAdjuntos. Pasarle rutas de comunidades
+ * devolveria un mapa vacio y la tarjeta pintaria "no disponible" sin que nada
+ * fallara a la vista.
+ *
+ * Todo el setState ocurre DESPUES del await, y `cargando` se deriva de la clave
+ * pedida: asi el hueco gris se convierte en la foto —o en el icono de "no
+ * disponible" si la firma no llego— y no se queda girando para siempre.
+ */
+function useFirmasComunidad(rutas: string[]): {
+  firmas: ReadonlyMap<string, string>;
+  cargando: boolean;
+} {
+  const [firmado, setFirmado] = useState<{ clave: string; firmas: Map<string, string> } | null>(null);
+  const clave = rutas.join("|");
+
+  useEffect(() => {
+    if (clave === "") return;
+    let cancelado = false;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+
+    async function pedir(): Promise<void> {
+      const nuevas = await firmarImagenesComunidad(createClient(), rutas);
+      if (cancelado) return;
+      setFirmado({ clave, firmas: nuevas });
+      // Una publicacion con fotos puede quedarse en pantalla mas de una hora:
+      // sin renovar, la firma caduca mientras se mira y la foto se rompe.
+      temporizador = setTimeout(
+        () => void pedir(),
+        Math.max(MARGEN_FIRMA_MS, FIRMA_TTL_SEGUNDOS * 1000 - MARGEN_FIRMA_MS),
+      );
+    }
+
+    void pedir();
+    return () => {
+      cancelado = true;
+      if (temporizador) clearTimeout(temporizador);
+    };
+    // Se compara por CONTENIDO y no por identidad: `rutas` se recalcula en cada
+    // render y con el array pelado en las dependencias el efecto se dispararia
+    // siempre, pidiendo firmas nuevas en bucle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
+
+  return {
+    firmas: firmado?.clave === clave ? firmado.firmas : SIN_FIRMAS,
+    cargando: rutas.length > 0 && firmado?.clave !== clave,
+  };
+}
+
+/**
+ * La cuadricula de imagenes de una publicacion o de un comentario.
+ *
+ * Se exporta porque el hilo pinta los comentarios con su propio marcado (no
+ * pasa por PostCard) y las imagenes de un comentario tienen que verse igual.
+ *
+ * Cada hueco reserva su sitio con aspect-ratio ANTES de tener la URL firmada.
+ * La columna solo guarda rutas —no el tamano, como si hace el chat— asi que la
+ * proporcion es fija: sin ese hueco reservado, el muro pega un salto cuando
+ * cada foto termina de cargar y te saca de donde estabas leyendo.
+ */
+export function ImagenesPublicacion({
+  rutas,
+  autorNombre,
+  className,
+}: {
+  rutas: string[];
+  /** Para el texto alternativo: lo unico honesto que se sabe de la imagen. */
+  autorNombre: string;
+  className?: string;
+}) {
+  const { firmas, cargando } = useFirmasComunidad(rutas);
+  const [abierta, setAbierta] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!abierta) return;
+    function esc(e: KeyboardEvent) {
+      if (e.key === "Escape") setAbierta(null);
+    }
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [abierta]);
+
+  if (rutas.length === 0) return null;
+  const sola = rutas.length === 1;
+
+  return (
+    <>
+      <div
+        className={cn(
+          "grid gap-1 overflow-hidden rounded-xl",
+          sola ? "grid-cols-1" : "grid-cols-2",
+          className,
+        )}
+      >
+        {rutas.map((ruta, i) => {
+          const url = firmas.get(ruta);
+          const alternativo = `Imagen ${i + 1} de ${rutas.length} publicada por ${autorNombre}`;
+          return (
+            <button
+              key={ruta}
+              type="button"
+              onClick={() => url && setAbierta(url)}
+              disabled={!url}
+              aria-label={url ? `Ver ${alternativo}` : "Imagen no disponible"}
+              className={cn(
+                "relative block w-full overflow-hidden bg-[color:var(--card-2)]",
+                url ? "cursor-zoom-in" : "cursor-default",
+                // Con tres, la ultima ocupa el ancho entero: en una rejilla de
+                // dos columnas dejaria un hueco vacio al lado.
+                sola ? "aspect-[4/3]" : rutas.length === 3 && i === 2 ? "col-span-2 aspect-[2/1]" : "aspect-square",
+              )}
+            >
+              {url ? (
+                // <img> y no next/image: la fuente es una URL FIRMADA de un
+                // bucket privado, con su token en la query. El optimizador de
+                // Next la volveria a pedir desde el servidor y la cachearia por
+                // URL -- o sea, cachearia el token.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={url}
+                  alt={alternativo}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              ) : cargando ? (
+                <span className="block h-full w-full animate-pulse bg-[color:var(--card)]" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center">
+                  <ImageOff className="h-5 w-5 text-[color:var(--fg-dim)]" aria-hidden="true" />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {abierta && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setAbierta(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Imagen ampliada"
+        >
+          <button
+            type="button"
+            onClick={() => setAbierta(null)}
+            aria-label="Cerrar"
+            className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] rounded-full bg-white/10 p-2 text-white"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+          {/* object-contain declarado: es justo lo que le faltaba al visor de
+              producto y hacia que ahi las fotos salieran recortadas. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={abierta}
+            alt="Imagen ampliada de la publicación"
+            className="max-h-full max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
 }
 
 /** Copy exacto de la decision 11. No se toca. */
@@ -125,7 +319,17 @@ export function PostCard({
   const esPropia = currentUserId !== null && currentUserId === local.author_id;
   const puedoBorrar = esPropia || puedoModerar;
   const hrefHilo = `/comunidades/${local.community_id}/publicacion/${local.id}`;
-  const cuerpo = esCabeceraDeHilo ? (
+  // La columna llega como unknown hasta que se regeneren los tipos, y ademas es
+  // contenido de otra persona: se comprueba la forma antes de pintarla.
+  const imagenes = useMemo(() => leerImagenes(local.imagenes), [local.imagenes]);
+  // Sin sesion el enlace de chat no lleva a ningun sitio: /chat redirige a
+  // login y el destino pierde el ?seller, asi que se acabaria en la bandeja
+  // vacia sin entender por que.
+  const puedoEscribirle = currentUserId !== null && !esPropia;
+  // Con imagenes el texto puede venir vacio (asi lo acepta la RPC): pintar un
+  // parrafo vacio dejaria un hueco con su interlineado encima de las fotos.
+  const hayTexto = local.cuerpo.trim().length > 0;
+  const cuerpo = !hayTexto ? null : esCabeceraDeHilo ? (
     <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[color:var(--fg)]">{local.cuerpo}</p>
   ) : (
     <Link href={hrefHilo} className="block">
@@ -213,9 +417,13 @@ export function PostCard({
         </div>
       </div>
 
-      <div className="mt-3">{cuerpo}</div>
+      {cuerpo && <div className="mt-3">{cuerpo}</div>}
 
-      <div className="mt-3 flex items-center gap-1">
+      {imagenes.length > 0 && (
+        <ImagenesPublicacion rutas={imagenes} autorNombre={local.author_nombre} className="mt-3" />
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-1">
         <button
           type="button"
           onClick={() => {
@@ -256,6 +464,20 @@ export function PostCard({
             {local.comentarios_count > 0 ? local.comentarios_count : "Comentar"}
           </Link>
         )}
+
+        {puedoEscribirle && (
+          <Link
+            href={`/chat?seller=${local.author_id}`}
+            // Esa URL ABRE una conversacion al renderizarse en el servidor: una
+            // precarga jamas debe ejecutarla.
+            prefetch={false}
+            aria-label={`Escribirle a ${local.author_nombre} por chat`}
+            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-[color:var(--brand-hi)] transition-colors hover:bg-[color:var(--brand-tint-strong)]"
+          >
+            <Send className="h-4 w-4" aria-hidden="true" />
+            Mensaje
+          </Link>
+        )}
       </div>
 
       <ReportModal
@@ -263,7 +485,9 @@ export function PostCard({
         onClose={() => setReportar(false)}
         targetType="community_post"
         targetId={local.id}
-        targetLabel={local.cuerpo.slice(0, 60)}
+        // Una publicacion de solo imagenes no tiene texto que ensenarle a quien
+        // modera: decirlo es mejor que mandarle una etiqueta vacia.
+        targetLabel={hayTexto ? local.cuerpo.slice(0, 60) : "Publicación con imágenes"}
       />
       <ConfirmarDialog
         open={confirmarBorrar}

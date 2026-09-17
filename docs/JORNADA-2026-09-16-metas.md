@@ -26,24 +26,31 @@ merge del pulido visual que otra sesión subió en paralelo (7 commits).
 
 ## Meta 1 — Comunidades (plan integral, área I)
 
-Estado: **en curso**. Agentes en Opus 5.
+Estado: **implementada y verificada**, pendiente de push.
 
-- [ ] 1.1 Quitar cuota de 24 h para fundar (migración `comunidad_fundacion_estado`; `fundar-drawer.tsx`).
-- [ ] 1.2 Quitar «archivar» del panel de administración; texto «Salir» en `join-button.tsx`.
-- [ ] 1.3 Restaurar «Nenis Anáhuac» (`7c7ca723-…`) con Javier (`7db68a49-…`) como owner (SQL en producción: READ → WRITE → VERIFY).
-- [ ] 1.4 Badges: «admin», globo negro sin borde, sin etiqueta «Archivada» (`comunidad-card.tsx`, `detalle-cabecera.tsx`).
-- [ ] 1.5 Mapa «Cambiar ubicación» interactivo en iPad (`change-location-map.tsx`).
-- [ ] 1.6 Barra lateral iPad: scroll contenido (`sidebar.tsx`, `use-body-scroll-lock.ts`).
-- [ ] 1.7 Mover centro sin límite de 1 km ni cuota (migración `editar_centro_comunidad`; `mover-centro-sheet.tsx`, `centro-map.tsx`).
-- [ ] 1.8 Cabecera con tríada de iconos y drawer de miembros/solicitudes.
-- [ ] 1.9 Publicaciones con imágenes (columna `imagenes`, bucket, composer, card) y botón de chat directo con el autor.
-- [ ] Revisión adversarial + pruebas + build + push.
+- [x] 1.1 Cuota de 24 h fuera (`comunidad_fundacion_estado` redefinida; `fundar_comunidad` ya delegaba en el helper, sólo se corrigieron sus comentarios).
+- [x] 1.2 «Archivar» fuera del panel de administración. `archivarComunidad` se queda sin llamador: el archivado al salir la última persona lo hace la propia RPC.
+- [x] 1.3 «Nenis Anáhuac» restaurada: viva, owner Javier, membresía `owner` activa (verificado en producción).
+- [x] 1.4 Badges: chip «admin», globo negro sin borde y sin texto, sin etiqueta «Archivada». Verificado en pantalla a 375 px.
+- [x] 1.5 y 1.7 Mapas táctiles: arrastrar, pinza y tocar para mover el pin; fuera el círculo de radio. Corregido además un efecto que recreaba el marcador en cada render.
+- [x] 1.6 Barra lateral con scroll contenido (`overscroll-contain`) y el bloqueo de scroll de los modales arreglado: con `overflow-x: clip` en la raíz, `body.overflow=hidden` no paraba la página.
+- [x] 1.8 Cabecera con la tríada de iconos y drawer de integrantes con las solicitudes arriba si mandas.
+- [x] 1.9 Publicaciones y comentarios con imágenes: columna `imagenes`, bucket `community-media` privado, composer con previsualizaciones y botón de chat directo con el autor.
+- [x] Ruta del bucket cerrada por privacidad: `<community_id>/<autor>/<archivo>` con dos helpers de permiso, para que las fotos de una comunidad privada no las pueda firmar cualquiera que conozca la ruta.
+- [x] Verificación: `tsc`, `pnpm build`, lint sin errores, node 8/8 + 19/19 + 14/14 + 5/5 + 4/4 + 3/3 + 4/4 + 12/12, VERIFY en producción y comprobación visual.
+- [ ] Push a master.
 
 ## Meta 2 — Panel de administración (área II)
 
-- [ ] 2.1 Corregir el nombre corrupto de Javier en `profiles` y normalizar NFC en las acciones de perfil.
-- [ ] 2.2 Contraseña de seguridad para cambios de rol (`ADMIN_SECURITY_PASSWORD`, sin literal en el repo público).
-- [ ] Revisión + build + push.
+Estado: **implementada y verificada**, pendiente de push.
+
+- [x] 2.1 Nombre corregido en la base (dos migraciones: la reparación y el deshacer de una sobre-acentuación que introdujo la primera). `/admin/users` era la única pantalla que pintaba el nombre crudo: ahora pasa por `cleanDisplayName`, que además normaliza a NFC.
+- [x] 2.1b Auditoría para que no vuelva a pasar: `scripts/check-texto-corrupto.mjs` barre once columnas de texto visible y corre cada 3 h en el workflow de fallos silenciosos. Verificado: encontró la fila, y tras la reparación dice que no queda ninguna.
+- [x] 2.1c Candado nuevo en `scripts/apply-migration.mjs`: un archivo con bytes de control se rechaza antes de enviarlo. Postgres respondía `08P01 invalid message format` sin decir dónde.
+- [x] 2.2 Los cambios de rol piden la clave de seguridad en un diálogo, con comparación en tiempo constante, freno por intentos y suelo en memoria. **La clave vive sólo en `ADMIN_SECURITY_PASSWORD`**: el repositorio es público, así que no hay valor por defecto y sin la variable el panel rechaza el cambio y lo dice.
+- [ ] Push a master.
+
+**Pendiente de Pedro:** configurar `ADMIN_SECURITY_PASSWORD` en Vercel (Production) con el valor que quiera usar. Hasta entonces, cambiar roles muestra «Falta configurar la clave de seguridad del panel».
 
 ## Meta 3 — Verificación de identidad (área III)
 

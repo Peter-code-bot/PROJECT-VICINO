@@ -560,6 +560,7 @@ export type Database = {
           created_at: string
           cuerpo: string
           id: string
+          imagenes: string[]
           is_hidden: boolean
           likes_count: number
           parent_post_id: string | null
@@ -571,6 +572,7 @@ export type Database = {
           created_at?: string
           cuerpo: string
           id?: string
+          imagenes?: string[]
           is_hidden?: boolean
           likes_count?: number
           parent_post_id?: string | null
@@ -582,6 +584,7 @@ export type Database = {
           created_at?: string
           cuerpo?: string
           id?: string
+          imagenes?: string[]
           is_hidden?: boolean
           likes_count?: number
           parent_post_id?: string | null
@@ -2641,8 +2644,17 @@ export type Database = {
           created_at: string
           cuerpo: string
           id: string
+          imagenes: string[]
           puedo_borrar: boolean
         }[]
+      }
+      community_post_imagenes_validas: {
+        Args: {
+          p_author_id: string
+          p_community_id: string
+          p_imagenes: string[]
+        }
+        Returns: boolean
       }
       complete_user_onboarding: { Args: never; Returns: undefined }
       comunidad_bloqueo_con_mando: {
@@ -2777,6 +2789,10 @@ export type Database = {
         Args: { p_community_id: string }
         Returns: boolean
       }
+      es_miembro_de_comunidad_por_ruta: {
+        Args: { p_ruta: string }
+        Returns: boolean
+      }
       es_moderador_de_comunidad: {
         Args: { p_community_id: string }
         Returns: boolean
@@ -2801,6 +2817,7 @@ export type Database = {
           created_at: string
           cuerpo: string
           id: string
+          imagenes: string[]
           le_di_like: boolean
           likes_count: number
         }[]
@@ -2824,6 +2841,7 @@ export type Database = {
           created_at: string
           cuerpo: string
           id: string
+          imagenes: string[]
           le_di_like: boolean
           likes_count: number
         }[]
@@ -3227,10 +3245,15 @@ export type Database = {
       publicar_en_comunidad: {
         Args: {
           p_community_id: string
+          p_imagenes?: string[]
           p_parent_post_id?: string
           p_texto: string
         }
         Returns: Json
+      }
+      puedo_ver_media_de_comunidad: {
+        Args: { p_ruta: string }
+        Returns: boolean
       }
       puedo_ver_publicacion: { Args: { p_post_id: string }; Returns: boolean }
       purgar_verificacion_ia_consumo: { Args: never; Returns: undefined }

@@ -43,8 +43,25 @@ interface JoinButtonProps {
   /** El padre recibe el estado autoritativo (o el optimista) para pintar el conteo. */
   onEstado?: (estado: EstadoRelacion) => void;
   size?: "sm" | "md";
+  /**
+   * "icono": salir se pinta como un icono redondo, para la triada de la
+   * cabecera. Solo cambia la forma; la confirmacion, el caso de la ultima
+   * persona, los toasts y el optimismo son los mismos. Existe para que la
+   * cabecera no reimplemente la salida a mano y se quede sin ellos.
+   * Entrar, solicitar y "solicitud enviada" se pintan igual en las dos
+   * variantes: la cabecera solo pide "icono" cuando ya eres miembro.
+   */
+  variante?: "boton" | "icono";
   className?: string;
 }
+
+/**
+ * Misma forma que el boton de volver de la cabecera. El after: esta porque un
+ * circulo de 40 px no llega a los 44 px de area tactil, y agrandar el circulo
+ * lo descuadraria de los otros iconos de la fila.
+ */
+const BOTON_ICONO =
+  "relative flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-[color:var(--border)]/20 disabled:opacity-60 after:absolute after:left-1/2 after:top-1/2 after:h-11 after:w-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
 
 /**
  * Un solo boton para toda la relacion con una comunidad (decision 3):
@@ -68,6 +85,7 @@ export function JoinButton({
   estado,
   onEstado,
   size = "md",
+  variante = "boton",
   className,
 }: JoinButtonProps) {
   const [local, setLocal] = useState<EstadoRelacion>(estado);
@@ -170,18 +188,30 @@ export function JoinButton({
   if (local.soy_miembro) {
     return (
       <>
-        <Button
-          type="button"
-          variant="secondary"
-          size={tam}
-          className={cn("rounded-full", className)}
-          onClick={() => setConfirmarSalir(true)}
-          disabled={pendiente}
-          aria-label={`Salir de ${nombre}`}
-        >
-          <LogOut className="h-4 w-4" />
-          Salir
-        </Button>
+        {variante === "icono" ? (
+          <button
+            type="button"
+            className={cn(BOTON_ICONO, className)}
+            onClick={() => setConfirmarSalir(true)}
+            disabled={pendiente}
+            aria-label={`Salir de ${nombre}`}
+          >
+            <LogOut className="h-5 w-5" aria-hidden="true" />
+          </button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size={tam}
+            className={cn("rounded-full", className)}
+            onClick={() => setConfirmarSalir(true)}
+            disabled={pendiente}
+            aria-label={`Salir de ${nombre}`}
+          >
+            <LogOut className="h-4 w-4" />
+            Salir
+          </Button>
+        )}
         <ConfirmarDialog
           open={confirmarSalir}
           onOpenChange={setConfirmarSalir}

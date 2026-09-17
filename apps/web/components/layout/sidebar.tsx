@@ -73,8 +73,19 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   const serviceCategories = CATEGORIES.filter((c) => c.type === "servicio" && !c.hidden_in_form);
   const otherCategories = CATEGORIES.filter((c) => c.type === "otro" && !c.hidden_in_form);
 
+  // La barra lateral se desplaza sola: `overscroll-contain` en los DOS
+  // contenedores que desplazan (el aside y el nav de dentro). En WebKit, un
+  // contenedor con overflow auto encadena el gesto al documento en cuanto
+  // llega a un tope -- y tambien cuando su contenido no desborda, que es el
+  // caso del aside en una pantalla alta de iPad: deslizar sobre los enlaces
+  // movia la pagina de detras. Contener rompe la cadena en cada nivel.
+  //
+  // `touch-pan-y` NO se pone aqui: no impide el encadenado (eso lo gobierna
+  // overscroll-behavior, no touch-action) y a cambio le quita al navegador el
+  // pellizco para acercar sobre la barra, que en iPadOS es como se lee el
+  // texto pequeno. Estorba mas de lo que ayuda.
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[color:var(--sidebar-bg)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto overscroll-contain bg-[color:var(--sidebar-bg)] shadow-[inset_-1px_0_0_0_var(--border)] md:flex">
       {/* Logo */}
       <div className="px-5 py-5">
         <Link href="/" className="group flex items-center gap-2.5">
@@ -88,7 +99,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto overscroll-contain">
         {/* Main nav */}
         <NavItem href="/" icon={Home} label="Inicio" active={isActive("/", true)} />
         <NavItem href="/buscar" icon={Search} label="Buscar" active={isActive("/buscar")} />

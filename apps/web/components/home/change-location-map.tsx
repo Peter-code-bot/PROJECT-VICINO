@@ -15,14 +15,21 @@ export default function ChangeLocationMap({
   zoneLabel,
   cityLabel,
 }: Props) {
+  // Los dos atributos van en el recuadro entero, no solo en el lienzo de
+  // MapKit: cubren tambien las etiquetas de zona y ciudad y el hueco de carga.
+  // Sin ellos, un arrastre horizontal que empiece ahi cambia de pestana y uno
+  // vertical dispara el pull-to-refresh en vez de mover el mapa.
   return (
-    <div className="relative mx-5 h-[200px] overflow-hidden rounded-2xl border border-[color:var(--border)]">
+    <div
+      data-no-page-swipe="true"
+      data-no-pull-to-refresh="true"
+      className="relative mx-5 h-[200px] overflow-hidden rounded-2xl border border-[color:var(--border)]"
+    >
       <AppleMapContainer
         key={`${lat.toFixed(4)}-${lng.toFixed(4)}`}
         center={[lat, lng]}
         markerPosition={[lat, lng]}
         zoom={14}
-        interactive={false}
         height="100%"
       />
 

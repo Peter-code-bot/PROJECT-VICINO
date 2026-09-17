@@ -11,8 +11,9 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { ReportModal } from "@/components/moderation/report-modal";
 import { cargarComentarios, comentarPublicacion, eliminarPublicacion } from "@/app/(marketplace)/comunidades/actions";
 import type { PostComunidad, ComentarioComunidad, CursorComunidad } from "@/lib/comunidades/tipos";
-import { PostCard } from "./post-card";
-import { PostComposer } from "./post-composer";
+import { PostCard, ImagenesPublicacion } from "./post-card";
+import { PostComposer, type EnvioDeMuro } from "./post-composer";
+import { leerImagenes } from "@/lib/comunidades/media";
 import { ConfirmarDialog } from "./confirmar-dialog";
 
 const PAGINA = 30;
@@ -68,8 +69,8 @@ export function HiloPublicacion({
     limit: PAGINA,
   });
 
-  async function comentar(texto: string): Promise<string | null> {
-    const r = await comentarPublicacion({ community_id: post.community_id, parent_post_id: post.id, texto });
+  async function comentar({ texto, imagenes }: EnvioDeMuro): Promise<string | null> {
+    const r = await comentarPublicacion({ community_id: post.community_id, parent_post_id: post.id, texto, imagenes });
     if ("error" in r) return r.error;
     appendLive({
       id: r.data.id,
@@ -77,6 +78,8 @@ export function HiloPublicacion({
       author_nombre: currentUser.nombre,
       author_foto: currentUser.foto ?? "",
       cuerpo: texto,
+      // Igual que en el muro: el comentario optimista ya ensena sus imagenes.
+      imagenes,
       created_at: r.data.created_at,
       puedo_borrar: true,
     });
@@ -157,7 +160,14 @@ export function HiloPublicacion({
                     {formatRelativeTime(c.created_at)}
                   </time>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[color:var(--fg)]">{c.cuerpo}</p>
+                {c.cuerpo && (
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[color:var(--fg)]">{c.cuerpo}</p>
+                )}
+                <ImagenesPublicacion
+                  rutas={leerImagenes((c as { imagenes?: unknown }).imagenes)}
+                  autorNombre={c.author_nombre}
+                  className="mt-2"
+                />
                 <div className="mt-1 flex items-center gap-3">
                   {c.author_id !== currentUser.id && (
                     <button
@@ -214,7 +224,14 @@ export function HiloPublicacion({
         // y el sidebar ocupa 16 rem a la izquierda.
         <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-30 px-4 py-2 md:bottom-0 md:left-64 md:border-t md:border-[color:var(--border)]/15 md:bg-[color:var(--bg)]/95 md:py-3 md:backdrop-blur">
           <div className="mx-auto max-w-lg">
-            <PostComposer placeholder="Escribe un comentario" onEnviar={comentar} compacto etiquetaBoton="Comentar" />
+            <PostComposer
+              placeholder="Escribe un comentario"
+              communityId={post.community_id}
+              autorId={currentUser.id}
+              onEnviar={comentar}
+              compacto
+              etiquetaBoton="Comentar"
+            />
           </div>
         </div>
       ) : (

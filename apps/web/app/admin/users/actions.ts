@@ -3,9 +3,17 @@
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { assignRoleSchema, removeRoleSchema } from "@vicino/shared";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { comprobarClaveDeSeguridad } from "@/lib/admin/clave-de-seguridad";
 
-export async function assignRole(userId: string, role: string) {
+export async function assignRole(userId: string, role: string, claveDeSeguridad?: string) {
   const { supabase, user } = await requireAdmin();
+
+  // La clave va PRIMERO, antes de la cuota de escritura y de la validacion:
+  // repartir el rol de admin es el movimiento mas caro del panel y no puede
+  // depender de un clic suelto en una sesion abierta. Ver
+  // lib/admin/clave-de-seguridad.ts.
+  const clave = await comprobarClaveDeSeguridad(user.id, claveDeSeguridad);
+  if (!clave.ok) return { error: clave.error };
 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
@@ -33,8 +41,11 @@ export async function assignRole(userId: string, role: string) {
   return { success: true };
 }
 
-export async function removeRole(userId: string, role: string) {
+export async function removeRole(userId: string, role: string, claveDeSeguridad?: string) {
   const { supabase, user } = await requireAdmin();
+
+  const clave = await comprobarClaveDeSeguridad(user.id, claveDeSeguridad);
+  if (!clave.ok) return { error: clave.error };
 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };

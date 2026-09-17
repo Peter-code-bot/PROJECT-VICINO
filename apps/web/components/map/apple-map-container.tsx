@@ -58,6 +58,11 @@ export default function AppleMapContainer({
   const mapInstanceRef = useRef<MapInstance | null>(null);
   const markerRef = useRef<MarkerInstance | null>(null);
   const circleRef = useRef<unknown>(null);
+  // Encuadre que ya tiene el mapa vivo. Sin esta marca el efecto reaplicaba la
+  // region en cada pasada y el mapa volvia al encuadre de la prop en cuanto se
+  // movia el pin o cambiaba el tema, tirando el zoom y el desplazamiento que
+  // la persona acababa de hacer con el dedo.
+  const regionAplicadaRef = useRef<string | null>(null);
   const { isReady, isAvailable, mapkit, retry, failure, retryWaitSeconds } = useMapKit();
   const { resolvedTheme } = useTheme();
 
@@ -76,6 +81,11 @@ export default function AppleMapContainer({
   const centerLng = center[1];
   const markerLat = markerPosition ? markerPosition[0] : centerLat;
   const markerLng = markerPosition ? markerPosition[1] : centerLng;
+  // Un array literal como dependencia cambia de identidad en cada render y
+  // arrastraba consigo el efecto entero: el marker se borraba y se volvia a
+  // crear sin que nadie hubiera tocado nada.
+  const circleLat = circleCenter?.[0];
+  const circleLng = circleCenter?.[1];
 
   useEffect(() => {
     if (isAvailable || !mapInstanceRef.current) return;
@@ -83,6 +93,7 @@ export default function AppleMapContainer({
     mapInstanceRef.current = null;
     markerRef.current = null;
     circleRef.current = null;
+    regionAplicadaRef.current = null;
   }, [isAvailable]);
 
   // Inicializar o actualizar mapa de Apple MapKit
@@ -97,6 +108,7 @@ export default function AppleMapContainer({
       centerCoord,
       new mapkit.CoordinateSpan(delta, delta)
     );
+    const claveRegion = `${centerLat},${centerLng},${zoom}`;
 
     // Crear mapa si no existe
     if (!mapInstanceRef.current) {
@@ -118,6 +130,7 @@ export default function AppleMapContainer({
       });
 
       mapInstanceRef.current = map;
+      regionAplicadaRef.current = claveRegion;
 
       // Evento clic en mapa
       if (interactive) {
@@ -134,7 +147,14 @@ export default function AppleMapContainer({
         });
       }
     } else {
-      mapInstanceRef.current.setRegionAnimated(region, true);
+      // Reencuadrar SOLO cuando el centro o el zoom cambian de verdad. Antes
+      // se reaplicaba en cada pasada del efecto, asi que mover el pin o
+      // cambiar de tema devolvia el mapa al encuadre inicial: la persona hacia
+      // zoom, tocaba el mapa, y el mapa saltaba hacia atras.
+      if (regionAplicadaRef.current !== claveRegion) {
+        mapInstanceRef.current.setRegionAnimated(region, true);
+        regionAplicadaRef.current = claveRegion;
+      }
       mapInstanceRef.current.colorScheme =
         resolvedTheme === "dark"
           ? mapkit.Map.ColorSchemes.Dark
@@ -175,9 +195,7 @@ export default function AppleMapContainer({
     }
 
     if (radiusKm && radiusKm > 0) {
-      const circleLat = circleCenter ? circleCenter[0] : markerLat;
-      const circleLng = circleCenter ? circleCenter[1] : markerLng;
-      const circleCoord = new mapkit.Coordinate(circleLat, circleLng);
+      const circleCoord = new mapkit.Coordinate(circleLat ?? markerLat, circleLng ?? markerLng);
       const stroke = circleColor || "#E8734A";
       const circle = new mapkit.CircleOverlay(circleCoord, radiusKm * 1000, {
         style: new mapkit.Style({
@@ -203,7 +221,8 @@ export default function AppleMapContainer({
     interactive,
     draggableMarker,
     radiusKm,
-    circleCenter,
+    circleLat,
+    circleLng,
     circleColor,
     // Solo se lee al crear el mapa, igual que `interactive`. Va en las
     // dependencias por coherencia con el resto de props, no porque cambie.
@@ -238,13 +257,20 @@ export default function AppleMapContainer({
   }
 
   // Si MapKit está disponible, montamos el div donde Apple MapKit se inicializa
+  //
+  // `touch-action: none` en el mapa interactivo: en iPadOS el navegador se
+  // queda el arrastre de un dedo como scroll de la pagina (o del sheet que lo
+  // contiene) y la pinza como zoom del documento ANTES de que MapKit vea los
+  // eventos, asi que el mapa no se movia con el dedo aunque isScrollEnabled e
+  // isZoomEnabled estuvieran activos. En un mapa no interactivo se omite a
+  // proposito: ahi el dedo tiene que seguir desplazando la pagina.
   if (isAvailable) {
     return (
       <div
         ref={containerRef}
         data-mapkit="true"
         className={`relative overflow-hidden rounded-2xl ${className}`}
-        style={{ height, width: "100%" }}
+        style={{ height, width: "100%", touchAction: interactive ? "none" : undefined }}
       />
     );
   }

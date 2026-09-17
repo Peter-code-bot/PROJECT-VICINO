@@ -103,6 +103,29 @@ const main = async () => {
   const sql = fs.readFileSync(abs, 'utf8').trim().replace(/;\s*$/, '');
   if (!sql) throw new Error('El archivo esta vacio.');
 
+  // Candado 2b: bytes de control en el archivo.
+  //
+  // El 16-sep-2026 una migracion generada con un script llevaba diez bytes NUL
+  // dentro de un comentario (un escape octal que se colo al pasar por varias
+  // capas de comillas). Postgres contesto `08P01: invalid message format`, que
+  // no nombra ni el byte ni la linea: el diagnostico se hizo a ciegas. Un NUL
+  // rompe el protocolo antes de que el motor lea una sola sentencia, asi que no
+  // tiene sentido mandarlo.
+  const control = [...sql].map((ch, i) => [i, ch.codePointAt(0) ?? 0])
+    .filter(([, cp]) => cp === 0 || cp < 9 || (cp > 13 && cp < 32) || cp === 127);
+  if (control.length > 0) {
+    const [posicion, punto] = control[0];
+    const linea = sql.slice(0, posicion).split('\n').length;
+    throw new Error(
+      `El archivo tiene ${control.length} byte(s) de control (el primero, U+${punto
+        .toString(16)
+        .toUpperCase()
+        .padStart(4, '0')}, en la linea ${linea}).\n` +
+        'Postgres responderia "08P01: invalid message format" sin decir donde.\n' +
+        'Suele venir de generar el SQL con escapes por capas: escribe el texto llano.'
+    );
+  }
+
   // Candado 3: nunca reaplicar.
   const yaEsta = await post(
     `SELECT version FROM supabase_migrations.schema_migrations WHERE version = ${q(version)}`

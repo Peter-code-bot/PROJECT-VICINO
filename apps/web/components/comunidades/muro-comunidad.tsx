@@ -6,7 +6,7 @@ import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { cargarMuro, cargarMuroUnificado, publicarEnComunidad } from "@/app/(marketplace)/comunidades/actions";
 import type { PostComunidad, CursorComunidad } from "@/lib/comunidades/tipos";
 import { PostCard } from "./post-card";
-import { PostComposer } from "./post-composer";
+import { PostComposer, type EnvioDeMuro } from "./post-composer";
 
 const PAGINA = 30;
 
@@ -81,9 +81,9 @@ export function MuroComunidad({
     return () => obs.disconnect();
   }, [hasMore, loadMore]);
 
-  async function publicar(texto: string): Promise<string | null> {
+  async function publicar({ texto, imagenes }: EnvioDeMuro): Promise<string | null> {
     if (!communityId || !currentUser) return "Inicia sesión para publicar.";
-    const r = await publicarEnComunidad({ community_id: communityId, texto });
+    const r = await publicarEnComunidad({ community_id: communityId, texto, imagenes });
     if ("error" in r) return r.error;
     // La fila optimista se arma con lo que devuelve la RPC (id, created_at) y
     // lo que ya se sabe del autor. Al recargar llega la autoritativa.
@@ -97,6 +97,10 @@ export function MuroComunidad({
       author_foto: currentUser.foto ?? "",
       author_trust_level: "",
       cuerpo: texto,
+      // La fila optimista ya ensena las imagenes: sin esto, la publicacion
+      // aparece sin fotos hasta que el muro se recarga, y parece que no se
+      // subieron.
+      imagenes,
       created_at: r.data.created_at,
       likes_count: 0,
       comentarios_count: 0,
@@ -110,6 +114,8 @@ export function MuroComunidad({
       {puedoPublicar && communityId && currentUser && (
         <PostComposer
           placeholder={`Comparte algo con ${communityNombre ?? "la comunidad"}`}
+          communityId={communityId}
+          autorId={currentUser.id}
           onEnviar={publicar}
           autor={{ nombre: currentUser.nombre, foto: currentUser.foto }}
         />

@@ -79,7 +79,13 @@ const REPAIR_PATTERNS: Array<[RegExp, string]> = [
 export function cleanDisplayName(name: string | null | undefined): string {
   if (!name || typeof name !== "string") return "Usuario";
 
-  let cleaned = name.trim();
+  // NFC ANTES de comparar. Una "í" puede llegar de dos formas distintas: un
+  // solo punto de codigo (U+00ED) o una "i" seguida de una tilde combinante
+  // (U+0069 U+0301). Se ven iguales en pantalla, pero NO son la misma cadena:
+  // sin normalizar, dos nombres identicos a la vista dejan de coincidir en una
+  // busqueda o en un indice unico, y los patrones de reparacion de abajo solo
+  // casarian con una de las dos formas.
+  let cleaned = name.normalize("NFC").trim();
   if (!cleaned) return "Usuario";
 
   // Reparar patrones comunes con \uFFFD

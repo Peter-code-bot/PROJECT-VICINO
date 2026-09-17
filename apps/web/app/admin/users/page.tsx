@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { cleanDisplayName } from "@vicino/shared";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { Constants } from "@/types/database.types";
 import { RoleActions } from "./role-actions";
@@ -103,7 +104,16 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             <div key={u.id} className="rounded-lg border p-4 flex items-center gap-4 w-full">
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{u.nombre || "Sin nombre"}</span>
+                  {/* Por aqui salia el rombo con el signo de interrogacion de
+                      la captura: esta pantalla era la UNICA que pintaba el
+                      nombre crudo de la base. El resto de la app pasa por
+                      cleanDisplayName, que normaliza a NFC y repara los
+                      apellidos que quedaron con el caracter de reemplazo
+                      cuando un script antiguo escribio sin UTF-8. El dato
+                      corrupto tambien se arregla en la base
+                      (20260916150000), pero esta defensa se queda: quien
+                      revisa cuentas no puede ser el unico que vea basura. */}
+                  <span className="font-medium text-sm">{u.nombre ? cleanDisplayName(u.nombre) : "Sin nombre"}</span>
                   <SellerBadge level={u.trust_level ?? "nuevo"} size="sm" />
                   {u.es_vendedor && (
                     <span className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">

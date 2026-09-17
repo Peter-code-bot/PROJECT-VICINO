@@ -19,7 +19,9 @@ import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, getClientIp, readHeavyRateLimit, writeRateLimit } from "@/lib/rate-limit";
+import type { Database } from "@/types/database.types";
 import {
+  COMMUNITY_POST_MAX,
   fundarComunidadSchema,
   editarDescripcionComunidadSchema,
   editarVisibilidadComunidadSchema,
@@ -38,6 +40,10 @@ import {
   CODIGO_ARGUMENTO,
   CODIGO_DUPLICADO,
 } from "@/lib/comunidades/errores";
+import {
+  esRutaDeAutor,
+  MAX_IMAGENES_POR_PUBLICACION,
+} from "@/lib/comunidades/media";
 import {
   leerBooleano,
   leerNumero,
@@ -526,25 +532,147 @@ export async function archivarComunidad(
 
 // ─── PUBLICACIONES Y COMENTARIOS ───────────────────────────────────────────
 
+/**
+ * Con imagenes el texto puede ir vacio, y publicarEnComunidadSchema exige un
+ * caracter. Ese esquema vive en @vicino/shared y no se toca desde aqui, asi que
+ * el camino con imagenes usa este espejo: mismo tope y mismo recorte que la
+ * base (btrim antes de medir), sin el minimo.
+ */
+const textoJuntoAImagenes = z
+  .string()
+  .trim()
+  .max(COMMUNITY_POST_MAX, `El texto no puede pasar de ${COMMUNITY_POST_MAX} caracteres`);
+
+/**
+ * Las rutas que manda el cliente, comprobadas de nuevo aqui.
+ *
+ * Que la RPC tambien las valide no hace esto redundante: el cliente escribe la
+ * ruta que quiera y el servidor es quien la firma como propia. Se exige
+ * <comunidad>/<quien publica>/ (esRutaDeAutor mira ademas el `..`), el tope de
+ * cuatro y que no venga repetida -- una repetida pintaria la misma foto dos
+ * veces y gastaria dos huecos del tope.
+ *
+ * La comunidad entra en la comprobacion porque va DENTRO de la ruta: sin ella,
+ * alguien podria adjuntar a una comunidad una imagen que subio para otra, y la
+ * policy de lectura del bucket -- que decide por el primer tramo -- la
+ * ensenaria a quien pertenezca a la comunidad equivocada.
+ *
+ * Devuelve null y no una lista recortada: si algo no encaja, publicar "casi lo
+ * que pediste" es peor que decir que no. Quien escribe tiene que enterarse.
+ */
+function rutasPropias(valor: unknown, communityId: string, userId: string): string[] | null {
+  if (valor === undefined || valor === null) return [];
+  if (!Array.isArray(valor)) return null;
+  const crudas: readonly unknown[] = valor;
+  if (crudas.length > MAX_IMAGENES_POR_PUBLICACION) return null;
+
+  const rutas: string[] = [];
+  for (const item of crudas) {
+    if (!esRutaDeAutor(item, communityId, userId)) return null;
+    if (rutas.includes(item)) return null;
+    rutas.push(item);
+  }
+  return rutas;
+}
+
+const ERROR_IMAGENES = "No se pudieron adjuntar las imágenes. Vuelve a elegirlas.";
+
+/**
+ * Valida cuerpo + imagenes de una publicacion o de un comentario.
+ *
+ * Los dos comparten tabla, CHECK y RPC, asi que comparten validador: tenerlo
+ * dos veces es como acabaron divergiendo los mensajes de otros modulos.
+ */
+function revisarEntradaDeMuro(
+  entrada: { community_id: string; parent_post_id: string | null; texto: string; imagenes?: string[] },
+  userId: string,
+): { error: string } | { texto: string; rutas: string[] } {
+  const rutas = rutasPropias(entrada.imagenes, entrada.community_id, userId);
+  if (rutas === null) return { error: ERROR_IMAGENES };
+
+  if (rutas.length === 0) {
+    // Sin imagenes NADA cambia: el esquema compartido de siempre, con su
+    // mensaje de siempre.
+    const parsed =
+      entrada.parent_post_id === null
+        ? publicarEnComunidadSchema.safeParse({ community_id: entrada.community_id, texto: entrada.texto })
+        : comentarPublicacionSchema.safeParse({
+            community_id: entrada.community_id,
+            parent_post_id: entrada.parent_post_id,
+            texto: entrada.texto,
+          });
+    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { texto: parsed.data.texto, rutas: [] };
+  }
+
+  if (!uuid.safeParse(entrada.community_id).success) return { error: "Comunidad inválida." };
+  if (entrada.parent_post_id !== null && !uuid.safeParse(entrada.parent_post_id).success) {
+    return { error: "Publicación inválida." };
+  }
+  const texto = textoJuntoAImagenes.safeParse(entrada.texto ?? "");
+  if (!texto.success) return { error: texto.error.errors[0]?.message ?? "Datos inválidos" };
+  return { texto: texto.data, rutas };
+}
+
+/**
+ * p_imagenes viaja SIEMPRE, incluso vacio.
+ *
+ * No es cosmetico: si la migracion hiciera CREATE OR REPLACE sin el DROP de la
+ * firma vieja de tres argumentos, quedarian dos funciones y una llamada con
+ * solo tres nombres encajaria en las dos -- PostgREST responde 300. Nombrando
+ * los cuatro, la llamada solo puede resolver a la nueva.
+ */
+function argsPublicar(
+  communityId: string,
+  texto: string,
+  rutas: string[],
+  parentPostId: string | null,
+): Database["public"]["Functions"]["publicar_en_comunidad"]["Args"] {
+  const base: Database["public"]["Functions"]["publicar_en_comunidad"]["Args"] = {
+    p_community_id: communityId,
+    p_texto: texto,
+    p_imagenes: rutas,
+  };
+  // undefined omite el argumento y Postgres aplica su DEFAULT NULL, que es
+  // exactamente "esto es una publicacion de muro, no un comentario".
+  return parentPostId === null ? base : { ...base, p_parent_post_id: parentPostId };
+}
+
 export async function publicarEnComunidad(input: {
   community_id: string;
   texto: string;
+  /** Rutas del bucket community-media, ya subidas por el cliente. */
+  imagenes?: string[];
 }): Promise<{ error: string } | { data: { id: string; created_at: string } }> {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
-  const parsed = publicarEnComunidadSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
 
-  const { data, error } = await s.supabase.rpc("publicar_en_comunidad", {
-    p_community_id: parsed.data.community_id,
-    p_texto: parsed.data.texto,
-  });
+  const revisada = revisarEntradaDeMuro(
+    { community_id: input.community_id, parent_post_id: null, texto: input.texto, imagenes: input.imagenes },
+    s.userId,
+  );
+  if ("error" in revisada) {
+    // Una ruta rechazada no es un rechazo esperado como una cuota: significa
+    // que el cliente mando algo que no deberia poder mandar.
+    if (revisada.error === ERROR_IMAGENES) {
+      reportarSiInesperado({ message: "rutas de imagen rechazadas al publicar" }, "publicar_en_comunidad@imagenes");
+    }
+    return { error: revisada.error };
+  }
+
+  const { data, error } = await s.supabase.rpc(
+    "publicar_en_comunidad",
+    argsPublicar(input.community_id, revisada.texto, revisada.rutas, null),
+  );
   if (error) {
     reportarSiInesperado(error, "publicar_en_comunidad");
     return { error: traducirErrorComunidad(error) };
   }
   const id = leerTexto(data, "id");
   if (!id) return { error: "No se pudo publicar. Intenta de nuevo." };
+  // NO hay revalidatePath aqui, y es deliberado: el muro pinta la fila nueva de
+  // forma optimista con lo que devuelve esta RPC. Purgar la ruta obligaria a
+  // volver a renderizar el muro entero para ensenar lo que ya esta en pantalla.
   return { data: { id, created_at: leerTexto(data, "created_at") ?? new Date().toISOString() } };
 }
 
@@ -552,23 +680,40 @@ export async function comentarPublicacion(input: {
   community_id: string;
   parent_post_id: string;
   texto: string;
+  /** Rutas del bucket community-media, ya subidas por el cliente. */
+  imagenes?: string[];
 }): Promise<{ error: string } | { data: { id: string; created_at: string } }> {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
-  const parsed = comentarPublicacionSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
 
-  const { data, error } = await s.supabase.rpc("publicar_en_comunidad", {
-    p_community_id: parsed.data.community_id,
-    p_texto: parsed.data.texto,
-    p_parent_post_id: parsed.data.parent_post_id,
-  });
+  const revisada = revisarEntradaDeMuro(
+    {
+      community_id: input.community_id,
+      parent_post_id: input.parent_post_id,
+      texto: input.texto,
+      imagenes: input.imagenes,
+    },
+    s.userId,
+  );
+  if ("error" in revisada) {
+    if (revisada.error === ERROR_IMAGENES) {
+      reportarSiInesperado({ message: "rutas de imagen rechazadas al comentar" }, "publicar_en_comunidad@comentar-imagenes");
+    }
+    return { error: revisada.error };
+  }
+
+  const { data, error } = await s.supabase.rpc(
+    "publicar_en_comunidad",
+    argsPublicar(input.community_id, revisada.texto, revisada.rutas, input.parent_post_id),
+  );
   if (error) {
     reportarSiInesperado(error, "publicar_en_comunidad@comentar");
     return { error: traducirErrorComunidad(error) };
   }
   const id = leerTexto(data, "id");
   if (!id) return { error: "No se pudo comentar. Intenta de nuevo." };
+  // Igual que al publicar: el hilo anade el comentario en pantalla con esta
+  // respuesta, asi que no se purga la ruta.
   return { data: { id, created_at: leerTexto(data, "created_at") ?? new Date().toISOString() } };
 }
 

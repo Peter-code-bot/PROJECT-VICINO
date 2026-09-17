@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { DetalleCabecera } from "@/components/comunidades/detalle-cabecera";
+// import type: el modulo del drawer es "use client" y de ahi solo puede
+// cruzar la frontera un tipo, que se borra al compilar. Traer una funcion de
+// ahi revienta en runtime con el build en verde.
+import type { SolicitudesIniciales } from "@/components/comunidades/comunidad-miembros-drawer";
 import { MuroComunidad } from "@/components/comunidades/muro-comunidad";
 import { MuroDifuminado } from "@/components/comunidades/muro-difuminado";
 import { ComunidadNoDisponible } from "@/components/comunidades/no-disponible";
@@ -17,6 +21,10 @@ export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGINA = 30;
+const PAGINA_SOLICITUDES = 30;
+
+/** Muro sin pedir: la forma exacta que devuelve cargarMuroInicial, sin cast. */
+const MURO_VACIO: Awaited<ReturnType<typeof cargarMuroInicial>> = { items: [], errorPermiso: false, error: null };
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
@@ -65,14 +73,21 @@ export default async function ComunidadPage({ params }: Props) {
   // comunidad se cerro entre una lectura y otra), se pinta la silueta igual
   // que si fuera privada de entrada.
   const puedeVerMuro = detalle.disponible && (detalle.soy_miembro || !detalle.es_privada);
-  let posts: Awaited<ReturnType<typeof cargarMuroInicial>> = { items: [], errorPermiso: false, error: null };
-  if (puedeVerMuro) posts = await cargarMuroInicial(supabase, id);
+  // La cola se lee aqui para que el drawer de la cabecera abra con las
+  // solicitudes puestas. Solo si hay mando: solicitudes_de_comunidad responde
+  // 42501 a quien no manda. Y solo si es privada, igual que la pantalla de
+  // administrar: en una publica se entra sin solicitar.
+  const pedirSolicitudes = esMando(detalle.mi_rol) && detalle.es_privada && detalle.disponible;
+  const [posts, solicitudes] = await Promise.all([
+    puedeVerMuro ? cargarMuroInicial(supabase, id) : Promise.resolve(MURO_VACIO),
+    pedirSolicitudes ? cargarSolicitudesIniciales(supabase, id) : Promise.resolve(null),
+  ]);
 
   const muroBloqueado = (!puedeVerMuro || posts.errorPermiso) && !detalle.soy_miembro;
 
   return (
     <div className="mx-auto w-full max-w-lg pb-28">
-      <DetalleCabecera detalle={detalle} />
+      <DetalleCabecera detalle={detalle} solicitudes={solicitudes} />
 
       {!detalle.disponible && detalle.soy_miembro && (
         <div className="mx-4 mb-3 flex items-start gap-2 rounded-2xl bg-[color:var(--card-2)] p-3 text-xs text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)]">
@@ -106,6 +121,34 @@ export default async function ComunidadPage({ params }: Props) {
       </section>
     </div>
   );
+}
+
+async function cargarSolicitudesIniciales(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string,
+): Promise<SolicitudesIniciales> {
+  const { data, error } = await supabase.rpc("solicitudes_de_comunidad", {
+    p_community_id: id,
+    result_limit: PAGINA_SOLICITUDES,
+  });
+  if (error) {
+    // 42501 es un estado esperado: el mando se puede haber perdido entre
+    // detalle_comunidad y esta lectura. El drawer pinta el motivo y la pagina
+    // sigue en pie; a Sentry solo va lo que no se espera.
+    if (!esErrorDePermiso(error)) {
+      Sentry.captureException(error, { tags: { action: "solicitudes_de_comunidad@detalle" } });
+    }
+    return { items: [], cursor: null, error: traducirErrorComunidad(error) };
+  }
+  const items = data ?? [];
+  const ultima = items[items.length - 1];
+  return {
+    items,
+    // Solo si la pagina vino llena: un cursor con la pagina a medias haria
+    // que el boton de cargar mas repitiera lo que ya esta en pantalla.
+    cursor:
+      items.length === PAGINA_SOLICITUDES && ultima ? { time: ultima.created_at, id: ultima.id } : null,
+  };
 }
 
 async function cargarMuroInicial(supabase: Awaited<ReturnType<typeof createClient>>, id: string) {

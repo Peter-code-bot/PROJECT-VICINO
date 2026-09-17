@@ -5,8 +5,7 @@ import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { X, Loader2, LocateFixed, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { X, Loader2, LocateFixed } from "lucide-react";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { editarCentro } from "@/app/(marketplace)/comunidades/actions";
 import type { CentroComunidad } from "@/lib/comunidades/tipos";
@@ -28,28 +27,22 @@ interface Props {
   onMovido: (centro: CentroComunidad) => void;
 }
 
-/** Haversine en metros: la misma medida que ST_Distance sobre geography, a
- *  efectos de avisar ANTES de mandar. La base es quien decide. */
-function distanciaMetros(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-
 /**
- * Sheet para mover el centro (decision 6): mapa arrastrable con el circulo
- * del kilometro, distancia en vivo, boton de GPS, y el boton de guardar
- * deshabilitado cuando el punto sale del radio o no quedan movimientos hoy
- * (decision 10 aplicada aqui tambien). El 23505 de nombre repetido en la
- * celda destino llega ya traducido desde la accion.
+ * Sheet para mover el centro: mapa que se arrastra y se acerca con la pinza,
+ * pin movible y guardado sin limite de distancia. La base sigue siendo quien
+ * decide: si rechaza el punto (fuera de Mexico, otra comunidad propia
+ * demasiado cerca, nombre ya usado en la celda destino, cuota diaria agotada)
+ * el mensaje llega ya traducido desde la accion y se pinta tal cual. Aqui no
+ * se adelanta ningun veredicto: adelantarlo deshabilitaba el boton en puntos
+ * que la base habria aceptado.
  */
 export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido }: Props) {
   const [mounted, setMounted] = useState(false);
   const [punto, setPunto] = useState({ lat: centro.lat, lng: centro.lng });
+  // El encuadre NO sigue al pin: solo se mueve al abrir y cuando el GPS da un
+  // punto, que puede caer fuera de la pantalla. Si siguiera al pin, cada toque
+  // recentraria el mapa y tiraria el zoom que la persona acaba de hacer.
+  const [vista, setVista] = useState({ lat: centro.lat, lng: centro.lng });
   const [guardando, setGuardando] = useState(false);
   const [buscandoGps, setBuscandoGps] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +59,7 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
     if (!open) return;
     startTransition(() => {
       setPunto({ lat: centro.lat, lng: centro.lng });
+      setVista({ lat: centro.lat, lng: centro.lng });
       setError(null);
     });
   }, [open, centro.lat, centro.lng]);
@@ -79,11 +73,10 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
     return () => document.removeEventListener("keydown", esc);
   }, [open, onClose, guardando]);
 
-  const fundacion = { lat: centro.lat_fundacion, lng: centro.lng_fundacion };
-  const distancia = distanciaMetros(fundacion, punto);
-  const fueraDeRadio = distancia > centro.radio_metros;
-  const sinMovimientos = centro.movimientos_restantes_24h <= 0;
-  const puedeGuardar = !guardando && !fueraDeRadio && !sinMovimientos;
+  // Un punto con coordenadas no finitas llegaria a la RPC como NaN y volveria
+  // como un error de validacion sin nada que senalar en el mapa.
+  const puntoValido = Number.isFinite(punto.lat) && Number.isFinite(punto.lng);
+  const puedeGuardar = !guardando && puntoValido;
 
   function usarGps() {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -95,6 +88,7 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
       (pos) => {
         setBuscandoGps(false);
         setPunto({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setVista({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => {
         setBuscandoGps(false);
@@ -120,12 +114,10 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
       return;
     }
     toast.success("Centro movido");
-    onMovido({
-      ...centro,
-      lat: r.data.lat,
-      lng: r.data.lng,
-      movimientos_restantes_24h: Math.max(0, centro.movimientos_restantes_24h - 1),
-    });
+    // Solo se refrescan las coordenadas. El contador de movimientos ya no se
+    // pinta en ningun sitio y leerlo aqui ataria este archivo a una columna
+    // que la RPC puede dejar de devolver.
+    onMovido({ ...centro, lat: r.data.lat, lng: r.data.lng });
     onClose();
   }
 
@@ -155,7 +147,7 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="pointer-events-auto w-full overflow-y-auto rounded-t-3xl bg-[color:var(--bg)] px-5 pb-[calc(env(safe-area-inset-bottom)_+_1.5rem)]"
+              className="pointer-events-auto w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-[color:var(--bg)] px-5 pb-[calc(env(safe-area-inset-bottom)_+_1.5rem)]"
               style={{ maxHeight: "90vh" }}
             >
               <div className="mx-auto mt-3 mb-4 h-1 w-12 rounded-full bg-[color:var(--fg-dim)]/30" />
@@ -163,7 +155,7 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
                 <div>
                   <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">Mover el centro</h2>
                   <p className="text-xs text-[color:var(--fg-muted)]">
-                    Hasta {Math.round(centro.radio_metros / 1000)} km del punto donde se fundó. Corrige un dedazo, no mudes el barrio.
+                    Arrastra el pin o toca el mapa. Se guarda como zona aproximada, no como dirección.
                   </p>
                 </div>
                 <button
@@ -178,31 +170,11 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
               </div>
 
               <CentroMap
-                lat={centro.lat}
-                lng={centro.lng}
-                fundacion={fundacion}
-                radioMetros={centro.radio_metros}
+                lat={punto.lat}
+                lng={punto.lng}
+                vista={vista}
                 onMove={(lat, lng) => setPunto({ lat, lng })}
               />
-
-              <div
-                className={cn(
-                  "mt-3 flex items-center justify-between rounded-2xl px-4 py-3 text-sm",
-                  fueraDeRadio
-                    ? "bg-[color:var(--danger)]/10 text-[color:var(--danger)]"
-                    : "bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)]",
-                )}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {fueraDeRadio && <AlertTriangle className="h-4 w-4" />}
-                  {fueraDeRadio
-                    ? "Fuera del límite permitido"
-                    : `A ${Math.round(distancia)} m del punto de fundación`}
-                </span>
-                <span className="text-xs text-[color:var(--fg-muted)]">
-                  {centro.movimientos_restantes_24h} {centro.movimientos_restantes_24h === 1 ? "movimiento" : "movimientos"} hoy
-                </span>
-              </div>
 
               <button
                 type="button"
@@ -229,11 +201,7 @@ export function MoverCentroSheet({ open, onClose, communityId, centro, onMovido 
                 className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] font-semibold text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
               >
                 {guardando && <Loader2 className="h-4 w-4 animate-spin" />}
-                {sinMovimientos
-                  ? "No te quedan movimientos por hoy"
-                  : fueraDeRadio
-                    ? "Acerca el punto para poder guardar"
-                    : "Guardar nuevo centro"}
+                Guardar nuevo centro
               </button>
             </motion.div>
           </div>
