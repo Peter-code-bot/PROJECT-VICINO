@@ -85,20 +85,20 @@ export default async function SellerOverviewPage() {
         <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
       </div>
 
-      {/* 4 Métricas en Grid 2x2 sin iconos */}
+      {/* 4 Métricas en Grid 2x2 sin iconos con títulos grandes y números centrados */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 min-w-0">
         {/* Card 1: Mes Actual */}
-        <div className="flex flex-col justify-between rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 aspect-[1.15/1]">
-          <h3 className="font-bold text-sm sm:text-base text-[color:var(--fg)]">Mes Actual</h3>
+        <div className="flex flex-col justify-center rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 min-h-[135px] sm:min-h-[155px] gap-2">
+          <h3 className="font-bold text-xl text-[color:var(--fg)]">Mes Actual</h3>
           <p className="text-3xl sm:text-4xl font-heading font-extrabold text-[color:var(--fg)] tabular-nums">
             {formatPrice(monthTotal)}
           </p>
         </div>
 
         {/* Card 2: Inventario */}
-        <div className="flex flex-col justify-between rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 aspect-[1.15/1]">
+        <div className="flex flex-col justify-center rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 min-h-[135px] sm:min-h-[155px] gap-2">
           <div>
-            <h3 className="font-bold text-sm sm:text-base text-[color:var(--fg)]">Inventario</h3>
+            <h3 className="font-bold text-xl text-[color:var(--fg)]">Inventario</h3>
             <p className="text-xs text-[color:var(--fg-muted)] mt-0.5">Publicaciones</p>
           </div>
           <p className="text-3xl sm:text-4xl font-heading font-extrabold text-[color:var(--fg)] tabular-nums">
@@ -107,12 +107,12 @@ export default async function SellerOverviewPage() {
         </div>
 
         {/* Card 3: Reputación */}
-        <div className="flex flex-col justify-between rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 aspect-[1.15/1]">
+        <div className="flex flex-col justify-center rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 min-h-[135px] sm:min-h-[155px] gap-2">
           <div>
-            <h3 className="font-bold text-sm sm:text-base text-[color:var(--fg)]">Reputación</h3>
+            <h3 className="font-bold text-xl text-[color:var(--fg)]">Reputación</h3>
             <p className="text-xs text-[color:var(--fg-muted)] mt-0.5">Aprobación</p>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <p className="text-3xl sm:text-4xl font-heading font-extrabold text-[color:var(--fg)] tabular-nums leading-none">
               {Number(profile?.average_rating ?? 0).toFixed(1)}
             </p>
@@ -126,9 +126,9 @@ export default async function SellerOverviewPage() {
         </div>
 
         {/* Card 4: Histórico */}
-        <div className="flex flex-col justify-between rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 aspect-[1.15/1]">
+        <div className="flex flex-col justify-center rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 sm:p-5 min-w-0 min-h-[135px] sm:min-h-[155px] gap-2">
           <div>
-            <h3 className="font-bold text-sm sm:text-base text-[color:var(--fg)]">Histórico</h3>
+            <h3 className="font-bold text-xl text-[color:var(--fg)]">Histórico</h3>
             <p className="text-xs text-[color:var(--fg-muted)] mt-0.5">Ventas totales</p>
           </div>
           <p className="text-3xl sm:text-4xl font-heading font-extrabold text-[color:var(--fg)] tabular-nums">

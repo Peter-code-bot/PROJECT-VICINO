@@ -62,13 +62,13 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
         onClick={handleToggle}
         disabled={busy}
         className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-10 rounded-xl text-white bg-[#1E222E] hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-50 shrink-0"
-        title={isPaused ? "Mostrar publicación" : "Ocultar publicación"}
+        title={isPaused ? "Publicación oculta (clic para mostrar)" : "Publicación visible (clic para ocultar)"}
         aria-label={isPaused ? "Mostrar publicación" : "Ocultar publicación"}
       >
         {isPaused ? (
-          <Eye className="h-4 w-4 shrink-0" />
-        ) : (
           <EyeOff className="h-4 w-4 shrink-0" />
+        ) : (
+          <Eye className="h-4 w-4 shrink-0" />
         )}
       </button>
 

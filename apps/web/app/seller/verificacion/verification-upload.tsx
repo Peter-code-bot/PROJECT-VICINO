@@ -430,10 +430,10 @@ export function VerificationUpload({
             type="button"
             onClick={() => setDocType("INE")}
             disabled={uploading !== null || isAnalyzing}
-            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
+            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] p-4 transition-all ${
               docType === "INE"
-                ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
-                : "border-transparent bg-[color:var(--sidebar-bg)] hover:opacity-80"
+                ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25)] text-foreground font-semibold border-0"
+                : "bg-[color:var(--sidebar-bg)] hover:opacity-80 border-0 text-foreground"
             } disabled:opacity-50`}
           >
             <span className="text-3xl">🪪</span>
