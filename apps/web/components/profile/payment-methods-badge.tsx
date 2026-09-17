@@ -28,7 +28,7 @@ export function PaymentMethodsBadge({
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          "relative flex items-center justify-center w-11 h-11 rounded-full bg-[color:var(--sidebar-bg)] text-foreground transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0",
+          "relative flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-card border border-black/10 dark:border-white/10 shadow-xs text-neutral-900 dark:text-neutral-100 transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0",
           className
         )}
         title="Ver métodos de pago"

@@ -48,7 +48,7 @@ export function TrustProgressBadge({
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          "relative flex items-center justify-center rounded-full p-0.5 transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] shrink-0",
+          "relative flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-card border border-black/10 dark:border-white/10 shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] shrink-0",
           className
         )}
         title="Ver niveles de confianza"
@@ -85,7 +85,7 @@ export function TrustProgressBadge({
 
         {/* Center Icon */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <ShieldCheck className="w-5 h-5 text-neutral-700 dark:text-neutral-300 stroke-[1.75]" />
+          <ShieldCheck className="w-5 h-5 text-neutral-900 dark:text-neutral-100 stroke-[1.75]" />
         </div>
       </button>
 
