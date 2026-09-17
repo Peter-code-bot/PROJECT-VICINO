@@ -58,7 +58,7 @@ export default async function SellerLayout({
           </Link>
           <span className="text-muted-foreground/40 font-light text-2xl hidden sm:block shrink-0">/</span>
 
-          <div className="flex items-center gap-2 sm:gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl border border-border/50 shadow-sm min-w-0 flex-1 sm:flex-none overflow-hidden">
+          <div className="flex items-center gap-2 sm:gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl shadow-sm min-w-0 flex-1 sm:flex-none overflow-hidden">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Store className="w-4 h-4 text-foreground shrink-0" />
               <span className="font-semibold text-sm truncate">{storeName}</span>

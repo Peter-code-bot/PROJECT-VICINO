@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SellerBadge } from "@/components/shared/seller-badge";
+import { TrustProgressBadge } from "@/components/profile/trust-progress-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { formatPrice } from "@vicino/shared";
 import { TRUST_LEVELS } from "@vicino/shared";
@@ -19,10 +20,15 @@ export default async function SellerOverviewPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("trust_level, trust_points, average_rating, reviews_count, total_sales")
+    .select("trust_level, trust_points, average_rating, reviews_count, total_sales, nombre, nombre_negocio, seller_type, created_at, is_verified")
     .throwOnError()
     .eq("id", user.id)
     .single();
+
+  const storeName =
+    profile?.seller_type === "business" && profile?.nombre_negocio
+      ? profile.nombre_negocio
+      : (profile?.nombre ?? profile?.nombre_negocio ?? "Mi Tienda");
 
   // Sales this month
   const startOfMonth = new Date();
@@ -177,7 +183,22 @@ export default async function SellerOverviewPage() {
           <div className="p-5 rounded-[var(--r-xl)] bg-[color:var(--bg-elev-2)] space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <SellerBadge level={trustLevel} size="md" />
+                <TrustProgressBadge
+                  profile={profile}
+                  displayName={storeName}
+                  createdAt={profile?.created_at}
+                />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-heading font-bold text-base capitalize text-foreground">
+                      {trustLevel}
+                    </span>
+                    <SellerBadge level={trustLevel} size="sm" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Toca para ver niveles de confianza
+                  </span>
+                </div>
               </div>
               <span className="text-sm font-bold bg-[color:var(--bg-elev-2)] px-3 py-1 rounded-lg border border-[color:var(--border)]">
                 {profile?.trust_points ?? 0} pts
