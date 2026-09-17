@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VerificationUpload } from "./verification-upload";
-import { SellerBackButton } from "@/components/layout/seller-back-button";
 
 export const metadata = { title: "Verificación" };
 
@@ -66,9 +65,8 @@ export default async function VerificacionPage() {
   );
 
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-4 -mt-2 sm:-mt-3 min-w-0">
       <div className="min-w-0">
-        <SellerBackButton />
         <h1 className="text-xl font-bold truncate">Verificación</h1>
       </div>
       <p className="text-sm text-muted-foreground">

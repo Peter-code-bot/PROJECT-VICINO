@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowLeft,
-  Edit3,
+  Pencil,
+  Eye,
+  EyeOff,
   Flag,
   MoreHorizontal,
-  Pause,
-  Play,
   Share2,
   Trash2,
 } from "lucide-react";
@@ -21,7 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -128,35 +127,39 @@ export function GalleryTopBar({
                 <MoreHorizontal className="h-5 w-5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8}>
+            <DropdownMenuContent align="end" sideOffset={8} className="min-w-0 p-1.5 rounded-2xl bg-card border-0 shadow-[0_8px_30px_rgba(0,0,0,0.14)] flex flex-col items-center gap-1">
               {isOwner ? (
                 <>
                   <DropdownMenuItem asChild>
                     <Link
                       href={`/vender/${productId}/editar`}
-                      className="flex w-full items-center gap-2"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground hover:bg-[color:var(--bg-elev-2)] transition-colors focus:bg-[color:var(--bg-elev-2)]"
+                      title="Editar producto"
+                      aria-label="Editar producto"
                     >
-                      <Edit3 className="h-4 w-4" />
-                      Editar producto
+                      <Pencil className="h-4 w-4" />
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
                       void handleToggleStatus();
                     }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground hover:bg-[color:var(--bg-elev-2)] transition-colors focus:bg-[color:var(--bg-elev-2)] cursor-pointer"
+                    title={isPaused ? "Publicación oculta (clic para mostrar)" : "Publicación visible (clic para ocultar)"}
+                    aria-label={isPaused ? "Publicación oculta" : "Publicación visible"}
                   >
-                    {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                    {isPaused ? "Reanudar listado" : "Pausar listado"}
+                    {isPaused ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     destructive
                     onSelect={() => {
                       void handleDelete();
                     }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-danger hover:bg-danger/10 transition-colors focus:bg-danger/10 focus:text-danger cursor-pointer"
+                    title="Eliminar publicación"
+                    aria-label="Eliminar publicación"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Eliminar
                   </DropdownMenuItem>
                 </>
               ) : (

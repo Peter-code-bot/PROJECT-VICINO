@@ -618,3 +618,37 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #222222;
   color: #F5F5F5;
 }
+
+/* Chip de categoría seleccionada */
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  background: #DFE9E7;
+  border: none;
+  border-radius: 999px;
+  color: #0B0B0D;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.category-chip__star {
+  width: 18px;
+  height: 18px;
+  color: #0B0B0D;
+  fill: none;
+}
+
+.category-chip__star.is-primary {
+  fill: #0B0B0D;
+}
+
+.category-chip__remove {
+  width: 18px;
+  height: 18px;
+  color: #0B0B0D;
+  margin-left: 2px;
+}

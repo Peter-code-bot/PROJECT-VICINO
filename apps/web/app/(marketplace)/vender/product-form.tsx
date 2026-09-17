@@ -1013,7 +1013,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <div className="space-y-2 relative">
           <div className="flex items-baseline justify-between gap-2">
             <label className="text-sm font-medium text-foreground/80">
-              Categorías <span className="text-muted-foreground/70 font-normal">(hasta 3, 1 principal)</span>
+              Categorías
             </label>
             <span className="text-xs text-muted-foreground/70">{categories.length}/3</span>
           </div>
@@ -1024,15 +1024,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             required
           />
 
-          {/* El required del input hidden no lo valida el navegador, y un
-              cambio de tipo puede vaciar la lista sin que el usuario lo pida.
-              Sin este aviso el formulario queda mudo hasta que falla al
-              enviar. */}
-          {categories.length === 0 && (
-            <p className="text-xs text-[color:var(--fg-muted)]">
-              Elige al menos una categoría. La primera que agregues queda como principal.
-            </p>
-          )}
+
 
           {/* Chips de las categorias seleccionadas */}
           {categories.length > 0 && (
@@ -1043,12 +1035,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                 return (
                   <div
                     key={cat.slug}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full pl-2 pr-1 py-1 text-sm shadow-[inset_0_0_0_1px_var(--border)]",
-                      cat.is_primary
-                        ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] font-semibold"
-                        : "bg-[color:var(--card-2)] text-foreground/90",
-                    )}
+                    className="category-chip"
                   >
                     <button
                       type="button"
@@ -1059,14 +1046,14 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                           prev.map((c) => ({ ...c, is_primary: c.slug === cat.slug }))
                         )
                       }
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--brand-tint)]"
+                      className="inline-flex h-10 w-6 -ml-2 items-center justify-center transition-opacity hover:opacity-75 focus:outline-none"
                     >
                       <Star
-                        className={cn("h-4 w-4", cat.is_primary ? "fill-current" : "")}
+                        className={cn("category-chip__star", cat.is_primary && "is-primary")}
                         strokeWidth={2}
                       />
                     </button>
-                    <span className="px-1">{meta.name}</span>
+                    <span>{meta.name}</span>
                     <button
                       type="button"
                       aria-label={`Quitar ${meta.name}`}
@@ -1075,9 +1062,9 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                           ensureOnePrimary(prev.filter((c) => c.slug !== cat.slug)),
                         )
                       }
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--danger-tint,rgba(255,59,48,0.15))]"
+                      className="inline-flex h-10 w-6 -mr-2 items-center justify-center transition-opacity hover:opacity-75 focus:outline-none"
                     >
-                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      <X className="category-chip__remove" strokeWidth={2.5} />
                     </button>
                   </div>
                 );

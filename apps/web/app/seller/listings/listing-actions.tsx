@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
-import { Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2 } from "lucide-react";
 
 interface ListingActionsProps {
   id: string;
@@ -45,27 +45,41 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
   const busy = toggling || deleting;
 
   return (
-    <div className="flex gap-2 shrink-0">
+    <div className="flex items-center gap-2 shrink-0">
+      {/* Editar (Lápiz) -> VERDE */}
       <Link
         href={`/vender/${id}/editar`}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-[color:var(--bg)] bg-[color:var(--fg)] hover:opacity-80 transition-opacity sm:text-xs font-medium shrink-0"
+        className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-10 rounded-xl text-white bg-[#4A7970] hover:opacity-90 active:scale-95 transition-all shadow-xs shrink-0"
         title="Editar"
+        aria-label="Editar publicación"
       >
         <Pencil className="h-4 w-4 shrink-0" />
       </Link>
+
+      {/* Ocultar (Ojito diagonal) -> NEGRO */}
       <button
+        type="button"
         onClick={handleToggle}
         disabled={busy}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-[color:var(--bg)] bg-[color:var(--fg)] hover:opacity-80 transition-opacity sm:text-xs font-medium disabled:opacity-50 shrink-0"
-        title={isPaused ? "Reanudar" : "Pausar"}
+        className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-10 rounded-xl text-white bg-[#1E222E] hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-50 shrink-0"
+        title={isPaused ? "Publicación oculta (clic para mostrar)" : "Publicación visible (clic para ocultar)"}
+        aria-label={isPaused ? "Mostrar publicación" : "Ocultar publicación"}
       >
-        {isPaused ? <Play className="h-4 w-4 shrink-0" /> : <Pause className="h-4 w-4 shrink-0" />}
+        {isPaused ? (
+          <EyeOff className="h-4 w-4 shrink-0" />
+        ) : (
+          <Eye className="h-4 w-4 shrink-0" />
+        )}
       </button>
+
+      {/* Eliminar (Basurero) -> ROJO */}
       <button
+        type="button"
         onClick={handleDelete}
         disabled={busy}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-w-0 rounded-lg border-transparent text-white bg-[color:var(--danger)] hover:opacity-90 transition-opacity sm:text-xs font-medium disabled:opacity-50 shrink-0"
+        className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-10 rounded-xl text-white bg-[#D6544D] hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-50 shrink-0"
         title="Eliminar"
+        aria-label="Eliminar publicación"
       >
         <Trash2 className="h-4 w-4 shrink-0" />
       </button>

@@ -1009,7 +1009,7 @@ export function VerificationUpload({
           Va ARRIBA de las tarjetas de subida y no debajo: es la condicion para
           subir, no una nota al pie. */}
       {!yaConsintio && (
-        <div className="rounded-[var(--r-lg)] border border-border bg-card p-4">
+        <div className="rounded-[var(--r-lg)] border-0 bg-card p-4 shadow-sm">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -1095,10 +1095,13 @@ export function VerificationUpload({
             onClick={() => pedirCambioDeTipo("INE")}
             disabled={bloqueado}
             aria-pressed={docType === "INE"}
-            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] border-2 p-4 transition-all ${
+            // La clase viene del rediseno de la rama de diseno (sin borde, con
+            // degradado); el manejador y el bloqueo son los de la guarda de
+            // cambio, que es lo que evita descartar documentos sin preguntar.
+            className={`flex flex-col items-center gap-2 rounded-[var(--r-xl)] p-4 transition-all ${
               docType === "INE"
-                ? "border-indigo-500 bg-indigo-500/10 shadow-md shadow-indigo-500/10"
-                : "border-transparent bg-[color:var(--sidebar-bg)] hover:opacity-80"
+                ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25)] text-foreground font-semibold border-0"
+                : "bg-[color:var(--sidebar-bg)] hover:opacity-80 border-0 text-foreground"
             } disabled:opacity-50`}
           >
             <span className="text-3xl">🪪</span>
@@ -1136,7 +1139,7 @@ export function VerificationUpload({
               value={university}
               onChange={(e) => pedirCambioDeUniversidad(e.target.value)}
               disabled={bloqueado}
-              className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elev-1)] px-3 py-2 text-sm"
+              className="w-full rounded-xl border-0 bg-[color:var(--bg-elev-1)] px-3 py-2.5 text-sm outline-none focus:ring-0 shadow-sm"
             >
               {UNIVERSITIES.map(u => (
                 <option key={u} value={u}>{u}</option>

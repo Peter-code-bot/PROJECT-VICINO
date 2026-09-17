@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { ReviewProductLink } from "@/components/shared/review-product-link";
 import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
-import { Grid3X3, Star, GripVertical, Check, X, Loader2 } from "lucide-react";
+import { Grid3X3, Star, GripVertical, Check, X, Loader2, EyeOff } from "lucide-react";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -79,8 +79,12 @@ function SortableProductCard({ p, isEditing }: { p: SortableProduct; isEditing: 
       )}
 
       {p.estatus === "pausado" && (
-        <div className="absolute right-1 top-1 rounded bg-[color:var(--trust-gold)] px-1.5 py-0.5 text-[8px] font-bold text-[color:var(--brand-dark)]">
-          PAUSADO
+        <div
+          className="absolute left-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#1E222E] text-white shadow-sm"
+          title="Publicación oculta"
+          aria-label="Publicación oculta"
+        >
+          <EyeOff className="h-3.5 w-3.5 text-white" />
         </div>
       )}
 
