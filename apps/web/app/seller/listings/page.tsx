@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, formatDate, primaryCategorySlug } from "@vicino/shared";
+import { formatPrice, primaryCategorySlug } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { ListingActions } from "./listing-actions";
+import { Plus } from "lucide-react";
 
 export const metadata = { title: "Mis publicaciones" };
 
@@ -24,66 +25,53 @@ export default async function ListingsPage() {
     .neq("estatus", "eliminado")
     .order("created_at", { ascending: false });
 
-  const statusColors: Record<string, string> = {
-    disponible:
-      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
-    pausado:
-      "bg-orange-500 text-white rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
-    borrador:
-      "bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] border border-[color:var(--border)] rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
-    agotado:
-      "bg-[color:var(--danger)] text-white rounded-[var(--r-pill)] text-xs px-2 py-0.5 font-medium",
-  };
-
   return (
     <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between gap-3 min-w-0">
         <h1 className="text-xl font-bold truncate min-w-0">Mis publicaciones</h1>
         <Link
           href="/vender"
-          className="shrink-0 rounded-[var(--r-pill)] bg-[color:var(--bg-elev-2)] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-[color:var(--fg)] hover:opacity-80 whitespace-nowrap transition-colors"
+          className="shrink-0 rounded-xl bg-[#4A7970] w-10 h-10 flex items-center justify-center text-white hover:opacity-90 active:scale-95 transition-all shadow-xs"
+          title="Publicar nuevo"
+          aria-label="Publicar nuevo"
         >
-          <span className="hidden sm:inline">Publicar nuevo</span>
-          <span className="sm:hidden">Publicar</span>
+          <Plus className="w-5 h-5 stroke-[2.5]" />
         </Link>
       </div>
 
       {products && products.length > 0 ? (
         <div className="space-y-3">
           {products.map((p) => {
-            // `estatus` admite NULL en la base (columna con DEFAULT
-            // 'disponible', pero sin NOT NULL). Ninguna de esas filas puede
-            // llegar hasta aqui: el `.neq("estatus", "eliminado")` del SELECT
-            // se traduce a `estatus <> 'eliminado'`, que con NULL evalua a
-            // NULL —no a TRUE— y Postgres ya las descarto. Repetimos esa misma
-            // exclusion en vez de inventar un estatus de relleno para el badge
-            // y para ListingActions.
             const estatus = p.estatus;
             if (estatus === null) return null;
 
             return (
               <div
                 key={p.id}
-                className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 hover:opacity-90 transition-opacity flex flex-row items-center justify-between gap-3 overflow-hidden min-w-0"
+                className="rounded-2xl bg-[color:var(--sidebar-bg)] p-4 sm:p-5 flex flex-row items-center justify-between gap-4 overflow-hidden min-w-0 shadow-[0_8px_24px_rgba(0,0,0,0.07),0_2px_6px_rgba(0,0,0,0.04)] transition-shadow"
               >
                 <div className="flex flex-col min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Link
-                      href={`/${primaryCategorySlug(p.product_categories) ?? p.categoria}/${p.slug}`}
-                      className="font-medium text-sm text-[color:var(--fg)] hover:underline truncate"
-                    >
-                      {p.titulo}
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">
-                    <span className={`shrink-0 ${statusColors[estatus] ?? ""}`}>
-                      {estatus}
+                  <Link
+                    href={`/${primaryCategorySlug(p.product_categories) ?? p.categoria}/${p.slug}`}
+                    className="font-bold text-sm sm:text-base text-[color:var(--fg)] hover:underline truncate uppercase tracking-wide"
+                  >
+                    {p.titulo}
+                  </Link>
+                  <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] font-medium">
+                    <span className="font-semibold text-[color:var(--fg)]">
+                      {formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}
                     </span>
-                    <span className="shrink-0 font-medium text-[color:var(--fg)]">{formatPrice(p.precio) ?? priceFallbackLabel(p.modo_precio)}</span>
-                    {/* created_at admite NULL: sin fecha no se pinta nada. `new Date(null)`
-                        no falla, coacciona a 0 y pintaria "01/01/70" como si fuera real. */}
                     {p.created_at && (
-                      <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
+                      <>
+                        <span className="text-neutral-400 dark:text-neutral-600">|</span>
+                        <span>
+                          {new Date(p.created_at).toLocaleDateString("es-MX", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                          })}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
