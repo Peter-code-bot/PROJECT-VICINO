@@ -32,6 +32,26 @@ function igualEnTiempoConstante(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * De que tabla sale cada grupo de preferencia.
+ *
+ * Los grupos son los del catalogo de la app
+ * (apps/web/lib/notificaciones/claves.ts). Esta es la TERCERA copia de esas
+ * cadenas y la unica que TypeScript no puede vigilar: este archivo corre en
+ * Deno, no comparte tsconfig ni alias con apps/web, asi que un renombre alla no
+ * rompe nada aqui — solo deja de casar. Al tocar los grupos hay que venir.
+ *
+ * Solo hay dos grupos porque solo hay tres tablas que manden push. Los otros
+ * dos del catalogo —comunidades y novedades— todavia no tienen quien empuje
+ * nada: su preferencia se guarda y vale el dia que exista el emisor
+ * (docs/AUDITORIA-push-2026-09-16.md, secciones 3 y 6).
+ */
+const GRUPOS_DE_PREFERENCIA: Record<string, string> = {
+  messages: "chat",
+  appointments: "ventas",
+  sale_confirmations: "ventas",
+};
+
 serve(async (req) => {
   // Manejar solicitudes CORS (preflight)
   if (req.method === "OPTIONS") {
@@ -154,6 +174,65 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 400,
         });
+    }
+
+    // LA PREFERENCIA DE QUIEN LO RECIBE, QUE ES LO QUE NADIE MIRABA.
+    //
+    // La pantalla de /configuracion/notificaciones lleva cuatro interruptores y
+    // hasta aqui no gobernaban nada: esta funcion construia el mensaje leyendo
+    // solo fcm_token y nombre, y public.acepta_notificacion —creada justo para
+    // esto en la migracion 20260916180000— no tenia un solo llamador en el
+    // repo. O sea que la pantalla prometia un control que el backend no
+    // ejercia, que es peor que no tener la pantalla.
+    //
+    // Se pregunta ANTES de leer el perfil: si la persona lo tiene apagado no
+    // hace falta ni su token.
+    const grupo = GRUPOS_DE_PREFERENCIA[payload.table];
+    if (!grupo) {
+      // Hoy no puede pasar: las tres tablas de allowedTables estan en el mapa.
+      // Si alguien anade una cuarta y se olvida del mapa, el push sale sin
+      // consultar la preferencia — y que eso no sea silencioso es justo la
+      // leccion de esta area.
+      console.error(
+        "send-push: tabla aceptada sin grupo de preferencia, se envia sin consultarla: " +
+          payload.table,
+      );
+    } else {
+      const { data: quiere, error: errorPreferencia } = await supabase.rpc(
+        "acepta_notificacion",
+        { p_user_id: receiverId, p_tipo: grupo },
+      );
+
+      if (errorPreferencia) {
+        // FALLA ABIERTO A PROPOSITO (DECISION 3 de la migracion): si la
+        // preferencia no se puede leer —red, un EXECUTE que se perdio en una
+        // rotacion de llaves, la funcion todavia sin desplegar— se manda. Un
+        // sistema de preferencias que se traga el mensaje de quien quiere
+        // comprarte hace mas dano que un aviso de mas.
+        //
+        // Pero se deja constancia: sin esto, un REVOKE accidental dejaria de
+        // respetar las preferencias de todo el mundo y el sintoma seria que
+        // todo funciona.
+        console.error(
+          "send-push: no se pudo leer la preferencia, se envia igual",
+          JSON.stringify({
+            grupo,
+            code: errorPreferencia.code ?? null,
+            message: errorPreferencia.message ?? null,
+            details: errorPreferencia.details ?? null,
+          }),
+        );
+      } else if (quiere === false) {
+        // === false y no !quiere: clave ausente y perfil ausente devuelven
+        // true, y un null por cualquier rareza NO es un "no quiere".
+        return new Response(
+          JSON.stringify({ ignored: true, reason: `Preference off: ${grupo}` }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          },
+        );
+      }
     }
 
     // Obtener el perfil del destinatario

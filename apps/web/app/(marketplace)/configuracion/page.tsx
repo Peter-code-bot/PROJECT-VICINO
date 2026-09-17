@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { User, Shield } from "lucide-react";
+import { User, Shield, Bell } from "lucide-react";
 import { LogoutSection } from "./logout-section";
 import { DeleteAccountSection } from "./delete-account-section";
 
@@ -29,6 +29,13 @@ export default async function ConfiguracionPage() {
           Cuenta
         </h2>
         <div className="overflow-hidden rounded-2xl bg-[color:var(--sidebar-bg)]">
+          <Link
+            href="/configuracion/notificaciones"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-[color:var(--fg)] transition-colors shadow-[inset_0_-1px_0_0_var(--border)] hover:bg-[color:var(--bg-elev-2)]/60"
+          >
+            <Bell className="h-4 w-4 shrink-0 text-[color:var(--fg)]" />
+            <span className="flex-1">Notificaciones</span>
+          </Link>
           <Link
             href="/perfil/editar"
             className="flex items-center gap-3 px-4 py-3 text-sm text-[color:var(--fg)] transition-colors shadow-[inset_0_-1px_0_0_var(--border)] hover:bg-[color:var(--bg-elev-2)]/60"

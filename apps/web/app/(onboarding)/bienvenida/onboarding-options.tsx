@@ -15,6 +15,25 @@ import { toast } from "sonner";
  * elegir nunca. Ahora solo registran QUE CAMINO se eligio; la bandera se gasta
  * al final del ultimo paso.
  */
+/**
+ * El paso de notificaciones va INTERCALADO, no anadido al final.
+ *
+ * Los tres pasos de /completar-perfil los gobierna profiles.onboarding_paso,
+ * cuyo CHECK solo admite perfil, intereses y ubicacion: meter un cuarto exige
+ * migracion y toca el guard de /bienvenida. Y ponerlo al final, despues de
+ * completeOnboarding, es ponerlo donde nadie lo ve: esa funcion ya manda a "/".
+ *
+ * Aqui no cuesta nada: el destino viaja en la URL y la pantalla de permiso no
+ * escribe una sola fila, asi que la reanudacion sigue siendo exactamente la de
+ * antes. Quien abandone en la pantalla de permiso vuelve por donde volvia —
+ * «vender» a los dos botones (no guardo nada, igual que hoy) y «explorar» a
+ * /completar-perfil por su onboarding_paso. Lo unico que se pierde al abandonar
+ * ahi es ver el permiso, que es opcional por diseno.
+ */
+function conPermisoAntes(destino: string): string {
+  return `/activar-notificaciones?siguiente=${encodeURIComponent(destino)}`;
+}
+
 export function OnboardingOptions() {
   const [isPending, startTransition] = useTransition();
   // Cual de los dos se toco, para que solo ese muestre el spinner. `isPending`
@@ -42,7 +61,7 @@ export function OnboardingOptions() {
     // que mantener estado de servidor para ellos. El camino se registra al
     // ACTIVAR, junto con el paso, que es cuando ya hay algo que reanudar.
     if (camino === "vender") {
-      router.push("/empezar-a-vender");
+      router.push(conPermisoAntes("/empezar-a-vender"));
       return;
     }
 
@@ -55,7 +74,7 @@ export function OnboardingOptions() {
         toast.error(result.error);
         return;
       }
-      router.push("/completar-perfil");
+      router.push(conPermisoAntes("/completar-perfil"));
     });
   }
 
