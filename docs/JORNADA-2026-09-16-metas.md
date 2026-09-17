@@ -8,7 +8,8 @@ Nota de Pedro: si se agota Fable 5.1, los pendientes siguen con Opus 4.5.
 
 ## Meta 0 — Fase 3: navegación y conservación de datos (rama de Alejandro)
 
-Estado: **en cierre**. Rama local `feat/fase3-navegacion-integracion`.
+Estado: **CERRADA y en master** (`9cc82e0`, pusheado 16-sep 21:4x). Incluye el
+merge del pulido visual que otra sesión subió en paralelo (7 commits).
 
 - [x] Leer la rama `feat/frontend-fases-f1-f5-vicino` (60 archivos) y compararla con master.
 - [x] Revisión adversarial por cinco lentes (parte de los verificadores cayó por límite de sesión; los hallazgos de los buscadores se evaluaron a mano).
@@ -17,14 +18,15 @@ Estado: **en cierre**. Rama local `feat/fase3-navegacion-integracion`.
 - [x] Freno por IP en `/api/session/*`; `staleTimes.dynamic: 30`; precarga AUTO en `/` y `/buscar`.
 - [x] Restauración de scroll sólo en navegaciones de pestaña; `prefetch={false}` en `/chat?seller=`.
 - [x] Proveedor sin bucle de recarga ante `INITIAL_SESSION`; `detail` nulo del evento de invalidación.
-- [ ] Correcciones de la revisión: Auth transitorio en `/api/session` (503, no 401), Sentry en la API, mutaciones fuera del envoltorio (`citas`, `favoritos`, `notificaciones`, `admin`, `cupones`, `createProduct`), X del buscador de ubicación, aviso de categoría y título de «Tiendas que sigues», minimapa (Sentry, caché privada, limitador propio, consulta en paralelo), `FundarDrawer` con la ubicación conocida.
-- [ ] Documento de revisión para Pedro: `docs/REVISION-fase3-rama-alejandro-2026-09-16.md`.
-- [ ] CODEX loop sobre el diff final; lint; pruebas node; Playwright (`playwright.phases.config.ts` + `navigation-return`); `pnpm build`.
-- [ ] Avance de master y push; smoke en vicinomarket.com.
+- [x] Correcciones de las dos rondas de revisión (detalle en el documento).
+- [x] Documento de revisión para Pedro: `docs/REVISION-fase3-rama-alejandro-2026-09-16.md`.
+- [x] CODEX loop (2 rondas); lint sin errores; node 8/8, 19/19, 14/14, 5/5, 4/4, 3/3; Playwright `phases` 64/64 y `navigation-return` 20 regresos sin esqueleto en los dos viewports; `pnpm build` en verde.
+- [x] Merge con master remoto (sin conflictos), build y pruebas repetidas, push.
+- [ ] Smoke en vicinomarket.com cuando Vercel termine el despliegue.
 
 ## Meta 1 — Comunidades (plan integral, área I)
 
-Estado: pendiente.
+Estado: **en curso**. Agentes en Opus 5.
 
 - [ ] 1.1 Quitar cuota de 24 h para fundar (migración `comunidad_fundacion_estado`; `fundar-drawer.tsx`).
 - [ ] 1.2 Quitar «archivar» del panel de administración; texto «Salir» en `join-button.tsx`.
