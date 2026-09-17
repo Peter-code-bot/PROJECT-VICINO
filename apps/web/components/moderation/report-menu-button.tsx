@@ -109,13 +109,13 @@ export function ReportMenuButton({
         {menuOpen && (
           <div
             role="menu"
-            className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-border bg-card shadow-lg overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl bg-[color:var(--bg-elev-2)] shadow-xl overflow-hidden p-1"
           >
             <button
               type="button"
               role="menuitem"
               onClick={openReportModal}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-muted text-left transition-colors"
             >
               <Flag size={14} aria-hidden="true" />
               Reportar {targetWord}
@@ -126,7 +126,7 @@ export function ReportMenuButton({
                 type="button"
                 role="menuitem"
                 onClick={handleBlock}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 text-left border-t border-border/60"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded-lg hover:bg-red-500/10 text-left transition-colors"
               >
                 <UserX size={14} aria-hidden="true" />
                 Bloquear usuario

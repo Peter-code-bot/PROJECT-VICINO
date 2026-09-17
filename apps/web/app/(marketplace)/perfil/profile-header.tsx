@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { SellerBadge } from "@/components/shared/seller-badge";
-import type { TrustLevel } from "@vicino/shared";
-import { Settings, Store, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
+import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { ChipCategoria } from "@/components/profile/chip-categoria";
-import { MetodosPagoChips } from "@/components/profile/metodos-pago-chips";
-import { TRUST_LEVELS } from "@vicino/shared";
+import { TrustProgressBadge } from "@/components/profile/trust-progress-badge";
+import { PaymentMethodsBadge } from "@/components/profile/payment-methods-badge";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
 import { cn } from "@/lib/utils";
@@ -63,6 +61,12 @@ export function ProfileHeader({
   followingCount = 0,
 }: ProfileHeaderProps) {
 
+  const displayName = profile
+    ? profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio
+      ? profile.nombre_negocio
+      : (profile.nombre?.trim().split(" ")[0] ?? profile.nombre)
+    : "";
+
   if (!profile) {
     return (
       <div className="py-8 text-center text-sm text-[color:var(--fg-muted)]">
@@ -83,34 +87,42 @@ export function ProfileHeader({
             displayName={profile.nombre}
             isOwnProfile={!isPublic}
           />
-          <div className="absolute -bottom-1 -left-1">
-            <SellerBadge
-              level={(profile.trust_level as TrustLevel) ?? "nuevo"}
-              size="sm"
-              showLabel={false}
-            />
-          </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats & Info */}
         <div className="flex-1 min-w-0">
-          {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
-            <>
-              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-                <Store className="w-3 h-3" />
-                <span>{profile.nombre}</span>
-                {profile.username && <span>· @{profile.username}</span>}
-              </div>
-            </>
-          ) : (
-            <>
-              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
-              {profile.username && (
-                <p className="text-xs text-muted-foreground mb-3">@{profile.username}</p>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0 flex-1">
+              {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
+                <>
+                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
+                  {profile.username && (
+                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
+                  {profile.username && (
+                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <TrustProgressBadge
+                profile={profile}
+                displayName={displayName}
+                createdAt={profile.created_at}
+              />
+              {profile.es_vendedor && (
+                <PaymentMethodsBadge
+                  metodosPagoAceptados={profile.metodos_pago_aceptados}
+                  displayName={displayName}
+                />
+              )}
+            </div>
+          </div>
 
           {/* Stats — Fila Compacta */}
           <div className="w-full">
@@ -184,53 +196,8 @@ export function ProfileHeader({
         </div>
       )}
 
-      {/* Member since */}
-      {profile.created_at && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="w-3 h-3" />
-          Miembro desde {new Date(profile.created_at).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
-        </div>
-      )}
 
-      {/* Trust level + Verified badge */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <SellerBadge level={(profile.trust_level as TrustLevel) ?? "nuevo"} showLabel size="md" />
-          {profile.is_verified && (
-            <span className="inline-flex items-center gap-1 rounded bg-[color:var(--trust-emerald)] px-1.5 py-0.5 font-heading font-bold text-[8px] tracking-[1.2px] uppercase text-white shadow-sm">
-              <BadgeCheck className="h-2.5 w-2.5" />
-              Verificado
-            </span>
-          )}
-        </div>
-        {(() => {
-          const points = profile.trust_points ?? 0;
-          const sorted = Object.entries(TRUST_LEVELS).sort((a, b) => a[1].minPoints - b[1].minPoints);
-          const next = sorted.find(([, v]) => v.minPoints > points);
-          const current = sorted.filter(([, v]) => v.minPoints <= points).pop();
-          const currentMin = current ? current[1].minPoints : 0;
-          const nextMin = next ? next[1].minPoints : points;
-          const progress = next ? Math.min(100, ((points - currentMin) / (nextMin - currentMin)) * 100) : 100;
-          return (
-            <div className="space-y-1">
-              <div className="h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
-                <div
-                  className="h-full rounded-full bg-[color:var(--brand)] shadow-[var(--shadow-glow)] transition-all"
-                  style={{ width: `${Math.max(5, progress)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-[color:var(--fg-dim)]">
-                <span className="font-semibold text-[color:var(--fg)]">{points} pts</span>
-                {next ? (
-                  <span>{next[1].minPoints - points} pts para <span className="text-[color:var(--brand-hi)]">{next[1].label}</span></span>
-                ) : (
-                  <span className="text-[color:var(--trust-gold)]">Nivel máximo</span>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
+
 
       {/* Seller info */}
       {/* La fila NO puede colgar de nombre_negocio, que es lo que hacia antes.
@@ -242,19 +209,9 @@ export function ProfileHeader({
           preseleccionado — y el alta le promete lo contrario por escrito:
           "Tu categoria se ve en tu perfil". Cada chip decide por su cuenta;
           los dos componentes devuelven null cuando no tienen dato. */}
-      {profile.es_vendedor &&
-        (profile.nombre_negocio ||
-          profile.categoria_negocio ||
-          profile.metodos_pago_aceptados) && (
+      {profile.es_vendedor && profile.categoria_negocio && (
         <div className="flex flex-wrap items-center gap-2">
-          {profile.nombre_negocio && (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold product-card-btn">
-              <Store className="w-3 h-3" />
-              {profile.nombre_negocio}
-            </span>
-          )}
           <ChipCategoria categoria={profile.categoria_negocio} />
-          <MetodosPagoChips metodosPagoAceptados={profile.metodos_pago_aceptados} />
         </div>
       )}
 
@@ -278,9 +235,7 @@ export function ProfileHeader({
           >
             <MessageCircle className="w-4 h-4" />
             {currentUserId && currentUserId !== profile.id && profile.es_vendedor
-              ? isFollowing
-                ? "💬"
-                : "Mensaje"
+              ? "Mensaje"
               : "Contactar"}
           </Link>
           {currentUserId && currentUserId !== profile.id && (
