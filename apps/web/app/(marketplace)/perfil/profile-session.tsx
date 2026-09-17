@@ -5,8 +5,7 @@ import { ProfileHeader } from "./profile-header";
 import { ProfileTabs, ProfileProducts, ProfileReviews, type ProfileTabsProps } from "./profile-tabs";
 import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";
 import { SkeletonPerfil } from "@/components/shared/loading-skeletons";
-import { Menu, Pencil } from "lucide-react";
-import Link from "next/link";
+import { Menu } from "lucide-react";
 
 import { SessionScroll, DataRetry, useSessionData, type SessionSeed } from "@/components/layout/session-data-provider";
 
@@ -69,18 +68,8 @@ export function ProfileSession({ seeds }: ProfileSessionProps) {
     <div data-navigation-kind="profile" data-navigation-ready={`profile:${userId}:${core.updatedAt}`} className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8">
       <SessionScroll route="/perfil" />
       <DataRetry error={core.error ?? counts.error} retry={() => { void core.retry(); void counts.retry(); }} />
-      {/* Mobile drawer trigger & Edit button */}
-      <div className="md:hidden flex justify-end gap-2 mb-4">
-        {profile?.es_vendedor && (
-          <Link
-            href="?edit=products"
-            scroll={false}
-            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#F4F1EB] text-[#1A1A2E] transition-colors"
-            aria-label="Editar productos"
-          >
-            <Pencil className="w-4 h-4" />
-          </Link>
-        )}
+      {/* Mobile drawer trigger */}
+      <div className="md:hidden flex justify-end mb-4">
         <AccountMenuDrawer
           userName={profile?.nombre}
           userAvatar={profile?.foto}

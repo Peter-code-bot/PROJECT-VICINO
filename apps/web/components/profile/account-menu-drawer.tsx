@@ -6,7 +6,7 @@ import Link, { useLinkStatus } from "next/link";
 import {
   User, Store, BadgeCheck, ShoppingBag, Calendar, Heart, Star,
   Bell, Lock, Sun, Moon, HelpCircle, MessageCircle, FileText,
-  Shield, Info, Settings, ChevronRight, X, Loader2,
+  Shield, Info, Settings, ChevronRight, X, Loader2, Pencil,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -84,12 +84,14 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_5rem)]">
               <Section label="Cuenta">
-                <Item href="/perfil/editar" icon={User} label="Editar perfil" onClose={() => setOpen(false)} />
-                {userIsVendedor && (
+                {userIsVendedor ? (
                   <>
                     <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
+                    <Item href="/perfil?edit=products" icon={Pencil} label="Editar cuadrícula" onClose={() => setOpen(false)} />
                     <Item href="/seller/verificacion" icon={BadgeCheck} label="Verificación" onClose={() => setOpen(false)} />
                   </>
+                ) : (
+                  <Item href="/perfil/editar" icon={User} label="Editar perfil" onClose={() => setOpen(false)} />
                 )}
               </Section>
 

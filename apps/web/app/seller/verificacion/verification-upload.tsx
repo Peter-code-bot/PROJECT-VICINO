@@ -371,7 +371,7 @@ export function VerificationUpload({
           Va ARRIBA de las tarjetas de subida y no debajo: es la condicion para
           subir, no una nota al pie. */}
       {!yaConsintio && (
-        <div className="rounded-[var(--r-lg)] border border-border bg-card p-4">
+        <div className="rounded-[var(--r-lg)] border-0 bg-card p-4 shadow-sm">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -466,7 +466,7 @@ export function VerificationUpload({
               value={university}
               onChange={(e) => setUniversity(e.target.value)}
               disabled={uploading !== null || isAnalyzing}
-              className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elev-1)] px-3 py-2 text-sm"
+              className="w-full rounded-xl border-0 bg-[color:var(--bg-elev-1)] px-3 py-2.5 text-sm outline-none focus:ring-0 shadow-sm"
             >
               {UNIVERSITIES.map(u => (
                 <option key={u} value={u}>{u}</option>

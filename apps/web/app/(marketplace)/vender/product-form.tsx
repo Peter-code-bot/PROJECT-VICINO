@@ -1043,12 +1043,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                 return (
                   <div
                     key={cat.slug}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full pl-2 pr-1 py-1 text-sm shadow-[inset_0_0_0_1px_var(--border)]",
-                      cat.is_primary
-                        ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] font-semibold"
-                        : "bg-[color:var(--card-2)] text-foreground/90",
-                    )}
+                    className="category-chip"
                   >
                     <button
                       type="button"
@@ -1059,14 +1054,14 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                           prev.map((c) => ({ ...c, is_primary: c.slug === cat.slug }))
                         )
                       }
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--brand-tint)]"
+                      className="inline-flex h-10 w-6 -ml-2 items-center justify-center transition-opacity hover:opacity-75 focus:outline-none"
                     >
                       <Star
-                        className={cn("h-4 w-4", cat.is_primary ? "fill-current" : "")}
+                        className={cn("category-chip__star", !cat.is_primary && "fill-none")}
                         strokeWidth={2}
                       />
                     </button>
-                    <span className="px-1">{meta.name}</span>
+                    <span>{meta.name}</span>
                     <button
                       type="button"
                       aria-label={`Quitar ${meta.name}`}
@@ -1075,9 +1070,9 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
                           ensureOnePrimary(prev.filter((c) => c.slug !== cat.slug)),
                         )
                       }
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--danger-tint,rgba(255,59,48,0.15))]"
+                      className="inline-flex h-10 w-6 -mr-2 items-center justify-center transition-opacity hover:opacity-75 focus:outline-none"
                     >
-                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      <X className="category-chip__remove" strokeWidth={2.5} />
                     </button>
                   </div>
                 );
