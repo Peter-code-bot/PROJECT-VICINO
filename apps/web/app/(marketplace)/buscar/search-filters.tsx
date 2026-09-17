@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { iconoDeCategoria } from "@/lib/categories/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -10,13 +9,11 @@ import {
   Navigation,
   Loader2,
 } from "lucide-react";
-import { CATEGORIES } from "@vicino/shared";
 import { ListingTypeSwitch } from "@/components/search/listing-type-switch";
 import type { ListingType } from "@/components/search/listing-type-switch";
 import { SearchAutocompleteDropdown } from "@/components/search/search-autocomplete-dropdown";
+import { FiltroCategoriasDrawer } from "@/components/shared/filtro-categorias-drawer";
 import { useSearchHistory } from "@/hooks/use-search-history";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 
 
@@ -187,42 +184,20 @@ export function SearchFilters({
         </div>
       )}
 
-      {/* Category quick filters */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <button
-          onClick={() => updateParams({ category: undefined })}
-          className={cn(
-            "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
-            !initialCategory
-              ? "category-tile-selected"
-              : "product-card-custom hover:opacity-90"
-          )}
-        >
-          Todos
-        </button>
-        {CATEGORIES.filter((c) => !c.hidden_in_form).map((cat) => {
-          const Icon = iconoDeCategoria(cat.slug);
-          const isActive = initialCategory === cat.slug;
-          return (
-            <button
-              key={cat.id}
-              onClick={() =>
-                updateParams({
-                  category: isActive ? undefined : cat.slug,
-                })
-              }
-              className={cn(
-                "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? "category-tile-selected"
-                  : "product-card-custom hover:opacity-90"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{cat.name}</span>
-            </button>
-          );
-        })}
+      {/* Filtro de categoria. La pagina solo lee UN `category` de la URL
+          (params.category en page.tsx), asi que el modo es "una": mandarle un
+          segundo slug se perderia sin decirlo. El `page: undefined` va porque
+          el numero de pagina de la busqueda anterior no sobrevive al cambio de
+          filtro: dejarlo aterriza en una pagina vacia con resultados de sobra
+          en la primera. */}
+      <div>
+        <FiltroCategoriasDrawer
+          seleccionadas={initialCategory ? [initialCategory] : []}
+          modo="una"
+          onAplicar={(slugs) =>
+            updateParams({ category: slugs[0], page: undefined })
+          }
+        />
       </div>
 
       {/* Listing type switch */}

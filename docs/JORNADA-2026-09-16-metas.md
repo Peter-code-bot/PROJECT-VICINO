@@ -110,3 +110,152 @@ be decoded»). Ahora dice qué hacer.
 - **Fechas en futuro**: una publicación recién creada se lee «dentro de 2
   minutos». Es el reloj del servidor por delante del navegador, y el formateo
   relativo no acota el futuro. Es cosmético y preexistente.
+
+---
+
+## Meta 3 — Verificación de identidad (Área III)
+
+### Lo que se hizo
+
+- **3.1 Los datos se bloquean tras subir.** Cambiar el tipo de documento o la
+  universidad con fotos ya subidas ya no cambia nada en silencio: abre una
+  confirmación, y al aceptar descarta las tres imágenes y vuelve el trámite a
+  revisión. Al cancelar no se mueve nada.
+- **3.2 El aviso de privacidad se abre encima.** Era un enlace que navegaba
+  fuera, y volver significaba repetir las fotos, porque los archivos elegidos no
+  sobreviven a una navegación. Ahora es un modal. El texto legal se extrajo a
+  `components/legal/aviso-privacidad-cuerpo.tsx` y lo leen los dos sitios: la
+  página y el modal. Copiarlo habría dejado a alguien aceptando un documento
+  distinto del publicado.
+- **3.3 El motor de IA ahora sí coteja.** Antes recibía UNA ruta y se disparaba
+  al subir el frente, así que el modelo nunca veía la selfie ni el reverso: era
+  imposible que comparara caras, aunque el panel presentara su respuesta como si
+  lo hubiera hecho. Ahora las tres imágenes van en una sola llamada.
+- **3.4 Miniaturas y visor en el panel.** Los tres enlaces «Ver imagen» abrían
+  el navegador del sistema desde el APK. Ahora son miniaturas con un visor a
+  pantalla completa, con flechas, teclado y botón atrás de Android.
+- **3.5 Rechazar ya funciona.** Fallaba el 100% de las veces con «permission
+  denied for table seller_verification»: `authenticated` no tiene GRANT de
+  UPDATE sobre `reviewed_at` ni `reviewer_note` (20260826301000, a propósito), y
+  un GRANT ausente se comprueba antes que cualquier policy. Por eso aprobar sí
+  funcionaba: pasa por una función SECURITY DEFINER. Ahora rechazar tiene su
+  espejo, `reject_verification_atomic`.
+
+### Lo que encontró la revisión adversarial, y está corregido
+
+Cuatro fallos críticos en el motor y cuatro en la pantalla de subida. Los que
+importan:
+
+- **La evidencia se podía suplantar.** Las rutas de las imágenes venían del
+  cliente y sólo se comprobaba que empezaran por el UUID de quien llama. La
+  policy del bucket permite cualquier nombre bajo el propio prefijo, así que se
+  podía subir un segundo juego de fotos que sí casaran y pedir el análisis de
+  ésas: el modelo analizaba unas imágenes y el moderador veía otras, con el
+  cartel «La IA dice: todo correcto» encima. Variante más barata: pasar la misma
+  ruta como selfie y como frente hacía que el cotejo comparara la foto del
+  documento consigo misma. **Las rutas ahora salen de la fila.**
+- **Un rechazo automático era casi irreversible y le bastaba una corazonada.**
+  Sólo uno de los cinco caminos a «rechazado» exigía confianza mínima: una
+  respuesta con 35% de confianza en el rostro y el propio modelo pidiendo
+  revisión humana rechazaba igual. Y «rechazado» es un estado resuelto, así que
+  el cron borra las tres imágenes en menos de una hora y la cola del panel deja
+  de mostrar el trámite. **Los cinco caminos piden ahora un hallazgo fundado.**
+- **Inyección de prompt.** El nombre de la universidad se interpolaba entre
+  comillas en el texto que lee el modelo, así que un valor con un salto de línea
+  podía dictar la respuesta entera y fabricar la evidencia con la que decide el
+  moderador. Ahora va serializado en JSON y con cota de forma.
+- **La carrera con el revisor.** El análisis tarda hasta 28 segundos y escribía
+  con service_role sin mirar el estado: si un admin aprobaba en esa ventana, la
+  escritura ponía «rechazado» dejando el perfil verificado. Ahora el UPDATE
+  lleva guarda de estado y 0 filas significa «alguien ya lo resolvió».
+- **La cuota se gastaba en no-gastos.** Se consumía antes de descargar y de
+  validar, así que tres fotos grandes quemaban un intento por subida sin una
+  sola llamada de pago, y a los cinco la persona quedaba bloqueada una hora.
+- **La pantalla podía mentir para siempre.** Si fallaba el borrado del bucket,
+  las tarjetas seguían diciendo «Subido correctamente» sobre una fila vacía: el
+  trámite quedaba sin documentos y el admin no podía aprobarlo.
+- **Se escribía en TODAS las filas del historial.** `user_id` no es único en esa
+  tabla, así que subir una foto resucitaba en la cola un rechazo viejo con su
+  nota de revisión, que el admin no puede limpiar.
+- **Datos del documento fuera del alcance del borrado.** Se guardaba el texto
+  crudo del modelo, que puede traer nombre, CURP y clave de elector, en una
+  columna que el cron de purga no toca: se borraban las imágenes cumpliendo el
+  Aviso 15 y se conservaba lo extraído de ellas.
+
+### La insignia, que era asimétrica
+
+Aprobar sumaba 30 puntos **sin mirar si el perfil ya estaba verificado**, y el
+vendedor puede devolver su propia verificación a «pendiente» desde su pantalla.
+O sea que el ciclo aprobar, volver a pendiente, aprobar era repetible y regalaba
+30 puntos cada vuelta, con los rankings en producción ordenando por eso. Y al
+volver a pendiente nadie retiraba nada: quedaba un perfil que decía «identidad
+verificada» con cero documentos.
+
+La invariante vive ahora en la base (`20260916190000`), no en cada escritor: hay
+tres que mueven ese estado y escribirla en cada uno garantizaba que el cuarto se
+olvidara. Probado contra producción dentro de una transacción que aborta: 4 de 4
+casos, incluida la idempotencia de la resta.
+
+## Meta 4 — Notificaciones (Área IV)
+
+- **4.1 Pantalla de preferencias** encima de «Editar perfil», con cuatro
+  interruptores. La columna nueva es un `jsonb` y no una columna booleana por
+  tipo: en esta tabla cada columna nueva cuesta una migración y su GRANT, y un
+  GRANT olvidado rompe todo SELECT que la nombre. Clave ausente = encendido, así
+  que ningún perfil necesita relleno.
+- **4.2 Paso de permiso en el alta**, con el valor explicado antes del diálogo
+  del sistema. El hook dejó de pedir el permiso en silencio al arrancar: en iOS
+  negarlo es definitivo, y el arranque silencioso no ganaba permisos, los
+  quemaba.
+- **4.3 Auditoría del push** en `docs/AUDITORIA-push-2026-09-16.md`, con la
+  matriz de prioridades y la causa estructural: no hay ningún disparador de push
+  sobre `notifications`.
+
+### Lo que encontró la revisión, y está corregido
+
+- **La pantalla prometía un control que el backend no ejercía.** La función de
+  push no consultaba la preferencia, así que apagar «Mensajes de chat» no apagaba
+  nada. Ahora la consulta.
+- **El token de push dejaba de refrescarse** tras cerrar y volver a entrar en la
+  misma sesión de app, porque el efecto pasó a correr una vez por carga de
+  documento y el regreso es una navegación blanda.
+
+## Meta 5 — Detalle de solicitud y filtros unificados
+
+- La categoría se apoya en la **esquina inferior derecha de la foto**,
+  sobresaliendo 10 px, con fondo opaco propio para que se lea sobre una foto
+  clara. Medido en el navegador: sobresale exactamente 10 px.
+- El presupuesto es **texto**, en el color principal, no en verde ni como botón.
+  Comprobado que su color es idéntico al del título.
+- Los carruseles de categorías de `/buscar` y del feed de solicitudes se
+  sustituyen por un botón que abre una cuadrícula con **todas** las categorías a
+  la vez, sin bordes negros. En el carrusel, las categorías del final no
+  existían para quien no arrastraba, y arrastrar en móvil competía con el gesto
+  de cambiar de pestaña.
+
+## Pendientes que quedan anotados
+
+- **La función de push está escrita pero no desplegada.** Hasta que se
+  despliegue, los interruptores de chat y ventas se guardan pero no se respetan.
+- **Comunidades y novedades no tienen quien mande push todavía.** Su preferencia
+  se guarda y valdrá cuando exista el productor; hoy sólo aparecen en la campana.
+- **`ADMIN_SECURITY_PASSWORD` sigue sin definirse en Vercel.** Sin esa variable,
+  el diálogo de seguridad del panel de roles no deja cambiar ningún rol.
+- **La subida al bucket no comprueba el consentimiento biométrico.** El único
+  guardia es la casilla del formulario, que se salta con la consola abierta; la
+  policy de INSERT del bucket no mira la constancia. El servidor sí lo exige
+  antes de analizar, así que nada se procesa sin consentimiento, pero la selfie
+  puede llegar al bucket sin él. Cerrarlo es una policy nueva y hay que
+  comprobar antes en qué orden se registra el consentimiento, o rompe el alta.
+- **`@google/generative-ai` es una dependencia muerta.** No se importa en ningún
+  sitio; el proveedor real es OpenAI. Se corrigió la etiqueta del panel, que
+  decía «Gemini dice».
+- **La aprobación automática por IA nace apagada**
+  (`VERIFICACION_APROBACION_AUTOMATICA`). Un «aprobado» por ese camino no
+  reparte insignia ni puntos, y además hace que el cron borre los documentos y
+  saque la fila de la cola: nadie podría arreglarlo después. Se enciende cuando
+  ese camino escriba también el perfil.
+- **Un perfil aprobado sin insignia en producción.** La fila de verificación más
+  reciente está en «aprobada» y su perfil tiene `is_verified = false` y cero
+  puntos. Es anterior a hoy y no lo toca nada de este cambio, pero conviene
+  saber por qué quedó así antes de fiarse del contador.

@@ -1,8 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft, Clock, MapPin, MessageSquare } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { OffersList } from "@/components/solicitudes/offers-list";
 
@@ -24,6 +24,33 @@ export async function generateMetadata({ params }: Props) {
   return {
     title: data ? `${data.title} — Solicitudes VICINO` : "Solicitud — VICINO",
   };
+}
+
+/**
+ * Etiquetas de categoria de la solicitud.
+ *
+ * El fondo opaco y la sombra son suyos y no heredados: la etiqueta se apoya
+ * sobre la foto que subio el comprador, y una foto clara (un plato en un mantel
+ * blanco es el caso tipico aqui) dejaria el texto ilegible si dependiera del
+ * contraste de la imagen.
+ */
+function EtiquetasCategoria({
+  categorias,
+}: {
+  categorias: ReadonlyArray<{ slug: string; nombre: string }>;
+}) {
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5">
+      {categorias.map((cat) => (
+        <span
+          key={cat.slug}
+          className="inline-flex px-2.5 py-1 rounded-lg product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_14px_rgba(0,0,0,0.45)]"
+        >
+          {cat.nombre}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function timeLeft(dateStr: string): string {
@@ -196,35 +223,52 @@ export default async function SolicitudDetailPage({ params }: Props) {
           </p>
         )}
 
-        {/* Image */}
-        {request.image_url && (
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-4">
-            <Image
-              src={request.image_url}
-              alt={request.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 672px"
-            />
+        {/* Imagen con la categoria montada en su esquina inferior derecha.
+            El recorte (overflow-hidden) vive en la caja de la imagen y no en
+            este contenedor: si este recortara, se comeria justo el trozo de
+            etiqueta que sobresale por abajo. */}
+        {request.image_url ? (
+          <div className="relative mb-6">
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
+              <Image
+                src={request.image_url}
+                alt={request.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 672px"
+              />
+            </div>
+            {catList.length > 0 && (
+              <div className="absolute -bottom-2.5 right-3 max-w-[calc(100%-1.5rem)]">
+                <EtiquetasCategoria categorias={catList} />
+              </div>
+            )}
           </div>
+        ) : (
+          catList.length > 0 && (
+            // Sin foto no hay esquina sobre la que apoyarse: la etiqueta se
+            // queda alineada a la derecha en el mismo sitio del flujo, en vez
+            // de posicionarse sobre una caja que no existe.
+            <div className="mb-4">
+              <EtiquetasCategoria categorias={catList} />
+            </div>
+          )
         )}
 
-        {/* Chips */}
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          {request.budget_estimated && (
-            <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] font-heading font-bold text-sm product-card-tab">
-              Presupuesto: ${request.budget_estimated.toLocaleString()} MXN
-            </span>
+        {/* Presupuesto como texto y en el color principal, no como chip. Un
+            cero no es un presupuesto: se pintaria "$0 MXN" cuando lo que pasa
+            es que el comprador no puso cifra. El locale va explicito porque
+            sin el lo elige el ICU del servidor, que no tiene por que agrupar
+            los miles como se espera en Mexico. */}
+        {typeof request.budget_estimated === "number" &&
+          request.budget_estimated > 0 && (
+            <p className="mb-6 font-heading text-base font-semibold text-foreground">
+              Presupuesto:{" "}
+              <span className="font-bold">
+                ${request.budget_estimated.toLocaleString("es-MX")} MXN
+              </span>
+            </p>
           )}
-          {catList.map((cat) => (
-            <span
-              key={cat.slug}
-              className="inline-flex px-2.5 py-1 rounded product-card-tab font-heading font-extrabold text-[9.5px] tracking-[1.4px] uppercase shadow-[0_4px_10px_rgba(0,0,0,0.30)]"
-            >
-              {cat.nombre}
-            </span>
-          ))}
-        </div>
 
         {/* Divider */}
         <div className="border-t border-border mb-6" />

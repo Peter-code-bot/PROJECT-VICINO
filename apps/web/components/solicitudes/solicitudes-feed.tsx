@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { iconoDeCategoria } from "@/lib/categories/icons";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
-import { CATEGORIES } from "@vicino/shared";
 import { RequestCard, type RequestCardData } from "./request-card";
 import { CreateRequestDrawer } from "./create-request-drawer";
+import { FiltroCategoriasDrawer } from "@/components/shared/filtro-categorias-drawer";
 import {
   Plus,
   Inbox,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 
 
@@ -109,46 +107,19 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
 
   const hasLocation = userLat !== null && userLng !== null;
 
-  // Filter categories to show only relevant ones (products + services)
-  const visibleCategories = CATEGORIES.filter((c) => !c.hidden_in_form);
-
   return (
     <div className="w-full">
-      {/* ─── Category carousel ─────────────────────────── */}
-      <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveCategory(null)}
-            className={cn(
-              "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
-              activeCategory === null
-                ? "category-tile-selected"
-                : "product-card-custom hover:opacity-90"
-            )}
-          >
-            Todas
-          </button>
-          {visibleCategories.map((cat) => {
-            const Icon = iconoDeCategoria(cat.slug);
-            return (
-              <button
-                key={cat.slug}
-                type="button"
-                onClick={() => setActiveCategory(cat.slug === activeCategory ? null : cat.slug)}
-                className={cn(
-                  "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
-                  activeCategory === cat.slug
-                    ? "category-tile-selected"
-                    : "product-card-custom hover:opacity-90"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{cat.name}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* ─── Filtro de categoria ───────────────────────── */}
+      {/* El RPC feed_nearby_requests recibe UN cat_slug, asi que el modo es
+          "una". El filtro sigue viviendo en estado local y no en la URL, como
+          antes: esta pantalla se pinta dentro del feed del home y meterlo en la
+          URL cambiaria la navegacion de esa pagina, no solo la de aqui. */}
+      <div className="px-4 pb-3">
+        <FiltroCategoriasDrawer
+          seleccionadas={activeCategory ? [activeCategory] : []}
+          modo="una"
+          onAplicar={(slugs) => setActiveCategory(slugs[0] ?? null)}
+        />
       </div>
 
       {/* ─── Feed content ──────────────────────────────── */}
