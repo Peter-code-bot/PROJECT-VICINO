@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle } from "lucide-react";
+import { Settings, Star, ShoppingBag, Handshake, MapPin } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { ChipCategoria } from "@/components/profile/chip-categoria";
 import { TrustProgressBadge } from "@/components/profile/trust-progress-badge";
@@ -217,9 +217,13 @@ export function ProfileHeader({
 
       {/* Action buttons */}
       {isPublic ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-[14px] w-full">
           {currentUserId && currentUserId !== profile.id && profile.es_vendedor && (
-            <FollowButton storeId={profile.id} following={isFollowing ?? false} />
+            <FollowButton
+              storeId={profile.id}
+              following={isFollowing ?? false}
+              variant="profile"
+            />
           )}
           <Link
             href={`/chat?seller=${profile.id}`}
@@ -227,13 +231,12 @@ export function ProfileHeader({
             // una precarga jamas debe ejecutarla.
             prefetch={false}
             className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-90",
+              "h-[54px] inline-flex items-center justify-center rounded-full bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] text-[#11162D] font-semibold text-[17px] shadow-[0_8px_18px_rgba(23,25,34,0.12),0_2px_5px_rgba(23,25,34,0.05)] active:translate-y-[1px] active:shadow-[0_3px_8px_rgba(23,25,34,0.10)] transition-[transform,box-shadow] duration-120 px-5 text-center leading-none",
               currentUserId && currentUserId !== profile.id && profile.es_vendedor
-                ? "bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]"
-                : "bg-[color:var(--fg)] text-[color:var(--bg)] shadow-sm"
+                ? "flex-[1.15]"
+                : "flex-1"
             )}
           >
-            <MessageCircle className="w-4 h-4" />
             {currentUserId && currentUserId !== profile.id && profile.es_vendedor
               ? "Mensaje"
               : "Contactar"}
@@ -244,8 +247,9 @@ export function ProfileHeader({
               targetId={profile.id}
               targetLabel={profile.nombre_negocio ?? profile.nombre}
               blockableUserId={profile.id}
-              ariaLabel="Reportar o bloquear usuario"
-              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-[color:var(--sidebar-bg)] text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)] hover:opacity-90 shrink-0"
+              ariaLabel="Más opciones"
+              iconSize={20}
+              className="!p-0 !h-[54px] !w-[54px] !rounded-full !bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] !text-[#11162D] hover:!bg-[#FBFAF6] hover:!text-[#11162D] shadow-[0_8px_18px_rgba(23,25,34,0.12),0_2px_5px_rgba(23,25,34,0.05)] active:translate-y-[1px] active:shadow-[0_3px_8px_rgba(23,25,34,0.10)] transition-[transform,box-shadow] duration-120 shrink-0 flex items-center justify-center"
             />
           )}
         </div>
