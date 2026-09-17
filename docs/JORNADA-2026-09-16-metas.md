@@ -73,3 +73,40 @@ Estado: **implementada y verificada**, pendiente de push.
 - [ ] Detalle `/solicitudes/[id]`: categoría sobre la imagen, presupuesto como texto.
 - [ ] Filtros unificados en `/buscar` y `/solicitudes`: botón + drawer con cuadrícula de categorías.
 - [ ] Revisión + build + push.
+
+---
+
+## Verificación en producción de la Meta 1 (16-sep, tras el push)
+
+Hecho con la sesión real del seed contra la base de producción:
+
+- Unirse a una comunidad pública, **publicar con imagen** y ver la foto servida
+  con URL firmada desde el bucket privado. La ruta guardada es
+  `<community_id>/<autor>/<uuid>.webp`, la convención nueva.
+- Borrar la publicación y **salir con el icono de la cabecera**: la comunidad
+  queda con 0 publicaciones, 1 miembro vivo, el contador cuadrado y viva.
+- La cabecera de comunidad se ve como la pidió Pedro: globo negro sin texto ni
+  borde, sin etiqueta «Archivada», y los iconos que corresponden al rol.
+- El nombre «Javier Rodríguez» se lee correcto en la barra lateral: la
+  reparación del dato llegó a la aplicación.
+- Smoke de producción: 8 de 8 en verde.
+
+Un fallo encontrado al hacerlo y ya corregido: si el archivo elegido no se
+puede decodificar (un `.png` renombrado, un HEIC que ese navegador no abre),
+el mensaje llegaba crudo del navegador y en inglés («The source image could not
+be decoded»). Ahora dice qué hacer.
+
+### Pendientes conocidos que quedan anotados
+
+- **Huérfano en `community-media`**: borrar una publicación no borra sus
+  imágenes del bucket (`eliminar_publicacion_comunidad` hace DELETE de la fila
+  y nada toca Storage). Queda un objeto de la prueba de hoy. El patrón del repo
+  para cerrarlo es `storage_cleanup_pending`; es trabajo aparte.
+- **`delete-account` no limpia `community-media`**: la Edge Function recorre
+  una lista fija de buckets y el nuevo no está.
+- **Moderación no ve las imágenes**: quien modera una publicación reportada no
+  puede abrir la foto, porque la policy de lectura sólo alcanza a miembros de
+  la comunidad. El chat lo resolvió dando lectura a admin y moderador.
+- **Fechas en futuro**: una publicación recién creada se lee «dentro de 2
+  minutos». Es el reloj del servidor por delante del navegador, y el formateo
+  relativo no acota el futuro. Es cosmético y preexistente.

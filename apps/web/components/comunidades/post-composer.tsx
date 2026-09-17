@@ -42,6 +42,34 @@ interface PostComposerProps {
 
 type Fase = "libre" | "subiendo" | "enviando";
 
+/**
+ * Traduce el fallo de una subida a algo que diga QUE HACER.
+ *
+ * El mensaje crudo llegaba tal cual a la pantalla, y el del caso mas comun lo
+ * escribe el navegador en ingles: "The source image could not be decoded"
+ * cuando el archivo no es la imagen que dice ser (un .png renombrado, un HEIC
+ * que ese navegador no abre, una descarga a medias). Comprobado en pantalla.
+ * "No se pudieron subir las imagenes: The source image could not be decoded"
+ * no le dice a nadie que la solucion es elegir otra foto.
+ */
+function mensajeDeSubida(fallo: unknown): string {
+  const crudo = fallo instanceof Error ? fallo.message : "";
+  if (/could not be decoded|decode|source image/i.test(crudo)) {
+    return "Una de las imágenes no se pudo abrir. Puede estar dañada o no ser una imagen; elige otra.";
+  }
+  if (/network|fetch|timeout|aborted/i.test(crudo)) {
+    return "No se pudieron subir las imágenes: revisa tu conexión e inténtalo de nuevo.";
+  }
+  if (/exceeded the maximum allowed size|payload too large|413/i.test(crudo)) {
+    return "Una de las imágenes pesa demasiado para subirse. Elige otra más ligera.";
+  }
+  // Lo que no se reconoce SE SIGUE DICIENDO: un mensaje generico esconde el
+  // motivo real, y quien reporta el problema no tiene nada que contar.
+  return crudo
+    ? `No se pudieron subir las imágenes (${crudo}). Vuelve a intentarlo.`
+    : "No se pudieron subir las imágenes. Vuelve a intentarlo.";
+}
+
 /** Lo ya subido para ESTE conjunto de archivos, identificado por referencia. */
 interface SubidaHecha {
   files: File[];
@@ -142,11 +170,7 @@ export function PostComposer({
             rutas = await subirImagenesComunidad(createClient(), communityId, autorId, elegidas);
             subidaRef.current = { files: elegidas, rutas };
           } catch (fallo) {
-            setError(
-              fallo instanceof Error && fallo.message
-                ? `No se pudieron subir las imágenes: ${fallo.message}`
-                : "No se pudieron subir las imágenes. Intenta de nuevo.",
-            );
+            setError(mensajeDeSubida(fallo));
             return;
           }
         }
