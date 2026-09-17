@@ -44,7 +44,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
       {/* Hamburger trigger — mobile only */}
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)] md:hidden"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card text-foreground transition-colors hover:bg-[color:var(--bg-elev-2)] md:hidden"
         aria-label="Abrir menú de tienda"
       >
         <Menu className="h-5 w-5" />
@@ -88,7 +88,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                     className={cn(
                       "relative flex items-center justify-between overflow-hidden rounded-full px-5 py-3 text-sm font-medium transition-all duration-200",
                       active
-                        ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_4px_14px_rgba(46,135,115,0.18)] text-foreground font-semibold"
+                        ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
                         : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                     )}
                   >
@@ -109,7 +109,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                 className={cn(
                   "flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition-all duration-200",
                   pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-                    ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_4px_14px_rgba(46,135,115,0.18)] text-foreground font-semibold"
+                    ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
                     : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                 )}
               >

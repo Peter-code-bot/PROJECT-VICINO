@@ -68,7 +68,7 @@ export function SellerSidebar() {
             className={cn(
               "group relative flex items-center justify-between overflow-hidden rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_4px_14px_rgba(46,135,115,0.18)] text-foreground font-semibold"
+                ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
                 : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
             )}
           >
@@ -86,7 +86,7 @@ export function SellerSidebar() {
           className={cn(
             "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
             pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-              ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_4px_14px_rgba(46,135,115,0.18)] text-foreground font-semibold"
+              ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
               : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
           )}
         >
