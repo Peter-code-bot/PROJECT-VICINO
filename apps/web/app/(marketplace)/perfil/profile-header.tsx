@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { SellerBadge } from "@/components/shared/seller-badge";
-import type { TrustLevel } from "@vicino/shared";
-import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle, BadgeCheck, Calendar } from "lucide-react";
+import { Settings, Star, ShoppingBag, Handshake, MapPin, MessageCircle, Calendar } from "lucide-react";
 import { AvatarWithUpload } from "@/components/profile/avatar-with-upload";
 import { ChipCategoria } from "@/components/profile/chip-categoria";
 import { MetodosPagoChips } from "@/components/profile/metodos-pago-chips";
-import { TRUST_LEVELS } from "@vicino/shared";
+import { TrustProgressBadge } from "@/components/profile/trust-progress-badge";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
 import { cn } from "@/lib/utils";
@@ -83,32 +81,30 @@ export function ProfileHeader({
             displayName={profile.nombre}
             isOwnProfile={!isPublic}
           />
-          <div className="absolute -bottom-1 -left-1">
-            <SellerBadge
-              level={(profile.trust_level as TrustLevel) ?? "nuevo"}
-              size="sm"
-              showLabel={false}
-            />
-          </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats & Info */}
         <div className="flex-1 min-w-0">
-          {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
-            <>
-              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
-              {profile.username && (
-                <p className="text-xs text-muted-foreground mb-3">@{profile.username}</p>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0 flex-1">
+              {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
+                <>
+                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
+                  {profile.username && (
+                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
+                  {profile.username && (
+                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                  )}
+                </>
               )}
-            </>
-          ) : (
-            <>
-              <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
-              {profile.username && (
-                <p className="text-xs text-muted-foreground mb-3">@{profile.username}</p>
-              )}
-            </>
-          )}
+            </div>
+            <TrustProgressBadge profile={profile} />
+          </div>
 
           {/* Stats — Fila Compacta */}
           <div className="w-full">
@@ -190,45 +186,6 @@ export function ProfileHeader({
         </div>
       )}
 
-      {/* Trust level + Verified badge */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <SellerBadge level={(profile.trust_level as TrustLevel) ?? "nuevo"} showLabel size="md" />
-          {profile.is_verified && (
-            <span className="inline-flex items-center gap-1 rounded bg-[color:var(--trust-emerald)] px-1.5 py-0.5 font-heading font-bold text-[8px] tracking-[1.2px] uppercase text-white shadow-sm">
-              <BadgeCheck className="h-2.5 w-2.5" />
-              Verificado
-            </span>
-          )}
-        </div>
-        {(() => {
-          const points = profile.trust_points ?? 0;
-          const sorted = Object.entries(TRUST_LEVELS).sort((a, b) => a[1].minPoints - b[1].minPoints);
-          const next = sorted.find(([, v]) => v.minPoints > points);
-          const current = sorted.filter(([, v]) => v.minPoints <= points).pop();
-          const currentMin = current ? current[1].minPoints : 0;
-          const nextMin = next ? next[1].minPoints : points;
-          const progress = next ? Math.min(100, ((points - currentMin) / (nextMin - currentMin)) * 100) : 100;
-          return (
-            <div className="space-y-1">
-              <div className="h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
-                <div
-                  className="h-full rounded-full bg-[color:var(--brand)] shadow-[var(--shadow-glow)] transition-all"
-                  style={{ width: `${Math.max(5, progress)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-[color:var(--fg-dim)]">
-                <span className="font-semibold text-[color:var(--fg)]">{points} pts</span>
-                {next ? (
-                  <span>{next[1].minPoints - points} pts para <span className="text-[color:var(--brand-hi)]">{next[1].label}</span></span>
-                ) : (
-                  <span className="text-[color:var(--trust-gold)]">Nivel máximo</span>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
 
       {/* Seller info */}
       {/* La fila NO puede colgar de nombre_negocio, que es lo que hacia antes.
