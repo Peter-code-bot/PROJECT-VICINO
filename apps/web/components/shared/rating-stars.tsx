@@ -6,6 +6,7 @@ interface RatingStarsProps {
   count?: number;
   size?: "sm" | "md" | "lg";
   className?: string;
+  emptyStarClassName?: string;
 }
 
 const STAR_SIZE_MAP = {
@@ -19,6 +20,7 @@ export function RatingStars({
   count,
   size = "sm",
   className,
+  emptyStarClassName,
 }: RatingStarsProps) {
   const starSize = STAR_SIZE_MAP[size];
 
@@ -33,7 +35,7 @@ export function RatingStars({
               "transition-colors duration-200",
               star <= Math.round(rating)
                 ? "fill-gold text-gold"
-                : "fill-[color:var(--border)] text-[color:var(--border)]"
+                : (emptyStarClassName ?? "fill-[color:var(--border)] text-[color:var(--border)]")
             )}
           />
         ))}

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { TrustLevel } from "@vicino/shared";
-import { Check, Star, Crown } from "lucide-react";
+import { Shield, Check, Star, Crown } from "lucide-react";
+import { VerifiedBadgeIcon } from "@/components/profile/trust-levels-modal";
 
 const BADGE_CONFIG: Record<
   TrustLevel,
@@ -9,12 +10,12 @@ const BADGE_CONFIG: Record<
   nuevo: {
     label: "NUEVO",
     classes: "bg-transparent shadow-[inset_0_0_0_1px_rgba(160,164,161,0.4)] text-[#A0A4A1]",
-    icon: null,
+    icon: Shield,
   },
   verificado: {
     label: "VERIFICADO",
     classes: "bg-[#7A4FCC] text-white",
-    icon: null,
+    icon: VerifiedBadgeIcon,
   },
   confiable: {
     label: "CONFIABLE",
@@ -43,11 +44,12 @@ interface SellerBadgeProps {
 export function SellerBadge({
   level,
   showLabel = true,
-  size = "sm", // Ignored for now based on spec
+  size = "sm",
   className,
 }: SellerBadgeProps) {
   const config = BADGE_CONFIG[level];
   const Icon = config.icon;
+  const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
 
   return (
     <span
@@ -57,7 +59,15 @@ export function SellerBadge({
         className
       )}
     >
-      {Icon && <Icon className="h-2 w-2 fill-current" />}
+      {Icon && (
+        <Icon
+          className={cn(
+            iconSize,
+            "shrink-0",
+            level === "estrella" || level === "elite" ? "fill-current" : ""
+          )}
+        />
+      )}
       {showLabel && config.label}
     </span>
   );

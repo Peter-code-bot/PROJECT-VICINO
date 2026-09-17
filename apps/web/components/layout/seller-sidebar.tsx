@@ -66,17 +66,17 @@ export function SellerSidebar() {
             key={href}
             href={href}
             className={cn(
-              "group relative flex items-center justify-between overflow-hidden rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+              "group relative flex items-center justify-between overflow-hidden rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-[color:var(--fg)] font-semibold text-[color:var(--bg)] shadow-sm"
+                ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
                 : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
             )}
           >
             <div className="flex items-center gap-3">
-              <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
+              <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", active ? "text-emerald-700 dark:text-emerald-400" : "")} />
               {label}
             </div>
-            {active && <ChevronRight className="h-4 w-4 opacity-60" />}
+            {active && <ChevronRight className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
           </Link>
         );
       })}
@@ -84,13 +84,18 @@ export function SellerSidebar() {
         <Link
           href={SELLER_SETTINGS_ITEM.href}
           className={cn(
-            "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
+            "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
             pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-              ? "bg-[color:var(--fg)] font-semibold text-[color:var(--bg)] shadow-sm"
+              ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 shadow-[0_6px_20px_rgba(46,135,115,0.25),0_2px_4px_rgba(0,0,0,0.06)] text-foreground font-semibold"
               : "text-[color:var(--fg-muted)] hover:bg-[color:var(--sidebar-bg)] hover:text-[color:var(--fg)]"
           )}
         >
-          <SELLER_SETTINGS_ITEM.icon className="h-4 w-4" />
+          <SELLER_SETTINGS_ITEM.icon
+            className={cn(
+              "h-4 w-4",
+              pathname.startsWith(SELLER_SETTINGS_ITEM.href) ? "text-emerald-700 dark:text-emerald-400" : ""
+            )}
+          />
           {SELLER_SETTINGS_ITEM.label}
         </Link>
       </div>
