@@ -87,11 +87,12 @@ export default async function SellerOverviewPage() {
       <div className="min-w-0">
         <h1 className="text-xl font-bold mb-1 truncate">Mi Tienda</h1>
         <p className="text-sm text-[color:var(--fg-muted)] truncate">Resumen de tu actividad y métricas de ventas</p>
-      </div>      {/* Stats list */}
+      </div>
+      {/* Stats list */}
       <div className="flex flex-col space-y-3 stagger min-w-0">
         <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] shrink-0">
               <Handshake className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -106,7 +107,7 @@ export default async function SellerOverviewPage() {
 
         <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] shrink-0">
               <Package className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -121,7 +122,7 @@ export default async function SellerOverviewPage() {
 
         <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] shrink-0">
               <Star className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -139,13 +140,14 @@ export default async function SellerOverviewPage() {
               rating={Number(profile?.average_rating ?? 0)}
               count={Number(profile?.reviews_count ?? 0)}
               size="sm"
+              emptyStarClassName="fill-[color:var(--bg-elev-2)] text-[color:var(--bg-elev-2)]"
             />
           </div>
         </div>
 
         <div className="flex flex-row items-center justify-between overflow-hidden rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 group hover:opacity-90 transition-opacity min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-[color:var(--fg)] text-[color:var(--bg)] shrink-0">
+            <div className="p-2.5 rounded-xl bg-[color:var(--bg-elev-2)] text-[color:var(--fg)] shrink-0">
               <TrendingUp className="h-5 w-5" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -163,7 +165,7 @@ export default async function SellerOverviewPage() {
         {/* Trust level progress */}
         <div className="lg:col-span-2 rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[color:var(--fg)] flex items-center justify-center text-[color:var(--bg)]">
+            <div className="w-10 h-10 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center text-[color:var(--fg)] shrink-0">
               <Award className="w-5 h-5" />
             </div>
             <div>

@@ -44,7 +44,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
       {/* Hamburger trigger — mobile only */}
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] md:hidden"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--card-2)] text-[color:var(--fg)] transition-colors hover:bg-[color:var(--bg-elev-2)] md:hidden"
         aria-label="Abrir menú de tienda"
       >
         <Menu className="h-5 w-5" />
@@ -68,7 +68,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg-muted)] shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-[color:var(--fg)]"
+                className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                 aria-label="Cerrar menú"
               >
                 <X className="h-4 w-4" />
@@ -86,20 +86,17 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                     href={href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "relative flex items-center justify-between overflow-hidden rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                      "relative flex items-center justify-between overflow-hidden rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
                       active
-                        ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                        ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 border border-emerald-400/40 dark:border-emerald-600/40 shadow-[0_3px_10px_rgba(46,135,115,0.12),0_1px_2px_rgba(0,0,0,0.05)] text-foreground font-semibold"
                         : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                     )}
                   >
-                    {active && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-md bg-[color:var(--brand)]" />
-                    )}
                     <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 shrink-0" />
-                      {label}
+                      <Icon className={cn("h-5 w-5 shrink-0", active ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")} />
+                      <span className={cn(active ? "text-foreground font-semibold" : "")}>{label}</span>
                     </div>
-                    {active && <ChevronRight className="h-4 w-4 opacity-60" />}
+                    {active && <ChevronRight className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
                   </Link>
                 );
               })}
@@ -110,14 +107,21 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
                 href={SELLER_SETTINGS_ITEM.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
                   pathname.startsWith(SELLER_SETTINGS_ITEM.href)
-                    ? "bg-[color:var(--brand-tint-strong)] font-semibold text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
+                    ? "bg-gradient-to-r from-[#EAF5EF] to-[#DDF0E6] dark:from-emerald-950/50 dark:to-emerald-900/30 border border-emerald-400/40 dark:border-emerald-600/40 shadow-[0_3px_10px_rgba(46,135,115,0.12),0_1px_2px_rgba(0,0,0,0.05)] text-foreground font-semibold"
                     : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
                 )}
               >
-                <SELLER_SETTINGS_ITEM.icon className="h-5 w-5 shrink-0" />
-                {SELLER_SETTINGS_ITEM.label}
+                <SELLER_SETTINGS_ITEM.icon
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    pathname.startsWith(SELLER_SETTINGS_ITEM.href)
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-foreground"
+                  )}
+                />
+                <span>{SELLER_SETTINGS_ITEM.label}</span>
               </Link>
             </nav>
           </div>

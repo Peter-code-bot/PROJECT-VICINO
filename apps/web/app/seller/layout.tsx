@@ -49,7 +49,7 @@ export default async function SellerLayout({
             className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-card/50 transition-colors shrink-0"
             title="Volver al Inicio"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card border border-border/50 group-hover:border-border transition-colors">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card transition-colors">
               <Home className="w-5 h-5 text-fg" />
             </div>
             <span className="font-heading font-bold text-xl leading-none hidden sm:block text-fg">
@@ -60,20 +60,8 @@ export default async function SellerLayout({
 
           <div className="flex items-center gap-2 sm:gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl border border-border/50 shadow-sm min-w-0 flex-1 sm:flex-none overflow-hidden">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Store className="w-4 h-4 text-primary shrink-0" />
+              <Store className="w-4 h-4 text-foreground shrink-0" />
               <span className="font-semibold text-sm truncate">{storeName}</span>
-            </div>
-            <div className="hidden sm:block w-px h-4 bg-border/60 shrink-0" />
-            <div className="shrink-0 flex items-center">
-              <SellerBadge
-                level={(profile?.trust_level as TrustLevel) ?? "nuevo"}
-                showLabel={false}
-                className="sm:hidden"
-              />
-              <SellerBadge
-                level={(profile?.trust_level as TrustLevel) ?? "nuevo"}
-                className="hidden sm:inline-flex"
-              />
             </div>
           </div>
         </div>
