@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.vicino.mx",
       "sha256_cert_fingerprints": [
-        "2C:81:C7:8C:89:E1:0A:3B:68:F3:B5:B7:5F:DA:30:C1:E4:CA:F2:EE:5F:42:E8:33:6B:0B:F4:78:21:2A:E0:B3"
+        "2C:81:C7:8C:89:E1:0A:3B:68:F3:B5:B7:5F:DA:30:C1:E4:CA:F2:EE:5F:42:E8:33:6B:0B:F4:78:21:2A:E0:B3",
+        "63:0E:C6:F2:80:C3:CF:F9:21:8E:5E:02:EC:0A:D0:3B:5A:53:15:E2:16:7E:D0:85:9A:74:D3:EE:08:57:D9:B1"
       ]
     }
   }
