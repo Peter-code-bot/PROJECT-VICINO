@@ -11,6 +11,9 @@ import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { parseRadiusCookie } from "@/lib/geo/radius";
 import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
 import { CatalogQueryState } from "@/components/shared/catalog-query-state";
+import { UNIVERSITY_CATEGORY } from "@/lib/university";
+import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
+import { usuarioOInvitado } from "@/lib/session-auth";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +46,20 @@ export const metadata = {
 export default async function SearchPage({ searchParams }: Props) {
   const params = await searchParams;
   const supabase = await createClient();
+  const universityOnly = params.category === UNIVERSITY_CATEGORY;
+  let viewerUniversity: string | null = null;
+  let universitySellerIds: string[] = [];
+  let universityFailure: CatalogFailure | null = null;
+  try {
+    const user = await usuarioOInvitado(supabase);
+    if (user) viewerUniversity = await getViewerUniversity(supabase, user.id);
+    if (universityOnly && viewerUniversity) {
+      universitySellerIds = await getUniversitySellerIds(supabase, viewerUniversity);
+    }
+  } catch (error) {
+    universityFailure = catalogFailure(error);
+    Sentry.captureException(error, { tags: { surface: "buscar", query: "university" } });
+  }
   
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
@@ -150,8 +167,8 @@ export default async function SearchPage({ searchParams }: Props) {
     }
 
     if (sellers) {
-      topUsers = sellers;
-      sellerIds = sellers.map((s) => s.id);
+      topUsers = universityOnly ? sellers.filter(s => universitySellerIds.includes(s.id)) : sellers;
+      sellerIds = topUsers.map((s) => s.id);
     }
     } catch (error) {
       sellersFailure = catalogFailure(error);
@@ -175,6 +192,7 @@ export default async function SearchPage({ searchParams }: Props) {
   let totalCount: number | null = null;
   let searchFailure: CatalogFailure | null = null;
   try {
+  if (universityOnly && universityFailure) throw universityFailure;
   if (userLocation) {
     query = supabase
       .rpc(
@@ -187,7 +205,7 @@ export default async function SearchPage({ searchParams }: Props) {
           // funcion ES NULL, asi que omitir y mandar null acaban en el mismo
           // sitio, y el tipo generado solo admite omitir.
           search_term: terminoProducto || undefined,
-          seller_ids: sellerIds.length > 0 ? sellerIds : undefined,
+          seller_ids: universityOnly ? universitySellerIds : sellerIds.length > 0 ? sellerIds : undefined,
           // La rama de /buscar se pide POR SU NOMBRE. Antes se seleccionaba
           // mandando result_limit en nulo, que era demasiado listo: el nulo
           // hacia de interruptor sobre un parametro que se llama "limite", y
@@ -196,7 +214,7 @@ export default async function SearchPage({ searchParams }: Props) {
           // omite result_limit, que en esta rama no se usa: el techo lo pone
           // search_hard_cap = 500 dentro de la propia consulta.
           sin_limite: true,
-          restrict_seller_mode: false,
+          restrict_seller_mode: universityOnly,
         },
         { count: "exact" }
       ).throwOnError()
@@ -213,9 +231,16 @@ export default async function SearchPage({ searchParams }: Props) {
       .select(selectFields, { count: "exact" }).throwOnError()
       .eq("estatus", "disponible");
 
+    if (universityOnly) {
+      // Empty/unverified membership must never broaden into the full catalog.
+      query = universitySellerIds.length
+        ? query.in("creador_id", universitySellerIds)
+        : query.eq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
     if (terminoSinGeo) {
       let orQuery = `titulo.ilike.%${terminoSinGeo}%,descripcion.ilike.%${terminoSinGeo}%`;
-      if (sellerIds.length > 0) {
+      if (!universityOnly && sellerIds.length > 0) {
         orQuery += `,creador_id.in.(${sellerIds.join(",")})`;
       }
       query = query.or(orQuery);
@@ -232,7 +257,7 @@ export default async function SearchPage({ searchParams }: Props) {
   let orderedIds: string[] | null = null;
   let primaryIds: string[] = [];
 
-  if (params.category) {
+  if (params.category && !universityOnly) {
     // MP#08 #5c-3 (sobre el read switch 5b 52c477a): dos queries paralelas
     // al pivote, una con is_primary=true y otra con is_primary=false. La
     // concatenacion primary-first define el ranking final. Approach A del
@@ -390,12 +415,12 @@ export default async function SearchPage({ searchParams }: Props) {
     products = fullRanking.slice(offset, offset + PAGE_SIZE);
   }
   } catch (error) {
-    searchFailure = catalogFailure(error);
+    searchFailure = universityOnly && universityFailure ? universityFailure : catalogFailure(error);
     Sentry.captureException(error, { tags: { surface: "buscar", query: "products" } });
   }
 
   const totalPages = searchFailure ? 0 : Math.ceil((totalCount ?? 0) / PAGE_SIZE);
-  const categoryName = params.category
+  const categoryName = universityOnly ? viewerUniversity ?? "Universidad" : params.category
     ? CATEGORIES.find((c) => c.slug === params.category)?.name
     : null;
 
@@ -415,6 +440,7 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <div data-navigation-kind="search" data-navigation-ready={crypto.randomUUID()} className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
       <SearchFilters
+        viewerUniversity={viewerUniversity}
         initialQuery={params.q}
         initialCategory={params.category}
         initialSort={params.sort}
@@ -423,6 +449,8 @@ export default async function SearchPage({ searchParams }: Props) {
         initialPriceMax={params.price_max}
       />
 
+      {!universityOnly && universityFailure && <CatalogQueryState failure={universityFailure} section="tu universidad" />}
+      {universityOnly && !universityFailure && !viewerUniversity && <p role="status" className="text-sm text-fg-muted">Este filtro está disponible cuando tienes una universidad verificada en tu cuenta.</p>}
       {sellersFailure && <CatalogQueryState failure={sellersFailure} section="los vendedores" />}
       {!searchFailure && <div className="flex items-center justify-between">
         <p className="text-sm text-[color:var(--fg-muted)]">

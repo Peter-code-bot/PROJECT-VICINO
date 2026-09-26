@@ -114,6 +114,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
           </section>
 
           <HomeCategoryOrder
+            viewerUniversity={viewerUniversity}
             rows={categoryCarousels.map(([slug, ps]) => ({
               slug,
               name: CATEGORIES.find(c => c.slug === slug)?.name ?? slug,

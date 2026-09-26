@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, LayoutGrid, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, GraduationCap, LayoutGrid, X, type LucideIcon } from "lucide-react";
+import { UNIVERSITY_CATEGORY, universityStyle } from "@/lib/university";
 import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 export type ModoSeleccionCategorias = "una" | "varias";
 
 interface FiltroCategoriasDrawerProps {
+  viewerUniversity?: string | null;
   /** Lo que esta filtrado AHORA (URL o estado de quien llama), no el borrador. */
   seleccionadas: readonly string[];
   /** Se llama una sola vez, al pulsar Aplicar, con la seleccion completa. */
@@ -91,6 +93,7 @@ function etiquetaDeSeleccion(
   if (seleccionadas.length === 0) return etiquetaVacia;
   if (seleccionadas.length === 1) {
     const slug = seleccionadas[0] ?? "";
+    if (slug === UNIVERSITY_CATEGORY) return "Universidad";
     // Un slug que no esta en el catalogo (una URL escrita a mano) se pinta tal
     // cual. Decir "Todas las categorías" mentiria: el filtro SI esta aplicado
     // y es el que esta devolviendo cero resultados.
@@ -113,6 +116,7 @@ export function FiltroCategoriasDrawer({
   etiquetaVacia = "Categorías",
   titulo = "Categorías",
   className,
+  viewerUniversity,
 }: FiltroCategoriasDrawerProps): React.JSX.Element {
   const [abierto, setAbierto] = useState(false);
   const [borrador, setBorrador] = useState<readonly string[]>(seleccionadas);
@@ -167,7 +171,7 @@ export function FiltroCategoriasDrawer({
   // componente, porque no puede saber si devuelve una referencia estable.
   const slugUnico = seleccionadas.length === 1 ? seleccionadas[0] : undefined;
   const IconoDelBoton =
-    (slugUnico ? ICONO_POR_SLUG[slugUnico] : undefined) ?? LayoutGrid;
+    slugUnico === UNIVERSITY_CATEGORY ? GraduationCap : (slugUnico ? ICONO_POR_SLUG[slugUnico] : undefined) ?? LayoutGrid;
 
   return (
     <>
@@ -255,6 +259,18 @@ export function FiltroCategoriasDrawer({
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 pb-4">
+                {viewerUniversity && <button
+                  type="button"
+                  data-categoria-slug={UNIVERSITY_CATEGORY}
+                  aria-pressed={borrador.includes(UNIVERSITY_CATEGORY)}
+                  onClick={() => alternar(UNIVERSITY_CATEGORY)}
+                  style={universityStyle(viewerUniversity)}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition-opacity hover:opacity-90"
+                >
+                  <GraduationCap className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1"><span className="block">Universidad</span><span className="block text-xs">{viewerUniversity}</span></span>
+                  {borrador.includes(UNIVERSITY_CATEGORY) && <Check className="h-4 w-4 shrink-0" />}
+                </button>}
                 {GRUPOS.map((grupo) => (
                   <div key={grupo.tipo} className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--fg-dim)]">

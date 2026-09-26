@@ -1,4 +1,5 @@
 import "server-only";
+import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
@@ -150,13 +151,7 @@ export async function getHomeSession(
     : Promise.resolve(null);
 
   const verificacionPromise = user && feed === "parati"
-    ? supabase
-        .from("seller_verification")
-        .select("university_name").throwOnError()
-        .eq("user_id", user.id)
-        .eq("status", "approved")
-        .eq("document_type", "Credencial Universitaria")
-        .maybeSingle()
+    ? getViewerUniversity(supabase, user.id)
     : Promise.resolve(null);
 
   // La seccion «Cerca de ti» se trae AQUI, en el servidor, y no desde un
@@ -198,20 +193,14 @@ export async function getHomeSession(
 
   const viewerIsVendedor = perfilResultado?.data?.es_vendedor ?? false;
   const viewerUniversity: string | null =
-    verificacionResultado?.data?.university_name ?? null;
+    verificacionResultado ?? null;
 
   // F10: IIFE so TypeScript infers universityProducts directly from the
   // Supabase SELECT result. Single source of truth; if the SELECT shape
   // changes the consumers fail to compile.
   const universityProducts = await (async () => {
     if (!viewerUniversity) return [];
-    const { data: uniSellers } = await supabase
-      .from("seller_verification")
-      .select("user_id").throwOnError()
-      .eq("university_name", viewerUniversity)
-      .eq("status", "approved");
-
-    const sellerIds = uniSellers?.map(s => s.user_id) || [];
+    const sellerIds = await getUniversitySellerIds(supabase, viewerUniversity);
     if (sellerIds.length === 0) return [];
 
     let uProducts: FeedProduct[] | null = null;

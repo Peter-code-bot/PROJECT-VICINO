@@ -18,6 +18,7 @@ import { useSearchHistory } from "@/hooks/use-search-history";
 
 
 interface SearchFiltersProps {
+  viewerUniversity?: string | null;
   initialQuery?: string;
   initialCategory?: string;
   initialSort?: string;
@@ -35,6 +36,7 @@ export function SearchFilters({
   initialPriceMin,
   initialPriceMax,
   initialLat,
+  viewerUniversity,
 }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -192,6 +194,7 @@ export function SearchFilters({
           en la primera. */}
       <div className="flex items-center">
         <FiltroCategoriasDrawer
+          viewerUniversity={viewerUniversity}
           seleccionadas={initialCategory ? [initialCategory] : []}
           modo="una"
           onAplicar={(slugs) =>

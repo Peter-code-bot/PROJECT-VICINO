@@ -3,14 +3,16 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GraduationCap } from "lucide-react";
+import { UNIVERSITY_SEARCH_URL, universityStyle } from "@/lib/university";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { hapticSelection } from "@/lib/haptics";
 
 type CategoryRow = { slug: string; name: string; content: ReactNode };
 
 /** Only reorders server-rendered slots. No router.push, fetching or data cache. */
-export function HomeCategoryOrder({ rows, intro, recent, tail, empty }: {
+export function HomeCategoryOrder({ rows, intro, recent, tail, empty, viewerUniversity }: {
+  viewerUniversity?: string | null;
   rows: CategoryRow[];
   intro: ReactNode;
   recent: ReactNode;
@@ -50,7 +52,11 @@ export function HomeCategoryOrder({ rows, intro, recent, tail, empty }: {
           <h2 className="font-heading text-lg font-semibold text-fg">Categorías</h2>
           <Link href="/buscar" id="home-see-all-categories" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-hi">Ver todas<ArrowRight className="h-3 w-3" /></Link>
         </div>
-        {rows.length > 0 && <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
+        {(rows.length > 0 || viewerUniversity) && <div className="-mx-4 -my-3 flex gap-3 overflow-x-auto px-4 py-3 scrollbar-hide">
+          {viewerUniversity && <Link href={UNIVERSITY_SEARCH_URL} id="cat-universidad" aria-label={`Universidad: ${viewerUniversity}`} className="group flex min-w-[72px] flex-col items-center gap-1.5 text-center">
+            <span style={universityStyle(viewerUniversity)} className="flex h-16 w-16 items-center justify-center rounded-[14px]"><GraduationCap className="h-[22px] w-[22px]" strokeWidth={1.8} /></span>
+            <span className="text-[11px] font-medium text-fg">Universidad</span>
+          </Link>}
           {rows.map(row => {
             const Icon = iconoDeCategoria(row.slug);
             const active = selectedSet.has(row.slug);
