@@ -36,10 +36,21 @@ try {
   await page.getByRole('navigation').getByRole('link', { name: 'Inicio', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cambiar tema' }).click();
+  // Piloto BB03: los regresos nuevos miden 44x44 y responden al toque.
+  await page.getByRole('navigation').getByRole('link', { name: 'Regreso', exact: true }).click();
+  for (const name of ['Volver (despues, foto)', 'Volver (despues, formulario)']) {
+    const box = await page.getByRole('button', { name, exact: true }).boundingBox();
+    assert.equal(Math.round(box.width), 44, `${name} ancho`);
+    assert.equal(Math.round(box.height), 44, `${name} alto`);
+    await page.getByRole('button', { name, exact: true }).click();
+  }
+  await expect(page.getByTestId('toques')).toHaveText('2');
+  await page.screenshot({ path: path.join(root, 'node_modules/.cache/vicino-ios-lab/regreso.png'), fullPage: true });
+  await page.getByRole('navigation').getByRole('link', { name: 'Inicio', exact: true }).click();
   await page.screenshot({ path: path.join(root, 'node_modules/.cache/vicino-ios-lab/browser.png') });
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(external, [], 'External requests');
-  console.log('PASS: carga, categorías, borrador, Atrás, tema, navegación y chat simulado.');
+  console.log('PASS: carga, categorías, borrador, Atrás, tema, navegación, chat simulado y piloto Regreso.');
   console.log('Browser errors: 0. External requests: 0.');
 } finally {
   await browser.close();

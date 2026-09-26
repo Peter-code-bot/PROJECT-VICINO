@@ -5,10 +5,12 @@ import { PageSwipeWrapper } from '../../apps/web/components/layout/page-swipe-wr
 import { PullToRefreshWrapper } from '../../apps/web/components/layout/pull-to-refresh-wrapper';
 import { HomeCategoryOrder } from '../../apps/web/components/home/home-category-order';
 import { SkeletonLista } from '../../apps/web/components/shared/loading-skeletons';
+import { BotonRegresar } from '../../apps/web/components/ui/boton-regresar';
+import { ArrowLeft, ChevronLeft } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { SplashScreen } from '@capacitor/splash-screen';
 
-const tabs = [['/', 'Inicio'], ['/buscar', 'Buscar'], ['/chat', 'Chat'], ['/perfil', 'Perfil']];
+const tabs = [['/', 'Inicio'], ['/buscar', 'Buscar'], ['/chat', 'Chat'], ['/perfil', 'Perfil'], ['/regreso', 'Regreso']];
 const products = [['Mochila verde', '$450'], ['Camisa de lino', '$320'], ['Pan artesanal', '$80']];
 
 function Cards({ category }) {
@@ -19,6 +21,35 @@ function Cards({ category }) {
     </article>)}</div>
     <label>Nota de {category}<input aria-label={`Nota de ${category}`} placeholder="Escribe y cambia el orden" /></label>
   </section>;
+}
+
+
+// Piloto BB03 de la familia "Regreso": antes (codigo actual) frente a despues
+// (components/ui/boton-regresar.tsx). Los "antes" copian las clases vigentes
+// de gallery-top-bar.tsx y vender/product-form.tsx para compararlas lado a lado.
+function PilotoRegreso() {
+  const [toques, setToques] = useState(0);
+  const tocar = () => setToques(n => n + 1);
+  return <>
+    <p className="lab-hint">Toca cada botón: el nuevo responde al presionar. Toques: <b data-testid="toques">{toques}</b></p>
+    <h2>Sobre foto · ficha de producto</h2>
+    <div className="lab-comparar">
+      <figure><div className="lab-foto"><button type="button" onClick={tocar} aria-label="Volver (antes, foto)"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"><ArrowLeft className="h-5 w-5" /></button></div>
+        <figcaption>Antes · 36 px, negro 30 %</figcaption></figure>
+      <figure><div className="lab-foto"><BotonRegresar variante="flotante" onClick={tocar} aria-label="Volver (despues, foto)" /></div>
+        <figcaption>Después · 44 px, vidrio de la barra inferior</figcaption></figure>
+    </div>
+    <h2>Sobre fondo · publicar producto</h2>
+    <div className="lab-comparar">
+      <figure><div className="lab-cabecera"><button type="button" onClick={tocar} aria-label="Volver (antes, formulario)"
+        className="w-9 h-9 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+        <strong>Publicar producto</strong></div><figcaption>Antes · 36 px, cuadrado</figcaption></figure>
+      <figure><div className="lab-cabecera"><BotonRegresar onClick={tocar} aria-label="Volver (despues, formulario)" />
+        <strong>Publicar producto</strong></div><figcaption>Después · 44 px, redondo</figcaption></figure>
+    </div>
+    <p className="lab-hint">Usa «Cambiar tema» arriba para ver el modo oscuro. En Ajustes → Accesibilidad, «Reducir transparencia» vuelve opaco el vidrio.</p>
+  </>;
 }
 
 function Content() {
@@ -41,6 +72,7 @@ function Content() {
       </form></>}
     {path === '/perfil' && <><h2>María · Cuenta de muestra</h2><label>Nombre de muestra<input defaultValue="María" /></label>
       <p>Los datos de esta página se descartan al recargar.</p><Cards category="Mis publicaciones" /></>}
+    {path === '/regreso' && <PilotoRegreso />}
     <div className="lab-scroll">Zona para comprobar desplazamiento vertical</div>
   </main>;
 }

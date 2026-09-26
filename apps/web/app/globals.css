@@ -406,6 +406,74 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ─── REGRESAR (familia "Regreso", piloto BB03) ─────────────
+   Ver components/ui/boton-regresar.tsx. La respuesta va en :active, o sea al
+   tocar y no al soltar, y dura 100ms: es lo que hace que se sienta directo. */
+.regresar {
+  color: var(--fg);
+  transition: transform 100ms ease-out, background-color 150ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.regresar:active { transform: scale(0.94); }
+.regresar:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* Sobre fondo de pagina: superficie elevada, sin el borde charcoal del token
+   --border, que es justo el "borde negro" que Perfil y Rankings piden quitar. */
+.regresar-solido { background: var(--bg-elev-2); }
+.regresar-solido:hover { background: var(--card-2); }
+
+/* Sobre contenido: el mismo material de cuatro capas que .liquid-nav. */
+/* .vidrio: el mismo material para superficies que no son un regreso
+   (barra de Mi tienda, hamburguesa, cierre de drawers). */
+.regresar-flotante, .vidrio {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.68));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 18px -6px rgba(0, 0, 0, 0.30);
+  color: var(--brand-charcoal);
+}
+.dark .regresar-flotante, .dark .vidrio {
+  background: linear-gradient(to bottom, rgba(28, 30, 29, 0.86), rgba(14, 16, 15, 0.78));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.40),
+    0 6px 18px -6px rgba(0, 0, 0, 0.55);
+  color: #F4F1EB;
+}
+
+/* Con transparencia reducida el vidrio pasa a superficie opaca; con contraste
+   alto, ademas, lleva un borde definido. Se repite el selector .dark porque
+   .dark .regresar-flotante pesa mas que una sola clase y ganaria al fallback.
+   (.liquid-nav tampoco respeta estas preferencias: pendiente aparte, BB06.) */
+@media (prefers-reduced-transparency: reduce) {
+  .regresar-flotante, .dark .regresar-flotante, .vidrio, .dark .vidrio {
+    background: var(--card);
+    color: var(--fg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .regresar-flotante, .dark .regresar-flotante, .vidrio, .dark .vidrio {
+    background: var(--card);
+    color: var(--fg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: inset 0 0 0 1.5px var(--fg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .regresar { transition: none; }
+  .regresar:active { transform: none; }
+}
+
 /* NO HAY MEJORA PROGRESIVA POR DESPLAZAMIENTO, y se explica porque la
    tentacion es obvia y la trampa tambien.
 

@@ -18,6 +18,7 @@
 		7F7F5DA72FDB1F9C00D17084 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7F7F5DA62FDB1F9C00D17084 /* GoogleService-Info.plist */; };
 		7F7F5DAA2FDB2E9600D17084 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7F7F5DA92FDB2E9600D17084 /* FirebaseCore */; };
 		7F7F5DAC2FDB2E9600D17084 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 7F7F5DAB2FDB2E9600D17084 /* FirebaseMessaging */; };
+		7C0A1D5E2F6B4A9C8D3E0F12 /* CromoNativo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0A1D5E2F6B4A9C8D3E0F11 /* CromoNativo.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 		7F7F5DA52FDAF75D00D17084 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		7F7F5DA62FDB1F9C00D17084 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		7C0A1D5E2F6B4A9C8D3E0F11 /* CromoNativo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CromoNativo.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +75,7 @@
 				7F7F5DA52FDAF75D00D17084 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				7C0A1D5E2F6B4A9C8D3E0F11 /* CromoNativo.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -169,6 +172,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				7C0A1D5E2F6B4A9C8D3E0F12 /* CromoNativo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

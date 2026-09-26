@@ -57,7 +57,7 @@ if (mode === 'prepare-ios') {
 
 if (mode === 'serve') {
   const files = { '/lab.js': ['lab.js', 'text/javascript'], '/lab.css': ['lab.css', 'text/css'] };
-  const routes = new Set(['/', '/buscar', '/chat', '/perfil']);
+  const routes = new Set(['/', '/buscar', '/chat', '/perfil', '/regreso']);
   const server = createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url, 'http://127.0.0.1:4173').pathname;
