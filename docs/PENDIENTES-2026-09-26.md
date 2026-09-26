@@ -32,28 +32,114 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       En código; llega a producción cuando se levante la retención.
 
 ## PT00 — Conciliar avances y preparar entorno
-- [ ] Estado inicial inequívoco: master, ramas remotas (`feat/bb03-piloto-regreso`
-      de la Mac), producción, ledger, Edge Functions.
-- [ ] Acceso de administración a Supabase comprobado sin imprimir credenciales.
-- [ ] Entorno de staging y cuentas sintéticas dedicadas.
+- [x] Estado inicial (26-sep): producción sirve `4b6be86` (16-sep); master
+      `84e1dde` retenido por `ignoreCommand`. Ledger de prod = 175 versiones; la
+      única migración del repo sin aplicar es `20260925010000` (S04).
+      `20260912300000` y `20260912310000` sí están aplicadas.
+- [x] Rama de la Mac `feat/bb03-piloto-regreso` (3 commits del 26-sep): piloto
+      Liquid Glass nativo + familia Regreso (14 archivos web de diseño + Swift),
+      token FCM fuera del log de AppDelegate, versión iOS 1.1 (6) subida a
+      TestFlight. **No integrada a master**: es diseño bajo revisión de Javier.
+- [x] Acceso de administración a Supabase: la Management API responde desde
+      esta máquina (`scripts/db-query.mjs`, token del `.env`, sin imprimirlo).
+      El 401 del plan fue de otra máquina.
+- [x] Staging `vicino-staging` (ref `fautpkprtlspugbqhnfy`, micro, us-west-2),
+      aprobado por Pedro. Herramientas en `scripts/staging/` (estado en
+      `.staging/`, fuera de git):
+      - `crear.mjs` / `borrar.mjs --si`
+      - `replicar-esquema.mjs`: 175 migraciones de prod; pre-hooks para la
+        deriva conocida (3 policies de `media_assets`, DROP de
+        `search_nearby_products_v4`, `products_services.estado`) y
+        desprograma los cron que llaman a producción.
+      - `igualar-con-prod.mjs`: copia de prod 10 funciones que solo existen
+        allí y 20 con otra versión; iguala policies, permisos de tabla/columna
+        y publicación de Realtime; no copia lo que llama a producción por red.
+      - `dev-contra-staging.mjs`: web local en :3100 contra staging, sin
+        Sentry, correo ni IA.
+- [x] Hallazgo: el repo concede muchos más permisos que prod (staging salió
+      con 34 de tabla y 369 de columna de más): prod los revocó a mano.
+      Reconstruir prod solo desde el repo abriría esos permisos.
+- [x] Incidente contenido: al reproducir el esquema, 2 cron del staging
+      llamaron a funciones de producción (26-sep 23:00 UTC) y prod respondió
+      401 (sin credencial): sin efecto en datos. El replicador ya los
+      desprograma al crearlos.
 
 ## PT01 — CI rojo de Favoritos
-- [ ] Quitar los 3 `any` de `favoritos/remove-favorite-core.ts`
-      (`FavoriteClient = Awaited<ReturnType<typeof createClient>>`).
-- [ ] lint, tipos, Favoritos 17/17, build; push; Security Audit verde en el SHA nuevo.
+- [x] `96f3c21`: cliente tipado con `Awaited<ReturnType<typeof createClient>>`
+      (import solo de tipo). eslint 0 errores (149 avisos previos), tsc 0,
+      Favoritos 17/17, check-no-todo y check-rutas 0, `pnpm build` 0 (56/56).
+- [x] Security Audit verde en `96f3c21` (run 36277229185): type check + lint,
+      secretos, npm audit, deriva de tipos. Vercel: cancelado por la retención.
 
 ## PT02 — Fixtures sintéticos (mínimo para PT03)
-- [ ] Dos participantes de chat, un tercero sin permisos, productos
-      disponible/pausado/eliminado, ventas pendiente/completada/cancelada,
-      favoritos activo/inactivo. Carga y limpieza por IDs sintéticos.
+- [x] `scripts/staging/fixtures.mjs`: usuarios `@staging.vicino.test` por
+      GoTrue admin, productos `[FIXTURE]` disponible/pausado/eliminado/oculto,
+      bloqueo, suspensión y onboarding completo. `limpiar()` retira todo por
+      esas marcas (cada corrida termina con 0 restantes). Nunca cuentas reales
+      ni el seed. Nota: `contadores_nacen_en_cero` fuerza `is_hidden=false`
+      al INSERT; el oculto se aplica después.
+- [ ] Favoritos activo/inactivo en fixtures (pendiente para PT06/S03).
 - [ ] (Después) Rankings, Mis Ventas, Mis Reseñas, Estadísticas.
 
 ## PT03 — Migración S04 y chat/ventas
-- [ ] Revalidar que falta `chats.producto_revision` en producción.
-- [ ] Revisar dependencias vivas (`20260912300000`, `20260912310000`, `20260925010000`).
-- [ ] Probar migración, GRANT, RLS e idempotencia/concurrencia en staging.
-- [ ] Compatibilidad cliente viejo/nuevo y plan de reversión.
+- [x] Revalidado (26-sep): faltan `chats.producto_revision`,
+      `sale_confirmations.{clave_idempotencia,producto_revision}` y las
+      funciones `seleccionar_producto_chat`, `iniciar_confirmacion_venta` y
+      `confirmar_venta`.
+- [x] Dependencias vivas (paso 0, solo lectura contra prod):
+      - Las columnas, enums (`listing_status`, `sale_status`) y guardas
+        (`vicino_guard.bloqueados_conmigo`, `cuenta_suspendida`) que usan las
+        funciones existen.
+      - `messages_unique_sale_confirmed` existe (lo necesita el `ON CONFLICT`
+        de `confirmar_venta`); 0 duplicados que rompan el índice único nuevo.
+      - Los triggers INVOKER que actualizan `chats` al llegar un mensaje
+        (`increment_unread_count`, `unhide_chat_on_new_message`) solo tocan
+        `no_leidos_*`, `oculto_para_*` y `updated_at`: S04 las vuelve a
+        conceder, así que el envío de mensajes no se rompe.
+      - Volumen: 7 chats, 2 ventas, 0 pendientes.
+- [x] Compatibilidad: el cliente nuevo solo escribe directo `status/cancelled_*`
+      (cancelar) y `oculto_para_*/deleted_at_*` (ocultar chat), que S04 conserva.
+      El cliente viejo de producción inserta en `sale_confirmations` y
+      actualiza `*_confirmed` directo: tras aplicar S04, iniciar/confirmar
+      venta falla en el cliente viejo hasta desplegar el nuevo. Ventana =
+      duración del despliegue.
+- [x] Staging: S04 aplica limpia sobre copia fiel de prod y pasa su DO $verify$.
+- [x] `scripts/staging/probar-s04.mjs`: **35/35** por HTTP real con
+      peticiones concurrentes. Cubre CAS de revisión A→B→A, formulario
+      obsoleto, idempotencia, doble envío simultáneo, pérdida de respuesta,
+      conflicto de clave, venta pendiente, datos inválidos, tercero sin
+      permisos, pausado/eliminado/oculto/ajeno, escrituras directas cerradas
+      (42501), confirmación doble simultánea (una sola vez: puntos +10/+3,
+      ventas +cantidad, 1 aviso), cancelación y guarda, roles invertidos,
+      bloqueo, suspensión (confirma tratos previos) y el chat que sigue
+      funcionando.
+- [x] **P0 "Sincronización pendiente" — causa raíz encontrada.** Prod no
+      publica `sale_confirmations` en Realtime (se retiró fuera de banda; la
+      migración 20260517000001 la agrega). El canal `chat:<id>` de
+      chat-window la escucha junto con messages/chats; Realtime rechaza el
+      canal ENTERO ("Unable to subscribe ... table: sale_confirmations") y
+      no llega ni un mensaje en vivo. Afecta también al cliente actual de
+      prod (4b6be86). Arreglo: `20260926100000_realtime_vuelve_a_publicar_sale_confirmations.sql`.
+- [x] `scripts/staging/e2e-chat-venta.mjs`: **9/9** con dos sesiones de
+      navegador reales, web local + Realtime de staging. Cubre login, mensaje
+      en vivo (1-2 s), cambio de producto visto por el otro, venta iniciada
+      por el comprador y confirmada por el vendedor (completada una vez),
+      pérdida y recuperación de red sin duplicados, respuesta tras
+      reconectar y ningún aviso de sincronización pegado. Sin el arreglo de
+      Realtime fallaban 3, 4 y 8.
+- [x] Reversión sin pérdida de datos:
+      `docs/rollback/20260925010000_chat_producto_y_venta_atomica_rollback.sql`
+      (guarda + permisos del cliente viejo; conserva columnas, índices y
+      RPC). Probada en staging: el cliente viejo vuelve a crear y confirmar
+      ventas. Se usa junto con Instant Rollback de Vercel a 4b6be86.
 - [ ] Aplicar en producción, verificar chat/ventas, retirar la retención (PT08).
+      Orden: 20260926100000 (Realtime) → 20260925010000 (S04) → push del
+      commit que retira la retención. Ventana: mientras Vercel construye
+      (~5 min), el cliente viejo no puede iniciar ni confirmar ventas (hoy 0
+      pendientes).
+- [ ] 🟡 Decisión de Pedro/Javier: (1) si A bloquea a B con una venta ya
+      pendiente, B aún puede confirmarla; (2) confirmar no revisa si el
+      producto se pausó o eliminó después de iniciar.
 
 ## PT04 — Auth y correo
 - [ ] Cuenta nueva/existente, OTP incorrecto/vencido, reenvío, recuperación, sesión activa.

@@ -63,3 +63,6 @@ apps/web/playwright/.cache/
 # build, asi que trackearlos solo produce ruido en cada diff.
 apps/web/public/workbox-*.js
 apps/web/public/workbox-*.js.map
+
+# Estado local del proyecto de staging (claves de ESE proyecto)
+.staging/
