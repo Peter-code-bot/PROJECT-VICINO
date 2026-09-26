@@ -1,12 +1,16 @@
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { toggleFavoriteSchema } from "@vicino/shared";
+// Solo el tipo: importar el valor arrastraría next/headers a las pruebas.
+import type { createClient } from "@/lib/supabase/server";
 
 const uuidSchema = z.string().uuid();
 
+type FavoriteClient = Awaited<ReturnType<typeof createClient>>;
+
 export interface RemoveFavoriteDeps {
-  getSupabaseClient: () => Promise<any> | any;
-  getUser: (client: any) => Promise<{ id: string } | null>;
+  getSupabaseClient: () => Promise<FavoriteClient> | FavoriteClient;
+  getUser: (client: FavoriteClient) => Promise<{ id: string } | null>;
   enforceRateLimit: (key: string) => Promise<{ ok: boolean; error?: string }>;
   revalidate: (path: string) => Promise<void>;
 }
