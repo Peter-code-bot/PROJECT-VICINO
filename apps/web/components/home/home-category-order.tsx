@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type ReactNode, useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, GraduationCap } from "lucide-react";
@@ -22,20 +22,35 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, recent,
   empty: ReactNode;
 }) {
   const params = useSearchParams();
-  const available = new Set(rows.map(row => row.slug));
-  if (viewerUniversity) available.add(UNIVERSITY_CATEGORY);
-  const parse = (value: string | null) => [...new Set((value ?? "").split(","))].filter(slug => available.has(slug));
-  const selected = parse(params.get("cats"));
-  const selectedSet = new Set(selected);
+  const available = useMemo(() => {
+    const s = new Set(rows.map(row => row.slug));
+    if (viewerUniversity) s.add(UNIVERSITY_CATEGORY);
+    return s;
+  }, [rows, viewerUniversity]);
+
+  const parse = useCallback((value: string | null) =>
+    [...new Set((value ?? "").split(","))].filter(slug => available.has(slug)),
+    [available]
+  );
+
+  const [selected, setSelected] = useState<string[]>(() => parse(params.get("cats")));
+
+  useEffect(() => {
+    setSelected(parse(params.get("cats")));
+  }, [params, parse]);
+
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
   const universitySelected = selectedSet.has(UNIVERSITY_CATEGORY);
+
   function toggle(slug: string) {
-    // Read the current URL so rapid consecutive taps cannot overwrite each other.
-    const url = new URL(window.location.href);
-    const current = parse(url.searchParams.get("cats"));
-    const next = current.includes(slug) ? current.filter(item => item !== slug) : [...current, slug];
-    if (next.length) url.searchParams.set("cats", next.join(","));
-    else url.searchParams.delete("cats");
-    window.history.pushState(null, "", url.pathname + url.search + url.hash);
+    setSelected(current => {
+      const next = current.includes(slug) ? current.filter(item => item !== slug) : [...current, slug];
+      const url = new URL(window.location.href);
+      if (next.length) url.searchParams.set("cats", next.join(","));
+      else url.searchParams.delete("cats");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      return next;
+    });
     window.scrollTo({ top: 0, behavior: "instant" });
     void hapticSelection();
   }
