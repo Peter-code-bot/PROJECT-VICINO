@@ -25,4 +25,5 @@ Si Notion no está conectado, preparar el entorno y recuperar el plan antes de r
 - Los cambios de esta entrega necesitan validación funcional en dispositivos/cuentas de prueba.
 - No ejecutar seeds ni migraciones remotas como parte de preparar la Mac.
 - Documentar avances significativos en la Bitácora de Notion y alinear `PROGRESS.md`.
-- Un push a `master` despliega producción: la rama de transferencia es solo una base de trabajo.
+- Esta entrega se sube a `master` por instrucción de Javier. La producción queda retenida temporalmente mediante `apps/web/vercel.json` y `scripts/hold-production-for-s04.mjs`: se comprobó que falta `chats.producto_revision` en la base remota.
+- Antes de retirar esa retención, aplicar y verificar la migración S04 en el entorno autorizado y comprobar chat/ventas. El historial y las instrucciones de continuidad están en Notion.

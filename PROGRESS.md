@@ -11,8 +11,9 @@ Validación nativa/proveedor real e integración pendientes.
 - 84 casos aprobados (10 API, 48 navegador, 12 regresiones Playwright, 14 sesión/geometría).
 - Build final exit 0, 56/56 páginas, BUILD_ID Q9bhw3YqwnY671FM7855p; TypeScript correcto.
 - Lint sin errores, un aviso previo en LocationPicker. SDK/GPS/red simulados en pruebas.
-- Entrega de código S01–S05 preparada para GitHub por petición de Javier; consultar el SHA remoto y el acta de transferencia en Notion.
-- Sin merge a master, migración remota ni deploy realizado por esta tarea.
+- Destino solicitado por Javier: master remoto. Consultar el SHA publicado y el acta de transferencia en Notion.
+- Producción retenida mediante ignoreCommand de Vercel: REST confirmó que falta chats.producto_revision (42703). La consulta administrativa devolvió 401; no se aplicó ninguna migración remota.
+- Retirar la retención solo después de aplicar/verificar S04 y comprobar chat/ventas. Subir código a master no acredita despliegue.
 - Orden vigente: skills → brand book → piloto/alcance nativo → implementación por familias → verificación → TestFlight → App Store.
 - En Mac: `node scripts/prepare-mac.mjs --install --sync-ios` usa pnpm fijado y no aplica migraciones ni sube builds.
 - PGlite declarado en el lockfile; pruebas SQL sin carpeta temporal externa. Scripts S01/S03 resuelven dependencias desde apps/web.
