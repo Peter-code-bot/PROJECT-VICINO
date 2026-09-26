@@ -24,7 +24,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       // ApplicationDelegateProxy.shared que ya se usa para deep links reales.
       Messaging.messaging().token { token, error in
         if let token = token {
-          print("🔥 FIREBASE NATIVE TOKEN (\(token.count) chars): \(token)")
+          // Solo la longitud: el token completo identifica el dispositivo y no
+          // debe quedar en el log del candidato (plan A1, 26-sep-2026).
+          print("🔥 FIREBASE NATIVE TOKEN recibido (\(token.count) chars)")
           DispatchQueue.main.async {
             if let url = URL(string: "vicino://fcm-token/\(token)") {
               _ = ApplicationDelegateProxy.shared.application(application, open: url, options: [:])

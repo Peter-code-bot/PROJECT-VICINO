@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Lock, Globe, MapPin, Loader2, Save } from "lucide-react";
+import { Lock, Globe, MapPin, Loader2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COMMUNITY_DESCRIPCION_MAX } from "@vicino/shared";
 import { editarDescripcion, editarVisibilidad } from "@/app/(marketplace)/comunidades/actions";
@@ -98,13 +98,7 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
   return (
     <div className="mx-auto w-full max-w-lg space-y-7 px-4 pt-3 pb-28">
       <div className="flex items-center gap-3">
-        <Link
-          href={`/comunidades/${detalle.id}`}
-          aria-label="Volver a la comunidad"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)]"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        <BotonRegresar href={`/comunidades/${detalle.id}`} aria-label="Volver a la comunidad" />
         <div className="min-w-0">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Administrar</p>
           <h1 className="truncate font-heading text-xl font-bold text-[color:var(--fg)]">{detalle.nombre}</h1>

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft, Clock, MessageSquare } from "lucide-react";
+import { Clock, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { OffersList } from "@/components/solicitudes/offers-list";
 
@@ -154,12 +154,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
       {/* ─── Top bar ──────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Link
-            href="/?feed=solicitudes"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-          >
-            <ArrowLeft className="h-4 w-4 text-foreground" />
-          </Link>
+          <BotonRegresar href="/?feed=solicitudes" aria-label="Volver a solicitudes" />
           <h1 className="font-heading text-base font-bold text-foreground truncate">
             Solicitud
           </h1>

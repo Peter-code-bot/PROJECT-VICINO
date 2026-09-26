@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile, setUsername } from "./actions";
-import { Loader2, ShieldAlert, User, Store, ChevronLeft } from "lucide-react";
+import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 
@@ -197,13 +198,7 @@ export function ProfileForm({
   return (
     <form action={handleSubmit} className="space-y-6">
       <div className="flex items-center gap-3 mb-2">
-        <Link
-          href="/perfil"
-          className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center hover:bg-accent transition-colors shrink-0"
-          aria-label="Volver al perfil"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Link>
+        <BotonRegresar href="/perfil" aria-label="Volver al perfil" />
         <h1 className="flex-1 text-xl font-heading font-bold">Editar perfil</h1>
         <button
           type="submit"

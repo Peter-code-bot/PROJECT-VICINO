@@ -14,7 +14,8 @@ const ProductMediaCropper = dynamic(
 import { createProduct, updateProductFull } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { hapticMedium } from "@/lib/haptics";
-import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft, Play } from "lucide-react";
+import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, Play } from "lucide-react";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -699,15 +700,11 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   return (
     <>
       <div className="mb-6 flex items-center gap-3">
-        <button
-          type="button"
+        <BotonRegresar
           onClick={handleVolver}
           data-testid="volver-vender-btn"
-          className="w-9 h-9 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center shrink-0 transition-colors hover:bg-[color:var(--card-2)]"
           aria-label={isEdit ? "Volver a mis publicaciones" : "Volver"}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+        />
         <h1 className="flex-1 font-heading text-xl font-bold text-[color:var(--fg)]">
           {isEdit ? "Editar publicación" : "Publicar producto"}
         </h1>

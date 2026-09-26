@@ -38,19 +38,21 @@ export default async function SellerLayout({
 
   return (
     <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-8 md:py-10 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 min-w-0">
+      {/* Header. En movil flota en vidrio y queda fijo bajo el area segura
+          (antes eran pastillas blancas sin safe-area, bajo la barra de estado). */}
+      <div className="sticky top-[calc(env(safe-area-inset-top)+0.5rem)] z-30 md:static flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 min-w-0">
         <div className="flex items-center gap-3 md:gap-4 min-w-0">
           <div className="shrink-0 flex items-center">
             <SellerMobileDrawer storeName={storeName} />
           </div>
           <Link 
             href="/" 
-            className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-card/50 transition-colors shrink-0"
+            className="flex items-center gap-2 group shrink-0"
             title="Volver al Inicio"
+            aria-label="Volver al Inicio"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card transition-colors">
-              <Home className="w-5 h-5 text-fg" />
+            <div className="regresar vidrio flex h-11 w-11 shrink-0 items-center justify-center rounded-full">
+              <Home className="w-5 h-5" aria-hidden="true" />
             </div>
             <span className="font-heading font-bold text-xl leading-none hidden sm:block text-fg">
               Inicio
@@ -58,7 +60,7 @@ export default async function SellerLayout({
           </Link>
           <span className="text-muted-foreground/40 font-light text-2xl hidden sm:block shrink-0">/</span>
 
-          <div className="flex items-center gap-2 sm:gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl shadow-sm min-w-0 flex-1 sm:flex-none overflow-hidden">
+          <div className="vidrio flex h-11 items-center gap-2 sm:gap-3 px-4 rounded-full min-w-0 flex-1 sm:flex-none overflow-hidden">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Store className="w-4 h-4 text-foreground shrink-0" />
               <span className="font-semibold text-sm truncate">{storeName}</span>

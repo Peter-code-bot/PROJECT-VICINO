@@ -55,10 +55,10 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-background border-l border-border/15 flex flex-col animate-slide-in-right">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/15">
+            <div className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-4 border-b border-border/15">
               <h2 className="text-base font-semibold text-foreground">Mi cuenta</h2>
-              <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center">
-                <X className="w-4 h-4 text-muted-foreground" />
+              <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="regresar vidrio w-11 h-11 rounded-full flex items-center justify-center">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 

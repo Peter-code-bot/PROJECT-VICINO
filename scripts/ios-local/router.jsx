@@ -14,7 +14,7 @@ export function Provider({ children }) {
   const router = useMemo(() => {
     function navigate(href, refresh = false) {
       const url = new URL(href, location.href);
-      if (url.host !== location.host || !['/', '/buscar', '/chat', '/perfil'].includes(url.pathname)) return;
+      if (url.host !== location.host || !['/', '/buscar', '/chat', '/perfil', '/regreso'].includes(url.pathname)) return;
       const delay = Number(document.querySelector('#lab-delay')?.value ?? 800);
       const data = new Promise(resolve => setTimeout(() => resolve('Datos simulados actualizados'), delay));
       if (!refresh) history.pushState(null, '', url.pathname + url.search);

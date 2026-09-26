@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -61,12 +62,7 @@ export default async function UserSearchPage({ searchParams }: Props) {
       <SearchFilters initialQuery={params.q} />
 
       <div className="flex items-center gap-3">
-        <Link
-          href={`/buscar?q=${params.q || ""}`}
-          className="p-2 rounded-full hover:bg-[color:var(--card-2)] transition-colors text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Link>
+        <BotonRegresar href={`/buscar?q=${params.q || ""}`} aria-label="Volver a la búsqueda" />
         <h1 className="text-xl font-bold text-[color:var(--fg)]">
           Búsqueda de Usuarios
         </h1>

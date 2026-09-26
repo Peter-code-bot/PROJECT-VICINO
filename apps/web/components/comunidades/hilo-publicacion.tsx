@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Flag, Loader2, Lock, Trash2 } from "lucide-react";
+import { Flag, Loader2, Lock, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -107,14 +108,7 @@ export function HiloPublicacion({
     // inferior en movil; en escritorio solo el del composer.
     <div className="mx-auto flex w-full max-w-lg flex-col pb-[calc(env(safe-area-inset-bottom)+10rem)] md:pb-24">
       <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Volver"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)]"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        <BotonRegresar onClick={() => router.back()} aria-label="Volver" />
         <div className="min-w-0">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Publicación</p>
           <Link href={`/comunidades/${post.community_id}`} className="flex items-center gap-1 truncate font-heading text-[15px] font-bold text-[color:var(--fg)] hover:underline">

@@ -44,7 +44,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
       {/* Hamburger trigger — mobile only */}
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card text-foreground transition-colors hover:bg-[color:var(--bg-elev-2)] md:hidden"
+        className="regresar vidrio inline-flex h-11 w-11 items-center justify-center rounded-full md:hidden"
         aria-label="Abrir menú de tienda"
       >
         <Menu className="h-5 w-5" />
@@ -59,7 +59,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
           />
           <div className="absolute bottom-0 left-0 top-0 flex w-[85vw] max-w-sm animate-slide-in-left flex-col bg-[color:var(--bg-elev-1)] shadow-[inset_-1px_0_0_0_var(--border)]">
             {/* Header */}
-            <div className="flex items-start justify-between px-5 pb-4 pt-5 shadow-[inset_0_-1px_0_0_var(--border)]">
+            <div className="flex items-start justify-between px-5 pb-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] shadow-[inset_0_-1px_0_0_var(--border)]">
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-base font-semibold text-[color:var(--fg)]">{storeName}</h2>
                 <p className="mt-0.5 text-xs text-[color:var(--fg-muted)]">
@@ -68,7 +68,7 @@ export function SellerMobileDrawer({ storeName }: SellerMobileDrawerProps) {
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--card-2)] text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
+                className="regresar vidrio ml-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                 aria-label="Cerrar menú"
               >
                 <X className="h-4 w-4" />

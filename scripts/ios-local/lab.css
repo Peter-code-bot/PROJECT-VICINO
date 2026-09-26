@@ -7,7 +7,7 @@ header button { margin-left: 12px; }
 h1 { font-size: 28px; font-weight: 700; margin: 12px 0; }
 h2 { font-size: 18px; font-weight: 600; margin: 16px 0; }
 label { display: block; margin: 12px 0; }
-input, select, button { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--card); color: var(--fg); }
+input, select, button:not(.lab-comparar *) { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--card); color: var(--fg); }
 input { display: block; width: 100%; margin-top: 6px; }
 button, nav a { cursor: pointer; }
 .lab-carousel { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
@@ -18,3 +18,10 @@ nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex
 nav a { color: var(--fg); padding: 8px; }
 .lab-scroll { height: 420px; padding-top: 30px; color: var(--fg-muted); }
 li { margin: 12px 0; padding: 16px; border-radius: 14px; background: var(--card); }
+.lab-comparar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lab-comparar figure { margin: 0; }
+.lab-comparar figcaption { font-size: 13px; color: var(--fg-muted); margin-top: 6px; }
+.lab-foto { height: 180px; border-radius: 16px; padding: 12px; background:
+  radial-gradient(circle at 30% 30%, #f6c453 0 18%, transparent 19%),
+  repeating-linear-gradient(45deg, #2E8773 0 14px, #FFF8F0 14px 28px, #1A1A2E 28px 42px); }
+.lab-cabecera { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg); border-radius: 16px; }

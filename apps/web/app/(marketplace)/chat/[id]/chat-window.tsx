@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { createClient } from "@/lib/supabase/client";
 import { canalesGestionados, refrescoCoalescido } from "@/lib/realtime/canales-gestionados";
 import { recuperacionConexion } from "@/lib/realtime/recuperacion-conexion";
 import { reconciliarChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
-import { Send, Handshake, ArrowLeft, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
+import { Send, Handshake, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage, getMessagesBefore } from "../actions";
 import { hapticMedium } from "@/lib/haptics";
@@ -619,9 +620,7 @@ export function ChatWindow({
     <div data-navigation-kind="chat_detail" data-navigation-ready={readinessToken} className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border/10 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <Link href="/chat" className="md:hidden text-[color:var(--fg-muted)] hover:text-[color:var(--fg)] transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        <BotonRegresar href="/chat" aria-label="Volver a mensajes" className="md:hidden" />
         <Link
           href={`/vendedor/${otherUser?.id ?? ""}`}
           className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"

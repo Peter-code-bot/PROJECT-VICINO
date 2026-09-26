@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  ArrowLeft,
   Pencil,
   Eye,
   EyeOff,
@@ -14,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/shared/favorite-button";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { ReportModal } from "@/components/moderation/report-modal";
 import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
@@ -91,11 +91,14 @@ export function GalleryTopBar({
   return (
     <>
       <div
+        // data-cromo-galeria: la app iOS busca AQUI el regreso, el favorito y
+        // las opciones para sustituirlos por vidrio nativo (CromoNativo.swift).
+        data-cromo-galeria=""
         className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
       >
-        <button
-          type="button"
+        <BotonRegresar
+          variante="flotante"
           onClick={() => {
             if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
@@ -104,10 +107,8 @@ export function GalleryTopBar({
             }
           }}
           aria-label="Volver"
-          className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus:outline-none focus:ring-2 focus:ring-white/40"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+          className="pointer-events-auto"
+        />
 
         <div className="pointer-events-auto flex items-center gap-2">
           <FavoriteButton

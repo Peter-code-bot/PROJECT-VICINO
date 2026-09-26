@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Users, MessageSquare } from "lucide-react";
+import { Settings, Users, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import type { DetalleComunidad } from "@/lib/comunidades/tipos";
 import { esMando } from "@/lib/comunidades/tipos";
@@ -67,14 +68,7 @@ export function DetalleCabecera({ detalle, solicitudes = null }: DetalleCabecera
   return (
     <header className="px-4 pt-3 pb-4">
       <div className="mb-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Volver"
-          className={BOTON_ICONO}
-        >
-          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-        </button>
+        <BotonRegresar onClick={() => router.back()} aria-label="Volver" />
 
         <div className="flex items-center gap-1.5">
           <button
