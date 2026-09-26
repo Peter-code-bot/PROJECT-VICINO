@@ -84,10 +84,10 @@ async function main() {
     import {HomeCategoryOrder} from './components/home/home-category-order';
     import {SearchFilters} from './app/(marketplace)/buscar/search-filters';
     const root=createRoot(document.getElementById('root'));
-    window.paint=(uni)=>root.render(<><HomeCategoryOrder viewerUniversity={uni} rows={[]} intro={null} recent={null} tail={null} empty={null}/><SearchFilters viewerUniversity={uni} initialQuery="mesa"/></>);
+    window.paint=(uni)=>root.render(<><HomeCategoryOrder viewerUniversity={uni} rows={[{slug:'comida',name:'Comida',content:<div data-slot="food">Comida</div>}]} intro={<div data-slot="ranking">Ranking</div>} university={<div data-slot="university">Comunidad universitaria</div>} afterIntro={<div data-slot="nearby">Cerca de ti</div>} recent={null} tail={null} empty={null}/><SearchFilters viewerUniversity={uni} initialQuery="mesa"/></>);
   `, {
     "next/link": "export default function Link({children,...props}){return <a {...props}>{children}</a>;}",
-    "next/navigation": "export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push:url=>window.pushed=url});",
+    "next/navigation": "import {useSyncExternalStore} from 'react';const push=history.pushState.bind(history);history.pushState=(...args)=>{push(...args);dispatchEvent(new Event('popstate'));};const subscribe=cb=>{addEventListener('popstate',cb);return()=>removeEventListener('popstate',cb);};export const useSearchParams=()=>new URLSearchParams(useSyncExternalStore(subscribe,()=>location.search));export const useRouter=()=>({push:url=>window.pushed=url});",
     "@/lib/haptics": "export const hapticSelection=async()=>{};",
     "@/hooks/use-search-history": "export const useSearchHistory=()=>({history:[],addQuery:()=>{},removeQuery:()=>{},clearAll:()=>{}});",
   }, "browser");
@@ -103,9 +103,19 @@ async function main() {
       await page.addStyleTag({ content: css }); await page.addScriptTag({ content: browserCode });
       for (const [uni, color] of [["BUAP", "rgb(0, 59, 92)"], ["UDLAP", "rgb(0, 111, 83)"], ["Universidad Anáhuac", "rgb(255, 89, 0)"]]) {
         await page.evaluate((u: string) => (window as any).paint(u), uni);
-        await expect(page.locator("#cat-universidad")).toHaveAttribute("href", "/buscar?category=universidad");
+        await expect(page.locator('[aria-label="Categorías del inicio"] button').first()).toHaveAttribute("id", "cat-universidad");
+        await expect(page.locator("#cat-universidad")).toHaveAttribute("aria-pressed", "false");
         await expect(page.locator("#cat-universidad > span").first()).toHaveCSS("background-color", color);
         await page.screenshot({ path: path.join(output, `home-${width}-${uni}.png`) });
+        await page.locator('#cat-universidad').click();
+        await expect(page.locator('#cat-universidad')).toHaveAttribute('aria-pressed','true');
+        await expect(page.locator('#cat-universidad > span').first()).toHaveCSS('background-color','rgb(0, 0, 0)');
+        await expect(page.locator('[data-slot]').first()).toHaveAttribute('data-slot','university');
+        await expect(page.locator('[data-slot="university"]')).toHaveCount(1);
+        await page.screenshot({path:path.join(output, `home-selected-${width}-${uni}.png`)});
+        await page.locator('#cat-universidad').click();
+        await expect(page.locator('#cat-universidad > span').first()).toHaveCSS('background-color',color);
+        await expect(page.locator('[data-slot]').first()).toHaveAttribute('data-slot','ranking');
         await page.getByTestId("filtro-categorias-trigger").click();
         await page.locator('[data-categoria-slug="universidad"]').click();
         await expect(page.locator('[data-categoria-slug="universidad"]')).toHaveAttribute("aria-pressed", "true");

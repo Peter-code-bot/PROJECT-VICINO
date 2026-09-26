@@ -136,10 +136,8 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                   </section>
               ),
             }))}
-            intro={<>
-          {/* ─── RANKING STRIP ─────────────────────────────────── */}
-          {ranking}
-
+            intro={ranking}
+            university={<>
           {/* ─── TU UNIVERSIDAD (Exclusivo) ───────────────────────── */}
           {viewerUniversity && universityProducts.length > 0 && (
             <section className="px-4 pb-4 mt-4">
@@ -164,6 +162,15 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                     >
                       Lo mejor en tu universidad
                     </h2>
+                    <Link
+                      href="/buscar?category=universidad"
+                      id="university-see-all"
+                      className="inline-flex items-center gap-1 text-xs font-semibold opacity-90 transition-opacity hover:opacity-100"
+                      style={{ color: getContrastYIQ(UNIVERSITY_COLORS[viewerUniversity] || "#0ea5e9") }}
+                    >
+                      Ver todo
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
                 <ProductCarousel products={universityProducts} />
@@ -171,6 +178,8 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
             </section>
           )}
 
+            </>}
+            afterIntro={<>
           {/* ─── CERCA DE TI (geo island) ───────────────────────── */}
           <section className="px-4 pb-6 mt-2">
             <div className="max-w-7xl mx-auto">
