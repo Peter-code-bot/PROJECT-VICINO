@@ -4,7 +4,6 @@
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && pnpm install",
   "framework": "nextjs",
-  "ignoreCommand": "node scripts/hold-production-for-s04.mjs",
   "regions": ["pdx1"],
   "headers": [
     {
