@@ -63,7 +63,7 @@ test('manual community center works with denied GPS, late GPS cannot overwrite i
 });
 test('one lazy minimap per viewport, themed approximate circle and no coordinates in its URL', async ({page},info) => {
   const requests:string[]=[];
-  await page.route('**/api/products/*/location-map?*',route=>{requests.push(route.request().url());return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360"><rect width="1280" height="360" fill="#e6e9e3"/><path d="M0 70L1280 220M200 0L440 360M600 0L760 360" stroke="white" stroke-width="20"/></svg>'});});
+  await page.route('**/api/products/*/location-map?*',route=>{requests.push(route.request().url());return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')});});
   await page.evaluate(()=> (window as any).fixture.render('map'));
   await expect(page.getByRole('img')).toHaveCount(1);
   await expect(page.locator('section:visible span[aria-hidden]')).toHaveCount(1);
@@ -83,6 +83,6 @@ test('missing location and failed map retain locality without fabricating a poin
   await expect(page.getByText('Puebla, México').filter({visible:true})).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(0);
   await page.evaluate(()=> (window as any).fixture.render('map',true));
-  await expect(page.getByText('Mapa no disponible')).toBeVisible();
+  await expect(page.getByText('No se pudo cargar el mapa. Intenta de nuevo.')).toBeVisible();
   await expect(page.locator('section:visible span[aria-hidden]')).toHaveCount(0);
 });

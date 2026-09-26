@@ -65,7 +65,8 @@ export function CompletarPerfil({
   const [enviando, startTransition] = useTransition();
   const [hojaZonaAbierta, setHojaZonaAbierta] = useState(false);
 
-  const { state } = useGeolocation();
+  const { state, setManualPosition } = useGeolocation();
+  const [locationDraft, setLocationDraft] = useState<{ lat: number; lng: number; address: string } | null>(null);
 
   /**
    * Si la persona eligio su zona a mano en la hoja.
@@ -97,7 +98,7 @@ export function CompletarPerfil({
     }
   }
 
-  const hayUbicacion = state.status === "success" || zonaAMano;
+  const hayUbicacion = !!locationDraft || state.status === "success" || zonaAMano;
 
   /**
    * El banner de error se pinta fuera de los pasos, asi que hay que limpiarlo
@@ -371,14 +372,16 @@ export function CompletarPerfil({
           </div>
 
           <OnboardingLocationMap
-            onLocationConfirmed={() => {
-              setZonaAMano(true);
-            }}
+            initialSelection={locationDraft}
+            onSelectionChange={(lat, lng, address) => setLocationDraft({ lat, lng, address })}
           />
 
           <button
             type="button"
-            onClick={() => avanzar({}, null)}
+            onClick={() => {
+              if (locationDraft) setManualPosition({ ...locationDraft, name: locationDraft.address, fullName: locationDraft.address });
+              avanzar({}, null);
+            }}
             disabled={!hayUbicacion || enviando}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
           >

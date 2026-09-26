@@ -25,6 +25,13 @@ export const dynamic = "force-dynamic";
  */
 const suelo = frenoEnMemoria({ tope: 20, ventanaMs: 60_000 });
 
+const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
+function unavailable(status: number, code: string, retryAfter?: string) {
+  return Response.json({ code }, { status, headers: {
+    ...privateHeaders, ...(retryAfter ? { "Retry-After": retryAfter } : {}),
+  } });
+}
+
 /**
  * PNG de la zona aproximada (celda de ~1 km) de una publicacion.
  *
@@ -35,36 +42,37 @@ const suelo = frenoEnMemoria({ tope: 20, ventanaMs: 60_000 });
  * un mapa viejo.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   const id = z.string().uuid().safeParse((await params).id);
-  if (!id.success) return new Response(null, { status: 404, headers });
+  if (!id.success) return unavailable(404, "not_available");
   try {
     const ip = getClientIp(request.headers);
-    if (!suelo.permitir(ip)) return new Response(null, { status: 429, headers: { ...headers, "Retry-After": "60" } });
+    if (!suelo.permitir(ip)) return unavailable(429, "rate_limited", "60");
     const limit = await enforce(productMapRateLimit, `product-map:${ip}`);
-    if (!limit.ok) return new Response(null, { status: 429, headers: { ...headers, "Retry-After": "60" } });
+    if (!limit.ok) return unavailable(429, "rate_limited", "60");
     const supabase = await createClient();
     // RLS enforces status, visibility, blocks and creator access.
     const { data: visible, error } = await supabase.from("products_services")
       .select("id, updated_at").eq("id", id.data).neq("estatus", "eliminado").maybeSingle();
-    if (error || !visible) return new Response(null, { status: 404, headers });
+    if (error) return unavailable(503, "temporarily_unavailable", "5");
+    if (!visible) return unavailable(404, "not_available");
     // Privileged geometry read only after authorization; pin its version to reject a concurrent edit.
     const query = createAdminClient().from("products_services").select("ubicacion_geo")
       .eq("id", visible.id).neq("estatus", "eliminado");
-    const { data: location } = await (visible.updated_at
+    const { data: location, error: locationError } = await (visible.updated_at
       ? query.eq("updated_at", visible.updated_at) : query.is("updated_at", null)).maybeSingle();
-    const zone = productMapZone(location?.ubicacion_geo);
-    if (!zone) return new Response(null, { status: 404, headers });
+    if (locationError) return unavailable(503, "temporarily_unavailable", "5");
+    if (!location) return unavailable(409, "location_changed", "1");
+    const zone = productMapZone(location.ubicacion_geo);
+    if (!zone) return unavailable(404, "location_missing");
     const bytes = await productMapSnapshot(zone, new URL(request.url).searchParams.get("theme") === "dark");
     return new Response(bytes, {
-      headers: { ...headers, "Cache-Control": "private, max-age=86400", "Content-Type": "image/png" },
+      headers: { ...privateHeaders, "Cache-Control": "private, max-age=86400", "Content-Type": "image/png" },
     });
-  } catch (error) {
-    // El error no contiene la URL firmada (la firma vive en una variable local
-    // de productMapSnapshot) ni la geometria. Sin esto, una clave de MapKit
-    // mal pegada en Vercel dejaba "Mapa no disponible" en todas las fichas
-    // durante dias sin que ningun panel lo senalara.
-    Sentry.captureException(error, { tags: { action: "productLocationMap", productId: id.data } });
-    return new Response(null, { status: 503, headers });
+  } catch {
+    // No adjuntar excepciones del proveedor: pueden incluir URL firmada o clave.
+    Sentry.captureException(new Error("Product location map unavailable"), {
+      tags: { action: "productLocationMap", productId: id.data },
+    });
+    return unavailable(503, "temporarily_unavailable", "5");
   }
 }

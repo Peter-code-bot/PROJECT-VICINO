@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { clasificarFavorito } from "./clasificar-favorito";
 import { ProductCard } from "@/components/product/product-card";
+import { FavoritoInactivoCard } from "./favorito-inactivo-card";
 import { normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { Heart } from "lucide-react";
@@ -15,15 +17,18 @@ export default async function FavoritosPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/favoritos");
 
+  // S03: LEFT JOIN deliberado sobre products_services (sin !inner) para
+  // detectar favoritos cuyo producto fue eliminado, pausado o restringido por RLS,
+  // permitiendo mostrarlos con estado apropiado y retirarlos sin errores 404.
   const { data: favorites } = await supabase
     .from("favorites")
     .select(
       `
       id,
       producto_id,
-      products_services!inner(
-        id, titulo, precio, imagen_principal, categoria, slug, precio_negociable, modo_precio,
-        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+      products_services(
+        id, titulo, precio, imagen_principal, categoria, slug, precio_negociable, modo_precio, estatus, is_hidden,
+        profiles(nombre, trust_level, average_rating, reviews_count),
         product_categories(is_primary, categories(slug, nombre))
       )
     `
@@ -41,12 +46,31 @@ export default async function FavoritosPage() {
             const product = Array.isArray(fav.products_services)
               ? fav.products_services[0]
               : fav.products_services;
-            if (!product) return null;
-            const profile = Array.isArray(product.profiles)
-              ? product.profiles[0]
-              : product.profiles;
-            // Todo lo listado aqui ES un favorito por construccion: la
-            // query sale de la tabla favorites del propio usuario.
+
+            const profile = product?.profiles
+              ? Array.isArray(product.profiles)
+                ? product.profiles[0]
+                : product.profiles
+              : null;
+
+            const clasificacion = clasificarFavorito(product);
+
+            if (!clasificacion.disponible) {
+              return (
+                <FavoritoInactivoCard
+                  key={fav.id}
+                  productoId={fav.producto_id}
+                  titulo={product?.titulo}
+                  imagen={product?.imagen_principal}
+                  precio={product?.precio}
+                  modoPrecio={product?.modo_precio}
+                  vendedorNombre={profile?.nombre}
+                  motivo={clasificacion.motivo}
+                />
+              );
+            }
+
+            // 5. Producto disponible: render interactivo normal
             return (
               <ProductCard
                 key={fav.id}

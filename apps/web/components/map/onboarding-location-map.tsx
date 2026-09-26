@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, startTransition } from "react";
 import dynamic from "next/dynamic";
 import { Search, LocateFixed, Loader2, MapPin, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -24,21 +24,24 @@ const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
 const DEFAULT_PUEBLA: [number, number] = [19.0414, -98.2063];
 
 interface OnboardingLocationMapProps {
-  onLocationConfirmed?: (lat: number, lng: number, address: string) => void;
+  initialSelection?: { lat: number; lng: number; address: string } | null;
+  onSelectionChange?: (lat: number, lng: number, address: string) => void;
 }
 
 export default function OnboardingLocationMap({
-  onLocationConfirmed,
+  initialSelection,
+  onSelectionChange,
 }: OnboardingLocationMapProps) {
-  const { state, setManualPosition } = useGeolocation();
+  const { state } = useGeolocation();
   const initialCoords: [number, number] =
-    state.status === "success" && state.position
+    initialSelection ? [initialSelection.lat, initialSelection.lng] : state.status === "success" && state.position
       ? [state.position.lat, state.position.lng]
       : DEFAULT_PUEBLA;
 
   const [position, setPosition] = useState<[number, number]>(initialCoords);
+  const [view, setView] = useState(initialCoords);
   const [addressLabel, setAddressLabel] = useState<string>(
-    state.status === "success" && state.position?.name
+    initialSelection ? initialSelection.address : state.status === "success" && state.position?.name
       ? state.position.name
       : ""
   );
@@ -56,8 +59,30 @@ export default function OnboardingLocationMap({
   const reverseAbortRef = useRef<AbortController | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchSeqRef = useRef<number>(0);
+  const touchedRef = useRef(false);
 
-  // Guardar posición en hook y sincronizar cookies / localStorage
+  useEffect(() => {
+    if (touchedRef.current || initialSelection || state.status !== "success") return;
+    startTransition(() => {
+      setPosition([state.position.lat, state.position.lng]);
+      setView([state.position.lat, state.position.lng]);
+      setAddressLabel(state.position.name ?? "");
+    });
+  }, [state, initialSelection]);
+
+  const cancelPending = useCallback(() => {
+    touchedRef.current = true;
+    searchSeqRef.current++;
+    if (reverseRef.current) clearTimeout(reverseRef.current);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    reverseAbortRef.current?.abort();
+    searchAbortRef.current?.abort();
+    setRequestingGps(false);
+    setSearching(false);
+    setSuggestions([]);
+  }, []);
+
+  // Solo borrador: el formulario confirma con su acción «Entrar a VICINO».
   const commitPosition = useCallback(
     (lat: number, lng: number, label: string) => {
       const valid = clasificarResultado({ lat, lng }, null);
@@ -69,25 +94,21 @@ export default function OnboardingLocationMap({
       }
       setPosition([lat, lng]);
       setAddressLabel(label);
-      setManualPosition({
-        lat,
-        lng,
-        name: label,
-        fullName: label,
-      });
-      onLocationConfirmed?.(lat, lng, label);
+      onSelectionChange?.(lat, lng, label);
     },
-    [setManualPosition, onLocationConfirmed]
+    [onSelectionChange]
   );
 
   // Reverse geocoding diferido con Apple MapKit Geocoder (P1-1)
   const handlePositionChange = useCallback(
     (lat: number, lng: number) => {
+      cancelPending();
       if (clasificarResultado({ lat, lng }, null) !== "ok") {
         setGpsError("El punto debe tener coordenadas válidas dentro de México.");
         return false;
       }
       setPosition([lat, lng]);
+      setGpsError(null);
       const provisional = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       commitPosition(lat, lng, provisional);
 
@@ -109,11 +130,13 @@ export default function OnboardingLocationMap({
       }, 800);
       return true;
     },
-    [commitPosition]
+    [commitPosition, cancelPending]
   );
 
   useEffect(() => {
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- generation counter, not a DOM node; invalidate the latest generation on unmount
+      searchSeqRef.current++;
       if (reverseRef.current) clearTimeout(reverseRef.current);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       reverseAbortRef.current?.abort();
@@ -123,6 +146,7 @@ export default function OnboardingLocationMap({
 
   // Buscador de direcciones con cancelacion y descarte de respuestas viejas (P0-2, P1-3)
   const handleSearch = (q: string) => {
+    cancelPending();
     setSearchQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -173,14 +197,18 @@ export default function OnboardingLocationMap({
 
   // Resolución de coordenadas al seleccionar (B-4)
   const selectSuggestion = async (s: LocationSearchResult) => {
+    cancelPending();
+    const sequence = searchSeqRef.current;
     setSearchQuery(s.name);
     setSuggestions([]);
     setSearching(true);
 
+    try {
     const resolved = await resolveLocationCoordinates(s, {
       lat: position[0],
       lng: position[1],
     });
+    if (sequence !== searchSeqRef.current) return;
     setSearching(false);
 
     // Sin coordenadas buenas no se mueve el pin: antes esto plantaba al usuario
@@ -196,10 +224,20 @@ export default function OnboardingLocationMap({
     setOutOfCoverage(false);
     setOutsideMexico(false);
     commitPosition(resolved.lat, resolved.lng, resolved.name);
+    if (clasificarResultado(resolved, null) === "ok") {
+      setView([resolved.lat, resolved.lng]);
+      setGpsError(null);
+    }
+    } catch {
+      if (sequence === searchSeqRef.current) setGpsError("No se pudo elegir esa ubicación. Intenta de nuevo.");
+    } finally {
+      if (sequence === searchSeqRef.current) setSearching(false);
+    }
   };
 
   // Confirmar dirección escrita manualmente (P1-5: salida sin bloqueo de mapa)
   const handleConfirmManualText = () => {
+    cancelPending();
     const [lat, lng] = position;
     // El texto no se geocodificó: se conserva el punto visible, identificado
     // por sus coordenadas, sin adjudicarle el nombre que no se encontró.
@@ -210,6 +248,8 @@ export default function OnboardingLocationMap({
 
   // Botón GPS
   const handleGps = () => {
+    cancelPending();
+    const sequence = searchSeqRef.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGpsError("Geolocalización no disponible");
       return;
@@ -218,10 +258,14 @@ export default function OnboardingLocationMap({
     setGpsError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
-        handlePositionChange(pos.coords.latitude, pos.coords.longitude);
+        if (handlePositionChange(pos.coords.latitude, pos.coords.longitude)) {
+          setView([pos.coords.latitude, pos.coords.longitude]);
+        }
       },
       (err) => {
+        if (sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
         setGpsError(
           err.code === 1
@@ -250,9 +294,9 @@ export default function OnboardingLocationMap({
             <button
               type="button"
               onClick={() => {
-                setSearchQuery("");
-                setSuggestions([]);
+                handleSearch("");
               }}
+              aria-label="Borrar búsqueda"
               className="text-[color:var(--fg-dim)] hover:text-[color:var(--fg)]"
             >
               <X className="h-3.5 w-3.5" />
@@ -327,9 +371,9 @@ export default function OnboardingLocationMap({
       </div>
 
       {/* Mini-mapa interactivo */}
-      <div className="relative overflow-hidden rounded-2xl shadow-sm border border-[color:var(--border)]">
+      <div data-no-page-swipe="true" data-no-pull-to-refresh="true" className="relative overflow-hidden rounded-2xl shadow-sm border border-[color:var(--border)]">
         <AppleMapContainer
-          center={position}
+          center={view}
           markerPosition={position}
           draggableMarker
           onMarkerDragEnd={handlePositionChange}

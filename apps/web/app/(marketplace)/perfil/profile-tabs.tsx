@@ -312,7 +312,7 @@ export function ProfileProducts({ products, isVendedor }: Pick<ProfileTabsProps,
               <p className="text-sm text-[color:var(--fg-muted)]">Sin productos publicados</p>
               {isVendedor && (
                 <Link
-                  href="/vender"
+                  href="/vender?from=/perfil"
                   className="mt-3 inline-block text-sm font-semibold text-[color:var(--fg)] hover:opacity-80"
                 >
                   Publicar mi primer producto →

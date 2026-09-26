@@ -16,6 +16,13 @@ import { createClient } from "@/lib/supabase/client";
 import { hapticMedium } from "@/lib/haptics";
 import { Loader2, Store, PackageOpen, CheckCircle2, ImagePlus, X, Search, ChevronDown, Star, ChevronLeft, Play } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  resolverDestinoRetornoVender,
+  obtenerOrigenVender,
+  limpiarOrigenVender,
+  esEntradaDirectaVender,
+} from "@/lib/navigation/retorno-vender";
 import { cn } from "@/lib/utils";
 import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
@@ -231,6 +238,7 @@ function filterCategoriesByTipo(
 }
 
 export function ProductForm({ userId, mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
   const [error, setError] = useState("");
@@ -654,16 +662,52 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
 
   const isEdit = mode === "edit";
 
+  function handleVolver() {
+    const fromParam =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("from")
+        : null;
+    const isDirectHardNav = esEntradaDirectaVender();
+    if (isDirectHardNav && !fromParam) {
+      limpiarOrigenVender();
+    }
+    const origenGuardado = isDirectHardNav ? null : obtenerOrigenVender();
+    const referrer = typeof document !== "undefined" ? document.referrer : null;
+    const windowOrigin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const historyLength =
+      typeof window !== "undefined" ? window.history.length : 1;
+    const historyStateIdx =
+      typeof window !== "undefined"
+        ? (window.history.state?.idx as number | undefined)
+        : undefined;
+
+    const { destino } = resolverDestinoRetornoVender({
+      isEdit,
+      fromParam,
+      origenGuardado,
+      referrer,
+      windowOrigin,
+      historyLength,
+      historyStateIdx,
+      isDirectHardNav,
+    });
+
+    router.push(destino);
+  }
+
   return (
     <>
       <div className="mb-6 flex items-center gap-3">
-        <Link
-          href={isEdit ? "/seller/listings" : "/"}
+        <button
+          type="button"
+          onClick={handleVolver}
+          data-testid="volver-vender-btn"
           className="w-9 h-9 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center shrink-0 transition-colors hover:bg-[color:var(--card-2)]"
-          aria-label={isEdit ? "Volver a mis publicaciones" : "Volver al inicio"}
+          aria-label={isEdit ? "Volver a mis publicaciones" : "Volver"}
         >
           <ChevronLeft className="w-5 h-5" />
-        </Link>
+        </button>
         <h1 className="flex-1 font-heading text-xl font-bold text-[color:var(--fg)]">
           {isEdit ? "Editar publicación" : "Publicar producto"}
         </h1>

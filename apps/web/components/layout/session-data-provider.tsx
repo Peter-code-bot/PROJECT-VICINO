@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SessionCache, type Snapshot } from "@/lib/session-cache";
 import { locationScopeFromDocumentCookie } from "@/lib/session-scope";
 import { consumirRestauracion } from "@/lib/navigation/restauracion-ui";
+import { guardarOrigenVender } from "@/lib/navigation/retorno-vender";
 
 const Context = createContext<SessionCache | null>(null);
 export function SessionDataProvider({ userId, revision, children }: { userId: string; revision: string; children: React.ReactNode }) {
@@ -16,6 +17,38 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
   const lifecycle = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
+  useEffect(() => {
+    const guardar = () => {
+      if (typeof window === "undefined") return;
+      const path = window.location.pathname;
+      const search = window.location.search;
+      if (path && !path.startsWith("/vender")) {
+        guardarOrigenVender(path + search);
+      }
+    };
+
+    guardar();
+
+    const origPush = window.history.pushState;
+    const origReplace = window.history.replaceState;
+    window.history.pushState = function (...args) {
+      const res = origPush.apply(this, args);
+      guardar();
+      return res;
+    };
+    window.history.replaceState = function (...args) {
+      const res = origReplace.apply(this, args);
+      guardar();
+      return res;
+    };
+    window.addEventListener("popstate", guardar);
+
+    return () => {
+      window.history.pushState = origPush;
+      window.history.replaceState = origReplace;
+      window.removeEventListener("popstate", guardar);
+    };
+  }, [pathname]);
   useEffect(() => {
     const generation = ++lifecycle.current;
     const supabase = createClient();

@@ -55,7 +55,7 @@ export function ProductDetailDesktop({
 
 
   const canShowAppointment =
-    !!product.allow_appointments && !!user && !effectiveIsOwner;
+    !!product.allow_appointments && !!user && !effectiveIsOwner && product.estatus === "disponible";
 
 
   const previewUrl = `${pathname}?preview=visitor`;
@@ -177,6 +177,42 @@ export function ProductDetailDesktop({
                     <Edit3 className="h-5 w-5" />
                     Editar producto
                   </Link>
+                </>
+              ) : product.estatus && product.estatus !== "disponible" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-muted px-4 py-4 text-base font-semibold text-muted-foreground cursor-not-allowed opacity-80"
+                  >
+                    <ShoppingBag className="h-5 w-5" />
+                    {product.estatus === "pausado" ? "Publicación pausada" : "No disponible"}
+                  </button>
+                  <div className="flex gap-2">
+                    {user ? (
+                      <Link
+                        href={contactHref}
+                        prefetch={false}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-card-2 px-4 py-3 text-sm font-semibold text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-brand-tint"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Contactar Vendedor
+                      </Link>
+                    ) : (
+                      <Link
+                        href={loginRedirect}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-card-2 px-4 py-3 text-sm font-semibold text-fg transition-colors hover:bg-card"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Inicia sesión para contactar
+                      </Link>
+                    )}
+                    <FavoriteButton
+                      productId={product.id}
+                      initialFavorite={isFavorite}
+                    />
+                  </div>
                 </>
               ) : !user ? (
                 <Link

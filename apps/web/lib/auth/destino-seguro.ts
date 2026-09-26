@@ -55,3 +55,49 @@ function tieneCaracterDeControl(valor: string): boolean {
 /** Construida y no escrita: escapar barras dentro de literales es donde mas
  *  facil es equivocarse, y el error no falla, solo cambia lo que casa. */
 const BARRA_INVERTIDA = String.fromCharCode(92);
+
+/**
+ * Detecta si una ruta interna corresponde a una superficie de autenticacion.
+ * Extrae el pathname antes de cualquier '?' o '#' y normaliza a minusculas.
+ */
+export function esRutaAuth(ruta: string): boolean {
+  const path = (ruta.split(/[?#]/, 1)[0] ?? "/").toLowerCase();
+  return (
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path === "/register" ||
+    path.startsWith("/register/") ||
+    path === "/forgot-password" ||
+    path.startsWith("/forgot-password/")
+  );
+}
+
+/**
+ * Destino interno seguro para usuarios autenticados.
+ *
+ * Ademas de las validaciones de destinoSeguro (evitar open redirects, barras
+ * invertidas, caracteres de control), impide bucles de redireccion al descartar
+ * destinos que apunten a paginas de autenticacion (/login, /register,
+ * /forgot-password) y sus variantes con parametros o subrutas.
+ *
+ * Si el destino es una ruta de autenticacion, recurre a "/" como fallback.
+ * Rutas legitimas como "/buscar?q=mesa" o "/vender" se conservan intactas.
+ */
+export function destinoAutenticadoSeguro(next: unknown): string {
+  if (typeof next !== "string") return "/";
+  const destino = destinoSeguro(next);
+  try {
+    const base = "https://vicino.invalid";
+    const url = new URL(destino, base);
+    // URL normaliza segmentos . y .., incluidos %2e. Comprobamos también
+    // el pathname decodificado: /%6cogin y /%2fhost no son destinos válidos.
+    const decodedPath = decodeURIComponent(url.pathname);
+    if (destinoSeguro(decodedPath) !== decodedPath) return "/";
+    const normalizedPath = new URL(decodedPath, base).pathname;
+    if (url.origin !== base || esRutaAuth(normalizedPath)) return "/";
+    const result = url.pathname + url.search + url.hash;
+    return destinoSeguro(result) === result ? result : "/";
+  } catch {
+    return "/";
+  }
+}

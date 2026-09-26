@@ -55,6 +55,17 @@ export class CanalesGestionados {
     };
   }
 
+  /** Invalida la generacion antes de cerrar; nunca duplica un topic ni despierta
+   * la aplicacion nativa si sigue en segundo plano. */
+  reintentar(topic: string) {
+    for (const entry of this.entries) {
+      if (entry.removed || entry.topic !== topic) continue;
+      entry.generation++;
+      entry.failed = false;
+    }
+    this.schedule();
+  }
+
   private setActive(active: boolean) {
     if (this.active === active) return;
     this.active = active;
@@ -154,7 +165,8 @@ export function canalesGestionados(client: SupabaseClient<Database>) {
   return controller;
 }
 
-/** Una consulta en vuelo, a lo sumo una vuelta adicional por rafaga. */
+/** Una consulta en vuelo. Las señales recibidas durante cualquier vuelta se
+ * coalescen en la siguiente; no se descarta la ultima señal ni hay polling. */
 export function refrescoCoalescido(run: () => Promise<void>, onError: () => void) {
   let running = false;
   let again = false;
@@ -165,12 +177,18 @@ export function refrescoCoalescido(run: () => Promise<void>, onError: () => void
       if (running) { again = true; return; }
       running = true;
       void (async () => {
-        for (let turn = 0; turn < 2 && !disposed; turn++) {
-          again = false;
-          try { await run(); } catch { if (!disposed) onError(); }
-          if (!again) break;
+        try {
+          while (!disposed) {
+            again = false;
+            try { await run(); } catch { if (!disposed) onError(); }
+            if (!again) break;
+          }
+        } finally {
+          // Liberar en la misma continuacion que decide salir. Un .finally()
+          // separado deja un microtask donde una señal quedaria abandonada.
+          running = false;
         }
-      })().finally(() => { running = false; });
+      })();
     },
     cancelar() { disposed = true; },
   };

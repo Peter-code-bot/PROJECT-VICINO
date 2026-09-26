@@ -110,7 +110,7 @@ export function FiltroCategoriasDrawer({
   seleccionadas,
   onAplicar,
   modo = "una",
-  etiquetaVacia = "Todas las categorías",
+  etiquetaVacia = "Categorías",
   titulo = "Categorías",
   className,
 }: FiltroCategoriasDrawerProps): React.JSX.Element {
@@ -177,14 +177,40 @@ export function FiltroCategoriasDrawer({
         onClick={abrir}
         aria-haspopup="dialog"
         aria-expanded={abierto}
+        data-testid="filtro-categorias-trigger"
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 rounded-2xl product-card-custom px-4 py-2.5 text-sm font-medium text-[color:var(--fg)] transition-opacity hover:opacity-90 sm:w-auto sm:min-w-[15rem]",
+          "inline-flex h-9 sm:h-10 items-center gap-2 rounded-xl px-3.5 text-xs sm:text-sm font-medium transition-colors hover:opacity-90",
+          seleccionadas.length > 0
+            ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] font-semibold"
+            : "product-card-custom text-[color:var(--fg)]",
           className,
         )}
       >
         <IconoDelBoton className="h-4 w-4 shrink-0 text-[color:var(--brand-hi)]" />
         <span className="truncate">{etiqueta}</span>
-        <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-[color:var(--fg-muted)]" />
+        {seleccionadas.length > 0 ? (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Limpiar categoría"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAplicar([]);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onAplicar([]);
+              }
+            }}
+            className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 text-[color:var(--fg-muted)]" />
+        )}
       </button>
 
       {/* El panel solo existe despues de un clic, o sea que nunca se pinta en
@@ -242,6 +268,7 @@ export function FiltroCategoriasDrawer({
                           <button
                             key={cat.slug}
                             type="button"
+                            data-categoria-slug={cat.slug}
                             aria-pressed={elegida}
                             onClick={() => alternar(cat.slug)}
                             className={cn(

@@ -2,13 +2,29 @@ import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
+import { usuarioOInvitado } from "@/lib/session-auth";
 
 export const metadata = {
   title: "Iniciar sesión — VICINO",
   description: "Inicia sesión en VICINO para comprar y vender con confianza",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ next?: string | string[] }>;
+}) {
+  const supabase = await createClient();
+  const user = await usuarioOInvitado(supabase);
+
+  if (user) {
+    const params = searchParams ? await searchParams : undefined;
+    redirect(destinoAutenticadoSeguro(params?.next));
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12 relative overflow-hidden bg-auth-page-bg">
       {/* Background accents */}

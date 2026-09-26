@@ -265,6 +265,7 @@ export type Database = {
           no_leidos_vendedor: number | null
           oculto_para_comprador: boolean | null
           oculto_para_vendedor: boolean | null
+          producto_revision: number
           ultimo_producto_id: string | null
           updated_at: string | null
           vendedor_id: string
@@ -279,6 +280,7 @@ export type Database = {
           no_leidos_vendedor?: number | null
           oculto_para_comprador?: boolean | null
           oculto_para_vendedor?: boolean | null
+          producto_revision?: number
           ultimo_producto_id?: string | null
           updated_at?: string | null
           vendedor_id: string
@@ -293,6 +295,7 @@ export type Database = {
           no_leidos_vendedor?: number | null
           oculto_para_comprador?: boolean | null
           oculto_para_vendedor?: boolean | null
+          producto_revision?: number
           ultimo_producto_id?: string | null
           updated_at?: string | null
           vendedor_id?: string
@@ -1681,6 +1684,8 @@ export type Database = {
         Row: {
           buyer_confirmed: boolean | null
           buyer_confirmed_at: string | null
+          clave_idempotencia: string | null
+          producto_revision: number | null
           buyer_id: string
           cancel_reason: string | null
           cancelled_at: string | null
@@ -1705,6 +1710,8 @@ export type Database = {
         Insert: {
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
+          clave_idempotencia?: string | null
+          producto_revision?: number | null
           buyer_id: string
           cancel_reason?: string | null
           cancelled_at?: string | null
@@ -1729,6 +1736,8 @@ export type Database = {
         Update: {
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
+          clave_idempotencia?: string | null
+          producto_revision?: number | null
           buyer_id?: string
           cancel_reason?: string | null
           cancelled_at?: string | null
@@ -2339,6 +2348,18 @@ export type Database = {
       }
     }
     Functions: {
+      seleccionar_producto_chat: {
+        Args: { p_chat_id: string; p_producto_id: string; p_revision_esperada: number }
+        Returns: Json
+      }
+      iniciar_confirmacion_venta: {
+        Args: { p_chat_id: string; p_producto_id: string; p_revision_esperada: number; p_clave: string; p_precio: number; p_cantidad: number; p_metodo_pago?: string; p_notas?: string; p_tipo_entrega?: string }
+        Returns: Json
+      }
+      confirmar_venta: {
+        Args: { p_confirmacion_id: string }
+        Returns: Json
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

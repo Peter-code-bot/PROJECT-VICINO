@@ -148,7 +148,42 @@ test('rafaga coalescida, sin consultas concurrentes ni polling', async () => {
   assert.equal(calls, 2);
   for (let i = 0; i < 100; i++) refresh.solicitar();
   release(); await nextTurn();
-  assert.equal(calls, 2);
+  assert.equal(calls, 3); // La ultima señal puede cerrar un envio o una reconexion.
+  release(); await nextTurn();
   refresh.cancelar(); refresh.solicitar();
+  assert.equal(calls, 3);
+});
+
+test('reintento explicito invalida consultas y sustituye el canal sin duplicarlo', async () => {
+  const f = fixture();
+  const remove = f.register();
+  await nextTurn();
+  const old = f.callbacks.at(-1)!;
+  for (let i = 0; i < 10; i++) f.controller.reintentar('synthetic');
+  assert.equal(old(), false);
+  await nextTurn();
+  assert.equal(f.created(), 2);
+  assert.equal(f.channels.length, 1);
+  assert.equal(f.callbacks.at(-1)!(), true);
+  f.controller.confirmarEstado(false);
+  f.controller.reintentar('synthetic');
+  await nextTurn();
+  assert.equal(f.channels.length, 0);
+  f.controller.confirmarEstado(true);
+  await nextTurn();
+  assert.equal(f.created(), 3);
+  remove(); await nextTurn();
+});
+
+test('no pierde la señal entre resolver la lectura y liberar el bloqueo', async () => {
+  let release!: () => void;
+  const first = new Promise<void>(resolve => { release = resolve; });
+  let calls = 0;
+  const refresh = refrescoCoalescido(() => ++calls === 1 ? first : Promise.resolve(), () => assert.fail('unexpected'));
+  refresh.solicitar();
+  void first.then(() => refresh.solicitar());
+  release();
+  await nextTurn();
   assert.equal(calls, 2);
+  refresh.cancelar();
 });

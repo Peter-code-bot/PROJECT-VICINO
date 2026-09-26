@@ -16,7 +16,7 @@ import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { CodigoInput } from "@/components/auth/codigo-input";
 import { LARGO_CODIGO } from "@/lib/auth/otp-formato";
 import { conTope, esTope } from "@/lib/auth/con-tope";
-import { destinoSeguro } from "@/lib/auth/destino-seguro";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import { guardarPendiente, leerPendienteDesde } from "@/lib/auth/verificacion-pendiente";
 import { hapticLight } from "@/lib/haptics";
 import { reenviarCodigo, verificarCodigo } from "../actions";
@@ -73,6 +73,14 @@ export function VerificarCodigo({
   // Inicializador perezoso: el store se lee una sola vez, al montar.
   const [segundos, setSegundos] = useState(esperaRestante);
   const router = useRouter();
+
+  const safeDestino = destinoAutenticadoSeguro(destino);
+  const hrefLogin = destino
+    ? `/login?next=${encodeURIComponent(safeDestino)}`
+    : "/login";
+  const hrefForgot = destino
+    ? `/forgot-password?next=${encodeURIComponent(safeDestino)}`
+    : "/forgot-password";
 
   // Una verificación en vuelo bloquea las siguientes. El estado por sí solo no
   // basta: entre el evento y el re-render caben dos llamadas, y la segunda
@@ -133,7 +141,7 @@ export function VerificarCodigo({
         onVerificado();
 
         router.refresh();
-        router.push(destinoSeguro(destino));
+        router.push(safeDestino);
       } catch (err) {
         if (esTope(err)) {
           // El tope no cancela nada: la petición puede cuajar en el servidor
@@ -153,7 +161,7 @@ export function VerificarCodigo({
         setVerificando(false);
       }
     },
-    [email, destino, router, onVerificado],
+    [email, safeDestino, router, onVerificado],
   );
 
   async function alReenviar() {
@@ -182,7 +190,7 @@ export function VerificarCodigo({
       // volver la pantalla ya no existe, con un código perfectamente válido en
       // la mano y ninguna casilla donde escribirlo.
       guardarPendiente(email);
-      setAviso("Te enviamos un código nuevo.");
+      setAviso("Solicitud recibida. Si recibes un código nuevo, escríbelo aquí.");
     } catch (err) {
       setError(
         esTope(err)
@@ -219,7 +227,7 @@ export function VerificarCodigo({
       <div className="space-y-3 text-center">
         <h1 className="font-heading text-2xl font-bold">Revisa tu correo</h1>
         <p className="text-sm text-muted-foreground">
-          Enviamos un código de {LARGO_CODIGO} dígitos a
+          Si recibes un código de {LARGO_CODIGO} dígitos, escríbelo aquí. Revisa la bandeja de
           <br />
           {/* break-all: un correo largo desbordaba la tarjeta en pantallas de 360 px. */}
           <span className="break-all font-medium text-foreground">{email}</span>
@@ -264,49 +272,51 @@ export function VerificarCodigo({
         )}
       </div>
 
-      <div className="space-y-3 text-center text-sm">
+      <div className="space-y-4 text-center text-sm">
         {segundos > 0 ? (
           <p className="text-muted-foreground">
             ¿No llegó? Puedes pedir otro en{" "}
             <span className="font-medium tabular-nums text-foreground">{reloj}</span>
           </p>
         ) : (
-          <button
-            type="button"
-            onClick={alReenviar}
-            disabled={reenviando || verificando}
-            className="font-semibold text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
-          >
-            {reenviando ? "Enviando..." : "Enviar otro código"}
-          </button>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={alReenviar}
+              disabled={reenviando || verificando}
+              className="font-semibold text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+            >
+              {reenviando ? "Enviando..." : "Enviar otro código"}
+            </button>
+            <p className="text-xs text-muted-foreground/80">
+              Revisa también tu carpeta de spam o no deseados.
+            </p>
+          </div>
         )}
 
-        {segundos === 0 && (
-          // Aparece solo cuando ya se agotó la espera, porque hasta entonces la
-          // explicación más probable es que el correo aún no llega.
-          //
-          // La segunda frase es la salida del caso en que el correo ya estaba
-          // registrado y confirmado: Supabase no lo dice para no convertir el
-          // registro en un buscador de cuentas ajenas, así que esa alta se ve
-          // exactamente igual que una normal y el código nunca llega. Sin esta
-          // línea esa persona se queda encallada aquí para siempre.
-          <p className="text-xs leading-relaxed text-muted-foreground/80">
-            Revisa tu carpeta de spam. Si ya tenías cuenta con este correo,{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
-              inicia sesión
-            </Link>
-            .
+        <div className="pt-3 border-t border-border/40 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            ¿Ya tienes cuenta o prefieres otra opción?
           </p>
-        )}
-
-        <button
-          type="button"
-          onClick={onCambiarCorreo}
-          className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Usar otro correo
-        </button>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+            <Link href={hrefLogin} className="font-medium text-primary hover:underline">
+              Iniciar sesión
+            </Link>
+            <span className="text-muted-foreground/40" aria-hidden="true">•</span>
+            <Link href={hrefForgot} className="font-medium text-primary hover:underline">
+              Recuperar contraseña
+            </Link>
+            <span className="text-muted-foreground/40" aria-hidden="true">•</span>
+            <button
+              type="button"
+              onClick={onCambiarCorreo}
+              className="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" aria-hidden="true" />
+              Cambiar correo
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

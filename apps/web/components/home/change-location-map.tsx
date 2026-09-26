@@ -5,6 +5,8 @@ import AppleMapContainer from "@/components/map/apple-map-container";
 interface Props {
   lat: number;
   lng: number;
+  view: { lat: number; lng: number };
+  onMove: (lat: number, lng: number) => boolean | void;
   zoneLabel?: string | null;
   cityLabel?: string | null;
 }
@@ -12,6 +14,8 @@ interface Props {
 export default function ChangeLocationMap({
   lat,
   lng,
+  view,
+  onMove,
   zoneLabel,
   cityLabel,
 }: Props) {
@@ -26,9 +30,11 @@ export default function ChangeLocationMap({
       className="relative mx-5 h-[200px] overflow-hidden rounded-2xl border border-[color:var(--border)]"
     >
       <AppleMapContainer
-        key={`${lat.toFixed(4)}-${lng.toFixed(4)}`}
-        center={[lat, lng]}
+        center={[view.lat, view.lng]}
         markerPosition={[lat, lng]}
+        draggableMarker
+        onMarkerDragEnd={onMove}
+        onMapClick={onMove}
         zoom={14}
         height="100%"
       />

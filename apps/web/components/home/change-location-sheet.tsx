@@ -122,13 +122,16 @@ async function reverseGeocodeOnce(
 
 export function ChangeLocationSheet({ open, onClose }: Props) {
   const router = useRouter();
-  const { state, setManualPosition, setRadius } = useGeolocation();
+  const { state, setManualPosition } = useGeolocation();
   const activePosition =
     state.status === "success" ? state.position : null;
 
   const [center, setCenter] = useState<{ lat: number; lng: number }>(
     activePosition ?? PUEBLA_DEFAULT,
   );
+  const [view, setView] = useState(center);
+  const [draft, setDraft] = useState<SavedLocation | null>(null);
+  const [draftRadius, setDraftRadius] = useState(activePosition?.radius ?? 10000);
   const [centerLabels, setCenterLabels] = useState<{
     zone: string | null;
     city: string | null;
@@ -143,6 +146,25 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRef = useRef(open);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchSeqRef = useRef(0);
+  const draftTouchedRef = useRef(false);
+  const invalidatePending = useCallback(() => {
+    searchSeqRef.current++;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    searchAbortRef.current?.abort();
+  }, []);
+  const cancelPending = useCallback(() => {
+    draftTouchedRef.current = true;
+    invalidatePending();
+    setRequestingGps(false);
+    setSearching(false);
+  }, [invalidatePending]);
+  const closeSheet = useCallback(() => {
+    openRef.current = false;
+    cancelPending();
+    onClose();
+  }, [cancelPending, onClose]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -151,7 +173,12 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
 
   useEffect(() => {
     openRef.current = open;
-  }, [open]);
+    draftTouchedRef.current = false;
+    return () => {
+      openRef.current = false;
+      invalidatePending();
+    };
+  }, [open, invalidatePending]);
 
   useBodyScrollLock(open);
 
@@ -161,23 +188,29 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        closeSheet();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, closeSheet]);
 
   // Reset state al abrir
   useEffect(() => {
-    if (!open) return;
+    if (!open || draftTouchedRef.current) return;
     startTransition(() => {
       setRecents(readRecents());
       setCenter(activePosition ?? PUEBLA_DEFAULT);
+      setView(activePosition ?? PUEBLA_DEFAULT);
+      const previous = activePosition;
+      setDraft(previous ? { ...previous, name: previous.name ?? "Mi ubicación", fullName: previous.fullName ?? "Mi ubicación", timestamp: Date.now() } : null);
+      setDraftRadius(previous?.radius ?? 10000);
       setQuery("");
       setResults([]);
       setSearching(false);
       setGpsError(null);
+      setRequestingGps(false);
+      setSearchNotice(null);
     });
   }, [open, activePosition]);
 
@@ -199,18 +232,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     return () => controller.abort();
   }, [open, center.lat, center.lng]);
 
-  const searchAbortRef = useRef<AbortController | null>(null);
-  const searchSeqRef = useRef<number>(0);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      searchAbortRef.current?.abort();
-    };
-  }, []);
-
   const handleSearchChange = useCallback(
     (v: string) => {
+      cancelPending();
       setQuery(v);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       searchAbortRef.current?.abort();
@@ -257,35 +281,52 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
         }
       }, 350);
     },
-    [center.lat, center.lng],
+    [center.lat, center.lng, cancelPending],
   );
 
-  const commit = useCallback(
-    (loc: SavedLocation) => {
+  const selectLocation = useCallback(
+    (loc: SavedLocation, recenter = true) => {
+      if (!openRef.current) return;
+      cancelPending();
       const valid = clasificarResultado({ lat: loc.lat, lng: loc.lng }, null);
       if (valid !== "ok") {
         setSearchNotice(valid === "fuera-de-mexico"
           ? "La ubicación debe estar en México."
           : "No pudimos comprobar las coordenadas de esa ubicación.");
-        return;
+        return false;
       }
-      setManualPosition({ lat: loc.lat, lng: loc.lng, name: loc.name, fullName: loc.fullName });
-      const next = dedupAndPrepend(recents, loc);
-      setRecents(next);
-      writeRecents(next);
-      onClose();
-      router.refresh();
+      setDraft(loc);
+      setCenter({ lat: loc.lat, lng: loc.lng });
+      if (recenter) setView({ lat: loc.lat, lng: loc.lng });
+      setQuery(loc.name);
+      setResults([]);
+      setSearchNotice(null);
+      setGpsError(null);
+      return true;
     },
-    [recents, setManualPosition, onClose, router],
+    [cancelPending],
   );
+
+  const applyLocation = () => {
+    if (!openRef.current || !draft || clasificarResultado(draft, null) !== "ok") return;
+    cancelPending();
+    setManualPosition({ ...draft, radius: draftRadius });
+    writeRecents(dedupAndPrepend(recents, { ...draft, timestamp: Date.now() }));
+    closeSheet();
+    router.refresh();
+  };
 
   const handleSelectResult = useCallback(
     async (r: LocationSearchResult) => {
+      cancelPending();
+      const sequence = searchSeqRef.current;
       setSearching(true);
+      try {
       const resolved = await resolveLocationCoordinates(r, {
         lat: center.lat,
         lng: center.lng,
       });
+      if (!openRef.current || sequence !== searchSeqRef.current) return;
       setSearching(false);
 
       // Si la resolucion no dio coordenadas buenas NO se guarda nada. Guardar
@@ -302,18 +343,27 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
         return;
       }
 
-      commit({
+      selectLocation({
         lat: resolved.lat,
         lng: resolved.lng,
         name: resolved.name,
         fullName: resolved.fullName,
         timestamp: Date.now(),
       });
+      } catch {
+        if (openRef.current && sequence === searchSeqRef.current) {
+          setSearchNotice("No se pudo elegir esa ubicación. Intenta de nuevo.");
+        }
+      } finally {
+        if (openRef.current && sequence === searchSeqRef.current) setSearching(false);
+      }
     },
-    [commit, center.lat, center.lng],
+    [selectLocation, center.lat, center.lng, cancelPending],
   );
 
   const handleUseMyLocation = useCallback(() => {
+    cancelPending();
+    const sequence = searchSeqRef.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGpsError("Geolocalización no disponible en este dispositivo");
       return;
@@ -322,17 +372,18 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     setGpsError(null);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        if (!openRef.current || sequence !== searchSeqRef.current) return;
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const { name, fullName } = await reverseGeocodeOnce(lat, lng);
         // Si el usuario cerró el sheet mientras esperábamos el GPS,
         // abandonar — no queremos cambiar su ubicación silenciosamente.
-        if (!openRef.current) return;
+        if (!openRef.current || sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
-        commit({ lat, lng, name, fullName, timestamp: Date.now() });
+        selectLocation({ lat, lng, name, fullName, timestamp: Date.now() });
       },
       (err) => {
-        if (!openRef.current) return;
+        if (!openRef.current || sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
         const message =
           err.code === 1
@@ -344,7 +395,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
     );
-  }, [commit]);
+  }, [selectLocation, cancelPending]);
 
   if (!mounted) return null;
 
@@ -358,7 +409,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
+            onClick={closeSheet}
             className="fixed inset-0 md:left-64 z-[100] bg-black/60 backdrop-blur-sm"
             aria-hidden
           />
@@ -385,7 +436,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 </h2>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={closeSheet}
                   aria-label="Cerrar"
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] transition-colors hover:bg-[color:var(--border)] active:bg-[color:var(--border-strong)]"
                 >
@@ -397,6 +448,8 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
               <ChangeLocationMap
                 lat={center.lat}
                 lng={center.lng}
+                view={view}
+                onMove={(lat, lng) => selectLocation({ lat, lng, name: `Punto del mapa (${lat.toFixed(4)}, ${lng.toFixed(4)})`, fullName: `Punto del mapa (${lat.toFixed(4)}, ${lng.toFixed(4)})`, timestamp: Date.now() }, false)}
                 zoneLabel={centerLabels.zone}
                 cityLabel={centerLabels.city}
               />
@@ -473,10 +526,11 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 </label>
                 <div className="mt-2 relative">
                   <select
-                    value={activePosition?.radius ?? 10000}
+                    value={draftRadius}
                     onChange={(e) => {
+                      draftTouchedRef.current = true;
                       const newRadius = parseInt(e.target.value, 10);
-                      setRadius(newRadius);
+                      setDraftRadius(newRadius);
                     }}
                     className="w-full appearance-none rounded-2xl bg-[color:var(--card-2)] px-4 py-3.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand-hi)]"
                   >
@@ -546,7 +600,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                           <button
                             type="button"
                             onClick={() =>
-                              commit({ ...loc, timestamp: Date.now() })
+                              selectLocation({ ...loc, timestamp: Date.now() })
                             }
                             className={cn(
                               "flex min-h-[52px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl border-t border-[color:var(--border)] px-1 py-3 text-left transition-colors first:border-t-0",
@@ -575,6 +629,12 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                     })}
                   </ul>
                 )}
+              </div>
+              <div className="mx-5 mt-4">
+                <button type="button" onClick={applyLocation} disabled={!draft || searching || requestingGps}
+                  className="min-h-11 w-full rounded-2xl bg-[color:var(--brand)] px-4 py-3 font-semibold text-white disabled:opacity-40">
+                  Aplicar ubicación
+                </button>
               </div>
             </motion.div>
           </div>

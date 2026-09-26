@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import type { ProductoActivoChat } from "@/lib/chat/producto-activo";
 
 export type Mensaje = Pick<Database["public"]["Tables"]["messages"]["Row"],
   "id" | "chat_id" | "autor_id" | "texto" | "attachments" | "created_at" | "leido_por_comprador" | "leido_por_vendedor">;
@@ -36,7 +37,7 @@ export async function reconciliarChat(client: SupabaseClient<Database>, args: {
   loadedIds: string[]; cursor: Cursor | null; intervalo: Intervalo | null;
 }) {
   const { data: chat, error: membershipError } = await client.from("chats")
-    .select("comprador_id, vendedor_id, deleted_at_comprador, deleted_at_vendedor")
+    .select("comprador_id, vendedor_id, deleted_at_comprador, deleted_at_vendedor, producto_revision, ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, modo_precio, imagen_principal, creador_id, estatus, is_hidden)")
     .eq("id", args.chatId).maybeSingle();
   if (membershipError) throw new Error("VICINO_CHAT_RECOVERY_PENDING");
   if (!chat || ![chat.comprador_id, chat.vendedor_id].includes(args.userId)) return { denied: true } as const;
@@ -89,7 +90,8 @@ export async function reconciliarChat(client: SupabaseClient<Database>, args: {
     .in("status", ["pending_confirmation", "completed"])
     .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(5);
   if (sales.error) throw new Error("VICINO_CHAT_RECOVERY_PENDING");
-  return { denied: false, messages: [...messages.values()], sales: sales.data ?? [], cursor, intervalo: interval, deletedAt } as const;
+  const activeProduct: ProductoActivoChat = { product: chat.ultimo_producto ?? null, revision: chat.producto_revision };
+  return { denied: false, messages: [...messages.values()], sales: sales.data ?? [], cursor, intervalo: interval, deletedAt, activeProduct } as const;
 }
 
 export function fusionarMensajes<T extends { id: string; created_at: string | null }>(

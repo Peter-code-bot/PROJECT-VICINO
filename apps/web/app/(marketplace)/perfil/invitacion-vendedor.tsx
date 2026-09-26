@@ -29,7 +29,7 @@ export function InvitacionVendedor({
 
   return (
     <Link
-      href={aMedias ? "/vender" : "/empezar-a-vender"}
+      href={aMedias ? "/vender?from=/perfil" : "/empezar-a-vender"}
       className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-[color:var(--bg-elev-2)]"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand)]/10">

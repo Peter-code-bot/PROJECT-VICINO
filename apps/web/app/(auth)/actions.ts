@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { usuarioOInvitado } from "@/lib/session-auth";
+import { signUpSchema } from "@vicino/shared";
 import {
   LARGO_CODIGO,
   normalizarCorreo,
@@ -77,15 +79,38 @@ export async function signUp(email: string, password: string, fullName: string) 
   // lista de redirecciones permitidas del proyecto) el enlace ademas entra.
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
   const supabase = await createClient();
+
+  // Guarda de sesión activa en el servidor:
+  // Comprueba getUser antes de intentar el alta para no sustituir una sesión
+  // existente ni registrar usuarios encima de una sesión abierta.
+  let user;
+  try {
+    user = await usuarioOInvitado(supabase);
+  } catch {
+    return { error: "No pudimos comprobar tu sesión. Intenta de nuevo.", sessionUnavailable: true };
+  }
+  if (user) {
+    return { hasSession: true, alreadyLoggedIn: true };
+  }
+
+  const parsed = signUpSchema.safeParse({ email, password, fullName });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos de registro.", invalidInput: true };
+
   const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
+    email: parsed.data.email,
+    password: parsed.data.password,
     options: {
-      data: { full_name: fullName },
+      data: { full_name: parsed.data.fullName },
       emailRedirectTo: `${sitio}/auth/callback-server`,
     },
   });
   if (error) {
+    // También tratamos como ambiguo el error explícito de cuenta existente.
+    // La acción no publica un indicador para consultar la existencia de correos.
+    if (error.code === "user_already_exists" || error.code === "email_exists" ||
+        error.message.toLowerCase().includes("already registered")) {
+      return { hasSession: false };
+    }
     // GoTrue failures (SMTP rate limit, auth.users trigger errors) reach the
     // user as a generic message; keep the literal cause in the server logs.
     console.error("[signUp] GoTrue error:", error.status, error.message);
@@ -205,7 +230,7 @@ export async function reenviarCodigo(email: string): Promise<ResultadoOtp> {
     return {
       ok: false,
       motivo: "limite",
-      mensaje: "Ya enviamos varios códigos a este correo. Espera una hora o escríbenos.",
+      mensaje: "Has solicitado varios códigos para este correo. Espera una hora o escríbenos.",
     };
   }
   const porIp = await enforce(otpResendIpRateLimit, `otp:rip:${ip}`);

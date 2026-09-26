@@ -91,3 +91,25 @@ export async function toggleFavorite(productId: string) {
   await revalidatePath("/favoritos");
   return { isFavorite: !existing };
 }
+
+import { removeFavoriteCore } from "./remove-favorite-core";
+
+/**
+ * Server Action pública para retirar un favorito de forma idempotente.
+ * Recibe estrictamente un único argumento público: productId.
+ * La selección de cliente Supabase, usuario autenticado, rate limit y revalidación
+ * se realiza exclusivamente en el servidor.
+ */
+export async function removeFavorite(productId: string) {
+  return removeFavoriteCore(productId, {
+    getSupabaseClient: createClient,
+    getUser: async (client) => {
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      return user;
+    },
+    enforceRateLimit: (key) => enforce(writeRateLimit, key),
+    revalidate: (path) => revalidatePath(path),
+  });
+}

@@ -18,14 +18,16 @@ export function FollowingRail({ stores }: FollowingRailProps) {
   if (!stores || stores.length === 0) return null;
 
   return (
-    <section aria-labelledby="tiendas-que-sigues" className="mb-6 pt-2">
-      {/* El titulo y la cuenta son informacion, no decoracion: sin ellos la
-          fila de avatares queda entre el feed y las categorias sin decir que
-          es, y el lector de pantalla pierde el encabezado por el que navega. */}
+    <section aria-label="Tiendas seguidas" data-testid="following-rail" className="mb-6 pt-2">
+      <h2 className="sr-only">Tiendas seguidas</h2>
       <div className="flex items-center justify-between px-4 mb-3">
-        <h2 id="tiendas-que-sigues" className="font-display font-medium text-[15.5px] text-[var(--fg)]">
-          Tiendas que sigues <span className="text-[var(--fg-muted)] font-normal">· {stores.length}</span>
-        </h2>
+        <span
+          data-testid="following-counter"
+          className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-[var(--bg-elev-2)] text-[var(--fg-muted)] tabular-nums"
+          aria-label={`${stores.length} tiendas seguidas`}
+        >
+          {stores.length}
+        </span>
       </div>
 
       <div className="flex overflow-x-auto gap-4 px-4 pb-2 snap-x scrollbar-none" style={{ scrollbarWidth: "none" }}>

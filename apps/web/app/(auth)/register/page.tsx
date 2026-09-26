@@ -2,13 +2,29 @@ import { Suspense } from "react";
 import { RegisterForm } from "./register-form";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
+import { usuarioOInvitado } from "@/lib/session-auth";
 
 export const metadata = {
   title: "Crear cuenta — VICINO",
   description: "Crea tu cuenta en VICINO y empieza a comprar y vender",
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ next?: string | string[] }>;
+}) {
+  const supabase = await createClient();
+  const user = await usuarioOInvitado(supabase);
+
+  if (user) {
+    const params = searchParams ? await searchParams : undefined;
+    redirect(destinoAutenticadoSeguro(params?.next));
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12 relative overflow-hidden bg-auth-page-bg">
       {/* Background accents */}

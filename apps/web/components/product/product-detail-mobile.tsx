@@ -52,7 +52,7 @@ export function ProductDetailMobile({
 
 
   const canShowAppointment =
-    !!product.allow_appointments && !!user && !effectiveIsOwner;
+    !!product.allow_appointments && !!user && !effectiveIsOwner && product.estatus === "disponible";
 
 
   return (
@@ -171,6 +171,7 @@ export function ProductDetailMobile({
         sellerId={seller.id}
         isOwner={isOwner}
         hasSession={!!user}
+        estatus={product.estatus}
       />
 
     </div>

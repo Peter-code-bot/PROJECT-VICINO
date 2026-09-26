@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
-import { destinoSeguro } from "@/lib/auth/destino-seguro";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
 import { hapticLight } from "@/lib/haptics";
 import { conTope, esTope } from "@/lib/auth/con-tope";
@@ -20,7 +20,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const destino = searchParams.get("next");
   const hrefRegistro = destino
-    ? `/register?next=${encodeURIComponent(destino)}`
+    ? `/register?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
     : "/register";
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,7 +48,7 @@ export function LoginForm() {
         }
         return;
       }
-      router.push(destinoSeguro(destino));
+      router.push(destinoAutenticadoSeguro(destino));
       router.refresh();
     } catch (err) {
       setError(esTope(err)

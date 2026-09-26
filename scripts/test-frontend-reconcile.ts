@@ -19,7 +19,7 @@ function fixture(rows: Mensaje[], cutoff: string | null = null) {
       const url = new URL(String(input)); queries.push(url);
       if (fail) return new Response('{"message":"synthetic"}', { status: 500 });
       const table = url.pathname.split('/').at(-1);
-      if (table === 'chats') return Response.json(denied ? null : { comprador_id: 'user', vendedor_id: 'other', deleted_at_comprador: cutoff, deleted_at_vendedor: null });
+      if (table === 'chats') return Response.json(denied ? null : { comprador_id: 'user', vendedor_id: 'other', deleted_at_comprador: cutoff, deleted_at_vendedor: null, producto_revision: 3, ultimo_producto: null });
       if (table === 'sale_confirmations') return Response.json([]);
       assert.equal(table, 'messages');
       let data = [...rows];
@@ -53,6 +53,7 @@ test('chat vacio, primer mensaje y propios de otro dispositivo', async () => {
   assert.equal(empty.denied, false);
   if (empty.denied) return;
   assert.deepEqual(empty.messages, []);
+  assert.deepEqual(empty.activeProduct, { product: null, revision: 3 });
   rows.push(message(1), message(2, true), message(3, true));
   const result = await reconciliarChat(f.client, args);
   assert.equal(result.denied, false);

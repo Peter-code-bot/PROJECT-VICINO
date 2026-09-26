@@ -48,6 +48,8 @@ export default function LocationPicker({
     hasInitial ? [initialLat, initialLng] : [19.0414, -98.2063]
   );
   const [radius, setRadius] = useState(initialRadius);
+  // El pin sigue la selección; el encuadre solo cambia con búsqueda o GPS.
+  const [view, setView] = useState(position);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -195,6 +197,7 @@ export default function LocationPicker({
     setOutOfCoverage(false);
     setOutsideMexico(false);
     setPosition([resolved.lat, resolved.lng]);
+    setView([resolved.lat, resolved.lng]);
     setShowMap(true);
     setLocationError(null);
     onChange({ lat: resolved.lat, lng: resolved.lng, address: resolved.fullName });
@@ -235,7 +238,9 @@ export default function LocationPicker({
     setGpsPending(true);
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       if (sequence !== searchSeqRef.current) return;
-      handleDrag(coords.latitude, coords.longitude);
+      if (handleDrag(coords.latitude, coords.longitude)) {
+        setView([coords.latitude, coords.longitude]);
+      }
     }, () => {
       if (sequence !== searchSeqRef.current) return;
       setGpsPending(false);
@@ -338,7 +343,7 @@ export default function LocationPicker({
             style={{ height: 250 }}
           >
             <AppleMapContainer
-              center={position}
+              center={view}
               markerPosition={position}
               zoom={14}
               draggableMarker

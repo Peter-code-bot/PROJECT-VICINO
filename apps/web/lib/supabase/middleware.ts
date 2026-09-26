@@ -2,10 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { fetchConLimite } from "./fetch-con-limite";
 import type { Database } from "@/types/database.types";
 import { NextResponse, type NextRequest } from "next/server";
-
-// Construida, no escrita: escapar una barra invertida dentro de un literal
-// es facil de equivocar y el error no falla, solo cambia lo que casa.
-const BARRA_INVERTIDA = String.fromCharCode(92);
+import { destinoAutenticadoSeguro } from "../auth/destino-seguro";
+import { usuarioOInvitado } from "../session-auth";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
@@ -33,6 +31,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
+          forwardHeaders.set("cookie", request.cookies.toString());
           supabaseResponse = NextResponse.next({
             request: { headers: forwardHeaders },
           });
@@ -45,41 +44,39 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   );
 
   // Refresh session — important for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user;
+  try {
+    user = await usuarioOInvitado(supabase);
+  } catch {
+    const unavailable = new NextResponse("No pudimos comprobar tu sesión. Intenta de nuevo.", {
+      status: 503,
+      headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+    });
+    for (const cookie of supabaseResponse.cookies.getAll()) unavailable.cookies.set(cookie);
+    return unavailable;
+  }
 
   const pathname = request.nextUrl.pathname;
 
   // Redirect authenticated users away from auth pages.
   //
-  // Se respeta el ?next=, que este mismo middleware pone en siete sitios. Antes
-  // se mandaba a "/" siempre, asi que quien ya tenia sesion y caia en /login
-  // perdia el destino igual que lo perdia el formulario.
+  // Se respeta el ?next= para volver a donde la persona iba, preservando destinos
+  // legitimos (como /buscar?q=mesa o /vender) mediante destinoAutenticadoSeguro,
+  // que descarta destinos que apunten de vuelta a /login, /register o /forgot-password
+  // para evitar bucles de redireccion.
   //
-  // Solo se acepta una ruta interna simple: barra inicial, sin doble barra
-  // (seria otro dominio), sin barra invertida (algunos navegadores la
-  // normalizan a barra) y sin ? ni #, porque aqui solo se asigna el pathname y
-  // esos caracteres acabarian codificados dentro de la ruta.
-  if (user && pathname.startsWith("/login")) {
-    const url = request.nextUrl.clone();
+  // Crucial: se copian las cookies renovadas por createServerClient al objeto
+  // redirectResponse, para no perder la sesion recien emitida o refrescada.
+  if (user && (pathname === "/login" || pathname.startsWith("/login/") ||
+      pathname === "/register" || pathname.startsWith("/register/"))) {
     const next = request.nextUrl.searchParams.get("next");
-    const destinoValido =
-      !!next &&
-      next.startsWith("/") &&
-      !next.startsWith("//") &&
-      !next.includes(BARRA_INVERTIDA) &&
-      !next.includes("?") &&
-      !next.includes("#");
-    url.pathname = destinoValido ? next! : "/";
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && pathname.startsWith("/register")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const destino = destinoAutenticadoSeguro(next);
+    const redirectUrl = new URL(destino, request.url);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      redirectResponse.cookies.set(cookie);
+    }
+    return redirectResponse;
   }
 
   // Protect seller routes

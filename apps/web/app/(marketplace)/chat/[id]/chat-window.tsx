@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { canalesGestionados, refrescoCoalescido } from "@/lib/realtime/canales-gestionados";
+import { recuperacionConexion } from "@/lib/realtime/recuperacion-conexion";
 import { reconciliarChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
@@ -16,6 +17,8 @@ import { useDeferredSales, type SalesSeed } from "@/hooks/use-deferred-sales";
 import { useVisibleChatRead } from "@/hooks/use-visible-chat-read";
 import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
+import { ChatProductSelector } from "./chat-product-selector";
+import { productoElegible, reconciliarProducto, type ProductoActivoChat, type ProductoChat } from "@/lib/chat/producto-activo";
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { posterUrl } from "@/lib/video-thumbnail";
@@ -54,13 +57,8 @@ interface ChatWindowProps {
   currentUserId: string;
   isBuyer: boolean;
   otherUser: { id: string; nombre: string; foto: string | null; trust_level: string } | null;
-  product: {
-    id: string;
-    titulo: string;
-    precio: number | null;
-    modo_precio: string | null;
-    imagen_principal: string | null;
-  } | null;
+  product: ProductoChat | null;
+  productRevision: number;
   initialMessages: Message[];
   initialSaleConfirmations: SaleConfirmation[];
   salesSeed?: Promise<SalesSeed>;
@@ -75,7 +73,8 @@ export function ChatWindow({
   currentUserId,
   isBuyer,
   otherUser,
-  product,
+  product: initialProduct,
+  productRevision,
   initialMessages,
   initialSaleConfirmations,
   salesSeed,
@@ -135,9 +134,20 @@ export function ChatWindow({
    * ese momento la bandeja ya se vacio y los File originales se perdieron.
    */
   const fotosPorTempRef = useRef<Map<string, File[]>>(new Map());
-  const [showSaleForm, setShowSaleForm] = useState(false);
+  const [activeProduct, setActiveProduct] = useState<ProductoActivoChat>({ product: initialProduct, revision: productRevision });
+  const [productSeed, setProductSeed] = useState({ product: initialProduct, revision: productRevision });
+  if (productSeed.product !== initialProduct || productSeed.revision !== productRevision) {
+    const next = { product: initialProduct, revision: productRevision };
+    setProductSeed(next);
+    setActiveProduct(previous => reconciliarProducto(previous, next));
+  }
+  const product = activeProduct.product;
+  const applyProduct = useCallback((next: ProductoActivoChat) => setActiveProduct(prev => reconciliarProducto(prev, next)), []);
+  const [saleDraft, setSaleDraft] = useState<{ productId: string; revision: number } | null>(null);
+  const [showProductSelector, setShowProductSelector] = useState(false);
+  const eligibleProduct = productoElegible(product, [currentUserId, otherUser?.id ?? ""]);
+  const showSaleForm = !!saleDraft && saleDraft.revision === activeProduct.revision && saleDraft.productId === product?.id && eligibleProduct;
   const [showSaleDetails, setShowSaleDetails] = useState(false);
-  const [showOlderConfirmations, setShowOlderConfirmations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // A5.1: refs for the load-older flow.
   // scrollContainerRef -- the overflow-y-auto wrapper around the message
@@ -311,8 +321,17 @@ export function ChatWindow({
     const controller = canalesGestionados(supabase);
     const pending = () => { if (!disposed) { setRecovery("pending"); salesFailed(); } };
     let cancelRefresh = () => {};
+    let recover = () => {};
+    const connection = recuperacionConexion({
+      reconectar: () => controller.reintentar(`chat:${chatId}`),
+      recuperar: () => recover(),
+      pendiente: pending,
+      disponible: () => !disposed && navigator.onLine && document.visibilityState !== "hidden",
+    });
+    retryRecoveryRef.current = () => connection.reintentar();
     const unregister = controller.registrar(`chat:${chatId}`, ({ vigente }) => {
       cancelRefresh();
+      connection.esperando();
       const changedMessages = new Map<string, Message>();
       const changedSales = new Map<string, Omit<SaleConfirmation, "products_services"> | null>();
       let subscribed = false;
@@ -361,11 +380,16 @@ export function ChatWindow({
           recoveredCursorRef.current = result.cursor;
           incompleteRef.current = result.intervalo;
         }
+        applyProduct(result.activeProduct);
+        connection.confirmada();
         setRecovery(sending ? "pending" : result.intervalo ? "more" : "synced");
-      }, pending);
+      }, () => { if (vigente()) connection.falloConsulta(); });
       cancelRefresh = () => refresh.cancelar();
-      retryRecoveryRef.current = () => { if (vigente()) refresh.solicitar(); };
+      recover = () => { if (vigente()) refresh.solicitar(); };
       return supabase.channel(`chat:${chatId}`)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats", filter: `id=eq.${chatId}` }, () => {
+          if (vigente()) refresh.solicitar();
+        })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
           if (!vigente()) return;
           const message = payload.new as Message;
@@ -401,17 +425,27 @@ export function ChatWindow({
           if (!vigente()) return;
           subscriptionGeneration++;
           subscribed = status === "SUBSCRIBED";
-          if (subscribed) refresh.solicitar();
-          else pending();
+          connection.estado(status);
         });
-    }, pending);
+    }, () => connection.pausar());
+    const resume = () => { if (document.visibilityState !== "hidden") connection.reintentar(); };
+    const offline = () => { connection.pausar(); controller.reintentar(`chat:${chatId}`); };
+    window.addEventListener("online", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("offline", offline);
+    document.addEventListener("visibilitychange", resume);
     return () => {
       disposed = true;
+      connection.cancelar();
+      window.removeEventListener("online", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("offline", offline);
+      document.removeEventListener("visibilitychange", resume);
       retryRecoveryRef.current = () => {};
       cancelRefresh();
       unregister();
     };
-  }, [chatId, currentUserId, deletedAt, supabase, router, setMessages, setSaleConfirmations, applySalesSnapshot, salesFailed]);
+  }, [chatId, currentUserId, deletedAt, supabase, router, setMessages, setSaleConfirmations, applySalesSnapshot, salesFailed, applyProduct]);
 
   // A5.1: scroll preservation on prepend. Runs synchronously BEFORE
   // paint (useLayoutEffect, NOT useEffect) so the user does NOT see a
@@ -607,7 +641,10 @@ export function ChatWindow({
         </Link>
         {salesStatus === "ready" && saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
           <button
-            onClick={() => setShowSaleForm(!showSaleForm)}
+            onClick={() => {
+              if (!eligibleProduct || !product) { setShowProductSelector(true); return; }
+              setSaleDraft(showSaleForm ? null : { productId: product.id, revision: activeProduct.revision });
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-[color:var(--brand-dark)]"
           >
             <Handshake className="h-3.5 w-3.5" />
@@ -643,12 +680,28 @@ export function ChatWindow({
       </div>}
 
       {/* Sale confirmation form */}
+      <div className="mx-4 flex shrink-0 items-center gap-2 text-xs">
+        <button type="button" className="min-h-12 rounded-lg px-2 font-semibold text-brand"
+          onClick={() => setShowProductSelector(value => !value)}>
+          {showProductSelector ? "Cerrar selección" : product ? "Cambiar producto" : "Elegir producto"}
+        </button>
+        {product && !eligibleProduct && <span className="text-muted-foreground">Este producto ya no está disponible para confirmar una venta.</span>}
+      </div>
+      {showProductSelector && <ChatProductSelector key={activeProduct.revision} chatId={chatId} currentUserId={currentUserId} active={activeProduct}
+        onRefresh={() => retryRecoveryRef.current()}
+        onSelected={(next) => { applyProduct(next); setSaleDraft(null); setShowProductSelector(false); retryRecoveryRef.current(); }} />}
+      {saleDraft && !showSaleForm && <p role="status" className="mx-4 text-xs text-muted-foreground">
+        El producto cambió o dejó de estar disponible. Revisa la selección y abre una nueva confirmación.
+      </p>}
       {showSaleForm && (
         <SaleConfirmationForm
+          key={`${activeProduct.revision}:${product?.id}`}
           chatId={chatId}
           currentUserId={currentUserId}
           product={product}
-          onClose={() => setShowSaleForm(false)}
+          productRevision={activeProduct.revision}
+          onClose={() => setSaleDraft(null)}
+          onCreated={() => retryRecoveryRef.current()}
         />
       )}
 
@@ -735,14 +788,14 @@ export function ChatWindow({
                     counterpart={{ 
                       name: otherUser?.nombre ?? "Usuario", 
                       avatarUrl: otherUser?.foto, 
-                      role: isBuyer ? "vendedor" : "comprador" 
+                      role: currentUserId === sc.buyer_id ? "vendedor" : "comprador"
                     }}
                     currentUser={{ 
                       initial: "Y", // Using generic 'Y' for 'You' since we don't have current user's name easily accessible
-                      role: isBuyer ? "comprador" : "vendedor" 
+                      role: currentUserId === sc.buyer_id ? "comprador" : "vendedor"
                     }}
                     onRate={() => {
-                      const reviewType = isBuyer ? "buyer_to_seller" : "seller_to_buyer";
+                      const reviewType = currentUserId === sc.buyer_id ? "buyer_to_seller" : "seller_to_buyer";
                       router.push(`/historial/review?sale=${sc.id}&type=${reviewType}&product=${sc.product_id}`);
                     }}
                     onPropose={() => {

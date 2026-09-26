@@ -114,7 +114,7 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
           "una". El filtro sigue viviendo en estado local y no en la URL, como
           antes: esta pantalla se pinta dentro del feed del home y meterlo en la
           URL cambiaria la navegacion de esa pagina, no solo la de aqui. */}
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-3 flex items-center">
         <FiltroCategoriasDrawer
           seleccionadas={activeCategory ? [activeCategory] : []}
           modo="una"

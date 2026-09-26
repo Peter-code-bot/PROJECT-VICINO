@@ -190,7 +190,7 @@ export function SearchFilters({
           el numero de pagina de la busqueda anterior no sobrevive al cambio de
           filtro: dejarlo aterriza en una pagina vacia con resultados de sobra
           en la primera. */}
-      <div>
+      <div className="flex items-center">
         <FiltroCategoriasDrawer
           seleccionadas={initialCategory ? [initialCategory] : []}
           modo="una"

@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import type { ProductoChat } from "@/lib/chat/producto-activo";
+import type { Database } from "@/types/database.types";
 import {
   sendMessageSchema,
   getOrCreateChatSchema,
@@ -12,7 +14,8 @@ import {
   createSaleConfirmationSchema,
   confirmSaleSchema,
   cancelSaleSchema,
-  formatPrice,
+  getChatProductsSchema,
+  selectChatProductSchema,
   type ChatAttachment,
 } from "@vicino/shared";
 import { enforce, writeRateLimit, chatReadRateLimit } from "@/lib/rate-limit";
@@ -435,236 +438,143 @@ export async function markAsRead(chatId: string) {
   return { ok: true, status: 200 };
 }
 
+type ChatContractError = { error: string; code: string };
+
+function chatContractError(error: { code?: string; hint?: string } | null): ChatContractError {
+  if (error?.code === "PT409") {
+    if (error.hint === "product_changed") return { error: "El producto del chat cambió. Actualiza la selección y revisa los datos.", code: "PRODUCT_CHANGED" };
+    if (error.hint === "pending_confirmation") return { error: "Ya hay una confirmación en curso.", code: "PENDING_CONFIRMATION" };
+    if (error.hint === "idempotency_conflict") return { error: "Este envío corresponde a otra operación. Revisa la confirmación del chat.", code: "IDEMPOTENCY_CONFLICT" };
+    return { error: "Esta confirmación ya no está pendiente. Actualiza el chat.", code: "CONFIRMATION_CLOSED" };
+  }
+  if (error?.code === "PT404") return { error: "El chat o el producto ya no está disponible.", code: "NOT_AVAILABLE" };
+  if (error?.code === "42501") return { error: "No tienes permiso para realizar esta operación.", code: "FORBIDDEN" };
+  if (error?.code === "22023") return { error: "Revisa los datos de la operación.", code: "INVALID_INPUT" };
+  // A transport error does not establish whether the transaction committed.
+  // Keep the same idempotency key and payload for a safe retry.
+  return { error: "No se pudo comprobar el resultado. Reintenta el mismo envío.", code: "UNAVAILABLE" };
+}
+
+export async function getChatProducts(input: { chatId: string; query?: string }): Promise<{ data: ProductoChat[] } | ChatContractError> {
+  const parsed = getChatProductsSchema.safeParse(input);
+  if (!parsed.success) return { error: "Búsqueda inválida.", code: "INVALID_INPUT" };
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError") return chatContractError(null);
+    if (!user) return { error: "Inicia sesión para continuar.", code: "UNAUTHENTICATED" };
+    const rate = await enforce(chatReadRateLimit, `chat-products:${user.id}`);
+    if (!rate.ok) return { error: rate.error, code: "RATE_LIMITED" };
+    const { data: chat, error: chatError } = await supabase.from("chats")
+      .select("comprador_id,vendedor_id").eq("id", parsed.data.chatId).maybeSingle();
+    if (chatError) return chatContractError(chatError);
+    if (!chat || (user.id !== chat.comprador_id && user.id !== chat.vendedor_id)) {
+      return { error: "Chat no disponible.", code: "NOT_AVAILABLE" };
+    }
+    // RLS is retained; membership also checked explicitly (including admins).
+    let query = supabase.from("products_services")
+      .select("id,titulo,precio,modo_precio,imagen_principal,creador_id,estatus,is_hidden")
+      .in("creador_id", [chat.comprador_id, chat.vendedor_id])
+      .eq("estatus", "disponible").eq("is_hidden", false)
+      .order("titulo").order("id").limit(50);
+    if (parsed.data.query) {
+      // Treat SQL LIKE metacharacters as literal search characters.
+      query = query.ilike("titulo", `%${parsed.data.query.replace(/[\\%_]/g, "\\$&")}%`);
+    }
+    const { data, error } = await query;
+    if (error) return chatContractError(error);
+    return { data: data ?? [] };
+  } catch {
+    return chatContractError(null);
+  }
+}
+
+export async function selectChatProduct(input: { chatId: string; productId: string; expectedRevision: number }): Promise<{ data: { product: ProductoChat; revision: number } } | ChatContractError> {
+  const parsed = selectChatProductSchema.safeParse(input);
+  if (!parsed.success) return { error: "Selección inválida.", code: "INVALID_INPUT" };
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError") return chatContractError(null);
+    if (!user) return { error: "Inicia sesión para continuar.", code: "UNAUTHENTICATED" };
+    const rate = await enforce(writeRateLimit, `write:${user.id}`);
+    if (!rate.ok) return { error: rate.error, code: "RATE_LIMITED" };
+    const { data, error } = await supabase.rpc("seleccionar_producto_chat", {
+      p_chat_id: parsed.data.chatId, p_producto_id: parsed.data.productId,
+      p_revision_esperada: parsed.data.expectedRevision,
+    });
+    if (error) return chatContractError(error);
+    const result = data as { product: ProductoChat; revision: number } | null;
+    if (!result?.product || !Number.isInteger(result.revision)) return chatContractError(null);
+    await revalidatePath(`/chat/${parsed.data.chatId}`);
+    return { data: result };
+  } catch {
+    return chatContractError(null);
+  }
+}
+
 export async function createSaleConfirmation(data: {
   productId: string;
   chatId: string;
+  expectedRevision: number;
+  idempotencyKey: string;
   precioAcordado: number;
   cantidad: number;
   metodoPago?: string;
   notas?: string;
   tipoEntrega: string;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const rate = await enforce(writeRateLimit, `write:${user.id}`);
-  if (!rate.ok) return { error: rate.error };
-
   const parsed = createSaleConfirmationSchema.safeParse({
-    product_id: data.productId,
-    chat_id: data.chatId,
-    precio_acordado: data.precioAcordado,
-    cantidad: data.cantidad,
-    metodo_pago: data.metodoPago,
-    notas: data.notas,
-    tipo_entrega: data.tipoEntrega === "envio" ? "envio" : "pickup",
+    product_id: data?.productId, chat_id: data?.chatId,
+    producto_revision: data?.expectedRevision, clave_idempotencia: data?.idempotencyKey,
+    precio_acordado: data?.precioAcordado, cantidad: data?.cantidad,
+    metodo_pago: data?.metodoPago, notas: data?.notas, tipo_entrega: data?.tipoEntrega,
   });
-  if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
-  }
-
-  // Derive buyer/seller server-side from chat record — never trust client-supplied IDs.
-  const { data: chat, error: chatErr } = await supabase
-    .from("chats")
-    .select("comprador_id, vendedor_id")
-    .eq("id", parsed.data.chat_id)
-    .single();
-
-  if (chatErr || !chat) {
-    if (chatErr) console.error("[createSaleConfirmation] chat lookup:", chatErr);
-    return { error: chatErr?.message ?? "Chat no encontrado" };
-  }
-
-  if (user.id !== chat.comprador_id && user.id !== chat.vendedor_id) {
-    return { error: "No autorizado para este chat" };
-  }
-
-  const { data: confirmation, error } = await supabase
-    .from("sale_confirmations")
-    .insert({
-      product_id: parsed.data.product_id,
-      buyer_id: chat.comprador_id,
-      seller_id: chat.vendedor_id,
-      chat_id: parsed.data.chat_id,
-      precio_acordado: parsed.data.precio_acordado,
-      cantidad: parsed.data.cantidad,
-      metodo_pago: parsed.data.metodo_pago ?? null,
-      notas: parsed.data.notas ?? null,
-      tipo_entrega: parsed.data.tipo_entrega,
-      initiated_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    if (error.code === "23505") return { error: "Ya hay una confirmación en curso." };
-    return { error: error.message };
-  }
-
-  // Send auto-message in chat
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("nombre")
-    .eq("id", user.id)
-    .single();
-
-  const { data: product } = await supabase
-    .from("products_services")
-    .select("titulo")
-    .eq("id", parsed.data.product_id)
-    .single();
-
-  const { error: autoMsgErr } = await supabase.from("messages").insert({
-    chat_id: parsed.data.chat_id,
-    autor_id: user.id,
-    texto: `🤝 ${profile?.nombre ?? "Alguien"} ha iniciado una confirmación de venta por "${product?.titulo ?? "el producto"}" — ${formatPrice(parsed.data.precio_acordado)} MXN. Confirma para completar la venta.`,
-  });
-  // La confirmacion YA esta escrita en la base: perder el mensaje del chat no
-  // puede deshacerla, asi que esto solo se registra y el flujo sigue. Sentry
-  // en vez de console.error para conservar el `details` de Postgres, que es
-  // donde el motor nombra la columna o la policy que rechazo el INSERT.
-  if (autoMsgErr) {
-    Sentry.captureException(autoMsgErr, {
-      tags: { action: "createSaleConfirmation", step: "auto_message" },
-      extra: {
-        chatId: parsed.data.chat_id,
-        saleConfirmationId: confirmation?.id,
-        code: autoMsgErr.code,
-        details: autoMsgErr.details,
-        hint: autoMsgErr.hint,
-      },
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError") return chatContractError(null);
+    if (!user) return { error: "Inicia sesión para continuar.", code: "UNAUTHENTICATED" };
+    const rate = await enforce(writeRateLimit, `write:${user.id}`);
+    if (!rate.ok) return { error: rate.error, code: "RATE_LIMITED" };
+    const { data: result, error } = await supabase.rpc("iniciar_confirmacion_venta", {
+      p_chat_id: parsed.data.chat_id, p_producto_id: parsed.data.product_id,
+      p_revision_esperada: parsed.data.producto_revision, p_clave: parsed.data.clave_idempotencia,
+      p_precio: parsed.data.precio_acordado, p_cantidad: parsed.data.cantidad,
+      p_metodo_pago: parsed.data.metodo_pago, p_notas: parsed.data.notas,
+      p_tipo_entrega: parsed.data.tipo_entrega,
     });
+    if (error) return chatContractError(error);
+    const response = result as { confirmation: Database["public"]["Tables"]["sale_confirmations"]["Row"]; repeated: boolean } | null;
+    if (!response?.confirmation?.id) return chatContractError(null);
+    await revalidatePath(`/chat/${parsed.data.chat_id}`);
+    return { confirmation: response.confirmation, repeated: response.repeated };
+  } catch {
+    return chatContractError(null);
   }
-
-  await revalidatePath(`/chat/${parsed.data.chat_id}`);
-  return { confirmation };
 }
 
 export async function confirmSale(saleConfirmationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const rate = await enforce(writeRateLimit, `write:${user.id}`);
-  if (!rate.ok) return { error: rate.error };
-
   const parsed = confirmSaleSchema.safeParse({ sale_confirmation_id: saleConfirmationId });
-  if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Confirmación inválida" };
+  if (!parsed.success) return { error: "Confirmación inválida.", code: "INVALID_INPUT" };
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError") return chatContractError(null);
+    if (!user) return { error: "Inicia sesión para continuar.", code: "UNAUTHENTICATED" };
+    const rate = await enforce(writeRateLimit, `write:${user.id}`);
+    if (!rate.ok) return { error: rate.error, code: "RATE_LIMITED" };
+    const { data, error } = await supabase.rpc("confirmar_venta", { p_confirmacion_id: parsed.data.sale_confirmation_id });
+    if (error) return chatContractError(error);
+    const result = data as { success: boolean; alreadyConfirmed: boolean; chat_id: string | null } | null;
+    if (!result?.success) return chatContractError(null);
+    if (result.chat_id) await revalidatePath(`/chat/${result.chat_id}`);
+    return { success: true, alreadyConfirmed: result.alreadyConfirmed };
+  } catch {
+    return chatContractError(null);
   }
-
-  const { data: sc } = await supabase
-    .from("sale_confirmations")
-    .select("buyer_id, seller_id, chat_id, product_id, precio_acordado, buyer_confirmed, seller_confirmed, status")
-    .eq("id", parsed.data.sale_confirmation_id)
-    .single();
-
-  if (!sc) return { error: "Confirmación no encontrada" };
-
-  const isBuyer = user.id === sc.buyer_id;
-  const myAlreadyConfirmed = isBuyer ? sc.buyer_confirmed : sc.seller_confirmed;
-
-  // Idempotency guard — early return without side effects if already completed
-  // or my-side already confirmed (rapid duplicate click case)
-  if (sc.status !== "pending_confirmation" || myAlreadyConfirmed) {
-    return { success: true, alreadyConfirmed: true };
-  }
-
-  const updates = isBuyer
-    ? { buyer_confirmed: true, buyer_confirmed_at: new Date().toISOString() }
-    : { seller_confirmed: true, seller_confirmed_at: new Date().toISOString() };
-
-  // El WHERE acota a "la confirmacion sigue pendiente". El `.select()` es lo
-  // que convierte el 204-sin-cuerpo de PostgREST en filas reales: sin el, un
-  // UPDATE de 0 filas (la otra parte cancelo en paralelo, expiro, o RLS filtro
-  // la fila) era indistinguible del exito y el usuario veia la venta
-  // confirmada sin que se hubiera escrito nada.
-  //
-  // complete_sale_on_mutual_confirm es un trigger BEFORE UPDATE, asi que el
-  // RETURNING ya trae el `status` posterior al trigger: nos dice si fue ESTA
-  // confirmacion la que cerro la venta, sin el segundo SELECT que abria una
-  // ventana para que dos llamadas concurrentes leyeran ambas 'completed'.
-  const { data: updated, error: updateError } = await supabase
-    .from("sale_confirmations")
-    .update(updates)
-    .eq("id", parsed.data.sale_confirmation_id)
-    .eq("status", "pending_confirmation")
-    .select("status")
-    .maybeSingle();
-
-  if (updateError) {
-    // Sentry SIEMPRE antes del return: el `details` de Postgres es donde el
-    // motor nombra la columna o la policy que rechazo, y es lo unico que
-    // separa un GRANT faltante de un problema de RLS.
-    Sentry.captureException(updateError, {
-      tags: { action: "confirmSale", step: "update" },
-      extra: {
-        saleConfirmationId: parsed.data.sale_confirmation_id,
-        side: isBuyer ? "buyer" : "seller",
-        code: updateError.code,
-        details: updateError.details,
-        hint: updateError.hint,
-      },
-    });
-    return { error: "No se pudo confirmar la venta. Vuelve a intentarlo en un momento." };
-  }
-
-  // 0 filas: la confirmacion dejo de estar pendiente entre nuestra lectura y
-  // este UPDATE, o RLS la filtro. Nunca es un exito -- abortamos aqui, antes
-  // de escribir el mensaje de venta confirmada.
-  if (!updated) {
-    return {
-      error:
-        "Esta venta ya no está pendiente: la otra parte la canceló o el plazo venció. Actualiza el chat para ver el estado.",
-    };
-  }
-
-  // Only insert the "venta confirmada" message if THIS update flipped status to completed.
-  if (updated.status === "completed" && sc.chat_id) {
-    const { data: product } = await supabase
-      .from("products_services")
-      .select("titulo")
-      .eq("id", sc.product_id)
-      .single();
-
-    const { error: completedMsgErr } = await supabase.from("messages").insert({
-      chat_id: sc.chat_id,
-      autor_id: user.id,
-      texto: `✅ ¡Venta confirmada en VICINO! "${product?.titulo ?? "el producto"}" — ${formatPrice(sc.precio_acordado)} MXN. ¡Gracias a ambos! Deja tu reseña 👇`,
-      sale_confirmation_id: saleConfirmationId,
-      message_type: "sale_confirmed",
-    });
-    // La venta YA esta cerrada en la base (el trigger BEFORE fijo status y
-    // completed_at y repartio trust_points): perder este mensaje no puede
-    // deshacerla, asi que solo se registra y el flujo termina en exito.
-    //
-    // El 23505 es el indice unico messages_unique_sale_confirmed haciendo su
-    // trabajo -- el mensaje ya existe, no es un fallo, y no se reporta.
-    if (completedMsgErr && completedMsgErr.code !== "23505") {
-      Sentry.captureException(completedMsgErr, {
-        tags: { action: "confirmSale", step: "completed_message" },
-        extra: {
-          chatId: sc.chat_id,
-          saleConfirmationId,
-          code: completedMsgErr.code,
-          details: completedMsgErr.details,
-          hint: completedMsgErr.hint,
-        },
-      });
-    }
-  }
-
-  if (sc.chat_id) await revalidatePath(`/chat/${sc.chat_id}`);
-  return { success: true };
 }
-
 export async function cancelSale(saleConfirmationId: string, reason?: string) {
   const supabase = await createClient();
   const {

@@ -4,6 +4,7 @@ export * from "./constants/trust-levels";
 export * from "./constants/privacy";
 
 // Validators
+export * from "./validators/auth";
 export * from "./validators/product";
 export * from "./validators/profile";
 export * from "./validators/review";

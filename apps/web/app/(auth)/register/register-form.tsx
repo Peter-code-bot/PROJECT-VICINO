@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { destinoSeguro } from "@/lib/auth/destino-seguro";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import Link from "next/link";
 import { signUp } from "../actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
@@ -72,7 +72,7 @@ export function RegisterForm() {
   // email, Google, Apple, y el salto a iniciar sesion.
   const destino = searchParams.get("next");
   const hrefLogin = destino
-    ? `/login?next=${encodeURIComponent(destino)}`
+    ? `/login?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
     : "/login";
 
   // El correo pendiente sale del dispositivo si se pudo escribir, y si no, de
@@ -125,19 +125,16 @@ export function RegisterForm() {
 
     if (result.error) {
       const msg = result.error.toLowerCase();
-      if (msg.includes("already registered")) {
-        setError("Este email ya está registrado. Intenta iniciar sesión.");
+      if (result.sessionUnavailable || result.invalidInput) {
+        setError(result.error);
         setLoading(false);
       } else if (msg.includes("security purposes") || msg.includes("only request this after")) {
-        // GoTrue responde esto cuando la cuenta YA existe sin confirmar y el
-        // ultimo correo salio hace menos de smtp_max_frequency (60 s): no
-        // reenvia nada, pero el codigo anterior SIGUE VIVO. Antes caia en el
-        // "Error al crear la cuenta" generico, que es justo lo contrario de lo
-        // que pasa — y dejaba tirada a la persona a la que /login acababa de
-        // mandar aqui con "vuelve a Regístrate gratis con este mismo correo".
-        // Lo correcto es abrir las casillas: tiene un codigo esperandola.
+        // GoTrue responde esto cuando se solicita un envio en menos de 60 s.
+        // Mantenemos disponible la pantalla de verificacion con un aviso neutral
+        // sin asumir la entrega confirmada de ningun correo.
         abrirVerificacion(correo);
-        setAviso("Ya te habíamos enviado un código. Escríbelo aquí.");
+        setAviso("Si solicitaste un código recientemente, espera unos momentos antes de pedir otro.");
+        setLoading(false);
       } else if (msg.includes("demasiadas") || msg.includes("too many")) {
         setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
         setLoading(false);
@@ -158,17 +155,17 @@ export function RegisterForm() {
       return;
     }
 
-    if (result.hasSession) {
-      // Antes era router.push("/") a secas: quien llegaba aqui desde un
-      // "Quiero comprarlo" o desde un corazon acababa en la portada, sin lo
-      // que habia ido a hacer. El login por email ya lo respetaba; esto no.
-      router.push(destinoSeguro(destino));
+    if (result.alreadyLoggedIn || result.hasSession) {
+      // Si el servidor detecto sesion activa o la cuenta se creo con sesion emitida,
+      // redirige al destino seguro previniendo bucles hacia login o register.
+      router.push(destinoAutenticadoSeguro(destino));
       router.refresh();
-    } else {
-      // Sin sesion = queda confirmacion pendiente.
-      abrirVerificacion(correo);
-      setLoading(false);
+      return;
     }
+
+    // Sin sesion = queda confirmacion pendiente o respuesta ambigua.
+    abrirVerificacion(correo);
+    setLoading(false);
   }
 
   async function handleGoogleSignup() {

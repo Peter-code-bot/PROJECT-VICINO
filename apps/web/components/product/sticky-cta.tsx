@@ -16,6 +16,7 @@ interface StickyCtaProps {
   sellerId: string;
   isOwner: boolean;
   hasSession: boolean;
+  estatus?: string | null;
 }
 
 const SHELL =
@@ -28,11 +29,41 @@ export function StickyCta({
   sellerId,
   isOwner,
   hasSession,
+  estatus,
 }: StickyCtaProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
   const effectiveIsOwner = isOwner && !isVisitorPreview;
+
+  // Non-owner viewing a non-available listing (e.g. paused/eliminated)
+  if (!effectiveIsOwner && estatus && estatus !== "disponible") {
+    const isPaused = estatus === "pausado";
+    const label = isPaused ? "Publicación pausada" : "No disponible";
+    return (
+      <div className={SHELL} style={{ paddingBottom: SAFE_PAD }}>
+        {hasSession && (
+          <Link
+            href={`/chat?seller=${sellerId}&product=${productId}`}
+            prefetch={false}
+            aria-label="Contactar al vendedor"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-card-2 text-fg-muted transition-colors hover:bg-card"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </Link>
+        )}
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm font-semibold text-muted-foreground cursor-not-allowed opacity-80"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          {label}
+        </button>
+      </div>
+    );
+  }
 
   // Owner variant (not in preview).
   if (effectiveIsOwner) {
