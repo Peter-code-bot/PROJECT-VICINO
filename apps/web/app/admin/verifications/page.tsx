@@ -162,6 +162,33 @@ export default async function VerificationsPage() {
                   </span>
                 </div>
 
+                {/* BUG-VERIF-IA (27-sep): la tarjeta no decia que faltaban
+                    fotos ni que la IA no la habia visto, y mostraba la nota de
+                    un intento anterior junto a la universidad nueva. */}
+                {(() => {
+                  const faltan = [
+                    !v.selfie_url && "selfie",
+                    !v.ine_front_url && "frente",
+                    !v.ine_back_url && "reverso",
+                  ].filter(Boolean) as string[];
+                  const sinAnalisis = !v.ai_analysis_raw;
+                  if (!faltan.length && !sinAnalisis) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {faltan.length > 0 && (
+                        <span className="text-[10px] bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 px-2 py-0.5 rounded-full font-medium">
+                          Incompleta: falta {faltan.join(", ")}
+                        </span>
+                      )}
+                      {sinAnalisis && (
+                        <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                          Sin análisis automático
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {motivoDeRechazo(v.ai_analysis_raw) && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
                     <span className="font-bold">🤖 La IA dice:</span> {motivoDeRechazo(v.ai_analysis_raw)}

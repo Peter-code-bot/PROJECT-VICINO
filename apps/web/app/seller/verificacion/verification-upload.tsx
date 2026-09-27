@@ -393,6 +393,13 @@ export function VerificationUpload({
     ];
   };
 
+  // BUG-VERIF-IA (27-sep): con cualquier `pending` el aviso decia "En revision
+  // manual" aunque faltara una foto, y la IA solo corre con las 3. Quien
+  // reenvio sin el reverso creyo que ya estaba en revision.
+  const fotosQueFaltan = getDocsConfig()
+    .filter((ranura) => !docsPropios[ranura.key])
+    .map((ranura) => ranura.label.toLowerCase());
+
   /**
    * Nada de tipo ni de universidad se mueve mientras haya algo en vuelo.
    *
@@ -990,7 +997,10 @@ export function VerificationUpload({
           <div className="shrink-0 mt-0.5 sm:mt-0">{statusIcon}</div>
           <span className="text-xs sm:text-sm font-medium">
             {status === "approved" && "Verificación aprobada automáticamente por IA"}
-            {status === "pending" && "En revisión manual — espera la aprobación del admin"}
+            {status === "pending" &&
+              (fotosQueFaltan.length > 0
+                ? `Falta subir: ${fotosQueFaltan.join(", ")}. La revisión empieza cuando estén las 3 fotos.`
+                : "En revisión manual — espera la aprobación del admin")}
             {status === "rejected" && "Verificación rechazada — documento no válido"}
           </span>
         </div>

@@ -305,7 +305,7 @@ export async function verifyDocument(
   // vieja ya rechazada.
   const { data: fila, error: errorFila } = await supabase
     .from("seller_verification")
-    .select("id, status, selfie_url, ine_front_url, ine_back_url")
+    .select("id, status, selfie_url, ine_front_url, ine_back_url, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     // Desempate por id: created_at es DEFAULT NOW() y dos filas creadas en la
@@ -622,6 +622,13 @@ export async function verifyDocument(
       },
     })
     .eq("id", fila.id)
+    // Bloqueo optimista (BUG-VERIF-IA, 27-sep): si el vendedor cambio fotos,
+    // tipo o universidad durante los hasta 28 s del modelo, la fila ya no es la
+    // que se analizo y el trigger invalidar_analisis_ia_trg dejo el analisis en
+    // NULL. Escribir aqui pondria el veredicto de las fotos VIEJAS sobre las
+    // nuevas: con este filtro el UPDATE afecta 0 filas y cae en el camino de
+    // "sin filas" de abajo.
+    .filter("updated_at", fila.updated_at ? "eq" : "is", fila.updated_at ?? "null")
     // La guarda de estado, y es la mitad importante del arreglo de la carrera
     // con el revisor: si una persona resolvio el tramite durante los hasta 28
     // segundos que tarda el modelo, este UPDATE afecta 0 filas y su veredicto
