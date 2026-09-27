@@ -1,5 +1,22 @@
 # Estado local — S05
 
+## 27-sep (mediodía) — Corte de Claude (sesión de Pedro)
+
+- En producción el 27-sep:
+  - `6111f49`: «Cambiar ubicación» con palomita arriba y sin botón inferior (Tarea 8).
+  - `e8e02c9`: «Cerrar sesión» y «Eliminar cuenta» juntas en «Sesión».
+  - `5874496` + migración `20260927100000`: borrar la cuenta de quien dejó filas en `audit_log` ya no falla a medias. `delete-account` v14.
+  - `send-push` v21 (globo real y limpieza de tokens UNREGISTERED).
+  - `6b5fa5e`: pantalla «Activa las notificaciones» con el diseño aprobado.
+  - `0aeb2a5` + migración `20260927110000` (BUG-VERIF-IA): la nota de la IA dice si es sobre estas fotos (`ai_vigente`, `ai_analizado_en`) y nadie revisa su propia solicitud (VC403). Tipos regenerados en `962e358`.
+  - `29ba6ac`: «Volver» desde Mis publicaciones regresa ahí.
+- Pruebas nuevas en staging:
+  - `probar-verificacion-ia.mjs` 15/15.
+  - `e2e-retorno-vender.mjs` 8/8, `e2e-favoritos.mjs` 7/7, `e2e-solicitudes.mjs` 9/9 (con `crearSolicitud()` en fixtures).
+  - `e2e-header-fijo.mjs` ya no da OK sin datos.
+- ADRs nuevos en Notion (02_Architecture_ADR → Decisiones): S04 + Realtime, verificación IA / VC403, S09-A y nota S05.
+- Registro: `docs/PENDIENTES-2026-09-26.md` y la página de la jornada en Notion.
+
 ## 27-sep — Corte de Claude (sesión de Pedro): lo que ya no es cierto abajo
 
 - **La retención de producción ya no existe.** Alejandro retiró el `ignoreCommand` en `6ee06be` (26-sep, 23:26 UTC). S04 (`20260925010000`) y Realtime (`20260926100000`) se aplicaron en prod hacia las 23:45 UTC. El script `hold-production-for-s04.mjs` se borró el 27-sep. Cada push a `master` despliega, así que las líneas de abajo que dicen "producción retenida" quedan superadas.

@@ -176,7 +176,7 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] Producción: `e2e-header-fijo.mjs` **3/3** (Home scroll 1200, ficha 700,
       listado de Solicitudes: header en top 0 con sus acciones). El detalle de
       una solicitud no se probó: el visitante no ve solicitudes abiertas.
-- [x] Detalle de una solicitud probado en staging (27-sep 13:40,
+- [x] Detalle de una solicitud probado en staging (27-sep 13:25,
       `scripts/staging/e2e-solicitudes.mjs` **9/9**): con visitante y con sesión, tras
       bajar 600 px el header queda en top 0 (56 px) y la barra de la solicitud en 56 px,
       visible. `e2e-header-fijo.mjs` ya no da OK sin datos: en prod dice «SIN DATOS»
@@ -262,7 +262,14 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] `delete-account` desplegada **v14** el 27-sep (`5874496`, verify_jwt=true; humo 401
       sin sesión). Además la migración `20260927100000` (sin FK de `audit_log.actor_id`)
       aplicada en prod: borrar una cuenta que dejó filas en `audit_log` fallaba a medias.
-- [ ] Dos 401 de pg_net el 26-sep 04:19 UTC.
+- [x] Dos 401 de pg_net el 26-sep 04:19 UTC: **no se reproducen** (27-sep 13:35, solo lectura).
+      Los 6 jobs de pg_cron `succeeded` en las últimas 24 h (expire-confirmations 4,
+      purge-verification 24, appointment-reminders 48, restore-spatial-ref-sys 24,
+      expire-purchase-requests 96, purga_community_post_quota 1) y `net._http_response`
+      19/19 en 200. La causa de aquellos 401 no se puede rastrear: pg_net borra sus
+      respuestas a las 6 h. Vigilar con la misma consulta.
+- [ ] PT09-deriva-permisos-rest: el plan exige RECREAR el staging (costo por hora y se
+      pierde su estado sintético). Necesita el OK de Pedro antes de empezar.
 - [ ] `ADMIN_SECURITY_PASSWORD` sin definir en Vercel.
 
 ## PT10 — Posterior (no bloquea)
