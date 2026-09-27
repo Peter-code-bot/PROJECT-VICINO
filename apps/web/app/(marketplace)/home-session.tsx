@@ -75,7 +75,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       </div>
     );
   }
-  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
+  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
   const subTabComunidades = search.get("tab") === "mias" ? "mias" : search.get("tab") === "descubrir" ? "descubrir" : "muro";
   const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
   return (
@@ -115,6 +115,41 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
 
           <HomeCategoryOrder
             viewerUniversity={viewerUniversity}
+            // Modo campus combinado con otra categoria: solo publicaciones de
+            // la universidad de esa categoria (interseccion), nunca la fila
+            // general. Mismo marcado que las filas de categoria.
+            universityRows={universityCarousels.map(([slug, ps]) => ({
+              slug,
+              content: (
+                  <section key={slug}>
+                    <div className="mb-3">
+                      <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
+                        {viewerUniversity}
+                      </div>
+                      <div className="mt-0.5 flex items-center justify-between">
+                        <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
+                          {CATEGORIES.find(c => c.slug === slug)?.name ?? slug}
+                        </h2>
+                        <Link
+                          href="/buscar?category=universidad"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
+                        >
+                          Ver todo
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    </div>
+                    <ProductCarousel products={ps} />
+                  </section>
+              ),
+            }))}
+            // Sin publicaciones o con fallo, el modo campus lo dice en vez de
+            // quedar en blanco o volver al catalogo general.
+            universityState={!viewerUniversity ? null : universityFailure ? (
+              <section className="px-4 pb-8"><CatalogQueryState failure={universityFailure} section="las publicaciones de tu universidad" /></section>
+            ) : universityProducts.length === 0 ? (
+              <section className="px-4 pb-8"><p role="status" className="text-sm text-fg-muted">Aún no hay publicaciones de {viewerUniversity}.</p></section>
+            ) : null}
             rows={categoryCarousels.map(([slug, ps]) => ({
               slug,
               name: CATEGORIES.find(c => c.slug === slug)?.name ?? slug,

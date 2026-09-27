@@ -11,9 +11,13 @@ import { hapticSelection } from "@/lib/haptics";
 type CategoryRow = { slug: string; name: string; content: ReactNode };
 
 /** Only reorders server-rendered slots. No router.push, fetching or data cache. */
-export function HomeCategoryOrder({ rows, intro, afterIntro, university, recent, tail, empty, viewerUniversity }: {
+export function HomeCategoryOrder({ rows, intro, afterIntro, university, universityRows = [], universityState = null, recent, tail, empty, viewerUniversity }: {
   viewerUniversity?: string | null;
   university?: ReactNode;
+  /** Publicaciones de la universidad agrupadas por categoria (modo campus). */
+  universityRows?: Omit<CategoryRow, "name">[];
+  /** Vacio o fallo de la consulta universitaria; null si hay publicaciones. */
+  universityState?: ReactNode;
   afterIntro?: ReactNode;
   rows: CategoryRow[];
   intro: ReactNode;
@@ -65,13 +69,22 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, recent,
   const rowSlot = (row: CategoryRow): Slot => ({ key: `category:${row.slug}`, content: <div className="px-4 pb-8">{row.content}</div> });
   // All slots stay under one parent with stable keys: moving a row preserves
   // its mounted carousel instead of creating a second copy at the top.
-  // Modo Campus: al seleccionar el chip universitario, el feed se concentra
-  // en las publicaciones de la universidad, ocultando los bloques globales de la ciudad.
+  // Modo Campus: al seleccionar el chip universitario SOLO se ven publicaciones
+  // de la universidad. Con otras categorias seleccionadas es la interseccion
+  // (universityRows), nunca las filas generales de `rows`: esas vienen del
+  // catalogo de la ciudad y mostrarian publicaciones ajenas.
+  const campusSlots = (): Slot[] => {
+    if (universityState) return [{ key: "university-state", content: universityState }];
+    const others = selected.filter(slug => slug !== UNIVERSITY_CATEGORY);
+    if (others.length === 0) return [{ key: "university", content: university }];
+    const matched = others.flatMap(slug => universityRows.filter(row => row.slug === slug)
+      .map(row => ({ key: `university:${row.slug}`, content: <div className="px-4 pb-8">{row.content}</div> })));
+    if (matched.length) return matched;
+    const names = others.map(slug => rows.find(row => row.slug === slug)?.name ?? slug).join(", ");
+    return [{ key: "university-empty", content: <section className="px-4 pb-8"><p role="status" className="text-sm text-fg-muted">No hay publicaciones de {names} en {viewerUniversity}.</p></section> }];
+  };
   const slots: Slot[] = universitySelected
-    ? [
-        { key: "university", content: university },
-        ...selected.filter(slug => slug !== UNIVERSITY_CATEGORY).flatMap(slug => rows.filter(row => row.slug === slug).map(rowSlot)),
-      ]
+    ? campusSlots()
     : [
         ...selected.flatMap((slug): Slot[] => rows.filter(row => row.slug === slug).map(rowSlot)),
         { key: "intro", content: intro },

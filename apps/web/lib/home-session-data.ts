@@ -198,9 +198,11 @@ export async function getHomeSession(
   // F10: IIFE so TypeScript infers universityProducts directly from the
   // Supabase SELECT result. Single source of truth; if the SELECT shape
   // changes the consumers fail to compile.
-  const universityProducts = await (async () => {
+  // Un fallo NO se convierte en "sin publicaciones": el modo campus tiene que
+  // poder decir que no cargo, sin caer al catalogo general (contrato S09-A).
+  const universityResult = await (async () => {
     if (!viewerUniversity) return [];
-    const sellerIds = await getUniversitySellerIds(supabase, viewerUniversity);
+    const sellerIds = await getUniversitySellerIds(viewerUniversity);
     if (sellerIds.length === 0) return [];
 
     let uProducts: FeedProduct[] | null = null;
@@ -246,10 +248,29 @@ export async function getHomeSession(
     }
 
     return uProducts ?? [];
-  })().catch((error) => {
-    Sentry.captureException(error, { tags: { action: "feed_initial", section: "university" } });
-    return [];
-  });
+  })().then(
+    (products) => ({ products, failure: null as CatalogFailure | null }),
+    (error: unknown) => {
+      Sentry.captureException(error, { tags: { action: "feed_initial", section: "university" } });
+      return { products: [] as FeedProduct[], failure: catalogFailure(error) as CatalogFailure | null };
+    },
+  );
+  const universityProducts = universityResult.products;
+  const universityFailure = universityResult.failure;
+
+  // Filas del modo campus por categoria, con el mismo criterio de agrupacion
+  // que el catalogo general (primary del pivote, luego TEXT). Solo contienen
+  // publicaciones de la universidad: combinar Universidad con otra categoria
+  // es la INTERSECCION, nunca la fila general de esa categoria.
+  const universityCarousels = Object.entries(
+    universityProducts.reduce<Record<string, typeof universityProducts>>((acc, p) => {
+      const key = primaryCategorySlug((p as { product_categories?: unknown }).product_categories)
+        ?? p.categoria
+        ?? "sin-categoria";
+      (acc[key] ??= []).push(p);
+      return acc;
+    }, {}),
+  );
 
   // El feed ya se resolvio arriba, en paralelo con perfil y verificacion.
   const products = feedResultado.products;
@@ -441,7 +462,7 @@ export async function getHomeSession(
   // dentro del home). La API decide aparte si eso merece un 503 (ver
   // app/api/session/[resource]/route.ts): asi la revalidacion en segundo
   // plano conserva lo que habia, y la primera visita explica que paso.
-  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
+  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
 }
 
 /**

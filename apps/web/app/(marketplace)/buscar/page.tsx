@@ -54,7 +54,7 @@ export default async function SearchPage({ searchParams }: Props) {
     const user = await usuarioOInvitado(supabase);
     if (user) viewerUniversity = await getViewerUniversity(supabase, user.id);
     if (universityOnly && viewerUniversity) {
-      universitySellerIds = await getUniversitySellerIds(supabase, viewerUniversity);
+      universitySellerIds = await getUniversitySellerIds(viewerUniversity);
     }
   } catch (error) {
     universityFailure = catalogFailure(error);
