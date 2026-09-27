@@ -1,5 +1,6 @@
 import "server-only";
 import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
+import { filasCampus, UNIVERSITY_POOL_SIZE, UNIVERSITY_ROW_SIZE } from "@/lib/university-rows";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
@@ -212,7 +213,7 @@ export async function getHomeSession(
         user_lat: userLat!,
         user_lng: userLng!,
         radius_meters: validRadius,
-        result_limit: 20,
+        result_limit: UNIVERSITY_POOL_SIZE,
         seller_ids: sellerIds,
         restrict_seller_mode: true,
       }).throwOnError();
@@ -243,7 +244,7 @@ export async function getHomeSession(
         .eq("estatus", "disponible")
         .in("creador_id", sellerIds)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(UNIVERSITY_POOL_SIZE);
       uProducts = data as FeedProduct[] | null;
     }
 
@@ -255,22 +256,19 @@ export async function getHomeSession(
       return { products: [] as FeedProduct[], failure: catalogFailure(error) as CatalogFailure | null };
     },
   );
-  const universityProducts = universityResult.products;
+  // El carrusel "Lo mejor en tu universidad" sigue mostrando 20.
+  const universityProducts = universityResult.products.slice(0, UNIVERSITY_ROW_SIZE);
   const universityFailure = universityResult.failure;
 
   // Filas del modo campus por categoria, con el mismo criterio de agrupacion
-  // que el catalogo general (primary del pivote, luego TEXT). Solo contienen
-  // publicaciones de la universidad: combinar Universidad con otra categoria
-  // es la INTERSECCION, nunca la fila general de esa categoria.
-  const universityCarousels = Object.entries(
-    universityProducts.reduce<Record<string, typeof universityProducts>>((acc, p) => {
-      const key = primaryCategorySlug((p as { product_categories?: unknown }).product_categories)
-        ?? p.categoria
-        ?? "sin-categoria";
-      (acc[key] ??= []).push(p);
-      return acc;
-    }, {}),
-  );
+  // que el catalogo general. Salen del pool completo (UNIVERSITY_POOL_SIZE) y
+  // no de las 20 del carrusel: con 20, una categoria con publicaciones mas
+  // viejas que esas 20 salia como "No hay publicaciones" aunque existieran.
+  // Solo contienen publicaciones de la universidad: combinar Universidad con
+  // otra categoria es la INTERSECCION, nunca la fila general de esa categoria.
+  const campus = filasCampus(universityResult.products);
+  const universityCarousels = campus.filas;
+  const universityPoolTruncated = campus.truncado;
 
   // El feed ya se resolvio arriba, en paralelo con perfil y verificacion.
   const products = feedResultado.products;
@@ -462,7 +460,7 @@ export async function getHomeSession(
   // dentro del home). La API decide aparte si eso merece un 503 (ver
   // app/api/session/[resource]/route.ts): asi la revalidacion en segundo
   // plano conserva lo que habia, y la primera visita explica que paso.
-  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
+  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
 }
 
 /**

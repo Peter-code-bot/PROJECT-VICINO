@@ -198,7 +198,10 @@ export function SearchFilters({
           seleccionadas={initialCategory ? [initialCategory] : []}
           modo="una"
           onAplicar={(slugs) =>
-            updateParams({ category: slugs[0], page: undefined })
+            // subcategory solo vale dentro de "universidad" (Ver todo de Home);
+            // al cambiar la categoria se limpia para no dejar una combinacion
+            // imposible en la URL.
+            updateParams({ category: slugs[0], subcategory: undefined, page: undefined })
           }
         />
       </div>

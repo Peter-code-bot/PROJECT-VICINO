@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
+import { universitySearchUrl } from "@/lib/university";
 import Link from "next/link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
@@ -75,7 +76,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       </div>
     );
   }
-  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
+  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
   const subTabComunidades = search.get("tab") === "mias" ? "mias" : search.get("tab") === "descubrir" ? "descubrir" : "muro";
   const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
   return (
@@ -131,7 +132,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                           {CATEGORIES.find(c => c.slug === slug)?.name ?? slug}
                         </h2>
                         <Link
-                          href="/buscar?category=universidad"
+                          href={universitySearchUrl(slug)}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--brand-hi)] transition-colors hover:text-[color:var(--brand)]"
                         >
                           Ver todo
@@ -145,6 +146,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
             }))}
             // Sin publicaciones o con fallo, el modo campus lo dice en vez de
             // quedar en blanco o volver al catalogo general.
+            universityTruncated={universityPoolTruncated}
             universityState={!viewerUniversity ? null : universityFailure ? (
               <section className="px-4 pb-8"><CatalogQueryState failure={universityFailure} section="las publicaciones de tu universidad" /></section>
             ) : universityProducts.length === 0 ? (

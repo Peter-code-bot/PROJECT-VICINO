@@ -84,6 +84,24 @@ const main = async () => {
   await producto(vG.id, T.general1, c1.slug);
   await producto(vG.id, T.general2, c2.slug);
 
+  // Mas de 20 (FIX-S09A-mas-de-20): tercera universidad aislada para no mover
+  // los pasos de arriba. 22 publicaciones NUEVAS en c1 y 22 VIEJAS en c2: con
+  // el tope anterior de 20, "Universidad + c2" decia "No hay publicaciones".
+  // Con fila en el pivote, que /buscar usa para filtrar por categoria.
+  const UNI_C = 'UPAEP';
+  const vC = await usuario('campus-vend-c', { vendedor: true, universidad: UNI_C });
+  const lectorC = await usuario('campus-lector-c', { universidad: UNI_C });
+  for (const [etiqueta, cat, dias] of [['CAMPUS-C-NUEVO', c1.slug, 0], ['CAMPUS-C-VIEJO', c2.slug, 2]]) {
+    await sql(cfg.ref, `insert into public.products_services
+        (creador_id, titulo, descripcion, categoria, precio, estatus, ubicacion_geo, created_at)
+      select ${q(vC.id)}, '[FIXTURE] ${etiqueta} ' || g, 'Producto sintetico', ${q(cat)}, 100 + g, 'disponible',
+             ST_SetSRID(ST_MakePoint(-98.2063, 19.0414), 4326)::geography, now() - interval '${dias} days' - (g || ' minutes')::interval
+      from generate_series(1, 22) g`);
+  }
+  await sql(cfg.ref, `insert into public.product_categories (product_id, categoria_id, is_primary)
+    select p.id, c.id, true from public.products_services p join public.categories c on c.slug = p.categoria
+    where p.creador_id = ${q(vC.id)} on conflict do nothing`);
+
   const browser = await chromium.launch({ headless: true });
   const errores = [];
   const nueva = async () => {
@@ -169,6 +187,37 @@ const main = async () => {
       exigir(await visibles(pZ), [], ['uniA1', 'uniA2', 'uniB', 'general1', 'general2']);
       const aviso = await pZ.getByRole('status').filter({ hasText: UNI_VACIA }).count();
       if (!aviso) throw new Error('sin aviso de vacio');
+    });
+    const pC = await nueva();
+    const textoMain = async (page) => page.locator('main').innerText();
+    await paso(`mas de 20: Universidad + ${c2.slug} muestra las publicaciones viejas (antes "No hay")`, async () => {
+      await login(pC, lectorC);
+      await home(pC, `?cats=universidad,${c2.slug}`);
+      const texto = await textoMain(pC);
+      if (!texto.includes('[FIXTURE] CAMPUS-C-VIEJO')) throw new Error('sin fila de la categoria vieja');
+      if (texto.includes('[FIXTURE] CAMPUS-C-NUEVO')) throw new Error('se colo la otra categoria');
+      if (/No hay publicaciones de/.test(texto)) throw new Error('sigue diciendo No hay');
+      const visibles = (texto.match(/\[FIXTURE\] CAMPUS-C-VIEJO/g) || []).length;
+      return `${visibles} tarjetas visibles de c2`;
+    });
+    await paso('Ver todo de la fila conserva la categoria dentro de la universidad', async () => {
+      const enlace = pC.locator(`a[href*="subcategory=${c2.slug}"]`).first();
+      const href = await enlace.getAttribute('href');
+      if (!href || !href.includes('category=universidad')) throw new Error(`href ${href}`);
+      await enlace.click();
+      await pC.waitForURL(/\/buscar/, { timeout: 60_000 });
+      await pC.waitForTimeout(2500);
+      const texto = await textoMain(pC);
+      if (!texto.includes('[FIXTURE] CAMPUS-C-VIEJO')) throw new Error('Buscar no trae la categoria');
+      if (texto.includes('[FIXTURE] CAMPUS-C-NUEVO') || texto.includes('[FIXTURE] GENERAL')) throw new Error('Buscar se salio del ambito');
+      return new URL(pC.url()).search;
+    });
+    await paso('volver atras desde Buscar deja el modo campus como estaba', async () => {
+      await pC.goBack();
+      await pC.waitForURL((u) => u.pathname === '/', { timeout: 60_000 });
+      await pC.locator('#cat-universidad').waitFor({ timeout: 30_000 });
+      const sel = await pC.locator('#cat-universidad').getAttribute('aria-pressed');
+      if (sel !== 'true') throw new Error(`aria-pressed=${sel}`);
     });
     await paso('sin errores de pagina', async () => { if (errores.length) throw new Error(errores.slice(0, 3).join(' | ')); });
     await pA.screenshot({ path: path.join(OUT, 'campus-home.png') }).catch(() => {});

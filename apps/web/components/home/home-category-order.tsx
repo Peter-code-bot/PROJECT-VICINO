@@ -4,20 +4,26 @@ import { Fragment, type ReactNode, useState, useMemo, useCallback } from "react"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, GraduationCap } from "lucide-react";
-import { UNIVERSITY_CATEGORY, universityStyle } from "@/lib/university";
+import { UNIVERSITY_CATEGORY, universityStyle, universitySearchUrl } from "@/lib/university";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { hapticSelection } from "@/lib/haptics";
 
 type CategoryRow = { slug: string; name: string; content: ReactNode };
 
 /** Only reorders server-rendered slots. No router.push, fetching or data cache. */
-export function HomeCategoryOrder({ rows, intro, afterIntro, university, universityRows = [], universityState = null, recent, tail, empty, viewerUniversity }: {
+export function HomeCategoryOrder({ rows, intro, afterIntro, university, universityRows = [], universityState = null, universityTruncated = false, recent, tail, empty, viewerUniversity }: {
   viewerUniversity?: string | null;
   university?: ReactNode;
   /** Publicaciones de la universidad agrupadas por categoria (modo campus). */
   universityRows?: Omit<CategoryRow, "name">[];
   /** Vacio o fallo de la consulta universitaria; null si hay publicaciones. */
   universityState?: ReactNode;
+  /**
+   * El pool universitario llego al tope: una categoria sin fila puede tener
+   * publicaciones mas viejas, asi que no se afirma "No hay". Por defecto
+   * false, para que una semilla de sesion anterior al deploy siga valiendo.
+   */
+  universityTruncated?: boolean;
   afterIntro?: ReactNode;
   rows: CategoryRow[];
   intro: ReactNode;
@@ -81,6 +87,10 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, univers
       .map(row => ({ key: `university:${row.slug}`, content: <div className="px-4 pb-8">{row.content}</div> })));
     if (matched.length) return matched;
     const names = others.map(slug => rows.find(row => row.slug === slug)?.name ?? slug).join(", ");
+    if (universityTruncated) {
+      // Texto provisional y neutro; la redaccion final es de Javier.
+      return [{ key: "university-empty", content: <section className="px-4 pb-8"><p role="status" className="text-sm text-fg-muted">No aparecen publicaciones recientes de {names} en {viewerUniversity}. <Link href={universitySearchUrl(others[0])} className="font-semibold text-brand-hi">Buscar todas</Link></p></section> }];
+    }
     return [{ key: "university-empty", content: <section className="px-4 pb-8"><p role="status" className="text-sm text-fg-muted">No hay publicaciones de {names} en {viewerUniversity}.</p></section> }];
   };
   const slots: Slot[] = universitySelected

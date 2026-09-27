@@ -31,6 +31,8 @@ interface Props {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    /** Solo en modo universidad: estrecha a una categoria (Ver todo de Home). */
+    subcategory?: string;
     price_min?: string;
     price_max?: string;
     tipo?: string;
@@ -47,6 +49,18 @@ export default async function SearchPage({ searchParams }: Props) {
   const params = await searchParams;
   const supabase = await createClient();
   const universityOnly = params.category === UNIVERSITY_CATEGORY;
+  // En modo universidad, ?subcategory= estrecha a una categoria: es el
+  // "Ver todo" de cada fila universitaria de Home, que antes perdia la
+  // categoria. Solo slugs canonicos; se SUMA a la restriccion por vendedores
+  // de la universidad (nunca la amplia). Fuera de ese modo no aplica.
+  const subcategoriaUniversidad =
+    universityOnly &&
+    params.subcategory &&
+    params.subcategory !== UNIVERSITY_CATEGORY &&
+    CATEGORIES.some((c) => c.slug === params.subcategory)
+      ? params.subcategory
+      : undefined;
+  const categoriaFiltro = universityOnly ? subcategoriaUniversidad : params.category;
   let viewerUniversity: string | null = null;
   let universitySellerIds: string[] = [];
   let universityFailure: CatalogFailure | null = null;
@@ -257,7 +271,7 @@ export default async function SearchPage({ searchParams }: Props) {
   let orderedIds: string[] | null = null;
   let primaryIds: string[] = [];
 
-  if (params.category && !universityOnly) {
+  if (categoriaFiltro) {
     // MP#08 #5c-3 (sobre el read switch 5b 52c477a): dos queries paralelas
     // al pivote, una con is_primary=true y otra con is_primary=false. La
     // concatenacion primary-first define el ranking final. Approach A del
@@ -268,7 +282,7 @@ export default async function SearchPage({ searchParams }: Props) {
     const { data: cat } = await supabase
       .from("categories")
       .select("id").throwOnError()
-      .eq("slug", params.category)
+      .eq("slug", categoriaFiltro)
       .maybeSingle();
 
     if (cat) {
@@ -420,7 +434,11 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   const totalPages = searchFailure ? 0 : Math.ceil((totalCount ?? 0) / PAGE_SIZE);
-  const categoryName = universityOnly ? viewerUniversity ?? "Universidad" : params.category
+  const categoryName = universityOnly
+    ? subcategoriaUniversidad
+      ? `${CATEGORIES.find((c) => c.slug === subcategoriaUniversidad)?.name ?? subcategoriaUniversidad} de ${viewerUniversity ?? "tu universidad"}`
+      : viewerUniversity ?? "Universidad"
+    : params.category
     ? CATEGORIES.find((c) => c.slug === params.category)?.name
     : null;
 
@@ -429,6 +447,7 @@ export default async function SearchPage({ searchParams }: Props) {
     const p = new URLSearchParams();
     if (params.q) p.set("q", params.q);
     if (params.category) p.set("category", params.category);
+    if (subcategoriaUniversidad) p.set("subcategory", subcategoriaUniversidad);
     if (params.tipo) p.set("tipo", params.tipo);
     if (params.price_min) p.set("price_min", params.price_min);
     if (params.price_max) p.set("price_max", params.price_max);
