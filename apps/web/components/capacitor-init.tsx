@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { OAUTH_DEEP_LINK_CALLBACK, FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
 
+/** Enlace de arranque ya atendido en esta sesion del WebView (ver getLaunchUrl). */
+const LAUNCH_URL_CONSUMIDA = "vicino:launch-url-consumida";
+
 /**
  * A4 sub-fase 4.2: smart back button + cleanup de los 4 listeners de
  * Capacitor.
@@ -182,8 +185,20 @@ export function CapacitorInit() {
         try {
           const u = new URL(launchUrl.url);
           const fullPath = `${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
-          if (fullPath && fullPath !== "/") {
-            window.location.href = fullPath || "/";
+          const actual = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+          // getLaunchUrl() devuelve el MISMO enlace despues de cada recarga, y
+          // location.href recarga: sin estas dos guardas, abrir la app en frio
+          // desde un enlace universal la dejaba recargando sin fin (Javier,
+          // 26-sep, AUDITORIA-push §3.5). Se consume una vez por sesion del
+          // WebView (un arranque en frio nuevo trae sessionStorage vacio) y no
+          // se navega si ya estamos ahi.
+          let yaConsumido = false;
+          try {
+            yaConsumido = sessionStorage.getItem(LAUNCH_URL_CONSUMIDA) === launchUrl.url;
+            sessionStorage.setItem(LAUNCH_URL_CONSUMIDA, launchUrl.url);
+          } catch {}
+          if (!yaConsumido && fullPath && fullPath !== "/" && fullPath !== actual) {
+            window.location.href = fullPath;
           }
         } catch {}
       }

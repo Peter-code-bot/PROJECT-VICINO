@@ -296,7 +296,7 @@ export function usePushNotifications() {
               console.error("FCM bridge: deep link sin token");
               return;
             }
-            console.log(`Push token received via native bridge (ios): ${nativeFcmToken.substring(0, 20)}... (${nativeFcmToken.length} chars)`);
+            console.log("Push token received via native bridge (ios)"); // sin el token: pendiente A1
             await saveTokenToProfile(nativeFcmToken);
           }
         });
@@ -320,7 +320,7 @@ export function usePushNotifications() {
           }
 
           // En Android sí llega directo
-          console.log(`Push token received (${platform}): ${token.value.substring(0, 20)}... (${token.value.length} chars)`);
+          console.log(`Push token received (${platform})`); // sin el token: pendiente A1
           await saveTokenToProfile(token.value);
         });
 
