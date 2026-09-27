@@ -132,11 +132,20 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       (guarda + permisos del cliente viejo; conserva columnas, índices y
       RPC). Probada en staging: el cliente viejo vuelve a crear y confirmar
       ventas. Se usa junto con Instant Rollback de Vercel a 4b6be86.
-- [ ] Aplicar en producción, verificar chat/ventas, retirar la retención (PT08).
-      Orden: 20260926100000 (Realtime) → 20260925010000 (S04) → push del
-      commit que retira la retención. Ventana: mientras Vercel construye
-      (~5 min), el cliente viejo no puede iniciar ni confirmar ventas (hoy 0
-      pendientes).
+- [x] **Aplicado en producción (26-sep ~23:45 UTC, autorizado por Pedro).**
+      Motivo de la urgencia: a las 23:26 UTC Alejandro retiró la retención
+      (`6ee06be`) y Vercel desplegó el cliente S04 sin la migración;
+      `chat/[id]/page.tsx` pide `chats.producto_revision` (42703) y no abría
+      ningún chat. Se aplicaron con `apply-migration.mjs`: primero
+      `20260926100000` (Realtime) y después `20260925010000` (S04).
+      Verificado en prod:
+      - 3 columnas, 4 funciones y el trigger existen.
+      - Escritura directa cerrada; no leídos y cancelación abiertos.
+      - Realtime publica `chats`, `messages`, `notifications` y `sale_confirmations`.
+      - El ledger tiene las 2 versiones.
+      - `chats?select=producto_revision` responde 200 (antes 400); las RPC dan 401 sin sesión.
+- [ ] Probar en producción con una cuenta de prueba dedicada (no real) el
+      recorrido de chat y venta en la app.
 - [ ] 🟡 Decisión de Pedro/Javier: (1) si A bloquea a B con una venta ya
       pendiente, B aún puede confirmarla; (2) confirmar no revisa si el
       producto se pausó o eliminó después de iniciar.
@@ -151,6 +160,16 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       (`NEXT_PUBLIC_COVERAGE_RADIUS_KM`, `vicino_cobertura`, `exigir_cobertura_operacion`).
 - [ ] Regla de producto acordada y coherente entre cliente y servidor.
 
+## Reporte de Javier — chips de Home (26-sep)
+- [x] Alejandro lo corrigió en `532143f` con estado local, pero dejó
+      `setState` dentro de un `useEffect`: lint 1 error
+      (`react-hooks/set-state-in-effect`) y **Security Audit rojo** otra vez.
+- [x] Corregido sin cambiar comportamiento ni apariencia: la selección se
+      re-sincroniza con `?cats=` durante el render. La doc de Next confirma
+      que `replaceState` se integra con `useSearchParams`.
+- [x] `scripts/staging/e2e-chips-home.mjs` 6/6 contra staging: tocar,
+      destocar, ir a Buscar y volver (el reporte) y restaurar con atrás.
+
 ## PT06 — Regresiones S01/S03/S06/S07 (sin rediseñar)
 - [ ] Matriz de recorridos reales con roles dedicados.
 
@@ -160,7 +179,9 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       no respeta preferencias (repo 16-sep).
 
 ## PT08 — Publicación web y App Store
-- [ ] Retirar la retención en un commit revisado, comprobar despliegue, plan de reversión.
+- [x] Retención retirada por Alejandro (`6ee06be`, 23:26 UTC) antes de
+      aplicar S04; producción alineada tras aplicar las migraciones. La
+      reversión conjunta está en `docs/rollback/` + Instant Rollback a 4b6be86.
 - [ ] Verificar `assetlinks.json` servido (Digital Asset Links API).
 
 ## PT09 — Seguridad/backend heredado (conciliar, no reabrir por antigüedad)
