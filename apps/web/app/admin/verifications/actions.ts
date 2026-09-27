@@ -14,6 +14,14 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
 type ErrorDeRpc = { message?: string; code?: string; details?: string };
 
 /**
+ * impedir_revisar_verificacion_propia_trg (20260927110000): quien revisa es el
+ * dueno de la solicitud. No es un fallo del sistema sino una regla, asi que no
+ * va a Sentry; antes caia en el 42501 generico y el admin leia «vuelve a
+ * entrar», que no tiene nada que ver.
+ */
+const CODIGO_REVISION_PROPIA = "VC403";
+
+/**
  * El mensaje que ve la persona, NO el de Postgres.
  *
  * El rechazo devolvia `error.message` tal cual, y debajo del boton de
@@ -24,6 +32,8 @@ type ErrorDeRpc = { message?: string; code?: string; details?: string };
  */
 function mensajeDeVeredicto(error: ErrorDeRpc, verbo: "aprobar" | "rechazar"): string {
   switch (error.code) {
+    case CODIGO_REVISION_PROPIA:
+      return "No puedes aprobar ni rechazar tu propia verificación. Pídesela a otro admin o moderador.";
     case "42501":
       return "Tu sesión no tiene permiso de revisión. Vuelve a entrar con tu cuenta de administrador.";
     case "P0002":
@@ -69,16 +79,18 @@ export async function approveVerification(verificationId: string, userId: string
   );
 
   if (rpcError) {
-    Sentry.captureException(rpcError, {
-      tags: { action: "approveVerification", step: "rpc_call" },
-      contexts: {
-        verification: { id: parsed.data.verification_id },
-        supabase: {
-          code: (rpcError as ErrorDeRpc).code,
-          details: (rpcError as ErrorDeRpc).details,
+    if ((rpcError as ErrorDeRpc).code !== CODIGO_REVISION_PROPIA) {
+      Sentry.captureException(rpcError, {
+        tags: { action: "approveVerification", step: "rpc_call" },
+        contexts: {
+          verification: { id: parsed.data.verification_id },
+          supabase: {
+            code: (rpcError as ErrorDeRpc).code,
+            details: (rpcError as ErrorDeRpc).details,
+          },
         },
-      },
-    });
+      });
+    }
     // El `message` del motor se queda en Sentry, que es donde sirve. Al admin
     // se le dice que paso y que hacer.
     return { error: mensajeDeVeredicto(rpcError as ErrorDeRpc, "aprobar") };
@@ -192,13 +204,15 @@ export async function rejectVerification(verificationId: string, note: string) {
   });
 
   if (rpcError) {
-    Sentry.captureException(rpcError, {
-      tags: { action: "rejectVerification", step: "rpc_call" },
-      contexts: {
-        verification: { id: parsed.data.verification_id },
-        supabase: { code: rpcError.code, details: rpcError.details },
-      },
-    });
+    if (rpcError.code !== CODIGO_REVISION_PROPIA) {
+      Sentry.captureException(rpcError, {
+        tags: { action: "rejectVerification", step: "rpc_call" },
+        contexts: {
+          verification: { id: parsed.data.verification_id },
+          supabase: { code: rpcError.code, details: rpcError.details },
+        },
+      });
+    }
     return { error: mensajeDeVeredicto(rpcError, "rechazar") };
   }
 

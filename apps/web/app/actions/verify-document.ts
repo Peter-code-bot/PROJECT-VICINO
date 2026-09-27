@@ -14,6 +14,12 @@ import {
   type AnalisisDocumento,
 } from "@/lib/verificacion/veredicto";
 import { construirPrompt, interpretarRespuesta } from "@/lib/verificacion/analisis";
+import {
+  esVeredictoDeEstaEntrada,
+  esVeredictoReal,
+  versionesDeLasFotos,
+  versionMasReciente,
+} from "@/lib/verificacion/vigencia-analisis";
 import type { Database } from "@/types/database.types";
 
 type EstadoVerificacion = Database["public"]["Enums"]["verification_status"];
@@ -305,7 +311,7 @@ export async function verifyDocument(
   // vieja ya rechazada.
   const { data: fila, error: errorFila } = await supabase
     .from("seller_verification")
-    .select("id, status, selfie_url, ine_front_url, ine_back_url")
+    .select("id, status, selfie_url, ine_front_url, ine_back_url, updated_at, ai_analysis_raw, ai_analizado_en")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     // Desempate por id: created_at es DEFAULT NOW() y dos filas creadas en la
@@ -432,6 +438,49 @@ export async function verifyDocument(
       success: false,
       error: "Añade tu nombre a tu perfil antes de verificar tu identidad: es lo que comparamos con el documento.",
     };
+  }
+
+  // QUE VERSION DE LAS FOTOS SE VA A ANALIZAR (BUG-VERIF-IA, 27-sep).
+  //
+  // Cada foto vive en una ruta fija y se sube con upsert, asi que se puede
+  // reemplazar en el bucket sin tocar la fila: ni el bloqueo por updated_at de
+  // mas abajo ni el trigger que marca la nota como desfasada lo ven. Lo que si
+  // cambia es el updated_at del objeto. Se lee AQUI, antes de descargar, y el
+  // mas reciente se guarda en ai_analizado_en; el panel marca la nota como de
+  // un envio anterior si alguna foto es posterior. Leerlo antes y no despues
+  // hace que el error posible sea el seguro: una foto cambiada entre este
+  // listado y la descarga sale como desfasada aunque la IA si la viera.
+  //
+  // Se usa el reloj de Storage y no la hora de este servidor: el panel compara
+  // contra ese mismo reloj, y mezclar dos abriria una ventana del tamano del
+  // desfase entre ambos.
+  //
+  // Va antes de la cuota: si no se puede anotar la version, no se paga.
+  const { data: objetos, error: errorListado } = await supabase.storage
+    .from("verification-documents")
+    // Con holgura: la carpeta llego a juntar 23 objetos antes de las rutas fijas.
+    .list(userId, { limit: 1000 });
+  const analizadoEn = errorListado
+    ? null
+    : versionMasReciente(versionesDeLasFotos(userId, rutasEnBucket, objetos ?? []));
+  if (!analizadoEn) {
+    if (errorListado) {
+      Sentry.captureException(errorListado, {
+        tags: { action: "verifyDocument", paso: "listar_fotos" },
+      });
+    }
+    return {
+      success: false,
+      error: "No pudimos leer una de tus imágenes. Vuelve a subirla e inténtalo de nuevo.",
+    };
+  }
+
+  // Si la nota guardada ya es el veredicto de exactamente esta entrada (mismas
+  // fotos, tipo y universidad), no se vuelve a llamar al modelo: no aporta nada,
+  // cuesta dinero y permitiria repetir hasta que el modelo, que no es
+  // determinista, conteste algo menos malo y tape un veredicto negativo.
+  if (esVeredictoDeEstaEntrada(fila.ai_analysis_raw, fila.ai_analizado_en, analizadoEn, { tipo, universidad })) {
+    return { success: true, status: fila.status ?? "pending", fallback: false };
   }
 
   // Las tres descargas en paralelo. Van con el cliente del USUARIO, no con el
@@ -597,6 +646,14 @@ export async function verifyDocument(
       ? "pending"
       : estadoPropuesto;
 
+  // Un fallo del proveedor NO pisa un veredicto real anterior. Se queda donde
+  // estaba y, como las fotos o los datos cambiaron desde entonces, el panel ya
+  // lo presenta como de un envio anterior. Sobrescribirlo con «no se pudo
+  // analizar» era otra forma de borrar una nota negativa.
+  if (analisis === null && esVeredictoReal(fila.ai_analysis_raw)) {
+    return { success: true, status: "pending", fallback: true };
+  }
+
   const admin = createAdminClient();
   const { data: updated, error: dbError } = await admin
     .from("seller_verification")
@@ -616,12 +673,27 @@ export async function verifyDocument(
       // imagenes cumpliendo el Aviso §15 y quedarse indefinidamente con lo
       // extraido de ellas. Se guarda la longitud, que es lo unico que sirve
       // para diagnosticar «contesto pero no se pudo interpretar».
-      ai_analysis_raw: analisis ?? {
+      // Con la entrada que vio el modelo, para no volver a analizar lo mismo
+      // (esVeredictoDeEstaEntrada, arriba).
+      ai_analysis_raw: analisis ? { ...analisis, entrada: { tipo, universidad } } : {
         motivo_rechazo_o_duda: motivoDelFallo,
         respuesta_longitud: textoRespuesta.length,
       },
+      // La nota vuelve a ser vigente y queda atada a la version de las fotos
+      // que se descargo. Solo service_role puede escribir estas dos columnas
+      // (20260927110000): ni el vendedor ni un admin pueden dar por buena una
+      // nota vieja.
+      ai_vigente: true,
+      ai_analizado_en: analizadoEn,
     })
     .eq("id", fila.id)
+    // Bloqueo optimista (BUG-VERIF-IA, 27-sep): si el vendedor cambio fotos,
+    // tipo o universidad durante los hasta 28 s del modelo, la fila ya no es la
+    // que se analizo (y marcar_analisis_ia_desfasado_trg ya marco la nota
+    // anterior como desfasada). Escribir aqui pondria el veredicto de las fotos
+    // VIEJAS sobre las nuevas, y encima como vigente: con este filtro el UPDATE
+    // afecta 0 filas y cae en el camino de "sin filas" de abajo.
+    .filter("updated_at", fila.updated_at ? "eq" : "is", fila.updated_at ?? "null")
     // La guarda de estado, y es la mitad importante del arreglo de la carrera
     // con el revisor: si una persona resolvio el tramite durante los hasta 28
     // segundos que tarda el modelo, este UPDATE afecta 0 filas y su veredicto

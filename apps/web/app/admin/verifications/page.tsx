@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import * as Sentry from "@sentry/nextjs";
 import { VerificationActions } from "./verification-actions";
 import {
@@ -6,6 +7,11 @@ import {
   type DocumentoDeVerificacion,
 } from "@/components/admin/visor-de-imagenes";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  estadoDelAnalisis,
+  versionesDeLasFotos,
+  type EstadoDelAnalisis,
+} from "@/lib/verificacion/vigencia-analisis";
 
 export const metadata = { title: "Admin — Verificaciones" };
 
@@ -59,7 +65,45 @@ function motivoDeRechazo(bruto: unknown): string | null {
   return typeof motivo === "string" && motivo.trim() !== "" ? motivo : null;
 }
 
+/**
+ * updated_at actual de cada foto guardada en la fila, o null si no se pudo
+ * listar la carpeta. Es la mitad de la comparacion que decide si la nota de la
+ * IA es sobre estas fotos (ver lib/verificacion/vigencia-analisis.ts).
+ */
+async function versionesActuales(
+  supabase: SupabaseClient,
+  userId: string,
+  guardadas: readonly (string | null)[],
+): Promise<(string | null)[] | null> {
+  // Las ranuras vacias se quedan como null: una foto ausente nunca cuenta como
+  // «la IA la vio».
+  const rutas = guardadas.map((r) => (r ? extractStoragePath(r) : null));
+  const { data, error } = await supabase.storage
+    .from(VERIFICATION_BUCKET)
+    .list(userId, { limit: 1000 });
+  if (error) {
+    Sentry.captureException(error, { tags: { action: "admin_listar_fotos_verificacion" } });
+    return null;
+  }
+  return versionesDeLasFotos(userId, rutas, data ?? []);
+}
+
+/** Lo que el revisor lee encima de la nota de la IA. */
+const ETIQUETA_NOTA: Record<Exclude<EstadoDelAnalisis, "ninguno">, string> = {
+  vigente: "La IA dice:",
+  desfasado: "La IA dijo, sobre un envío anterior:",
+  sin_comprobar: "La IA dijo (no se pudo comprobar si fue sobre estas fotos):",
+};
+
 export default async function VerificationsPage() {
+  // Quien esta mirando: su propia solicitud no se le ofrece para resolver. La
+  // base ya lo impide (impedir_revisar_verificacion_propia_trg, 20260927110000);
+  // esto evita que el revisor pulse un boton que solo puede fallar.
+  const supabase = await createClient();
+  const {
+    data: { user: revisor },
+  } = await supabase.auth.getUser();
+
   // Ya no se construye el cliente de usuario: no queda ninguna lectura que lo
   // use. Las tres firmas de URL siempre fueron con adminSupabase, y la consulta
   // de la cola acaba de mudarse ahi porque con el rol `authenticated` moria con
@@ -114,12 +158,21 @@ export default async function VerificationsPage() {
   // Generate signed URLs in parallel for all docs across all verifications
   const verificationsWithUrls = await Promise.all(
     (verifications ?? []).map(async (v) => {
-      const [selfieUrl, ineFrontUrl, ineBackUrl] = await Promise.all([
+      const [selfieUrl, ineFrontUrl, ineBackUrl, versiones] = await Promise.all([
         signOrNull(adminSupabase, v.selfie_url),
         signOrNull(adminSupabase, v.ine_front_url),
         signOrNull(adminSupabase, v.ine_back_url),
+        v.ai_analysis_raw
+          ? versionesActuales(adminSupabase, v.user_id, [v.selfie_url, v.ine_front_url, v.ine_back_url])
+          : Promise.resolve([]),
       ]);
-      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl };
+      const analisis = estadoDelAnalisis({
+        hayAnalisis: !!v.ai_analysis_raw,
+        vigente: v.ai_vigente,
+        analizadoEn: v.ai_analizado_en,
+        versiones,
+      });
+      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl, analisis };
     })
   );
 
@@ -162,9 +215,45 @@ export default async function VerificationsPage() {
                   </span>
                 </div>
 
-                {motivoDeRechazo(v.ai_analysis_raw) && (
+                {/* BUG-VERIF-IA (27-sep): la tarjeta no decia que faltaban
+                    fotos ni que la IA no las habia visto, y mostraba la nota de
+                    un intento anterior junto a la universidad nueva. */}
+                {(() => {
+                  const faltan = [
+                    !v.selfie_url && "selfie",
+                    !v.ine_front_url && "frente",
+                    !v.ine_back_url && "reverso",
+                  ].filter(Boolean) as string[];
+                  const sinAnalisis = v.analisis === "ninguno";
+                  const desfasado = v.analisis === "desfasado";
+                  if (!faltan.length && !sinAnalisis && !desfasado) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {faltan.length > 0 && (
+                        <span className="text-[10px] bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 px-2 py-0.5 rounded-full font-medium">
+                          Incompleta: falta {faltan.join(", ")}
+                        </span>
+                      )}
+                      {sinAnalisis && (
+                        <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                          Sin análisis automático
+                        </span>
+                      )}
+                      {desfasado && (
+                        <span className="text-[10px] bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 px-2 py-0.5 rounded-full font-medium">
+                          La IA no ha visto estas fotos
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* La nota vieja NO se esconde: un veredicto negativo de un
+                    envio anterior es informacion para el revisor, y borrarla
+                    era justo lo que el vendedor podia provocar con un PATCH. */}
+                {v.analisis !== "ninguno" && motivoDeRechazo(v.ai_analysis_raw) && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
-                    <span className="font-bold">🤖 La IA dice:</span> {motivoDeRechazo(v.ai_analysis_raw)}
+                    <span className="font-bold">🤖 {ETIQUETA_NOTA[v.analisis]}</span> {motivoDeRechazo(v.ai_analysis_raw)}
                   </div>
                 )}
 
@@ -204,7 +293,14 @@ export default async function VerificationsPage() {
                     )}
                 </div>
 
-                <VerificationActions id={v.id} userId={v.user_id} />
+                {revisor && v.user_id === revisor.id ? (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Tu solicitud.</span> La tiene que
+                    revisar otro admin o moderador.
+                  </p>
+                ) : (
+                  <VerificationActions id={v.id} userId={v.user_id} />
+                )}
               </div>
             );
           })}

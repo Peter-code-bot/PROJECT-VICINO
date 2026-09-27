@@ -1866,8 +1866,10 @@ export type Database = {
       }
       seller_verification: {
         Row: {
+          ai_analizado_en: string | null
           ai_analysis_raw: Json | null
           ai_confidence_score: number | null
+          ai_vigente: boolean
           created_at: string | null
           document_type: string | null
           id: string
@@ -1883,8 +1885,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_analizado_en?: string | null
           ai_analysis_raw?: Json | null
           ai_confidence_score?: number | null
+          ai_vigente?: boolean
           created_at?: string | null
           document_type?: string | null
           id?: string
@@ -1900,8 +1904,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_analizado_en?: string | null
           ai_analysis_raw?: Json | null
           ai_confidence_score?: number | null
+          ai_vigente?: boolean
           created_at?: string | null
           document_type?: string | null
           id?: string
