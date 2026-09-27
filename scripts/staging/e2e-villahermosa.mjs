@@ -21,6 +21,18 @@ const { chromium } = require('@playwright/test');
 const BASE = process.env.E2E_BASE || 'https://vicinomarket.com';
 const OUT = path.join(CONFIG_DIR, 'e2e');
 const CIUDADES = (process.env.E2E_CIUDADES || 'Villahermosa|Mérida|Monterrey').split('|');
+// La cookie guarda "lat,lng,..." y no el nombre: se comprueba que el punto
+// guardado caiga a menos de 30 km del centro de la ciudad buscada.
+const CENTROS = {
+  Villahermosa: [17.9892, -92.9281],
+  'Mérida': [20.9674, -89.5926],
+  Monterrey: [25.6866, -100.3161],
+};
+const kmEntre = ([a, b], [c, d]) => {
+  const r = Math.PI / 180;
+  const h = Math.sin(((c - a) * r) / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
 
 const main = async () => {
   fs.mkdirSync(OUT, { recursive: true });
@@ -64,7 +76,10 @@ const main = async () => {
       await page.waitForTimeout(2500);
       const cookie = (await ctx.cookies()).find((c) => c.name === 'vicino_location');
       const guardada = cookie ? decodeURIComponent(cookie.value) : '';
-      const ok = new RegExp(ciudad.slice(0, 5), 'i').test(guardada);
+      const [lat, lng] = guardada.split(',').map(Number);
+      const centro = CENTROS[ciudad];
+      const ok = centro ? Number.isFinite(lat) && Number.isFinite(lng) && kmEntre([lat, lng], centro) < 30
+        : new RegExp(ciudad.slice(0, 5), 'i').test(guardada);
       if (!ok) fallos++;
       console.log(`  ${ok ? 'OK   ' : 'FALLO'} ${ciudad}: aparece, se aplica y la cookie guarda ${guardada.slice(0, 90)}`);
       await page.screenshot({ path: path.join(OUT, `ubicacion-${ciudad}.png`) });

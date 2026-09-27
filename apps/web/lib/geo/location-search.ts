@@ -109,6 +109,28 @@ export const COVERAGE_RADIUS_KM = readCoverageRadius();
 type Coordenada = { lat: number; lng: number };
 
 /**
+ * MapKit listo para buscar, esperando a que cargue si hace falta. El buscador
+ * se puede usar ~50 ms despues de abrir la hoja y MapKit tarda ~0.8 s (mas en
+ * datos moviles): sin esta espera, lo primero que se escribia volvia vacio y
+ * sin aviso, como si el lugar no existiera (PT05, 26-sep). El import es
+ * dinamico para que las pruebas con node --test no resuelvan el alias "@/".
+ */
+async function mapkitListo(): Promise<typeof window.mapkit | null> {
+  if (typeof window === "undefined") return null;
+  if (!window.mapkit) {
+    // Si ni el modulo del cargador baja (offline, chunk caido), es lo mismo
+    // que MapKit no disponible: quien llama devuelve vacio o "sin resolver".
+    try {
+      const { loadMapKitScript } = await import("@/hooks/use-mapkit");
+      if (!(await loadMapKitScript())) return null;
+    } catch {
+      return null;
+    }
+  }
+  return window.mapkit ?? null;
+}
+
+/**
  * Contra que centro y con que radio se recorta una sugerencia. Un radio
  * explicito manda (llamadas puntuales y pruebas); si no, la regla de la base;
  * y sin ninguno de los dos, el radio de build de siempre (COVERAGE_RADIUS_KM).
@@ -232,10 +254,8 @@ async function searchWithMapKit(
   signal?: AbortSignal
 ): Promise<LocationSearchOutcome> {
   const vacio: LocationSearchOutcome = { results: [], outOfCoverage: false };
-  if (typeof window === "undefined" || !window.mapkit) return vacio;
+  const mapkit = await mapkitListo();
   if (signal?.aborted) return vacio;
-
-  const mapkit = window.mapkit;
   if (!mapkit || !mapkit.Search || !mapkit.Coordinate) return vacio;
 
   return new Promise((resolve) => {
@@ -446,8 +466,7 @@ export async function resolveLocationCoordinates(
     return item;
   }
 
-  if (typeof window === "undefined" || !window.mapkit) return fallo();
-  const mapkit = window.mapkit;
+  const mapkit = await mapkitListo();
   if (!mapkit || !mapkit.Search || !mapkit.Coordinate) return fallo();
 
   const targetCenter = center || DEFAULT_CENTER;
