@@ -69,7 +69,8 @@ const main = async () => {
       const aplicar = dialogo.getByRole('button', { name: 'Aplicar ubicación' });
       await aplicar.waitFor({ timeout: 10_000 });
       await page.waitForFunction(() => {
-        const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.includes('Aplicar ubicación'));
+        // Desde la Tarea 8 es la palomita del header (aria-label), no un boton con texto.
+        const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === 'Aplicar ubicación');
         return b && !b.hasAttribute('disabled');
       }, null, { timeout: 15_000 });
       await aplicar.click();

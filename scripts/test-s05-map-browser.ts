@@ -106,8 +106,13 @@ async function main() {
       await pin(); await page.locator('select').selectOption('25000');
       assert.deepEqual(await writes(), []);
       assert.equal(await page.evaluate(() => (window as any).f.map().recenters), 0);
-      await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+      // Tarea 8: con cambios pendientes la X del header es la palomita
+      // "Aplicar ubicación"; descartar es Escape (o tocar fuera / Atrás).
+      await expect(page.getByRole('button', { name: 'Aplicar ubicación', exact: true })).toBeVisible();
+      assert.equal(await page.getByRole('button', { name: 'Cerrar', exact: true }).count(), 0);
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Abrir', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Cerrar', exact: true })).toBeVisible();
       await expect(page.locator('select')).toHaveValue('10000');
       await expect.poll(() => page.evaluate(() => (window as any).f.map().marker.coordinate.latitude)).toBe(19.04);
       assert.deepEqual(await writes(), []); pass('cancel discards pin/radius and restores previous selection; zoom preserved');

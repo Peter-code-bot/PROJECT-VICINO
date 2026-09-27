@@ -16,6 +16,8 @@ import {
   type LocationSearchResult,
 } from "@/lib/geo/location-search";
 import { useReglaCobertura } from "@/lib/geo/cobertura";
+import { hayCambiosDeUbicacion, mismoPunto } from "@/lib/geo/cambios-ubicacion";
+import { hapticSelection } from "@/lib/haptics";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
@@ -94,16 +96,6 @@ function dedupAndPrepend(
   return [item, ...filtered].slice(0, MAX_RECENTS);
 }
 
-function sameLoc(
-  a: { lat: number; lng: number } | null,
-  b: { lat: number; lng: number },
-): boolean {
-  if (!a) return false;
-  return (
-    Math.abs(a.lat - b.lat) < MATCH_TOLERANCE &&
-    Math.abs(a.lng - b.lng) < MATCH_TOLERANCE
-  );
-}
 
 async function reverseGeocodeOnce(
   lat: number,
@@ -146,6 +138,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  // El borrador ya es el de ESTA apertura. Sin esto, al reabrir despues de
+  // descartar, el primer frame calculaba la palomita con el borrador viejo.
+  const [borradorListo, setBorradorListo] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRef = useRef(open);
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -165,6 +160,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   const closeSheet = useCallback(() => {
     openRef.current = false;
     cancelPending();
+    setBorradorListo(false);
     onClose();
   }, [cancelPending, onClose]);
 
@@ -213,6 +209,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
       setGpsError(null);
       setRequestingGps(false);
       setSearchNotice(null);
+      setBorradorListo(true);
     });
   }, [open, activePosition]);
 
@@ -310,8 +307,24 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
     [cancelPending],
   );
 
+  // Tarea 8 (decision de Pedro, 27-sep): con cambios pendientes la X del
+  // header pasa a palomita y aplica; ya no hay boton "Aplicar ubicacion" al
+  // fondo, que quedaba fuera de vista (la hoja mide hasta 85vh con scroll).
+  // Solo se ofrece aplicar lo que se puede aplicar: un borrador fuera de
+  // Mexico (p. ej. una ubicacion activa por GPS en EE. UU. a la que solo se le
+  // cambia el radio) dejaba una palomita que no hacia nada.
+  const borradorValido = !!draft && clasificarResultado(draft, null) === "ok";
+  const hayCambios =
+    borradorListo && borradorValido && hayCambiosDeUbicacion(draft, draftRadius, activePosition);
+  const aplicarBloqueado = searching || requestingGps;
+
   const applyLocation = () => {
-    if (!openRef.current || !draft || clasificarResultado(draft, null) !== "ok") return;
+    if (!openRef.current || !draft) return;
+    if (clasificarResultado(draft, null) !== "ok") {
+      setSearchNotice("La ubicación debe estar en México. Busca otra zona o mueve el mapa.");
+      return;
+    }
+    void hapticSelection();
     cancelPending();
     setManualPosition({ ...draft, radius: draftRadius });
     writeRecents(dedupAndPrepend(recents, { ...draft, timestamp: Date.now() }));
@@ -429,6 +442,10 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
               className="pointer-events-auto w-full overflow-y-auto rounded-t-3xl bg-[color:var(--bg)] pb-[calc(env(safe-area-inset-bottom)_+_2rem)]"
               style={{ maxHeight: "85vh" }}
             >
+              {/* Asa y header fijos: la palomita tiene que verse aunque el
+                  usuario haya bajado a "Ubicaciones recientes". z por encima
+                  de la lista de resultados del buscador (z-60). */}
+              <div className="sticky top-0 z-[70] bg-[color:var(--bg)]">
               {/* Handle */}
               <div className="mx-auto mt-3 mb-4 h-1 w-12 rounded-full bg-[color:var(--fg-dim)]/30" />
 
@@ -437,14 +454,49 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
                   Cambiar ubicación
                 </h2>
+                {/* Sin cambios: X que cierra. Con cambios (pin, buscador, GPS,
+                    reciente o radio): la misma pieza con la palomita de
+                    "Ubicacion actual" y aplica. Descartar sigue siendo tocar
+                    fuera, Escape o el Atras de Android. */}
                 <button
                   type="button"
-                  onClick={closeSheet}
-                  aria-label="Cerrar"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] transition-colors hover:bg-[color:var(--border)] active:bg-[color:var(--border-strong)]"
+                  onClick={hayCambios ? applyLocation : closeSheet}
+                  disabled={hayCambios && aplicarBloqueado}
+                  aria-label={hayCambios ? "Aplicar ubicación" : "Cerrar"}
+                  data-accion={hayCambios ? "aplicar" : "cerrar"}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] transition-colors hover:bg-[color:var(--border)] active:bg-[color:var(--border-strong)] disabled:opacity-40"
                 >
-                  <X size={18} className="text-[color:var(--fg-muted)]" />
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={hayCambios ? "aplicar" : "cerrar"}
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex"
+                    >
+                      {hayCambios ? (
+                        <Check size={18} className="text-[color:var(--brand-hi)]" />
+                      ) : (
+                        <X size={18} className="text-[color:var(--fg-muted)]" />
+                      )}
+                    </motion.span>
+                  </AnimatePresence>
                 </button>
+                {/* Lector de pantalla: con la palomita ya no hay un control
+                    con nombre para descartar (el fondo es aria-hidden y en
+                    iOS no hay Atras). Invisible, no cambia el diseno. */}
+                {hayCambios && (
+                  <button type="button" onClick={closeSheet} className="sr-only">
+                    Descartar cambios
+                  </button>
+                )}
+                <p className="sr-only" aria-live="polite">
+                  {hayCambios && draft
+                    ? `Ubicación sin aplicar: ${draft.name}. Confírmala con Aplicar ubicación, arriba.`
+                    : ""}
+                </p>
+              </div>
               </div>
 
               {/* Map */}
@@ -597,7 +649,9 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                 ) : (
                   <ul className="-mx-1">
                     {recents.map((loc) => {
-                      const active = sameLoc(activePosition, loc);
+                      // mismoPunto y no sameLoc: la ubicacion activa vuelve de
+                      // la cookie con 3 decimales (ver cambios-ubicacion.ts).
+                      const active = mismoPunto(activePosition, loc);
                       return (
                         <li key={`${loc.lat},${loc.lng},${loc.timestamp}`}>
                           <button
@@ -632,12 +686,6 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
                     })}
                   </ul>
                 )}
-              </div>
-              <div className="mx-5 mt-4">
-                <button type="button" onClick={applyLocation} disabled={!draft || searching || requestingGps}
-                  className="min-h-11 w-full rounded-2xl bg-[color:var(--brand)] px-4 py-3 font-semibold text-white disabled:opacity-40">
-                  Aplicar ubicación
-                </button>
               </div>
             </motion.div>
           </div>
