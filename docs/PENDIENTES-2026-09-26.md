@@ -215,7 +215,11 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] `cc385bc`: bucle de recargas al arrancar en frío desde un enlace
       (§3.5) y prefijos del token FCM en el log (§3.6/A1). Build 56/56.
       Falta dispositivo: app cerrada → enlace universal y toque de push.
-- [ ] ⛔ Desplegar `send-push` (v20 del 28-ago → repo `9f1ab8d`, único cambio:
+- [x] Desplegada `send-push` **v21** el 27-sep (con autorización expresa de
+      Pedro en el chat): código de `0a52205` (globo real + limpieza de tokens) y
+      `verify_jwt=false` ya declarado en `config.toml`. Humo: sin credencial → 401
+      `{"error":"unauthorized"}`. Texto original del bloqueo, como registro:
+      Desplegar `send-push` (v20 del 28-ago → repo `9f1ab8d`, único cambio:
       consulta `acepta_notificacion`, falla abierto). Verificado en prod:
       `acepta_notificacion(uuid,text)` existe y service_role la ejecuta; v20
       tiene `verify_jwt=false` y `config.toml` NO declara send-push, así que
@@ -241,7 +245,9 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 ## PT09 — Seguridad/backend heredado (conciliar, no reabrir por antigüedad)
 - [ ] Rate limiting: Vercel sin `UPSTASH_*` (todos los limitadores son no-op).
 - [ ] Repo PÚBLICO + claves legacy encendidas (service_role de `8416eee` viva). Decisión del titular.
-- [ ] `delete-account` desplegada es la del 16-jul (sin los arreglos del 26-ago).
+- [x] `delete-account` desplegada **v14** el 27-sep (`5874496`, verify_jwt=true; humo 401
+      sin sesión). Además la migración `20260927100000` (sin FK de `audit_log.actor_id`)
+      aplicada en prod: borrar una cuenta que dejó filas en `audit_log` fallaba a medias.
 - [ ] Dos 401 de pg_net el 26-sep 04:19 UTC.
 - [ ] `ADMIN_SECURITY_PASSWORD` sin definir en Vercel.
 
@@ -275,6 +281,27 @@ Revisión completa de pendientes y 26 planes: `docs/planes-2026-09-26/` y en Not
       Probada SOLO en staging: publicada 1 → 0, repetida 0 (idempotente),
       migración reaplicada → 1. Revertirla vuelve a romper el chat en vivo (ver cabecera).
 - Verificación: tsc 0, lint 0 errores, build 56/56.
+
+## Tanda 2 — reportes de Pedro del 27-sep (madrugada y mediodía)
+Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-villahermosa-campus-y-pendientes`.
+- [x] **Tarea 8 — «Cambiar ubicación»** (`6111f49`): la X de arriba pasa a palomita
+      cuando hay cambios y aplica; fuera el botón «Aplicar ubicación» del fondo.
+      Header fijo dentro de la hoja. `e2e-cambiar-ubicacion-palomita.mjs` en verde.
+- [x] **Configuración** (`e8e02c9`): «Cerrar sesión» y «Eliminar cuenta» juntas en el
+      grupo «Sesión».
+- [x] **BUG-DEL-CUENTA** (`5874496` + migración `20260927100000` en prod): borrar una
+      cuenta que dejó filas en `audit_log` fallaba a medias (FK con SET NULL contra una
+      tabla inmutable). `delete-account` v14 desplegada.
+      - [ ] Cuenta rota `0186140a`: terminar de borrarla desde el Dashboard o reintentando
+            en la app, más sus 11 archivos (Pedro).
+- [x] **Onboarding «Activa las notificaciones»** (`6b5fa5e`) con el diseño aprobado.
+- [x] **BUG-VERIF-IA** (inicio 27-sep ~01:35, cierre 27-sep 12:47; `0aeb2a5` + `962e358`):
+      la nota de la IA ya no se presenta como si fuera de las fotos nuevas y nadie
+      aprueba ni rechaza su propia solicitud (VC403). Migración `20260927110000`
+      aplicada en prod antes del push; tipos regenerados (`gen-types --check` en verde).
+      Staging por la API real 15/15, unitarias 13/13, build 56/56, dos rondas de
+      revisión adversarial (la segunda sin críticos).
+      - [ ] Probar en el panel real con una cuenta de prueba (Pedro).
 
 ## Fuera de código, en manos de Pedro
 - [ ] Verificación de desarrolladores de Android antes del 30-sep (confirmar `com.vicino.mx`).
