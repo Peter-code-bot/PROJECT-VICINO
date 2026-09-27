@@ -193,12 +193,32 @@ serve(async (req) => {
     const { error: authDeleteError } =
       await adminClient.auth.admin.deleteUser(userId);
 
-    if (authDeleteError) {
+    // 404: el usuario de Auth ya no existe (un reintento despues de un fallo
+    // a medias). El trabajo esta hecho: se trata como exito para que reintentar
+    // termine, en vez de fallar para siempre.
+    const yaNoExiste =
+      authDeleteError &&
+      (authDeleteError.status === 404 || /user.?not.?found/i.test(authDeleteError.message ?? ""));
+
+    if (authDeleteError && !yaNoExiste) {
       console.error("auth.admin.deleteUser error:", authDeleteError);
+      // Los datos ya se borraron: sin esto la cuenta quedaba sin perfil pero
+      // con TODAS sus sesiones vivas (19 en el caso del 27-sep, causado por la
+      // FK de audit_log; ver 20260927100000). Se cierran todas para que nadie
+      // quede dentro de una cuenta vacia. Si esto tambien falla se registra y
+      // se sigue: la respuesta de error no cambia.
+      try {
+        const jwt = authHeader.replace(/^Bearer\s+/i, "");
+        const { error: signOutError } = await adminClient.auth.admin.signOut(jwt, "global");
+        if (signOutError) console.error("auth.admin.signOut(global) error:", signOutError);
+      } catch (signOutErr) {
+        console.error("auth.admin.signOut(global) threw:", signOutErr);
+      }
       return jsonResponse(
         {
           error:
             "Datos eliminados, pero falló la baja en autenticación. Contacta a soporte.",
+          code: "auth_delete_failed",
           details: authDeleteError.message,
         },
         500

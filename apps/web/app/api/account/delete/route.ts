@@ -66,10 +66,30 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const fnData = (await fnResponse.json()) as {
       error?: string;
+      code?: string;
       details?: string;
     };
 
     if (!fnResponse.ok) {
+      // Antes el fallo se devolvia sin dejar rastro: el del 27-sep (FK de
+      // audit_log) solo se diagnostico leyendo los logs de Auth. Se registra
+      // con el status y el detalle de Postgres que manda la funcion.
+      Sentry.captureException(new Error(`delete-account ${fnResponse.status}`), {
+        tags: { route: "account/delete", step: "edge_function", code: fnData.code ?? "sin_codigo" },
+        extra: { status: fnResponse.status, error: fnData.error, details: fnData.details },
+      });
+      // Borrado a medias (datos borrados, Auth vivo): la sesion local apunta a
+      // una cuenta que ya no tiene perfil. Se cierra aqui tambien; el mensaje
+      // de error al usuario no cambia. La v13 desplegada no manda `code`.
+      const aMedias =
+        fnData.code === "auth_delete_failed" || fnData.error?.startsWith("Datos eliminados") === true;
+      if (aMedias) {
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutErr) {
+          Sentry.captureException(signOutErr, { tags: { route: "account/delete", step: "sign_out_a_medias" } });
+        }
+      }
       return NextResponse.json(
         {
           error: fnData.error ?? "No se pudo eliminar la cuenta.",
