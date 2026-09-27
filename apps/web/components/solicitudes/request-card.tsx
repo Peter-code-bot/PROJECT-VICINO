@@ -67,9 +67,10 @@ export function RequestCard({ data }: { data: RequestCardData }) {
           {/* Bottom row: Budget, Location, Time, Offers */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2">
             {/* Budget text */}
-            {data.budget_estimated && (
+            {/* != null y > 0: con `&&` un presupuesto de 0 pintaba un "0" suelto. */}
+            {data.budget_estimated != null && data.budget_estimated > 0 && (
               <span className="font-heading font-extrabold text-[15px] text-foreground tracking-tight">
-                ${data.budget_estimated.toLocaleString()} MXN
+                ${data.budget_estimated.toLocaleString("es-MX")} MXN
               </span>
             )}
 

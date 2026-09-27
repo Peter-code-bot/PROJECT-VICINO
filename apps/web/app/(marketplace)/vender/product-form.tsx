@@ -136,6 +136,8 @@ type MediaItem = ExistingMedia | PendingMedia;
 type CropQueueItem = { file: File; src: string; isVideo: boolean };
 
 const MAX_VIDEO_SEGUNDOS = 10;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const MAX_IMAGEN_BYTES = 5 * 1024 * 1024;
 
 function SortableMediaItem({
   item,
@@ -340,7 +342,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       // Toast y no setError: el banner de error vive al principio del formulario
       // y aqui estamos junto al selector, muy por debajo. En el telefono el
       // vendedor no llegaba a verlo nunca y el archivo parecia no entrar solo.
-      if (isVid && f.size > 50 * 1024 * 1024) {
+      if (isVid && f.size > MAX_VIDEO_BYTES) {
         toast.error(`${f.name} pesa demasiado. El maximo es 50 MB.`, { duration: 2000 });
         return;
       }
@@ -356,7 +358,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           return;
         }
       }
-      if (!isVid && f.size > 5 * 1024 * 1024) {
+      if (!isVid && f.size > MAX_IMAGEN_BYTES) {
         toast.error(`${f.name} pesa demasiado. El maximo es 5 MB.`, { duration: 2000 });
         return;
       }

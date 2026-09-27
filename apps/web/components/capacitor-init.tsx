@@ -198,6 +198,9 @@ export function CapacitorInit() {
             sessionStorage.setItem(LAUNCH_URL_CONSUMIDA, launchUrl.url);
           } catch {}
           if (!yaConsumido && fullPath && fullPath !== "/" && fullPath !== actual) {
+            // Navegacion completa a proposito (como antes de cc385bc): corre en
+            // el arranque, fuera de cualquier handler con router disponible.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = fullPath;
           }
         } catch {}
