@@ -211,15 +211,32 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [ ] Matriz de recorridos reales con roles dedicados.
 
 ## PT07 — iOS y notificaciones
-- [ ] Conciliar `feat/bb03-piloto-regreso` (Liquid Glass piloto, log de token FCM, 1.1 (6) en TestFlight).
-- [ ] Push por tipo y preferencias. `send-push` desplegada es la del 28-ago:
-      no respeta preferencias (repo 16-sep).
+- [x] `feat/bb03-piloto-regreso` integrada en master por `f2a3f04` (traspaso de Javier).
+- [x] `cc385bc`: bucle de recargas al arrancar en frío desde un enlace
+      (§3.5) y prefijos del token FCM en el log (§3.6/A1). Build 56/56.
+      Falta dispositivo: app cerrada → enlace universal y toque de push.
+- [ ] ⛔ Desplegar `send-push` (v20 del 28-ago → repo `9f1ab8d`, único cambio:
+      consulta `acepta_notificacion`, falla abierto). Verificado en prod:
+      `acepta_notificacion(uuid,text)` existe y service_role la ejecuta; v20
+      tiene `verify_jwt=false` y `config.toml` NO declara send-push, así que
+      hay que desplegar con `--no-verify-jwt`. **Bloqueado**: el clasificador
+      de permisos de Claude rechazó el despliegue (26-sep ~22:10). Lo hace
+      Pedro: `supabase functions deploy send-push --project-ref oxxdkwywprkfghhbnoto --no-verify-jwt`.
+- [ ] Con firma de Pedro: DROP de `notify_push` y sus 2 triggers (§3.1).
+- [ ] Entitlements del `.ipa` (`aps-environment=production`), badge fijo y tokens UNREGISTERED.
+
+## PT00 — Inventario Git del equipo de Pedro (26-sep ~22:15)
+- [x] `master` = `origin/master` = `cc385bc`; sin cambios locales ni commits de hoy por subir.
+- [x] 5 stashes históricos (1-may a 4-jul) y `security/eradicate-vercel-service-role-key`
+      con 2 commits del 9-jul sin subir: respaldo histórico, se conservan, no son de hoy.
+- [ ] Mac y worktrees de Javier: fuera de esta máquina (Javier).
 
 ## PT08 — Publicación web y App Store
 - [x] Retención retirada por Alejandro (`6ee06be`, 23:26 UTC) antes de
       aplicar S04; producción alineada tras aplicar las migraciones. La
       reversión conjunta está en `docs/rollback/` + Instant Rollback a 4b6be86.
-- [ ] Verificar `assetlinks.json` servido (Digital Asset Links API).
+- [ ] Verificar `assetlinks.json` y AASA servidos (Digital Asset Links API).
+      El clasificador de permisos bloqueó también esta lectura el 26-sep: Pedro.
 
 ## PT09 — Seguridad/backend heredado (conciliar, no reabrir por antigüedad)
 - [ ] Rate limiting: Vercel sin `UPSTASH_*` (todos los limitadores son no-op).
