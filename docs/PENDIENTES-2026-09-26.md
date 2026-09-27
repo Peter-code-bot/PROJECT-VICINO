@@ -156,9 +156,46 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [ ] Matriz de acceso S02-B (solo lo funcional).
 
 ## PT05 — Ubicación fuera de Puebla (Villahermosa)
-- [ ] Reproducir; separar geocodificación / radio de productos / cobertura operativa
-      (`NEXT_PUBLIC_COVERAGE_RADIUS_KM`, `vicino_cobertura`, `exigir_cobertura_operacion`).
-- [ ] Regla de producto acordada y coherente entre cliente y servidor.
+- [x] Reproducido y separado (26-sep, inicio ~20:15 en otra sesión, cierre
+      ~21:45 aquí). Causa: el buscador recortaba con
+      `NEXT_PUBLIC_COVERAGE_RADIUS_KM` (200 km desde Puebla) y la base opera
+      en todo México (`vicino_cobertura` 'operacion' = `pais`, leído en prod).
+- [x] `cdc6f96`: los tres buscadores siguen la regla de la base
+      (`lib/geo/cobertura-regla.ts` + `cobertura.ts`); en `radio` miden contra
+      el centro de cobertura, como `dentro_de_cobertura()`.
+- [x] `5e14267`: la primera búsqueda de la sesión volvía vacía y sin aviso
+      (input usable a 46 ms, MapKit listo a ~820 ms): ahora espera a MapKit.
+- [x] Producción: `e2e-villahermosa.mjs` **3/3** (Villahermosa 17.988,-92.920;
+      Mérida; Monterrey), aparecen, se aplican y la cookie guarda el punto.
+- [ ] Dispositivo: MapKit/GPS/tap/arrastre/pinch en iPhone/iPad (Javier/Pedro).
+
+## Header móvil fijo (reporte de Pedro, 26-sep)
+- [x] Inicio ~20:45, cierre ~21:50. Causa: `sticky` dentro de un
+      `<div className="md:hidden">` de su misma altura; en iOS la cápsula
+      nativa (CromoNativo) se desalineaba. `209caf7`.
+- [x] Producción: `e2e-header-fijo.mjs` **3/3** (Home scroll 1200, ficha 700,
+      listado de Solicitudes: header en top 0 con sus acciones). El detalle de
+      una solicitud no se probó: el visitante no ve solicitudes abiertas.
+- [ ] iPhone: cápsula nativa, banners y safe areas en el build del candidato.
+
+## S09-A — Modo campus exclusivo (definición de Javier)
+- [x] `c337ef7`. Tres fallos: (1) Universidad + otra categoría mezclaba la
+      fila GENERAL de esa categoría → ahora intersección dentro de la
+      universidad; (2) la RLS de `seller_verification` solo deja leer la fila
+      propia, así que para un no-admin los compañeros nunca llegaban (campus
+      vacío) → se resuelven con el cliente de servicio en el módulo
+      server-only, universidad siempre de la credencial propia, solo ids;
+      (3) un fallo se veía como "sin publicaciones" → estado de error con
+      Reintentar y aviso de vacío, nunca el catálogo general.
+- [x] `e2e-campus-home.mjs` **11/11** contra staging (dos universidades,
+      vendedor general, estudiante sin compañeros, visitante). Fixtures 0.
+- [x] Producción (visitante): `/`, `/?cats=universidad`,
+      `/buscar?category=universidad` 200; aviso "universidad verificada".
+- [ ] 🟡 Capturas: en prod hay **1** credencial universitaria aprobada
+      (Anáhuac). Faltan datos dedicados aptos para difusión — decisión de
+      Pedro/Javier (sin cuentas reales ni el seed excluido).
+- [ ] Más de 20 en Home: el carrusel enlaza "Ver todo" a
+      `/buscar?category=universidad`, que pagina con el mismo ámbito.
 
 ## Reporte de Javier — chips de Home (26-sep)
 - [x] Alejandro lo corrigió en `532143f` con estado local, pero dejó
