@@ -163,7 +163,13 @@ export default async function MarketplaceLayout({
             isAdmin={isAdmin}
           />
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="md:hidden">
+            {/* El sticky va en este envoltorio y no solo en <header>: un
+                sticky se queda dentro de su padre, y este div mide lo mismo
+                que el header, asi que el header se iba con el scroll. La capa
+                nativa de iOS (CromoNativo) coloca la capsula de acciones
+                sobre la posicion de este header y no la re-mide al hacer
+                scroll: si el header no esta fijo, la capsula se desalinea. */}
+            <div className="md:hidden sticky top-0 z-40">
               <Header
                 isAdmin={isAdmin}
                 user={user ? { id: user.id } : null}

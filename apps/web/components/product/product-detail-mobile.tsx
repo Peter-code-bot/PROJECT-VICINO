@@ -57,7 +57,8 @@ export function ProductDetailMobile({
 
   return (
     <div className="flex flex-col bg-bg pb-[calc(env(safe-area-inset-bottom)+8rem)]">
-      <div className="sticky top-0 z-30 flex flex-col">
+      {/* Debajo del header movil, que es sticky (layout de marketplace). */}
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 flex flex-col md:top-0">
         <ListingStatusBanner isOwner={isOwner} estatus={product.estatus} />
         <PreviewBanner isOwner={isOwner} />
       </div>

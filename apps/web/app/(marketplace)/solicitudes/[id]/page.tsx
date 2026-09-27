@@ -152,7 +152,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
   return (
     <div className="w-full min-h-screen pb-32">
       {/* ─── Top bar ──────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] md:top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center gap-3 px-4 py-3">
           <BotonRegresar href="/?feed=solicitudes" aria-label="Volver a solicitudes" />
           <h1 className="font-heading text-base font-bold text-foreground truncate">
