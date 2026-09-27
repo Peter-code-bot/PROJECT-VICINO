@@ -351,6 +351,33 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
 - [ ] S08 completo (dataset de ventas y reseñas, oráculo del ranking, e2e de pantallas):
       sigue pendiente; plan en `docs/planes-2026-09-26/S08-dataset-auditoria.md`.
 
+## VERIF-fase7 — corrida unificada sobre master (27-sep, 14:01-14:47)
+SHA `dfb5bda` (+ el arreglo de paginación de Búsqueda); web local :3100 contra staging,
+móvil 390x844. Build 56/56.
+- Staging: verificación IA 15/15 · S04 35/35 · chips 6/6 · campus 14/14 · chat-venta 9/9 ·
+  cromo de modales 5/5 · palomita 7/7 · retorno de /vender 8/8 · favoritos 7/7 ·
+  solicitudes 9/9 · S02-A 10/10 · S05 13/13 · filtros de Búsqueda 6/6.
+- Prod (solo lectura): header 2/3 (el 3.º es «SIN DATOS»: no hay solicitudes abiertas) ·
+  Villahermosa 3/3.
+- Unitarias: vigencia de la nota de IA 13/13 · filas de campus 6/6.
+- Ojo: `next dev` en Windows se reinició 3 veces por el umbral de memoria. Campus,
+  retorno y S05 fallaron en la primera pasada por conexiones cortadas y pasaron al
+  repetirlos con el servidor limpio. Correr las suites largas con el servidor recién
+  arrancado.
+- Falta: el recorrido en iPhone/iPad (Javier y Pedro).
+
+## S06 funcional — Búsqueda (27-sep)
+- [x] **Bug arreglado**: cambiar precio, orden o ubicación NO volvía a la página 1. En la
+      página 3, un precio que deja una sola página mostraba «Página 3 de 1» con la lista
+      vacía. `updateParams` (`buscar/search-filters.tsx`) borra `page` en todo cambio de
+      filtro. Prueba: `scripts/staging/e2e-busqueda-filtros.mjs` (25 publicaciones
+      sintéticas: paginación, precio, orden y reinicio de página).
+- [ ] **Hallazgo (decisión de Javier en el rediseño S06)**: el botón «Cerca» de Búsqueda
+      pide el GPS y escribe `lat`/`lng`/`radio` en la URL, pero la página no lee esos
+      parámetros (usa la cookie de ubicación). No tiene efecto: conectarlo o quitarlo.
+- [ ] Los campos de precio empujan una URL por cada tecla (historial y renders de más).
+      Debounce o botón Aplicar: decisión del rediseño S06.
+
 ## PREVIEW-mapa — «Mapa no disponible» en la ficha (27-sep, solo lectura en prod)
 - [x] Prod sirve el código S05 de la ruta: `GET /api/products/<uuid inexistente>/location-map`
       → 404 `{"code":"not_available"}` con `private, no-store` y `nosniff`.

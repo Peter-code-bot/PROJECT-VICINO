@@ -50,6 +50,11 @@ export function SearchFilters({
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
+      // Cambiar cualquier filtro vuelve a la pagina 1 (S06). Precio, orden y
+      // ubicacion no lo hacian: en la pagina 3, un precio que deja una sola
+      // pagina mostraba «Página 3 de 1» y la lista vacia. La paginacion no pasa
+      // por aqui (son enlaces de page.tsx), asi que esto solo toca filtros.
+      if (!("page" in updates)) params.delete("page");
       for (const [key, value] of Object.entries(updates)) {
         if (value) {
           params.set(key, value);
