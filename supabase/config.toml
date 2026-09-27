@@ -58,3 +58,19 @@ verify_jwt = false
 
 [functions.send-appointment-reminders]
 verify_jwt = false
+
+# La llaman los triggers call_send_push_* vía pg_net con
+# `Bearer <vault.service_role_key>` (20260826090000), y la propia función
+# compara ese bearer en tiempo constante contra PUSH_WEBHOOK_SECRET o
+# SB_SECRET_KEY, sin fallar abierta (index.ts, "LA PUERTA"). En prod está en
+# verify_jwt = false desde la v20 (leído el 26-sep). Sin esta entrada, un
+# `supabase functions deploy send-push` la pasaba al default del CLI (true) y,
+# con llaves sb_secret (no JWT), el gateway devolvería 401 a todo push.
+[functions.send-push]
+verify_jwt = false
+
+# Esta sí la llama el usuario con su sesión: el gateway valida el JWT.
+# Explícito para que el valor de prod (true, leído el 26-sep) no dependa del
+# default del CLI.
+[functions.delete-account]
+verify_jwt = true

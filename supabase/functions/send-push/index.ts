@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
+import { construirAps, contarNoLeidos, esTokenMuerto, soltarTokenMuerto } from "./avisos.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -254,7 +255,12 @@ serve(async (req) => {
     if (!serviceAccountRaw) throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable");
 
     const serviceAccount = JSON.parse(serviceAccountRaw);
-    const token = await getGoogleAccessToken(serviceAccount);
+    // El globo con los pendientes reales se cuenta en paralelo con el token de
+    // Google; si el conteo falla, null y el globo no se toca (avisos.ts).
+    const [token, badge] = await Promise.all([
+      getGoogleAccessToken(serviceAccount),
+      contarNoLeidos(supabase, receiverId),
+    ]);
 
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
     
@@ -281,15 +287,8 @@ serve(async (req) => {
             'apns-push-type': 'alert',
           },
           payload: {
-            aps: {
-              alert: {
-                title: pushTitle,
-                body: pushBody,
-              },
-              sound: 'default',
-              badge: 1,
-              'content-available': 1,
-            },
+            // Antes badge: 1 fijo: el icono decia 1 aunque hubiera 5 pendientes.
+            aps: construirAps(pushTitle, pushBody, badge),
           },
         },
       }
@@ -305,8 +304,25 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-        const errObj = await response.json();
-        console.error("FCM Error", JSON.stringify(errObj));
+        // text() y no json(): FCM o un proxy pueden devolver HTML o nada, y
+        // un json() que revienta tapaba el error real.
+        const cuerpo = await response.text();
+        if (esTokenMuerto(response.status, cuerpo)) {
+            // El token ya no existe en FCM (app desinstalada o token rotado).
+            // Se suelta solo si sigue siendo el mismo, para que el siguiente
+            // aviso no vuelva a intentarlo. Nunca se registra el token.
+            const limpieza = await soltarTokenMuerto(supabase, receiverId, profile.fcm_token);
+            if (limpieza.ok) {
+                console.warn("send-push: token UNREGISTERED, se solto", JSON.stringify({ receiverId, filas: limpieza.filas }));
+                return new Response(JSON.stringify({ ignored: true, reason: "Token unregistered, cleared" }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 200,
+                });
+            }
+            console.error("send-push: token UNREGISTERED y no se pudo soltar", JSON.stringify({ receiverId }));
+            throw new Error("FCM unregistered, cleanup failed");
+        }
+        console.error("FCM Error", response.status, cuerpo.slice(0, 2000));
         throw new Error("FCM request failed");
     }
 
@@ -316,7 +332,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error(error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
