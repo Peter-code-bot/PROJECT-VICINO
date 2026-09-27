@@ -1,0 +1,77 @@
+# Plan S08-dataset-auditoria
+
+**Pendiente:** S08: dataset sintético y auditoría de Rankings, Mis Ventas, Mis Reseñas y Estadísticas
+
+**Fuentes en Notion:** A l.20 (S08-auditoria); B l.270-277 (PT02-S08-auditoria-vendedor); C l.386,388 (PT02-auditoria-datos-vendedor), l.389-390 (PT02-doc-S08), l.626-629 (B4-S08-S09-S10, S08); D l.655 (R11-inyeccion-datos-auditoria), l.1106-1125 (S08-dataset-auditoria-vendedor); E l.1201 (D01-casos-S08); G l.1671-1686,1778-1786 (G-datos-rankings, G-datos-panel-vendedor); H l.35 (H35-inyeccion-datos-auditoria)
+
+**Estado conciliado (26-sep ~23:30):** pendiente. fixtures.mjs solo tiene crearUsuario, crearProducto, bloquear, suspender y limpiar: no crea ventas completadas, reseñas ni rankings. /rankings lee get_ranking_hiperlocal, calculado por recompute_seller_rankings (20260526120002:241). La ficha S08 está en 'planificado'.
+
+**Qué falta:** Plan: ampliar fixtures.mjs con varios vendedores en 2 categorías; ventas completadas por RPC (iniciar_confirmacion_venta y confirmar_venta) en escenarios de 0, 3 y 30 o más, con fechas repartidas, más una pendiente y una cancelada; reseñas de 1 a 5 ligadas a ventas, respetando la RLS. Llamar a mano a recompute_seller_rankings(periodo), porque el cron está desprogramado en staging. Abrir /rankings, /seller/ventas, /seller/reviews y /seller/analytics en :3100 vacíos, con pocos y con muchos datos, y cuadrar totales, orden, paginación y permisos con SQL. Ampliar limpiar() a seller_rankings y reviews. Documentar S08 (diccionario, comandos, marcas) y D01-S08. Lo visual va a Javier; para que él lo vea hace falta un preview contra staging (TM-entorno-preview). Objetivo: 30-sep.
+
+## Objetivo
+
+Tener un dataset sintético de staging que se pueda cargar y retirar (usuarios @staging.vicino.test, títulos [FIXTURE]) con ventas reales hechas por RPC y reseñas insertadas por REST con la RLS activa. Sobre ese dataset, auditar Rankings, Mis Ventas, Mis Reseñas y Estadísticas en tres estados (vacío, pocos, muchos): cuadrar totales, orden, límites y permisos contra SQL y contra un oráculo independiente, y registrar los defectos con su reproducción. Fecha objetivo: 30-sep. No se toca producción ni la apariencia.
+
+## Pasos
+
+1. 0. Preflight de solo lectura contra staging (subcomando `preflight` de s08-dataset.mjs). Aborta si algo falla. Comprueba: que existan iniciar_confirmacion_venta, confirmar_venta y seleccionar_producto_chat (si faltan, reaplicar S04 solo en staging con reaplicar-migracion.mjs); que haya 2 o más categorías con activo=true; qué triggers tiene products_services y si alguno llena categoria_id; que ninguna función ni trigger (tgargs incluidos) de sale_confirmations, reviews, notifications o messages contenga el ref de producción, y que vault no tenga service_role_key (sale_confirmations tiene 2 triggers de push hacia la URL de producción); que no esté programado el cron de rankings; y que queden 0 usuarios del dominio del fixture.
+2. 1. Oráculo puro en scripts/staging/s08-esperado.mjs, sin E/S, con prueba escrita antes (RED). Replica la fórmula de recompute (20260526120002:50-218): PERCENT_RANK con empates, rating nulo = 3.0, tramos de respuesta, trust topado en 1000 y desempate composite > ventas > trust > computed_at. Incluye el periodo de un instante en UTC (como la base) y en CDMX (como la UI y el cron), la ventana de 30 días de analytics y los conteos esperados por pantalla: ventas ordenadas por created_at desc con tope de 50, pendientes de evaluar y reseñas visibles.
+3. 2. Ampliar scripts/staging/fixtures.mjs. crearProducto (l.77) acepta categoriaSlug, lat/lng y modo: 'app' escribe solo el texto categoria más la fila del pivote product_categories con is_primary, igual que vender/actions.ts; 'legado' fija además categoria_id. Helpers nuevos: hacerVendedor (es_vendedor=true, nombre_negocio [FIXTURE]); venderCompleta (get_or_create_chat, seleccionar_producto_chat, iniciar_confirmacion_venta y confirmar_venta con los tokens de cada parte); ventaPendiente; ventaCancelada (PATCH de status por el participante, que S04 permite); resenar (INSERT REST con el token de quien reseña); fechar, que retrocede completed_at, reviews.created_at y chats/messages.created_at por SQL como precondición; y recalcularRanking(periodo), que ejecuta select recompute_seller_rankings(...).
+4. 3. Ampliar limpiar() (l.105) en el orden que exigen las FK: notifications, reviews (antes de sale_confirmations, products_services y auth.users, porque su FK no cascada), messages, sale_confirmations, chats, favorites, user_blocks, product_categories, seller_rankings (solo de los seller_id del fixture), products_services y auth.users. Debe devolver un conteo de restos por tabla, no solo el de usuarios.
+5. 4. Escenario declarativo en scripts/staging/s08-dataset.mjs, con 'ahora' fijo y los periodos P (mes CDMX actual) y P-1. Participan 11 vendedores y 6 compradores. V0 vacío. V1 pocos: 3 completadas (2 en P y 1 en P-1), 1 pendiente y 1 cancelada; recibe 2 reseñas (5 y 3), deja 1 evaluación, tiene 1 sin evaluar, y además compra a V2 y recibe una seller_to_buyer. V2 muchos: 55 completadas en las categorías A y B repartidas en 75 días, varias con cantidad>1, una el 31-ago a las 20:00 CDMX (1-sep 02:00 UTC) y otra hoy a las 23:30 CDMX; 30 reseñas de 1 a 5, una ocultada por moderación y una con respuesta. V3-V6 competidores en A, con empates de ventas. V7 suspendido (profiles.is_hidden) con ventas. V8 con ventas pero todos sus productos pausados. V9 a unos 30 km (Tlaxcala). V10 publicado en modo 'app' (categoria_id NULL) con ventas. Subcomandos CLI: preflight, limpiar y resumen. La carga corre dentro del proceso E2E para que las contraseñas no toquen disco.
+6. 5. Recalcular P y P-1 y comparar seller_rankings con el oráculo: ventas_count, ingresos, rating_avg y composite_score (tolerancia ±0.01), más el orden de get_ranking_hiperlocal con radio de 5 km (Puebla) y de 50 km.
+7. 6. Permisos por HTTP, sin UI: un tercero lee 0 ventas ajenas; reseñar una venta ajena da 42501/403; una segunda reseña de la misma venta da 23505; reseñar una venta pendiente se rechaza. Además, anon y authenticated frente a get_ranking_hiperlocal, get_available_ranking_periods y seller_rankings, sin lat/lng/geo en ninguna respuesta. Al terminar, buscar en net._http_response del staging cualquier petición hacia producción.
+8. 7. E2E con Playwright en scripts/staging/e2e-s08-vendedor.mjs contra :3100 (dev-contra-staging.mjs), reutilizando el login con reintento previo a la hidratación de e2e-chat-venta. Recorre /seller/ventas, /seller/reviews, /seller/analytics y /seller con V0, V1 y V2. Luego /rankings: anon, con sesión y sin cookie, con cookie vicino_location de Puebla, con ?period=P-1, con un periodo sin datos y con radio de 50 km. Cuadra el DOM contra SQL y contra el oráculo, y guarda capturas a 420 y 1280 px en .staging/e2e/s08/.
+9. 8. Hipótesis a confirmar o descartar con reproducción. H1: en /seller/ventas, 'Evaluar' no sirve: el select de page.tsx:20 no trae products_services.id, así que el enlace de l.89 sale con product= vacío y /historial/review redirige a /historial. H2: los productos publicados desde la app tienen categoria_id NULL y recompute solo filtra por ps.categoria_id, así que sus vendedores nunca entran al ranking (confirmar además con un conteo de solo lectura en prod usando prodRead). H3: recompute corta el mes en UTC (l.50) mientras la UI y el cron usan CDMX, y analytics agrupa por día UTC (page.tsx:48). H4: el cron de las 09:00 UTC solo recalcula el mes en curso, así que las últimas horas del mes nunca entran en su periodo. H5: Mis Ventas trunca a 50 sin paginar y Mis Reseñas no tiene límite. H6: el rating de /seller (profiles.average_rating) mezcla los dos tipos de reseña, el del ranking solo cuenta buyer_to_seller con is_hidden=false y Mis Reseñas filtra por visible. H7: /rankings para anon. H8: un vendedor sin producto disponible en la categoría desaparece aunque tenga ventas.
+10. 9. Reproducibilidad: correr carga, auditoría y limpieza 2 veces seguidas, con los mismos totales y 0 restos por tabla. Regresión: probar-s04.mjs 35/35 y e2e-chat-venta.mjs 9/9 con el limpiar() nuevo, y pasar pnpm --filter web type-check y lint sobre los archivos tocados.
+11. 10. Triage. Si H1 se confirma, dentro del bloque solo se corrige el dato: añadir id al select de apps/web/app/seller/ventas/page.tsx, sin cambio visual, en una rama y sin desplegar. H2, H3 y H4 requieren migración o cambio de cron y pasan a pendientes para Pedro, que debe autorizarlos. Las observaciones visuales se entregan a Javier como lista con capturas; para que él vea el preview hace falta TM-entorno-preview, que va fuera de S08.
+12. 11. Documentar en docs/S08-DATASET-SINTETICO.md: diccionario de fixtures, relaciones, valores esperados por pantalla, entorno, comandos de carga y limpieza, marcas e IDs lógicos, resultados por pantalla y registro de defectos, sin credenciales y sin presentar cifras sintéticas como métricas. Actualizar la línea 82 de docs/PENDIENTES-2026-09-26.md (PT02). Dejar el texto de la fila D01-S08 y de la ficha S08 para que la sesión principal lo suba a Notion. Commit convencional en la rama test/s08-dataset-auditoria, sin push a master ni despliegue.
+
+## Archivos
+
+- C:/Users/pedro/Projects/startup-marketplace/scripts/staging/fixtures.mjs (modificar crearProducto l.77 y limpiar l.105; añadir helpers de venta, reseña, fechado y recálculo)
+- C:/Users/pedro/Projects/startup-marketplace/scripts/staging/s08-dataset.mjs (nuevo: escenario y subcomandos preflight, limpiar y resumen)
+- C:/Users/pedro/Projects/startup-marketplace/scripts/staging/s08-esperado.mjs (nuevo: oráculo puro)
+- C:/Users/pedro/Projects/startup-marketplace/scripts/test-s08-esperado.ts (nuevo: prueba unitaria con tsx)
+- C:/Users/pedro/Projects/startup-marketplace/scripts/staging/e2e-s08-vendedor.mjs (nuevo: E2E con Playwright contra :3100)
+- C:/Users/pedro/Projects/startup-marketplace/docs/S08-DATASET-SINTETICO.md (nuevo)
+- C:/Users/pedro/Projects/startup-marketplace/docs/PENDIENTES-2026-09-26.md (actualizar l.82, PT02)
+- C:/Users/pedro/Projects/startup-marketplace/apps/web/app/seller/ventas/page.tsx (solo si H1 se confirma: añadir id al select de l.20, sin cambio visual)
+- Solo lectura: apps/web/app/(marketplace)/rankings/page.tsx, apps/web/lib/rankings/queries.ts, apps/web/app/seller/reviews/page.tsx, apps/web/app/seller/analytics/page.tsx, apps/web/app/seller/page.tsx, apps/web/app/(account)/historial/review/page.tsx, supabase/migrations/20260526120002_ranking_compute_functions.sql, supabase/migrations/20260925010000_chat_producto_y_venta_atomica.sql, supabase/migrations/20260320000008_reviews.sql, apps/web/vercel.json
+
+## Pruebas
+
+- Unitaria con tsx, igual que los scripts/test-*.ts: ./node_modules/.bin/tsx scripts/test-s08-esperado.ts. Cubre la fórmula del composite (empates en PERCENT_RANK, rating nulo = 3.0, tramos de respuesta, tope de trust), el desempate, el periodo UTC frente a CDMX en el borde de mes, la ventana de 30 días y el tope de 50 ventas. Primero debe fallar (RED) y después pasar.
+- Staging por HTTP: node scripts/staging/s08-dataset.mjs preflight termina con exit 0; si detecta cualquier ruta a producción, el script aborta antes de escribir.
+- Staging SQL frente al oráculo: tras recompute_seller_rankings(P) y (P-1), cada fila de seller_rankings del fixture coincide en ventas_count, ingresos y rating_avg, y el composite_score queda dentro de ±0.01; get_ranking_hiperlocal devuelve ranks consecutivos sin V7 (suspendido), sin V8 (sin producto disponible) y sin V9 a 5 km, y con V9 a 50 km.
+- Staging, permisos: un tercero lee 0 ventas ajenas; reseñar una venta ajena da 42501; la doble reseña da 23505; reseñar una venta pendiente se rechaza; ninguna respuesta de las RPC de ranking contiene lat/lng/geo; comportamiento documentado de anon frente a authenticated.
+- E2E en node scripts/staging/e2e-s08-vendedor.mjs contra :3100. Mis Ventas: el número de tarjetas es igual a min(50, total SQL), el orden es por created_at desc, las etiquetas de estado son correctas y 'Evaluar' aparece solo en las completadas sin evaluar; al pulsarlo debe abrir el formulario (H1). Mis Reseñas: recibidas, dadas y pendientes iguales a SQL. Estadísticas: la suma de barras es igual a las completadas en los últimos 30 días y el top 5 va en orden. /seller: total_sales y rating contrastados con SQL. /rankings: estados vacío, anon, sin cookie, con cookie, P-1 y radio de 50 km.
+- Reproducibilidad: dos corridas completas seguidas dan los mismos totales y limpiar() deja 0 filas en cada tabla del fixture.
+- Regresión: node scripts/staging/probar-s04.mjs 35/35 y node scripts/staging/e2e-chat-venta.mjs 9/9 con el limpiar() ampliado; pnpm --filter web type-check sale con exit 0.
+- Solo lectura en prod, opcional, para H2: prodRead de count(*) de products_services con categoria_id NULL y de los que tienen fila en product_categories; no escribe nada.
+
+## Riesgos
+
+- Llamadas a producción desde el staging: sale_confirmations tiene 2 triggers de push con la URL de producción escrita en el código y las reseñas generan notificaciones. Un preflight que falle aborta la carga, y después se revisa net._http_response.
+- limpiar() actual dejaría residuos o fallaría por FK: reviews apunta a sale_confirmations, products_services y profiles sin cascada. Hay que borrar en orden y verificar tabla por tabla.
+- Retroceder fechas por SQL es una precondición, no lo que se prueba: se documenta así, y las ventas y reseñas siempre se crean por RPC/REST con la RLS activa.
+- El recálculo es global por periodo en staging y no escribe filas congeladas (is_frozen); se limita a los vendedores del fixture al limpiar.
+- Tokens de 1 h, y 17 logins frente a los límites de GoTrue: mantener la corrida por debajo de 1 h y reutilizar los tokens.
+- Cambio de mes: correr cerca de la medianoche CDMX o el 30-sep frente al 1-oct mueve P. Por eso 'ahora' queda fijo como parámetro.
+- El staging puede diferir de prod en triggers creados desde el Dashboard: H2 se confirma además con una lectura de solo lectura en prod.
+- Tentación de tocar la apariencia al ver las pantallas pobladas: prohibido, va a Javier.
+- Cambiar fixtures.mjs puede romper los E2E existentes: se cubre con la regresión de probar-s04 y e2e-chat-venta.
+
+## Requiere antes
+
+- El staging operativo: .staging/staging.json con claves y el token de la Management API en .env (ya los usan probar-s04 y e2e-chat-venta).
+- S04 aplicada en staging; el preflight lo comprueba y, si falta, la reaplica solo en staging.
+- dev-contra-staging.mjs levantado en :3100 y Chromium de Playwright instalado.
+- No hace falta ninguna decisión de Pedro para empezar. Sí hace falta su autorización explícita antes de cualquier migración o despliegue derivado de los hallazgos.
+- Para que Javier vea el preview en vivo: TM-entorno-preview, fuera de S08. Mientras tanto se le entregan capturas.
+
+**Responsable:** Claude implementa la carga, la auditoría y la documentación. Pedro autoriza cualquier migración o despliegue que salga de H2, H3 y H4. Javier recibe las observaciones visuales y las capturas.
+
+**Estimación:** 6 a 8 h de Claude en una jornada: preflight y oráculo 1.5 h, fixtures y escenario 2 h, recálculo, permisos y E2E 2 h, triage y documentación 1.5 h. Objetivo: 30-sep. Si H2 o H3 se confirman, su arreglo (migración) va aparte, requiere la firma de Pedro y no entra en esta estimación.
+
+**Ejecutable por Claude ahora:** sí

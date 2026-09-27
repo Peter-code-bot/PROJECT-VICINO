@@ -226,7 +226,7 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [ ] Entitlements del `.ipa` (`aps-environment=production`), badge fijo y tokens UNREGISTERED.
 
 ## PT00 — Inventario Git del equipo de Pedro (26-sep ~22:15)
-- [x] `master` = `origin/master` = `cc385bc`; sin cambios locales ni commits de hoy por subir.
+- [x] `master` = `origin/master` = `4f5577b` (26-sep 22:15); sin cambios locales ni commits de hoy por subir.
 - [x] 5 stashes históricos (1-may a 4-jul) y `security/eradicate-vercel-service-role-key`
       con 2 commits del 9-jul sin subir: respaldo histórico, se conservan, no son de hoy.
 - [ ] Mac y worktrees de Javier: fuera de esta máquina (Javier).
@@ -247,6 +247,34 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 
 ## PT10 — Posterior (no bloquea)
 - [ ] S09 Estudiantes, S10 Negocios en mapa: solo contrato, sin implementar.
+
+## Tanda 1 de la revisión del 26-sep (Claude, inicio 26-sep ~23:45, cierre 27-sep ~01:30)
+Revisión completa de pendientes y 26 planes: `docs/planes-2026-09-26/` y en Notion,
+"Revisión de pendientes". DevLog: 01_DevLogs → `2026-09-26-noche-header-villahermosa-campus-y-pendientes`.
+- [x] **FIX-cromo-modales (P0 iOS)**: el formulario + de Solicitudes, el agendador de
+      citas, el lightbox de la galería y los dos recortadores se declaran modales
+      (`data-modal-open`, `role=dialog`, `aria-modal`) y fijan el scroll con
+      `useBodyScrollLock`. `e2e-cromo-modales.mjs` **5/5** en staging. Falta iPhone.
+- [x] **FIX-S09A-mas-de-20**: pool de 150 (`lib/university-rows.ts`), filas por
+      categoría desde el pool, «Ver todo» con `subcategory` y `/buscar` que solo
+      estrecha dentro de la universidad. Unitarias 6/6; `e2e-campus-home.mjs`
+      **14/14** (con 22 viejas + 22 nuevas); chips 6/6.
+- [x] **PT07-badge-unregistered** (solo código; despliega Pedro): `send-push/avisos.ts`
+      con globo real, limpieza compare-and-set de tokens UNREGISTERED y `deno check`
+      en verde. Unitarias 7/7. Paso 0 en prod: service_role puede UPDATE `fcm_token`.
+- [x] **FIX-request-card-cero**, **H50-constantes-topes**.
+- [x] **LIMPIEZA-docs-retencion**: script de retención borrado; AGENTS.md y PROGRESS.md
+      al día; `.gitignore` bloquea `supabase/seed-*.sql` nuevos (seed con cuentas en el
+      equipo Windows de Javier); `config.toml` declara `send-push` (verify_jwt=false) y
+      `delete-account` (true).
+- [x] Ramas de la Mac (`feat/bb03-piloto-regreso`, `feat/ios-design-handoff-20260926`):
+      0 commits fuera de master; `feat/frontend-fases-f1-f5-vicino` y
+      `feat/comunidades-hiperlocales` con parche equivalente en master (`git cherry`).
+- [x] **D02 reversión de Realtime** (tanda 2, 27-sep ~01:35): faltaba
+      `docs/rollback/20260926100000_realtime_vuelve_a_publicar_sale_confirmations_rollback.sql`.
+      Probada SOLO en staging: publicada 1 → 0, repetida 0 (idempotente),
+      migración reaplicada → 1. Revertirla vuelve a romper el chat en vivo (ver cabecera).
+- Verificación: tsc 0, lint 0 errores, build 56/56.
 
 ## Fuera de código, en manos de Pedro
 - [ ] Verificación de desarrolladores de Android antes del 30-sep (confirmar `com.vicino.mx`).

@@ -1,5 +1,16 @@
 # Estado local — S05
 
+## 27-sep — Corte de Claude (sesión de Pedro): lo que ya no es cierto abajo
+
+- **La retención de producción ya no existe.** Alejandro retiró el `ignoreCommand` en `6ee06be` (26-sep, 23:26 UTC). S04 (`20260925010000`) y Realtime (`20260926100000`) se aplicaron en prod hacia las 23:45 UTC. El script `hold-production-for-s04.mjs` se borró el 27-sep. Cada push a `master` despliega, así que las líneas de abajo que dicen "producción retenida" quedan superadas.
+- En producción desde la noche del 26-sep:
+  - `209caf7`: header móvil fijo.
+  - `cdc6f96` + `5e14267`: Villahermosa y cobertura del buscador.
+  - `c337ef7`: modo campus exclusivo (intersección, compañeros visibles pese a la RLS de `seller_verification` y fallo visible).
+  - `cc385bc`: arranque en frío sin bucle y sin prefijos del token.
+- Pruebas en prod: header 3/3 y Villahermosa 3/3. Campus 11/11 en staging.
+- Revisión de todos los pendientes y 26 planes nuevos: `docs/planes-2026-09-26/`. Registro: `docs/PENDIENTES-2026-09-26.md`. DevLog: 01_DevLogs → `2026-09-26-noche-header-villahermosa-campus-y-pendientes`.
+
 ## 26-sep — Universidad para capturas (S09-A)
 
 - Implementada la definición nueva de Notion §2.4.3: ficha Universidad en Home y opción en el selector de Búsqueda, con color institucional y destino `/buscar?category=universidad`.

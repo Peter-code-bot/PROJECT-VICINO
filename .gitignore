@@ -66,3 +66,12 @@ apps/web/public/workbox-*.js.map
 
 # Estado local del proyecto de staging (claves de ESE proyecto)
 .staging/
+
+# Seeds nuevos con datos de cuentas: el repo es PUBLICO. Un seed local
+# (p. ej. supabase/seed-villahermosa-estradajr.sql, que existe sin versionar
+# en otro equipo) no puede entrar por un `git add -A`. Los seeds ya versionados
+# (seed.sql, seed-dev.sql, seed-v2.sql, seed-pedro-tech-playstore.sql) no se
+# ven afectados. Uno nuevo se agrega a proposito con `git add -f` despues de
+# revisar que no lleva correos, telefonos ni ids de cuentas reales.
+supabase/seed-*.sql
+/seed-*.sql
