@@ -176,6 +176,11 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] Producción: `e2e-header-fijo.mjs` **3/3** (Home scroll 1200, ficha 700,
       listado de Solicitudes: header en top 0 con sus acciones). El detalle de
       una solicitud no se probó: el visitante no ve solicitudes abiertas.
+- [x] Detalle de una solicitud probado en staging (27-sep 13:40,
+      `scripts/staging/e2e-solicitudes.mjs` **9/9**): con visitante y con sesión, tras
+      bajar 600 px el header queda en top 0 (56 px) y la barra de la solicitud en 56 px,
+      visible. `e2e-header-fijo.mjs` ya no da OK sin datos: en prod dice «SIN DATOS»
+      mientras no haya solicitudes abiertas en Puebla (2/3 el 27-sep, Home y ficha OK).
 - [ ] iPhone: cápsula nativa, banners y safe areas en el build del candidato.
 
 ## S09-A — Modo campus exclusivo (definición de Javier)
@@ -209,6 +214,15 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 
 ## PT06 — Regresiones S01/S03/S06/S07 (sin rediseñar)
 - [ ] Matriz de recorridos reales con roles dedicados.
+- [x] S01 «Volver» de /vender: `e2e-retorno-vender.mjs` **8/8** (27-sep, `29ba6ac`);
+      arreglado que desde Mis publicaciones mandaba a la última pantalla del marketplace.
+- [x] S01 paso 7 (filtro de categoría en Solicitudes): `e2e-solicitudes.mjs` **9/9**,
+      con el RPC `feed_nearby_requests` contando la segunda categoría.
+- [x] S03 Favoritos con roles reales: `e2e-favoritos.mjs` **7/7** (27-sep, `29ba6ac`).
+      Hallazgo (decisión Pedro/Javier): la RLS oculta la pausada al comprador, así que
+      sale «Publicación no disponible» sin título ni foto; «Pausado por el vendedor»
+      nunca se ve. Mostrarlo exige exponer título/foto de la pausada a quien la guardó
+      (RPC de solo lectura). La ficha pausada da 404 «suave» (200 con la pantalla 404).
 
 ## PT07 — iOS y notificaciones
 - [x] `feat/bb03-piloto-regreso` integrada en master por `f2a3f04` (traspaso de Javier).

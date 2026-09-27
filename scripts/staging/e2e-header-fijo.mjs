@@ -44,6 +44,9 @@ const main = async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-MX', isMobile: true, hasTouch: true });
+  // Sin la cookie de ubicacion el feed de solicitudes pinta «Activa tu
+  // ubicación» y nunca pide datos: el paso 3 no veia ninguna solicitud.
+  await ctx.addCookies([{ name: 'vicino_location', value: encodeURIComponent('19.0414,-98.2063'), url: BASE }]);
   const page = await ctx.newPage();
   try {
     await page.goto(`${BASE}/`, { timeout: 120_000 });
@@ -66,7 +69,8 @@ const main = async () => {
       await page.goto(`${BASE}/?feed=solicitudes`, { timeout: 120_000 });
       await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {});
       const sol = await page.evaluate(() => [...document.querySelectorAll('a[href^="/solicitudes/"]')].map((a) => a.getAttribute('href'))[0]);
-      if (!sol) return exigirFijo(await medir(page, 600), 0) + ' (sin solicitudes abiertas: solo el listado)';
+      // Antes esto daba OK sin probar el detalle (falso verde). Sin datos se dice.
+      if (!sol) throw new Error('SIN DATOS: no hay solicitudes abiertas visibles; el detalle no se probo');
       await page.goto(`${BASE}${sol}`, { timeout: 120_000 });
       await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {});
       const m = await medir(page, 600);
@@ -75,7 +79,9 @@ const main = async () => {
         return b ? Math.round(b.getBoundingClientRect().top) : null;
       });
       if (m.top !== 0) throw new Error(`header en top ${m.top}`);
-      if (barra !== null && m.scrollY > 0 && barra < m.alto) throw new Error(`barra en ${barra}, tapada por el header de ${m.alto}px`);
+      if (m.scrollY < 300) throw new Error(`la pagina solo bajo ${m.scrollY}px: sin scroll la barra no se prueba`);
+      if (barra === null) throw new Error('no se encontro la barra de la solicitud');
+      if (barra < m.alto) throw new Error(`barra en ${barra}, tapada por el header de ${m.alto}px`);
       return `header top ${m.top}, barra en ${barra}px (header ${m.alto}px), scroll ${m.scrollY}`;
     });
 

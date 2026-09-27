@@ -98,6 +98,30 @@ export const desbloquear = (cfg, bloqueador, bloqueado) =>
 export const suspender = (cfg, id, valor = true) =>
   sql(cfg.ref, `update public.profiles set is_hidden = ${valor} where id = ${q(id)}`);
 
+/**
+ * Solicitud de compra abierta en Puebla (pasa exigir_cobertura), con sus
+ * categorias por slug (el trigger del pivote admite hasta 3). Devuelve el id.
+ */
+export const crearSolicitud = async (cfg, compradorId, { titulo, slugs = [], descripcion = 'Solicitud sintetica de pruebas' } = {}) => {
+  const [row] = await sql(
+    cfg.ref,
+    `insert into public.purchase_requests (buyer_id, title, description, status, expires_at, ubicacion_geo)
+     values (${q(compradorId)}, ${q(`[FIXTURE] ${titulo}`)}, ${q(descripcion)}, 'open', now() + interval '48 hours',
+             ST_SetSRID(ST_MakePoint(${PUEBLA.lng}, ${PUEBLA.lat}), 4326)::geography)
+     returning id`
+  );
+  if (slugs.length > 0) {
+    const filas = await sql(
+      cfg.ref,
+      `insert into public.purchase_request_categories (request_id, categoria_id)
+       select ${q(row.id)}, c.id from public.categories c where c.slug in (${slugs.map(q).join(', ')})
+       returning categoria_id`
+    );
+    if (filas.length !== slugs.length) throw new Error(`crearSolicitud: ${filas.length}/${slugs.length} categorias (${slugs})`);
+  }
+  return row.id;
+};
+
 /** Lectura como postgres (evidencia que el cliente no puede falsear). */
 export const leer = (cfg, query) => sql(cfg.ref, query);
 
@@ -113,9 +137,17 @@ export const limpiar = async (cfg) => {
      delete from public.favorites where usuario_id in ${ids};
      delete from public.user_blocks where blocker_id in ${ids} or blocked_id in ${ids};
      delete from public.products_services where creador_id in ${ids};
+     delete from public.request_responses where seller_id in ${ids};
+     delete from public.purchase_requests where buyer_id in ${ids};
      delete from auth.users where id in ${ids};
      commit;`
   );
-  const [r] = await sql(cfg.ref, `select count(*)::int as n from auth.users where email like ${q(`%@${DOMINIO}`)}`);
-  return r.n;
+  // Usuarios del dominio + solicitudes [FIXTURE] que hayan quedado (p. ej. de
+  // un comprador que no era fixture). Sigue siendo un numero: lo leen 5 scripts.
+  const [r] = await sql(
+    cfg.ref,
+    `select (select count(*) from auth.users where email like ${q(`%@${DOMINIO}`)})
+          + (select count(*) from public.purchase_requests where title like '[FIXTURE]%') as n`
+  );
+  return Number(r.n);
 };
