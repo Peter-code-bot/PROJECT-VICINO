@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CONFIRM_WORD = "ELIMINAR";
 
-export function DeleteAccountSection() {
+/** `agrupado`: ultima fila del grupo de "Sesion" en /configuracion. */
+export function DeleteAccountSection({ agrupado = false }: { agrupado?: boolean }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -48,7 +50,7 @@ export function DeleteAccountSection() {
 
   if (confirming) {
     return (
-      <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+      <div className={cn("rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]", agrupado && "m-2")}>
         <p className="mb-1 text-sm font-semibold text-[color:var(--fg)]">
           ¿Eliminar tu cuenta permanentemente?
         </p>
@@ -107,9 +109,12 @@ export function DeleteAccountSection() {
     <button
       onClick={() => setConfirming(true)}
       aria-label="Eliminar mi cuenta"
-      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/10"
+      className={cn(
+        "flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/10",
+        !agrupado && "rounded-xl bg-[color:var(--sidebar-bg)]",
+      )}
     >
-      <Trash2 className="h-4 w-4" />
+      <Trash2 className="h-4 w-4 shrink-0" />
       Eliminar mi cuenta
     </button>
   );

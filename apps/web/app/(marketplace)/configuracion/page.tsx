@@ -53,18 +53,17 @@ export default async function ConfiguracionPage() {
         </div>
       </section>
 
+      {/* Cerrar sesion y eliminar cuenta, juntas en el mismo grupo que
+          "Cuenta" (pedido de Pedro, 27-sep): antes eran dos botones sueltos.
+          Cada confirmacion se abre dentro del grupo. */}
       <section className="space-y-2">
         <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-[color:var(--fg-dim)]">
           Sesión
         </h2>
-        <LogoutSection />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-[color:var(--danger)]">
-          Zona peligrosa
-        </h2>
-        <DeleteAccountSection />
+        <div className="overflow-hidden rounded-2xl bg-[color:var(--sidebar-bg)]">
+          <LogoutSection agrupado />
+          <DeleteAccountSection agrupado />
+        </div>
       </section>
     </div>
   );

@@ -4,8 +4,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useLogout } from "@/hooks/use-logout";
 import { LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function LogoutSection() {
+/**
+ * `agrupado`: fila dentro del grupo de "Sesion" de /configuracion (mismo
+ * estilo que las filas de "Cuenta", con divisor abajo) en vez de boton suelto.
+ */
+export function LogoutSection({ agrupado = false }: { agrupado?: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const logout = useLogout();
@@ -21,7 +26,7 @@ export function LogoutSection() {
 
   if (confirming) {
     return (
-      <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+      <div className={cn("rounded-xl bg-[rgba(255,59,48,0.08)] p-4 shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]", agrupado && "m-2")}>
         <p className="mb-1 text-sm font-semibold text-[color:var(--fg)]">
           ¿Cerrar sesión?
         </p>
@@ -54,9 +59,12 @@ export function LogoutSection() {
     <button
       onClick={() => setConfirming(true)}
       aria-label="Cerrar sesión"
-      className="flex w-full items-center gap-3 rounded-xl bg-[color:var(--sidebar-bg)] px-4 py-3 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/10"
+      className={cn(
+        "flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[color:var(--danger)]/10",
+        agrupado ? "shadow-[inset_0_-1px_0_0_var(--border)]" : "rounded-xl bg-[color:var(--sidebar-bg)]",
+      )}
     >
-      <LogOut className="h-4 w-4" />
+      <LogOut className="h-4 w-4 shrink-0" />
       Cerrar sesión
     </button>
   );
