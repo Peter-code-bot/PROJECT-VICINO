@@ -1684,14 +1684,13 @@ export type Database = {
         Row: {
           buyer_confirmed: boolean | null
           buyer_confirmed_at: string | null
-          clave_idempotencia: string | null
-          producto_revision: number | null
           buyer_id: string
           cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           cantidad: number
           chat_id: string | null
+          clave_idempotencia: string | null
           completed_at: string | null
           created_at: string | null
           id: string
@@ -1700,6 +1699,7 @@ export type Database = {
           notas: string | null
           precio_acordado: number
           product_id: string
+          producto_revision: number | null
           seller_confirmed: boolean | null
           seller_confirmed_at: string | null
           seller_id: string
@@ -1710,14 +1710,13 @@ export type Database = {
         Insert: {
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
-          clave_idempotencia?: string | null
-          producto_revision?: number | null
           buyer_id: string
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           cantidad?: number
           chat_id?: string | null
+          clave_idempotencia?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -1726,6 +1725,7 @@ export type Database = {
           notas?: string | null
           precio_acordado: number
           product_id: string
+          producto_revision?: number | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id: string
@@ -1736,14 +1736,13 @@ export type Database = {
         Update: {
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
-          clave_idempotencia?: string | null
-          producto_revision?: number | null
           buyer_id?: string
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           cantidad?: number
           chat_id?: string | null
+          clave_idempotencia?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -1752,6 +1751,7 @@ export type Database = {
           notas?: string | null
           precio_acordado?: number
           product_id?: string
+          producto_revision?: number | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id?: string
@@ -2354,18 +2354,6 @@ export type Database = {
       }
     }
     Functions: {
-      seleccionar_producto_chat: {
-        Args: { p_chat_id: string; p_producto_id: string; p_revision_esperada: number }
-        Returns: Json
-      }
-      iniciar_confirmacion_venta: {
-        Args: { p_chat_id: string; p_producto_id: string; p_revision_esperada: number; p_clave: string; p_precio: number; p_cantidad: number; p_metodo_pago?: string; p_notas?: string; p_tipo_entrega?: string }
-        Returns: Json
-      }
-      confirmar_venta: {
-        Args: { p_confirmacion_id: string }
-        Returns: Json
-      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -2715,6 +2703,7 @@ export type Database = {
       comunidades_limite: { Args: { p_clave: string }; Returns: number }
       comunidades_publicas_ids: { Args: never; Returns: string[] }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
+      confirmar_venta: { Args: { p_confirmacion_id: string }; Returns: Json }
       consumir_cuota_verificacion_ia: { Args: never; Returns: Json }
       count_nearby_vendors: {
         Args: { radius_meters?: number; user_lat: number; user_lng: number }
@@ -3139,6 +3128,20 @@ export type Database = {
       }
       hay_bloqueo_con: { Args: { p_otro: string }; Returns: boolean }
       increment_product_view: { Args: { p_id: string }; Returns: undefined }
+      iniciar_confirmacion_venta: {
+        Args: {
+          p_cantidad: number
+          p_chat_id: string
+          p_clave: string
+          p_metodo_pago?: string
+          p_notas?: string
+          p_precio: number
+          p_producto_id: string
+          p_revision_esperada: number
+          p_tipo_entrega?: string
+        }
+        Returns: Json
+      }
       iniciar_conversacion: {
         Args: {
           p_clave?: string
@@ -3389,6 +3392,14 @@ export type Database = {
           titulo: string
           ventas_count: number
         }[]
+      }
+      seleccionar_producto_chat: {
+        Args: {
+          p_chat_id: string
+          p_producto_id: string
+          p_revision_esperada: number
+        }
+        Returns: Json
       }
       set_username: { Args: { p_username: string }; Returns: string }
       solicitar_union_comunidad: {
