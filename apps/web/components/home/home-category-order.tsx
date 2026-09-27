@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode, useState, useEffect, useMemo, useCallback } from "react";
+import { Fragment, type ReactNode, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, GraduationCap } from "lucide-react";
@@ -33,24 +33,31 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, recent,
     [available]
   );
 
-  const [selected, setSelected] = useState<string[]>(() => parse(params.get("cats")));
-
-  useEffect(() => {
-    setSelected(parse(params.get("cats")));
-  }, [params, parse]);
+  // La seleccion vive en estado local para que el toque responda al instante y
+  // se re-sincroniza cuando cambia ?cats= (volver a Home, atras/adelante). El
+  // ajuste va durante el render y no en un useEffect: un setState dentro de un
+  // efecto provoca un render en cascada (react-hooks/set-state-in-effect).
+  const cats = params.get("cats");
+  const [raw, setRaw] = useState<string | null>(cats);
+  const [prevCats, setPrevCats] = useState<string | null>(cats);
+  if (cats !== prevCats) {
+    setPrevCats(cats);
+    setRaw(cats);
+  }
+  const selected = useMemo(() => parse(raw), [parse, raw]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const universitySelected = selectedSet.has(UNIVERSITY_CATEGORY);
 
   function toggle(slug: string) {
-    setSelected(current => {
-      const next = current.includes(slug) ? current.filter(item => item !== slug) : [...current, slug];
-      const url = new URL(window.location.href);
-      if (next.length) url.searchParams.set("cats", next.join(","));
-      else url.searchParams.delete("cats");
-      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-      return next;
-    });
+    const next = selected.includes(slug) ? selected.filter(item => item !== slug) : [...selected, slug];
+    const value = next.length ? next.join(",") : null;
+    setRaw(value);
+    // replaceState se integra con useSearchParams (docs de Next, Native History API).
+    const url = new URL(window.location.href);
+    if (value) url.searchParams.set("cats", value);
+    else url.searchParams.delete("cats");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
     window.scrollTo({ top: 0, behavior: "instant" });
     void hapticSelection();
   }
