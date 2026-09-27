@@ -8,7 +8,9 @@ import {
   resolveLocationCoordinates,
   COVERAGE_RADIUS_KM,
   searchLocations,
+  limiteDeCobertura,
 } from "./location-search";
+import { COBERTURA_PAIS, reglaDesdeFila } from "./cobertura-regla";
 
 const PUEBLA_CENTER = { lat: 19.0414, lng: -98.2063 };
 const CDMX = { lat: 19.4326, lng: -99.1332 };
@@ -296,3 +298,85 @@ function fakeMapkit(places: unknown[], autocompleteResults?: unknown[]) {
     },
   };
 }
+
+// --- PT05 (26-sep): el buscador sigue a la regla de la base, no a la variable de build ---
+// Villahermosa esta a ~540 km de Puebla. La base opera en modo 'pais' desde el
+// 14-sep, pero el buscador recortaba a 200 km: se podia publicar ahi y no
+// elegirla (reporte de Javier).
+const VILLAHERMOSA = { lat: 17.9869, lng: -92.9303 };
+const villahermosaMapkit = () =>
+  fakeMapkit([], [{
+    displayLines: ["Villahermosa", "Tabasco, México"],
+    countryCode: "MX",
+    coordinate: { latitude: VILLAHERMOSA.lat, longitude: VILLAHERMOSA.lng },
+  }]);
+
+test("reglaDesdeFila: solo 'radio' con datos completos restringe; lo demas es Mexico entero", () => {
+  assert.deepEqual(reglaDesdeFila(null), COBERTURA_PAIS);
+  assert.deepEqual(reglaDesdeFila({ modo: "pais", centro_lat: 19, centro_lng: -98, radio_km: 200 }), COBERTURA_PAIS);
+  assert.deepEqual(reglaDesdeFila({ modo: "radio", centro_lat: null, centro_lng: -98, radio_km: 200 }), COBERTURA_PAIS);
+  assert.deepEqual(reglaDesdeFila({ modo: "radio", centro_lat: 19, centro_lng: -98, radio_km: 0 }), COBERTURA_PAIS);
+  assert.deepEqual(
+    reglaDesdeFila({ modo: "radio", centro_lat: 19.04, centro_lng: -98.2, radio_km: 150 }),
+    { modo: "radio", centro: { lat: 19.04, lng: -98.2 }, radioKm: 150 }
+  );
+});
+
+test("limiteDeCobertura: radio explicito > regla de la base > radio de build", () => {
+  assert.equal(limiteDeCobertura(PUEBLA_CENTER, 50, COBERTURA_PAIS).km, 50);
+  assert.equal(limiteDeCobertura(PUEBLA_CENTER, undefined, COBERTURA_PAIS).km, Number.POSITIVE_INFINITY);
+  const radio = limiteDeCobertura(PUEBLA_CENTER, undefined, { modo: "radio", centro: VILLAHERMOSA, radioKm: 100 });
+  assert.deepEqual(radio, { centro: VILLAHERMOSA, km: 100 }, "en modo radio se mide desde el centro de COBERTURA");
+  assert.equal(limiteDeCobertura(PUEBLA_CENTER).km, COVERAGE_RADIUS_KM);
+});
+
+test("Villahermosa aparece buscando desde Puebla cuando la base opera en todo Mexico", async () => {
+  const g = globalThis as unknown as { window?: unknown };
+  const previo = g.window;
+  g.window = { mapkit: villahermosaMapkit() };
+  try {
+    const r = await searchLocations("villahermosa pais", { center: PUEBLA_CENTER, cobertura: COBERTURA_PAIS });
+    assert.equal(r.results.length, 1, "con la regla 'pais' no hay recorte por distancia");
+    assert.equal(r.results[0]!.name, "Villahermosa");
+    assert.ok((r.results[0]!.distanceKm ?? 0) > 400, "la distancia mostrada sigue siendo desde el centro de busqueda");
+  } finally {
+    g.window = previo;
+  }
+});
+
+test("sin regla, el comportamiento anterior no cambia (radio de build desde el centro)", async () => {
+  const g = globalThis as unknown as { window?: unknown };
+  const previo = g.window;
+  g.window = { mapkit: villahermosaMapkit() };
+  try {
+    const r = await searchLocations("villahermosa sin regla", { center: PUEBLA_CENTER });
+    if (COVERAGE_RADIUS_KM < 540) {
+      assert.equal(r.results.length, 0);
+      assert.equal(r.outOfCoverage, true);
+    }
+  } finally {
+    g.window = previo;
+  }
+});
+
+test("modo radio de la base: se mide contra su centro, no contra el de la busqueda", async () => {
+  const g = globalThis as unknown as { window?: unknown };
+  const previo = g.window;
+  g.window = { mapkit: villahermosaMapkit() };
+  try {
+    const fuera = await searchLocations("villahermosa radio puebla", {
+      center: PUEBLA_CENTER,
+      cobertura: { modo: "radio", centro: PUEBLA_CENTER, radioKm: 200 },
+    });
+    assert.equal(fuera.results.length, 0);
+    assert.equal(fuera.reason, "fuera-de-cobertura");
+
+    const dentro = await searchLocations("villahermosa radio tabasco", {
+      center: PUEBLA_CENTER,
+      cobertura: { modo: "radio", centro: VILLAHERMOSA, radioKm: 50 },
+    });
+    assert.equal(dentro.results.length, 1, "dentro del radio de cobertura aunque se busque desde Puebla");
+  } finally {
+    g.window = previo;
+  }
+});

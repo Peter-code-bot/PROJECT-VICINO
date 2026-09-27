@@ -9,6 +9,7 @@ import {
   resolveLocationCoordinates,
   type LocationSearchResult,
 } from "@/lib/geo/location-search";
+import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { useMapKit } from "@/hooks/use-mapkit";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
@@ -43,6 +44,7 @@ export default function LocationPicker({
   initialRadius = 5,
 }: LocationPickerProps) {
   const mapkit = useMapKit();
+  const cobertura = useReglaCobertura();
   const hasInitial = initialLat !== undefined && initialLng !== undefined && Number.isFinite(initialLat) && Number.isFinite(initialLng);
   const [position, setPosition] = useState<[number, number]>(
     hasInitial ? [initialLat, initialLng] : [19.0414, -98.2063]
@@ -146,6 +148,7 @@ export default function LocationPicker({
           center: { lat: position[0], lng: position[1] },
           limit: 5,
           signal: controller.signal,
+          cobertura,
         });
 
         if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
@@ -180,7 +183,7 @@ export default function LocationPicker({
     const resolved = await resolveLocationCoordinates(s, {
       lat: position[0],
       lng: position[1],
-    });
+    }, undefined, cobertura);
     if (sequence !== searchSeqRef.current) return;
     setSearching(false);
 

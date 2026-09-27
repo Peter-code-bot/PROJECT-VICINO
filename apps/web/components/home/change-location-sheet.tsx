@@ -15,6 +15,7 @@ import {
   resolveLocationCoordinates,
   type LocationSearchResult,
 } from "@/lib/geo/location-search";
+import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
@@ -122,6 +123,7 @@ async function reverseGeocodeOnce(
 
 export function ChangeLocationSheet({ open, onClose }: Props) {
   const router = useRouter();
+  const cobertura = useReglaCobertura();
   const { state, setManualPosition } = useGeolocation();
   const activePosition =
     state.status === "success" ? state.position : null;
@@ -258,6 +260,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
             center: { lat: center.lat, lng: center.lng },
             limit: 5,
             signal: controller.signal,
+            cobertura,
           });
           if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
             setResults(data.results);
@@ -281,7 +284,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
         }
       }, 350);
     },
-    [center.lat, center.lng, cancelPending],
+    [center.lat, center.lng, cancelPending, cobertura],
   );
 
   const selectLocation = useCallback(
@@ -325,7 +328,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
       const resolved = await resolveLocationCoordinates(r, {
         lat: center.lat,
         lng: center.lng,
-      });
+      }, undefined, cobertura);
       if (!openRef.current || sequence !== searchSeqRef.current) return;
       setSearching(false);
 
@@ -358,7 +361,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
         if (openRef.current && sequence === searchSeqRef.current) setSearching(false);
       }
     },
-    [selectLocation, center.lat, center.lng, cancelPending],
+    [selectLocation, center.lat, center.lng, cancelPending, cobertura],
   );
 
   const handleUseMyLocation = useCallback(() => {

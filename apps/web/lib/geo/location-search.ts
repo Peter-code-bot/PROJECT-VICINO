@@ -23,6 +23,7 @@ export interface LocationSearchResult {
 }
 
 import type { MapKitAutocompleteResponse } from "@/hooks/use-mapkit";
+import type { ReglaCobertura } from "./cobertura-regla";
 
 export interface SearchLocationsOptions {
   center?: { lat: number; lng: number };
@@ -30,6 +31,13 @@ export interface SearchLocationsOptions {
   signal?: AbortSignal;
   /** Sobrescribe el radio de cobertura para esta busqueda (km). */
   maxDistanceKm?: number;
+  /**
+   * Regla de la base (useReglaCobertura). Con ella el recorte sigue a
+   * `vicino_cobertura` y no a la variable de build: en modo 'pais' no hay
+   * limite de distancia; en 'radio' se mide contra el centro de COBERTURA,
+   * como `dentro_de_cobertura()`, no contra el centro de la busqueda.
+   */
+  cobertura?: ReglaCobertura;
 }
 
 export interface LocationSearchOutcome {
@@ -97,6 +105,26 @@ function readCoverageRadius(): number {
 }
 
 export const COVERAGE_RADIUS_KM = readCoverageRadius();
+
+type Coordenada = { lat: number; lng: number };
+
+/**
+ * Contra que centro y con que radio se recorta una sugerencia. Un radio
+ * explicito manda (llamadas puntuales y pruebas); si no, la regla de la base;
+ * y sin ninguno de los dos, el radio de build de siempre (COVERAGE_RADIUS_KM).
+ */
+export function limiteDeCobertura(
+  centroBusqueda: Coordenada,
+  maxDistanceKm?: number,
+  cobertura?: ReglaCobertura
+): { centro: Coordenada; km: number } {
+  if (maxDistanceKm && Number.isFinite(maxDistanceKm) && maxDistanceKm > 0) {
+    return { centro: centroBusqueda, km: maxDistanceKm };
+  }
+  if (cobertura?.modo === "pais") return { centro: centroBusqueda, km: Number.POSITIVE_INFINITY };
+  if (cobertura?.modo === "radio") return { centro: cobertura.centro, km: cobertura.radioKm };
+  return { centro: centroBusqueda, km: COVERAGE_RADIUS_KM };
+}
 
 // Caché en memoria durante la sesión para términos normalizados (P1-3).
 // Acotada: sin tope, una sesion larga de tecleo la deja crecer sin freno, y sin
@@ -200,7 +228,7 @@ async function searchWithMapKit(
   query: string,
   center: { lat: number; lng: number },
   limit: number,
-  maxDistanceKm: number,
+  limite: { centro: Coordenada; km: number },
   signal?: AbortSignal
 ): Promise<LocationSearchOutcome> {
   const vacio: LocationSearchOutcome = { results: [], outOfCoverage: false };
@@ -292,7 +320,7 @@ async function searchWithMapKit(
           const countryCode = item.countryCode || (item.structuredAddress && item.structuredAddress.countryCode);
 
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            const motivo = clasificarResultado({ lat, lng, countryCode }, center, maxDistanceKm);
+            const motivo = clasificarResultado({ lat, lng, countryCode }, limite.centro, limite.km);
             if (motivo === "fuera-de-cobertura") huboFueraDeCobertura = true;
             if (motivo === "fuera-de-mexico") huboFueraDeMexico = true;
             if (motivo === "ok") {
@@ -353,7 +381,7 @@ async function searchWithMapKit(
               const lng = place.coordinate?.longitude;
               const countryCode = place.countryCode || (place.structuredAddress && place.structuredAddress.countryCode);
 
-              const motivo = clasificarResultado({ lat, lng, countryCode }, center, maxDistanceKm);
+              const motivo = clasificarResultado({ lat, lng, countryCode }, limite.centro, limite.km);
               if (motivo === "fuera-de-cobertura") huboFueraDeCobertura = true;
               if (motivo === "fuera-de-mexico") huboFueraDeMexico = true;
               if (lat !== undefined && lng !== undefined && motivo === "ok") {
@@ -401,7 +429,8 @@ async function searchWithMapKit(
 export async function resolveLocationCoordinates(
   item: LocationSearchResult,
   center?: { lat: number; lng: number },
-  maxDistanceKm: number = COVERAGE_RADIUS_KM
+  maxDistanceKm?: number,
+  cobertura?: ReglaCobertura
 ): Promise<LocationSearchResult> {
   // CONTRATO: si vuelve con needsResolution true, las coordenadas NO sirven y
   // quien llama NO debe guardarlas. Todas las salidas de fallo de aqui abajo lo
@@ -422,6 +451,7 @@ export async function resolveLocationCoordinates(
   if (!mapkit || !mapkit.Search || !mapkit.Coordinate) return fallo();
 
   const targetCenter = center || DEFAULT_CENTER;
+  const limite = limiteDeCobertura(targetCenter, maxDistanceKm, cobertura);
 
   return new Promise((resolve) => {
     try {
@@ -445,7 +475,7 @@ export async function resolveLocationCoordinates(
           const lat = place.coordinate?.latitude;
           const lng = place.coordinate?.longitude;
           const countryCode = place.countryCode || (place.structuredAddress && place.structuredAddress.countryCode);
-          const motivo = clasificarResultado({ lat, lng, countryCode }, targetCenter, maxDistanceKm);
+          const motivo = clasificarResultado({ lat, lng, countryCode }, limite.centro, limite.km);
 
           if (lat !== undefined && lng !== undefined && motivo === "ok") {
             const dist = calculateDistanceKm(targetCenter.lat, targetCenter.lng, lat, lng);
@@ -495,20 +525,17 @@ export async function searchLocations(
       ? options.center
       : DEFAULT_CENTER;
   const limit = options?.limit ?? 5;
-  const maxDistanceKm =
-    options?.maxDistanceKm && Number.isFinite(options.maxDistanceKm) && options.maxDistanceKm > 0
-      ? options.maxDistanceKm
-      : COVERAGE_RADIUS_KM;
+  const limite = limiteDeCobertura(center, options?.maxDistanceKm, options?.cobertura);
 
   // Clave de caché normalizada
-  const cacheKey = `${trimmed.toLowerCase()}|${center.lat.toFixed(3)}|${center.lng.toFixed(3)}|${limit}|${maxDistanceKm}`;
+  const cacheKey = `${trimmed.toLowerCase()}|${center.lat.toFixed(3)}|${center.lng.toFixed(3)}|${limit}|${limite.km}|${limite.centro.lat.toFixed(3)},${limite.centro.lng.toFixed(3)}`;
   const cached = sessionSearchCache.get(cacheKey);
   if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) {
     return cached.outcome;
   }
   if (cached) sessionSearchCache.delete(cacheKey);
 
-  const outcome = await searchWithMapKit(trimmed, center, limit, maxDistanceKm, options?.signal);
+  const outcome = await searchWithMapKit(trimmed, center, limit, limite, options?.signal);
 
   // Se cachea tambien el "fuera de cobertura": es una respuesta estable de Apple
   // y repetir la consulta no la va a cambiar.

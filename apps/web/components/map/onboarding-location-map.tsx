@@ -10,6 +10,7 @@ import {
   resolveLocationCoordinates,
   type LocationSearchResult,
 } from "@/lib/geo/location-search";
+import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
@@ -32,6 +33,7 @@ export default function OnboardingLocationMap({
   initialSelection,
   onSelectionChange,
 }: OnboardingLocationMapProps) {
+  const cobertura = useReglaCobertura();
   const { state } = useGeolocation();
   const initialCoords: [number, number] =
     initialSelection ? [initialSelection.lat, initialSelection.lng] : state.status === "success" && state.position
@@ -171,6 +173,7 @@ export default function OnboardingLocationMap({
           center: { lat: position[0], lng: position[1] },
           limit: 5,
           signal: controller.signal,
+          cobertura,
         });
 
         // Descartar si una consulta más reciente ya se disparó
@@ -207,7 +210,7 @@ export default function OnboardingLocationMap({
     const resolved = await resolveLocationCoordinates(s, {
       lat: position[0],
       lng: position[1],
-    });
+    }, undefined, cobertura);
     if (sequence !== searchSeqRef.current) return;
     setSearching(false);
 
