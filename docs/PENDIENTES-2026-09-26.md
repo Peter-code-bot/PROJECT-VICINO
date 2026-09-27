@@ -262,12 +262,15 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] `delete-account` desplegada **v14** el 27-sep (`5874496`, verify_jwt=true; humo 401
       sin sesión). Además la migración `20260927100000` (sin FK de `audit_log.actor_id`)
       aplicada en prod: borrar una cuenta que dejó filas en `audit_log` fallaba a medias.
-- [x] Dos 401 de pg_net el 26-sep 04:19 UTC: **no se reproducen** (27-sep 13:35, solo lectura).
+- [x] Dos 401 de pg_net el 26-sep 04:19 UTC: **no se reproducen** (27-sep 13:33, solo lectura).
       Los 6 jobs de pg_cron `succeeded` en las últimas 24 h (expire-confirmations 4,
       purge-verification 24, appointment-reminders 48, restore-spatial-ref-sys 24,
       expire-purchase-requests 96, purga_community_post_quota 1) y `net._http_response`
-      19/19 en 200. La causa de aquellos 401 no se puede rastrear: pg_net borra sus
-      respuestas a las 6 h. Vigilar con la misma consulta.
+      19/19 en 200. La causa ya estaba en `docs/AUDITORIA-push-2026-09-26.md` §3.1:
+      `notify_push()` (redefinida en Studio) llama a `send-push` SIN autorización, así
+      que cada venta o cita nueva deja un 401 de ruido. En esas 6 h no hubo ninguna,
+      por eso no aparece. Arreglo pendiente de firma (abajo, PT07): DROP de sus 2
+      triggers y de la función.
 - [ ] PT09-deriva-permisos-rest: el plan exige RECREAR el staging (costo por hora y se
       pierde su estado sintético). Necesita el OK de Pedro antes de empezar.
 - [ ] `ADMIN_SECURITY_PASSWORD` sin definir en Vercel.
@@ -323,6 +326,44 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
       Staging por la API real 15/15, unitarias 13/13, build 56/56, dos rondas de
       revisión adversarial (la segunda sin críticos).
       - [ ] Probar en el panel real con una cuenta de prueba (Pedro).
+
+## S05 cuenta sintética y S08 auditoría (27-sep)
+- [x] **S05-cuenta-sintetica**: `scripts/staging/e2e-ubicacion-publicar.mjs` **13/13** con
+      MapKit falso (`mapkit-falso.mjs`), en staging y por la UI real:
+      - publicar en Villahermosa guarda el punto dentro de cobertura, y la ficha no filtra coordenadas;
+      - editar moviendo el pin sustituye el punto (1 fila, nombre por geocodificación inversa);
+      - solicitud en Mérida con su categoría;
+      - negativos en Guatemala: aviso en la UI sin fila nueva, y REST 400 `22023`.
+      Regresión de chips 6/6. NO acredita MapKit real ni gestos en iPhone/iPad
+      (DISP-S05-mapas). Nota: el selector del mapa usa una caja aproximada de México que
+      incluye Guatemala; la regla real es la base y avisa al publicar.
+- [x] **S08 H1 (bug, arreglado)**: en Mis Ventas, «Evaluar» nunca abría la reseña del
+      comprador. El `select` no traía el id del producto, el enlace salía con `product=`
+      vacío y `/historial/review` redirigía a `/historial`. Ahora usa `product_id` de la
+      venta (`apps/web/app/seller/ventas/page.tsx`).
+- [ ] **S08 H2 (bug, arreglo listo SIN APLICAR)**: los Rankings filtran por
+      `products_services.categoria_id`, que la app nunca escribe. En prod, 8 publicaciones
+      de la app (13-20 ago) están en NULL y no tienen ventas; cada venta futura de algo
+      publicado en la app quedaría fuera del ranking. Migración `20260927140000`
+      (trigger que deriva `categoria_id` del slug, más backfill) en la rama
+      `fix/ranking-categoria-id`; staging 4/4 con ROLLBACK. **Aplicarla en prod necesita
+      el OK de Pedro.**
+- [ ] S08 completo (dataset de ventas y reseñas, oráculo del ranking, e2e de pantallas):
+      sigue pendiente; plan en `docs/planes-2026-09-26/S08-dataset-auditoria.md`.
+
+## PREVIEW-mapa — «Mapa no disponible» en la ficha (27-sep, solo lectura en prod)
+- [x] Prod sirve el código S05 de la ruta: `GET /api/products/<uuid inexistente>/location-map`
+      → 404 `{"code":"not_available"}` con `private, no-store` y `nosniff`.
+- [x] Proveedor real en prod: una publicación pública da 200 `image/png` (firma PNG) con
+      `theme=light` y `theme=dark`, `Cache-Control: private, max-age=86400`, `nosniff`, y el
+      cuerpo no contiene `apple-mapkit`, `signature` ni `teamId`. Id basura y pausada → 404
+      `not_available`.
+- [x] Datos: 42/42 publicaciones `disponible` y visibles tienen `ubicacion_geo`; ninguna
+      tiene texto de zona sin punto. Hoy no hay ficha que caiga en `location_missing`.
+- Conclusión: el reporte original es compatible con el cliente viejo (antes de S05 pintaba
+  «Mapa no disponible» ante cualquier fallo) o con un fallo pasajero. No hay bug activo.
+- [ ] Enlace y captura del caso reportado (Javier), para cerrarlo del todo.
+- [ ] Matriz en staging (dueño/ajeno/visitante, pausada, bloqueo, suspendido, ráfaga 429).
 
 ## Fuera de código, en manos de Pedro
 - [ ] Verificación de desarrolladores de Android antes del 30-sep (confirmar `com.vicino.mx`).

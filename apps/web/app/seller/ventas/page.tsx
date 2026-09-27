@@ -16,7 +16,7 @@ export default async function VentasPage() {
     .from("sale_confirmations")
     .select(
       `
-      id, precio_acordado, cantidad, status, created_at, completed_at,
+      id, product_id, precio_acordado, cantidad, status, created_at, completed_at,
       products_services(titulo),
       buyer:profiles!buyer_id(nombre)
     `
@@ -86,7 +86,10 @@ export default async function VentasPage() {
                     <span className="truncate max-w-[120px] sm:max-w-[200px]">{product?.titulo ?? "Producto"}</span>
                     {canReview && (
                       <Link
-                        href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${(product as { id?: string })?.id ?? ""}`}
+                        // product_id sale de la venta y no del embed: antes el select no
+                        // traia products_services.id, el enlace salia con product= vacio
+                        // y /historial/review redirigia a /historial (S08 H1).
+                        href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${s.product_id}`}
                         className="text-[color:var(--fg)] hover:opacity-80 underline shrink-0 font-medium"
                       >
                         Evaluar
