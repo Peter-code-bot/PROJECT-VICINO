@@ -29,8 +29,11 @@ export default async function ListingsPage() {
     <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between gap-3 min-w-0">
         <h1 className="text-xl font-bold truncate min-w-0">Mis publicaciones</h1>
+        {/* ?from= explicito: el registro del origen de /vender vive en el
+            layout de (marketplace) y /seller tiene el suyo, asi que sin esto
+            «Volver» mandaba a la ultima pantalla del marketplace (E2E-S01). */}
         <Link
-          href="/vender"
+          href="/vender?from=%2Fseller%2Flistings"
           className="shrink-0 rounded-xl bg-[#4A7970] w-10 h-10 flex items-center justify-center text-white hover:opacity-90 active:scale-95 transition-all shadow-xs"
           title="Publicar nuevo"
           aria-label="Publicar nuevo"
