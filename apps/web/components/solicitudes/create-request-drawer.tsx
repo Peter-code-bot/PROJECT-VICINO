@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import dynamic from "next/dynamic";
 
 const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
@@ -195,19 +197,20 @@ export function CreateRequestDrawer({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
     setMounted(true);
-    // Lock body scroll when drawer is open
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, []);
+  // Fija raiz y body (ver el hook): antes solo se fijaba el body, que no para
+  // el desplazamiento de la raiz, y al cerrar se borraba el overflow a ciegas.
+  useBodyScrollLock(true);
+  // Marca + Escape siempre juntos: el Atras de Android se traduce a Escape.
+  useCerrarConEscape(true, onClose);
 
   if (!mounted) return null;
 
   const visibleCategories = CATEGORIES.filter((c) => !c.hidden_in_form);
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center">
+    // El cromo nativo de iOS (CromoNativo.swift) se oculta solo con [data-modal-open="true"] o aria-modal; sin marca, la tab bar de vidrio quedaba encima (P0 26-sep).
+    <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center" data-modal-open="true">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -215,7 +218,12 @@ export function CreateRequestDrawer({
       />
 
       {/* Drawer */}
-      <div className="relative flex flex-col w-full h-[100dvh] bg-card shadow-2xl animate-slide-up rounded-none md:h-auto md:max-h-[90vh] md:max-w-lg md:rounded-3xl border-t border-border/50">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nueva solicitud"
+        className="relative flex flex-col w-full h-[100dvh] bg-card shadow-2xl animate-slide-up rounded-none md:h-auto md:max-h-[90vh] md:max-w-lg md:rounded-3xl border-t border-border/50"
+      >
         {/* Handle */}
         <div className="shrink-0 sticky top-0 z-10 bg-card rounded-none md:rounded-t-3xl pt-2 pb-3">
           <div className="mx-auto mt-2 mb-3 h-1.5 w-12 rounded-full bg-muted-foreground/30 md:hidden" />

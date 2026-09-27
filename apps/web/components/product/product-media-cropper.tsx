@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import Cropper from "react-easy-crop";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2, Crop } from "lucide-react";
 import { getCroppedProductBlob, type CropArea } from "@/lib/crop-image";
@@ -74,6 +76,10 @@ export function ProductMediaCropper({
   // Portal mount gate — avoids SSR hydration mismatch
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
   useEffect(() => setMounted(true), []);
+  useBodyScrollLock(mounted && open && !!mediaSrc);
+  // Escape (y el Atras de Android) = Cancelar, que descarta este archivo a
+  // proposito. Mientras guarda no hace nada, igual que el boton deshabilitado.
+  useCerrarConEscape(mounted && open && !!mediaSrc && !saving, onCancel);
 
   // Reset state when a new media source is presented
   useEffect(() => {
@@ -210,6 +216,10 @@ export function ProductMediaCropper({
   return createPortal(
     <div
       className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      data-modal-open="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ajustar foto o video"
       // El recorte 1:1 es obligatorio para imagen, asi que el fondo ya no es un
       // atajo: la salida es el boton Cancelar, que descarta el archivo a
       // proposito. Un toque accidental fuera no debe publicar ni borrar nada.

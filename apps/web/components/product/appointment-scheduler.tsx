@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import { createClient } from "@/lib/supabase/client";
 import { avisarCitaEnChat } from "@/app/(marketplace)/chat/actions";
 import { X, ChevronLeft, ChevronRight, Check, User } from "lucide-react";
@@ -198,11 +200,20 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
     ? new Date(selectedDate + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric" })
     : "";
 
+  // Fija el scroll (y con el, el swipe de pestana de gestures.ts) mientras
+  // esta abierto. Va antes del return temprano: es un hook.
+  useBodyScrollLock(open);
+  useCerrarConEscape(open, onClose);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose} data-modal-open="true">
+      {/* Marca de modal: sin ella el cromo nativo de iOS (CromoNativo.swift) queda encima (P0 26-sep). */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Agendar cita"
         className="bg-card w-full sm:max-w-lg rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >

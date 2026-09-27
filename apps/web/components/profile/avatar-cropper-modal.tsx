@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import Cropper from "react-easy-crop";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2 } from "lucide-react";
 import { getCroppedBlob, type CropArea } from "@/lib/crop-image";
@@ -30,6 +32,7 @@ export function AvatarCropperModal({
   // also avoids SSR hydration mismatch on the portaled subtree.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern; same shape as account-menu-drawer.tsx
   useEffect(() => setMounted(true), []);
+  useBodyScrollLock(mounted && open && !!imageSrc);
 
   const onCropComplete = useCallback((_: unknown, pixels: CropArea) => {
     setCroppedArea(pixels);
@@ -52,6 +55,8 @@ export function AvatarCropperModal({
     reset();
     onCancel();
   }
+  // Escape (y el Atras de Android) = Cancelar; mientras guarda no hace nada.
+  useCerrarConEscape(mounted && open && !!imageSrc && !saving, handleCancel);
 
   if (!mounted || !open || !imageSrc) return null;
 
@@ -59,7 +64,15 @@ export function AvatarCropperModal({
   // instead of being constrained to PageSwipeWrapper's transform ancestor
   // (introduced in Phase 6).
   return createPortal(
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={handleCancel}>
+    <div
+      className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={handleCancel}
+      // Modal: sin la marca, el cromo nativo de iOS queda encima del recorte.
+      data-modal-open="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ajusta tu foto de perfil"
+    >
       <div className="bg-card w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-6 pt-5 pb-3 border-b border-border/60">

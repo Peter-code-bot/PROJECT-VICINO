@@ -3,6 +3,8 @@
 import { VisibleVideo } from "@/components/product/visible-video";
 
 import { useState } from "react";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Play, Pencil, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -87,6 +89,8 @@ export function ProductGallery({
   const [originalSizes, setOriginalSizes] = useState<ImageSize[]>(sizes);
   const [editMode, setEditMode] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  useBodyScrollLock(lightbox !== null);
+  useCerrarConEscape(lightbox !== null, () => setLightbox(null));
   const router = useRouter();
 
   function swapImages(from: number, to: number) {
@@ -227,7 +231,15 @@ export function ProductGallery({
       )}
 
       {lightbox !== null && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+          // Visor a pantalla completa: modal, para que el cromo nativo de iOS no quede encima.
+          data-modal-open="true"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visor de fotos"
+        >
           <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setLightbox(null)}>
             <X className="w-8 h-8" />
           </button>
