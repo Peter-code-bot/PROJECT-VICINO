@@ -10,6 +10,8 @@ import { frenoEnMemoria } from "@/lib/freno-en-memoria";
 // puede exportar nada que no sea una funcion async —seria un 500 en runtime— y
 // sin exportarla no habia forma de probarla. Es lo mas delicado del flujo.
 import {
+  alarmasDelAnalisis,
+  alarmasGraves,
   decidirEstado,
   type AnalisisDocumento,
 } from "@/lib/verificacion/veredicto";
@@ -17,6 +19,8 @@ import { construirPrompt, interpretarRespuesta } from "@/lib/verificacion/analis
 import {
   esVeredictoDeEstaEntrada,
   esVeredictoReal,
+  fusionarHistoriales,
+  historialConNotaPrevia,
   versionesDeLasFotos,
   versionMasReciente,
 } from "@/lib/verificacion/vigencia-analisis";
@@ -244,7 +248,11 @@ export async function verifyDocument(
     return { success: false, error: "No reconocemos ese tipo de documento. Elige INE o credencial universitaria." };
   }
   const esUniversitaria = tipo === TIPO_UNIVERSITARIA;
-  const universidad = esUniversitaria ? (universityName?.trim() || null) : null;
+  // Espacios normalizados: "Universidad  Anahuac" y "Universidad Anahuac" son la
+  // misma entrada (y la misma universidad para el revisor).
+  const universidad = esUniversitaria
+    ? (universityName?.normalize("NFC").replace(/\s+/g, " ").trim() || null)
+    : null;
 
   if (esUniversitaria && !universidad) {
     return { success: false, error: "Selecciona tu universidad antes de subir la credencial." };
@@ -476,9 +484,9 @@ export async function verifyDocument(
   }
 
   // Si la nota guardada ya es el veredicto de exactamente esta entrada (mismas
-  // fotos, tipo y universidad), no se vuelve a llamar al modelo: no aporta nada,
-  // cuesta dinero y permitiria repetir hasta que el modelo, que no es
-  // determinista, conteste algo menos malo y tape un veredicto negativo.
+  // fotos, tipo y universidad), no se vuelve a llamar al modelo: no aporta nada
+  // y cuesta dinero. No es la defensa contra «repetir hasta que salga mejor»:
+  // esa es el historial de veredictos que se guarda mas abajo.
   if (esVeredictoDeEstaEntrada(fila.ai_analysis_raw, fila.ai_analizado_en, analizadoEn, { tipo, universidad })) {
     return { success: true, status: fila.status ?? "pending", fallback: false };
   }
@@ -529,6 +537,44 @@ export async function verifyDocument(
   if (!selfieUrl || !frenteUrl || !reversoUrl) {
     return { success: false, error: "No pudimos preparar tus imágenes. Inténtalo de nuevo." };
   }
+
+  // HISTORIAL POR VENDEDOR, NO POR FILA. El vendedor controla que filas tiene:
+  // puede poner la suya en status NULL (su policy lo admite) o abrir otra, y
+  // verifyDocument solo lee la mas reciente. Sin esto, dos llamadas REST
+  // dejaban una fila limpia y el veredicto negativo fuera de la vista del
+  // revisor. Se lee con el cliente de servicio (el vendedor no puede ocultar
+  // filas) y ANTES de la llamada de pago: si la lectura falla, no se gasta
+  // cuota ni se escribe una nota sin historial.
+  //
+  // Solo filas con nota (el vendedor puede crear filas vacias en bucle, pero no
+  // escribir ai_analysis_raw): asi no inundan la ventana. Tope explicito; cada
+  // nota arrastra su propio historial, y si la ventana llega llena se avisa.
+  const LIMITE_OTRAS_FILAS = 200;
+  const { data: otrasFilas, error: errorOtras } = await createAdminClient()
+    .from("seller_verification")
+    .select("ai_analysis_raw, ai_analizado_en")
+    .eq("user_id", userId)
+    .neq("id", fila.id)
+    .not("ai_analysis_raw", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(LIMITE_OTRAS_FILAS);
+  if (errorOtras) {
+    Sentry.captureException(errorOtras, {
+      tags: { action: "verifyDocument", paso: "historial_otras_filas" },
+      extra: { code: errorOtras.code },
+    });
+    return {
+      success: false,
+      error: "No pudimos preparar la revisión. Inténtalo en unos minutos.",
+    };
+  }
+  if ((otrasFilas?.length ?? 0) >= LIMITE_OTRAS_FILAS) {
+    Sentry.captureMessage("verifyDocument: la ventana del historial llego llena", {
+      level: "warning",
+      tags: { action: "verifyDocument", paso: "historial_otras_filas" },
+    });
+  }
+  const historialDeOtrasFilas = (otrasFilas ?? []).map((f) => historialConNotaPrevia(f.ai_analysis_raw, f.ai_analizado_en));
 
   // LA CUOTA DE PAGO, y por fin pegada de verdad al gasto.
   //
@@ -655,6 +701,12 @@ export async function verifyDocument(
   }
 
   const admin = createAdminClient();
+
+  const anteriores = fusionarHistoriales([
+    historialConNotaPrevia(fila.ai_analysis_raw, fila.ai_analizado_en),
+    ...historialDeOtrasFilas,
+  ]);
+
   const { data: updated, error: dbError } = await admin
     .from("seller_verification")
     .update({
@@ -674,11 +726,31 @@ export async function verifyDocument(
       // extraido de ellas. Se guarda la longitud, que es lo unico que sirve
       // para diagnosticar «contesto pero no se pudo interpretar».
       // Con la entrada que vio el modelo, para no volver a analizar lo mismo
-      // (esVeredictoDeEstaEntrada, arriba).
-      ai_analysis_raw: analisis ? { ...analisis, entrada: { tipo, universidad } } : {
-        motivo_rechazo_o_duda: motivoDelFallo,
-        respuesta_longitud: textoRespuesta.length,
-      },
+      // (esVeredictoDeEstaEntrada, arriba), y con el HISTORIAL de veredictos no
+      // aprobatorios anteriores: la nota nueva reemplaza a la vieja, y sin esto
+      // repetir el analisis (resubir la misma foto, alternar la universidad)
+      // tapaba un veredicto negativo sin rastro. El panel los ensena.
+      // `decision` es lo que decidio el servidor: un «aprobar» del modelo que
+      // decidirEstado convirtio en rechazo tiene que seguir contando como
+      // negativo en el historial.
+      // `aprobable`/`alarmas`: con la aprobacion automatica apagada todo
+      // «aprobar» queda en 'pending'; esto dice si de verdad cuadraba y, si no,
+      // que fallo (sin datos del documento).
+      ai_analysis_raw: analisis
+        ? {
+            ...analisis,
+            entrada: { tipo, universidad },
+            decision: finalStatus,
+            aprobable: decidirEstado(analisis, esUniversitaria, true) === "approved",
+            alarmas: alarmasDelAnalisis(analisis, esUniversitaria),
+            grave: alarmasGraves(analisis, esUniversitaria).length > 0,
+            anteriores,
+          }
+        : {
+            motivo_rechazo_o_duda: motivoDelFallo,
+            respuesta_longitud: textoRespuesta.length,
+            anteriores,
+          },
       // La nota vuelve a ser vigente y queda atada a la version de las fotos
       // que se descargo. Solo service_role puede escribir estas dos columnas
       // (20260927110000): ni el vendedor ni un admin pueden dar por buena una

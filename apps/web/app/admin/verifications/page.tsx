@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import * as Sentry from "@sentry/nextjs";
 import { VerificationActions } from "./verification-actions";
 import {
@@ -7,8 +7,14 @@ import {
   type DocumentoDeVerificacion,
 } from "@/components/admin/visor-de-imagenes";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Json } from "@/types/database.types";
 import {
+  anterioresDeLaNota,
+  esRechazo,
   estadoDelAnalisis,
+  fusionarHistoriales,
+  historialConNotaPrevia,
+  resumenDeLaNota,
   versionesDeLasFotos,
   type EstadoDelAnalisis,
 } from "@/lib/verificacion/vigencia-analisis";
@@ -39,12 +45,36 @@ function extractStoragePath(stored: string): string {
   return stored;
 }
 
+/**
+ * Un solo nombre de archivo directamente bajo la carpeta del vendedor: nada de
+ * "/", "%", "\\" ni "..". Las tres columnas de ruta las escribe el propio
+ * vendedor mientras su solicitud esta pendiente, y service_role se salta la RLS
+ * del bucket: sin esta lista blanca, una solicitud podia apuntar a la INE y la
+ * selfie de OTRA persona y el panel las firmaba y ensenaba (PT09, 27-sep).
+ */
+const NOMBRE_DE_DOCUMENTO = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+
+function esRutaDelVendedor(path: string, userId: string): boolean {
+  const prefijo = `${userId}/`;
+  if (!path.startsWith(prefijo)) return false;
+  const nombre = path.slice(prefijo.length);
+  return NOMBRE_DE_DOCUMENTO.test(nombre) && !nombre.includes("..");
+}
+
 async function signOrNull(
   supabase: SupabaseClient,
-  stored: string | null | undefined
+  stored: string | null | undefined,
+  userId: string,
 ): Promise<string | null> {
   if (!stored) return null;
   const path = extractStoragePath(stored);
+  if (!esRutaDelVendedor(path, userId)) {
+    Sentry.captureMessage("admin verificaciones: ruta fuera de la carpeta del vendedor", {
+      level: "warning",
+      tags: { action: "admin_firmar_documento" },
+    });
+    return null;
+  }
   const { data, error } = await supabase.storage
     .from(VERIFICATION_BUCKET)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
@@ -96,13 +126,14 @@ const ETIQUETA_NOTA: Record<Exclude<EstadoDelAnalisis, "ninguno">, string> = {
 };
 
 export default async function VerificationsPage() {
-  // Quien esta mirando: su propia solicitud no se le ofrece para resolver. La
-  // base ya lo impide (impedir_revisar_verificacion_propia_trg, 20260927110000);
-  // esto evita que el revisor pulse un boton que solo puede fallar.
-  const supabase = await createClient();
-  const {
-    data: { user: revisor },
-  } = await supabase.auth.getUser();
+  // EL ROL, ANTES DEL CLIENTE DE SERVICIO. El guard de app/admin/layout.tsx no
+  // protege esta pagina en una navegacion RSC parcial (Next renderiza solo el
+  // segmento que cambia y no vuelve a ejecutar el layout), y lo de abajo firma
+  // documentos de identidad con service_role. Ver lib/auth/require-admin-page.ts.
+  //
+  // `revisor` sirve ademas para no ofrecerle su propia solicitud: la base ya lo
+  // impide (impedir_revisar_verificacion_propia_trg, 20260927110000).
+  const { user: revisor } = await requireAdminPage();
 
   // Ya no se construye el cliente de usuario: no queda ninguna lectura que lo
   // use. Las tres firmas de URL siempre fueron con adminSupabase, y la consulta
@@ -143,7 +174,9 @@ export default async function VerificationsPage() {
   const { data: verifications, error: verificationsError } = await adminSupabase
     .from("seller_verification")
     .select("*, profiles!user_id(nombre, email, trust_level)")
-    .eq("status", "pending")
+    // NULL cuenta como pendiente, igual que en verifyDocument y en la policy:
+    // si no, poner la fila en NULL la sacaba de la cola con su nota negativa.
+    .or("status.is.null,status.eq.pending")
     .order("created_at", { ascending: true });
 
   if (verificationsError) {
@@ -155,13 +188,53 @@ export default async function VerificationsPage() {
     });
   }
 
+  // HISTORIAL DEL VENDEDOR, AL PINTAR. El vendedor controla que filas tiene:
+  // una fila que la IA dejo en 'rejected' sale de la cola, y puede abrir otra
+  // limpia que nunca pase por la IA. Fundirlo solo al escribir (verifyDocument)
+  // no basta: aqui se leen TODAS sus filas con el cliente de servicio (que el
+  // vendedor no puede filtrar) y cada tarjeta ensena sus veredictos negativos y
+  // los rechazos de un revisor. Si la lectura falla, la tarjeta lo dice.
+  type FilaDelVendedor = {
+    id: string;
+    user_id: string;
+    status: string | null;
+    ai_analysis_raw: Json | null;
+    ai_analizado_en: string | null;
+    reviewer_note: string | null;
+    reviewed_at: string | null;
+  };
+  const idsEnCola = [...new Set((verifications ?? []).map((v) => v.user_id))];
+  let filasDelVendedor: FilaDelVendedor[] = [];
+  let historialFallo = false;
+  if (idsEnCola.length > 0) {
+    // Solo filas con nota de la IA o revisadas por alguien: el vendedor puede
+    // crear filas vacias en bucle, pero no escribir ai_analysis_raw ni
+    // reviewed_at, asi que no puede inundar la ventana. Si llega llena, se
+    // trata como historial incompleto.
+    const LIMITE_HISTORIAL = 1000;
+    const { data, error } = await adminSupabase
+      .from("seller_verification")
+      .select("id, user_id, status, ai_analysis_raw, ai_analizado_en, reviewer_note, reviewed_at")
+      .in("user_id", idsEnCola)
+      .or("ai_analysis_raw.not.is.null,reviewed_at.not.is.null")
+      .order("created_at", { ascending: false })
+      .limit(LIMITE_HISTORIAL);
+    if (error || (data?.length ?? 0) >= LIMITE_HISTORIAL) {
+      historialFallo = true;
+      Sentry.captureException(error ?? new Error("historial de verificaciones truncado"), {
+        tags: { action: "admin_historial_verificaciones" },
+      });
+    }
+    filasDelVendedor = data ?? [];
+  }
+
   // Generate signed URLs in parallel for all docs across all verifications
   const verificationsWithUrls = await Promise.all(
     (verifications ?? []).map(async (v) => {
       const [selfieUrl, ineFrontUrl, ineBackUrl, versiones] = await Promise.all([
-        signOrNull(adminSupabase, v.selfie_url),
-        signOrNull(adminSupabase, v.ine_front_url),
-        signOrNull(adminSupabase, v.ine_back_url),
+        signOrNull(adminSupabase, v.selfie_url, v.user_id),
+        signOrNull(adminSupabase, v.ine_front_url, v.user_id),
+        signOrNull(adminSupabase, v.ine_back_url, v.user_id),
         v.ai_analysis_raw
           ? versionesActuales(adminSupabase, v.user_id, [v.selfie_url, v.ine_front_url, v.ine_back_url])
           : Promise.resolve([]),
@@ -172,7 +245,21 @@ export default async function VerificationsPage() {
         analizadoEn: v.ai_analizado_en,
         versiones,
       });
-      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl, analisis };
+      const otras = filasDelVendedor.filter((f) => f.user_id === v.user_id && f.id !== v.id);
+      const anteriores = fusionarHistoriales([
+        anterioresDeLaNota(v.ai_analysis_raw),
+        ...otras.map((f) => historialConNotaPrevia(f.ai_analysis_raw, f.ai_analizado_en)),
+      ]);
+      // Revisiones previas de una persona, INCLUIDA esta misma fila: tras un
+      // rechazo, el vendedor reenvia sobre la misma fila (vuelve a 'pending') y
+      // la nota del revisor se quedaba sin ensenar. reviewed_at y reviewer_note
+      // solo los escriben las RPC de revision (ni la IA ni el vendedor), y el
+      // status no se usa: el vendedor lo controla.
+      const revisionesPrevias = [v, ...otras].filter(
+        (f) => f.reviewed_at && (f.reviewer_note || f.status !== "approved"),
+      );
+      const resumen = resumenDeLaNota(v.ai_analysis_raw);
+      return { ...v, selfieUrl, ineFrontUrl, ineBackUrl, analisis, anteriores, revisionesPrevias, resumen };
     })
   );
 
@@ -251,11 +338,71 @@ export default async function VerificationsPage() {
                 {/* La nota vieja NO se esconde: un veredicto negativo de un
                     envio anterior es informacion para el revisor, y borrarla
                     era justo lo que el vendedor podia provocar con un PATCH. */}
-                {v.analisis !== "ninguno" && motivoDeRechazo(v.ai_analysis_raw) && (
-                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
-                    <span className="font-bold">🤖 {ETIQUETA_NOTA[v.analisis]}</span> {motivoDeRechazo(v.ai_analysis_raw)}
-                  </div>
+                {v.analisis !== "ninguno" && (() => {
+                  // Con un veredicto real se usa el resumen (decision del
+                  // servidor y alarmas); con el aviso de fallo del proveedor,
+                  // su motivo tal cual.
+                  // Un «aprobar» limpio tambien se dice: con la aprobacion
+                  // automatica apagada, si no, no se distinguia «todo cuadra»
+                  // de «no hay nada que decir».
+                  const texto = v.resumen
+                    ? v.resumen.motivo_rechazo_o_duda ??
+                      (v.resumen.veredicto === "aprobar" && v.resumen.aprobable === true ? "todo cuadra (propone aprobar)." : null)
+                    : motivoDeRechazo(v.ai_analysis_raw);
+                  const alarma = !v.resumen
+                    ? ""
+                    : v.resumen.decision === "rejected"
+                      ? "El servidor lo rechazó. "
+                      : v.resumen.veredicto === "aprobar" && v.resumen.aprobable === false
+                        ? "Propuso aprobar, pero no cuadra. "
+                        : "";
+                  if (!texto && !alarma) return null;
+                  return (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400">
+                      <span className="font-bold">🤖 {ETIQUETA_NOTA[v.analisis]}</span> {alarma}
+                      {texto ?? ""}
+                    </div>
+                  );
+                })()}
+
+                {historialFallo && (
+                  <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                    No se pudo cargar el historial de este vendedor. Revísalo antes de decidir.
+                  </p>
                 )}
+
+                {v.revisionesPrevias.map((f) => (
+                  <div
+                    key={f.id}
+                    className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-md p-2 text-xs text-red-800 dark:text-red-300"
+                  >
+                    <span className="font-bold">
+                      {f.id === v.id ? "Esta solicitud ya la revisó alguien" : "Revisada antes por un revisor"}
+                      {f.reviewed_at
+                        ? ` el ${new Date(f.reviewed_at).toLocaleDateString("es-MX", { timeZone: "America/Mexico_City" })}`
+                        : ""}
+                      {f.id === v.id ? "" : ` (estado actual: ${f.status ?? "pendiente"})`}:
+                    </span>{" "}
+                    {f.reviewer_note ?? "sin nota"}
+                  </div>
+                ))}
+
+                {/* Veredictos NO aprobatorios de analisis anteriores. Volver a
+                    analizar reemplaza la nota: sin esto, repetir hasta que el
+                    modelo contestara algo menos malo borraba la advertencia. Se
+                    ensenan aunque la nota actual no traiga motivo. */}
+                {v.anteriores.map((a, i) => (
+                  <div
+                    key={`${a.analizado_en ?? "sin-fecha"}-${i}`}
+                    className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-2 text-xs text-amber-800 dark:text-amber-400"
+                  >
+                    <span className="font-bold">
+                      🤖 La IA dijo en un análisis anterior ({esRechazo(a) ? "rechazo" : a.veredicto === "aprobar" ? "no cuadra" : "revisión humana"}
+                      {a.entrada?.universidad ? `, ${a.entrada.universidad}` : ""}):
+                    </span>{" "}
+                    {a.motivo_rechazo_o_duda ?? "sin motivo"}
+                  </div>
+                ))}
 
                 {/* Las miniaturas y el visor son cliente, pero la firma sigue
                     siendo del servidor: aqui solo baja la URL ya firmada, que
@@ -296,7 +443,7 @@ export default async function VerificationsPage() {
                 {revisor && v.user_id === revisor.id ? (
                   <p className="text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">Tu solicitud.</span> La tiene que
-                    revisar otro admin o moderador.
+                    revisar otro administrador.
                   </p>
                 ) : (
                   <VerificationActions id={v.id} userId={v.user_id} />
@@ -305,6 +452,12 @@ export default async function VerificationsPage() {
             );
           })}
         </div>
+      ) : verificationsError ? (
+        // Un fallo de lectura NO es una cola vacia: el check verde aqui decia
+        // «nada pendiente» justo cuando no se podia leer nada.
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          No se pudo cargar la cola de verificaciones. Recarga la página; si sigue, revisa Sentry.
+        </p>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-12 space-y-2">
           <p className="text-4xl">✅</p>

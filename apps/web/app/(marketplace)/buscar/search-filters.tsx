@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Search,
   SlidersHorizontal,
@@ -47,9 +48,21 @@ export function SearchFilters({
   const { history, addQuery, removeQuery, clearAll } = useSearchHistory();
   const showDropdown = isInputFocused && (history.length > 0 || query.trim().length > 0);
 
+  // URL PEDIDA Y AUN NO CONFIRMADA. useSearchParams devuelve la URL ya
+  // confirmada, y mientras el servidor renderiza la nueva sigue siendo la vieja:
+  // teclear un precio y tocar el orden antes de que confirme construia la URL
+  // del orden sin el precio (la lista quedaba sin filtrar con el 100 a la
+  // vista). Se parte de la pedida; se limpia al confirmar o cuando no queda
+  // navegacion en curso (una ajena, como paginar o Atras, la reemplazo).
+  const [navegando, iniciarNavegacion] = useTransition();
+  const pendienteRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!navegando || searchParams.toString() === pendienteRef.current) pendienteRef.current = null;
+  }, [navegando, searchParams]);
+
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(pendienteRef.current ?? searchParams.toString());
       // Cambiar cualquier filtro vuelve a la pagina 1 (S06). Precio, orden y
       // ubicacion no lo hacian: en la pagina 3, un precio que deja una sola
       // pagina mostraba «Página 3 de 1» y la lista vacia. La paginacion no pasa
@@ -62,10 +75,49 @@ export function SearchFilters({
           params.delete(key);
         }
       }
-      router.push(`/buscar?${params.toString()}`);
+      const qs = params.toString();
+      pendienteRef.current = qs;
+      const url = `/buscar?${qs}`;
+      // Siempre push: un replace diferido (el del precio) descartaba cualquier
+      // push que siguiera en vuelo y su entrada de historial.
+      iniciarNavegacion(() => router.push(url));
     },
     [router, searchParams]
   );
+
+  // Las esperas asincronas (temporizador del precio, respuesta del GPS) llaman
+  // siempre al updateParams MAS RECIENTE, no al que existia cuando empezaron
+  // (ese partiria de una URL vieja y perderia lo aplicado mientras tanto).
+  const updateParamsRef = useRef(updateParams);
+  useEffect(() => {
+    updateParamsRef.current = updateParams;
+  }, [updateParams]);
+  // Una respuesta del GPS que llega con el componente ya desmontado no navega.
+  const montadoRef = useRef(true);
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
+
+  // PRECIO CON ESPERA Y ACUMULADO. Antes cada tecla era una navegacion (un
+  // render de servidor y hasta una entrada de historial por digito). Se espera
+  // medio segundo sin teclear y se aplican juntos minimo y maximo: pasar de un
+  // campo al otro no cancela el primero. Una sola entrada de historial por
+  // cambio de precio.
+  const preciosPendientes = useRef<Record<string, string | undefined>>({});
+  const temporizadorPrecio = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(temporizadorPrecio.current), []);
+  function cambiarPrecio(clave: "price_min" | "price_max", valor: string) {
+    preciosPendientes.current = { ...preciosPendientes.current, [clave]: valor || undefined };
+    clearTimeout(temporizadorPrecio.current);
+    temporizadorPrecio.current = setTimeout(() => {
+      const cambios = preciosPendientes.current;
+      preciosPendientes.current = {};
+      updateParamsRef.current(cambios);
+    }, 500);
+  }
 
   function handleHistorySelect(item: string) {
     setQuery(item);
@@ -95,18 +147,28 @@ export function SearchFilters({
   }
 
   function handleGeo() {
-    if (!navigator.geolocation) return;
+    // Antes fallaba en silencio: el spinner se apagaba y no pasaba nada.
+    if (!navigator.geolocation) {
+      toast.error("No pudimos obtener tu ubicación.");
+      return;
+    }
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        updateParams({
-          lat: pos.coords.latitude.toString(),
-          lng: pos.coords.longitude.toString(),
+        setGeoLoading(false);
+        if (!montadoRef.current) return;
+        // 4 decimales (~11 m), como la tarjeta de activar ubicacion: la
+        // precision completa del GPS no aporta nada y queda en la URL.
+        updateParamsRef.current({
+          lat: pos.coords.latitude.toFixed(4),
+          lng: pos.coords.longitude.toFixed(4),
           radio: "5000",
         });
-        setGeoLoading(false);
       },
-      () => setGeoLoading(false),
+      () => {
+        setGeoLoading(false);
+        if (montadoRef.current) toast.error("No pudimos obtener tu ubicación.");
+      },
       { timeout: 8000, maximumAge: 300_000 }
     );
   }
@@ -168,9 +230,14 @@ export function SearchFilters({
           )}
           <span className="hidden sm:inline">Cerca</span>
         </button>
+        {/* En movil el texto va oculto y el icono es aria-hidden: sin aria-label
+            el lector de pantalla anunciaba solo «botón» (WCAG 4.1.2). */}
         <button
           type="button"
-          onClick={() => setShowFilters(!showFilters)}
+          aria-label="Filtros"
+          aria-expanded={showFilters}
+          aria-controls={showFilters ? "buscar-filtros" : undefined}
+          onClick={() => setShowFilters((v) => !v)}
           className="flex h-[40px] items-center gap-2 rounded-xl product-card-custom px-4 text-sm font-medium transition-colors hover:opacity-90"
         >
           <SlidersHorizontal className="h-4 w-4" />
@@ -223,7 +290,7 @@ export function SearchFilters({
 
       {/* Expanded filters */}
       {showFilters && (
-        <div className="space-y-4 rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]">
+        <div id="buscar-filtros" className="space-y-4 rounded-2xl bg-[color:var(--card)] p-4 shadow-[inset_0_0_0_1px_var(--border)]">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-[color:var(--fg)]">Filtros</span>
             <button
@@ -245,9 +312,7 @@ export function SearchFilters({
                 type="number"
                 placeholder="Mín"
                 defaultValue={initialPriceMin}
-                onChange={(e) =>
-                  updateParams({ price_min: e.target.value || undefined })
-                }
+                onChange={(e) => cambiarPrecio("price_min", e.target.value)}
                 className="w-24 rounded-md bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               />
               <span className="text-[color:var(--fg-dim)]">—</span>
@@ -255,9 +320,7 @@ export function SearchFilters({
                 type="number"
                 placeholder="Máx"
                 defaultValue={initialPriceMax}
-                onChange={(e) =>
-                  updateParams({ price_max: e.target.value || undefined })
-                }
+                onChange={(e) => cambiarPrecio("price_max", e.target.value)}
                 className="w-24 rounded-md bg-[color:var(--card-2)] px-2 py-1.5 text-xs text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand-tint-strong)]"
               />
             </div>

@@ -33,7 +33,7 @@ const CODIGO_REVISION_PROPIA = "VC403";
 function mensajeDeVeredicto(error: ErrorDeRpc, verbo: "aprobar" | "rechazar"): string {
   switch (error.code) {
     case CODIGO_REVISION_PROPIA:
-      return "No puedes aprobar ni rechazar tu propia verificación. Pídesela a otro admin o moderador.";
+      return "No puedes aprobar ni rechazar tu propia verificación. Pídesela a otro administrador: el panel es solo de administradores.";
     case "42501":
       return "Tu sesión no tiene permiso de revisión. Vuelve a entrar con tu cuenta de administrador.";
     case "P0002":

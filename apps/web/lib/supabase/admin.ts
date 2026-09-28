@@ -5,8 +5,10 @@
 // llega undefined en el navegador, asi que la clave no se filtraba, pero el
 // fallo aparecia como un 401 raro en tiempo de ejecucion en vez de senalar la
 // linea culpable. Revisado hoy (item 134): hoy ningun componente de cliente lo
-// importa, la variable no esta prefijada NEXT_PUBLIC y app/admin/layout.tsx
-// comprueba el rol contra user_roles antes de renderizar cualquier /admin/*.
+// importa y la variable no esta prefijada NEXT_PUBLIC. OJO: el guard de
+// app/admin/layout.tsx NO protege una pagina que use este cliente (una
+// navegacion RSC parcial no vuelve a ejecutar el layout): cada pagina que lo
+// cree llama antes a requireAdminPage() (lib/auth/require-admin-page.ts).
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";

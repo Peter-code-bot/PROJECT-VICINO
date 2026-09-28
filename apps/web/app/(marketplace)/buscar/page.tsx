@@ -27,6 +27,19 @@ const PAGE_SIZE = 20;
  */
 const BARRA = String.fromCharCode(92);
 
+/**
+ * lat/lng de la URL (boton «Cerca»), validados y a 4 decimales (~11 m), igual
+ * que la tarjeta de activar ubicacion. Misma regla que rankings/page.tsx.
+ */
+function latLngDeUrl(a?: string, b?: string): { lat: number; lng: number } | null {
+  if (!a || !b) return null;
+  const lat = Number.parseFloat(a);
+  const lng = Number.parseFloat(b);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4 };
+}
+
 interface Props {
   searchParams: Promise<{
     q?: string;
@@ -38,6 +51,10 @@ interface Props {
     tipo?: string;
     sort?: string;
     page?: string;
+    /** Del boton «Cerca»: ubicacion explicita, gana a la cookie mientras este en la URL. */
+    lat?: string;
+    lng?: string;
+    radio?: string;
   }>;
 }
 
@@ -95,10 +112,17 @@ export default async function SearchPage({ searchParams }: Props) {
     }
   }
 
+  // El boton «Cerca» escribe lat/lng/radio en la URL, y la pagina los ignoraba
+  // desde el merge ccb0e00 (abril): pedia el permiso de ubicacion y la lista no
+  // cambiaba. Es una accion explicita, asi que gana a la cookie mientras este en
+  // la URL; «Quitar filtro de ubicación» los borra y vuelve la de la cookie.
+  const ubicacionDeUrl = latLngDeUrl(params.lat, params.lng);
+  if (ubicacionDeUrl) userLocation = ubicacionDeUrl;
+
   // Antes: `radiusCookie ? Math.min(Math.max(parseInt(...)))` — comprobaba que
   // la cookie existiera, no que fuera un numero, asi que una corrupta daba NaN
   // y viajaba hasta el RPC.
-  const validRadius = parseRadiusCookie(radiusCookie);
+  const validRadius = parseRadiusCookie(ubicacionDeUrl ? params.radio : radiusCookie);
 
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
@@ -452,6 +476,11 @@ export default async function SearchPage({ searchParams }: Props) {
     if (params.price_min) p.set("price_min", params.price_min);
     if (params.price_max) p.set("price_max", params.price_max);
     if (params.sort) p.set("sort", params.sort);
+    if (ubicacionDeUrl) {
+      p.set("lat", ubicacionDeUrl.lat.toFixed(4));
+      p.set("lng", ubicacionDeUrl.lng.toFixed(4));
+      if (params.radio) p.set("radio", String(validRadius));
+    }
     if (page > 1) p.set("page", String(page));
     return `/buscar?${p.toString()}`;
   }
@@ -466,6 +495,7 @@ export default async function SearchPage({ searchParams }: Props) {
         initialTipo={params.tipo}
         initialPriceMin={params.price_min}
         initialPriceMax={params.price_max}
+        initialLat={ubicacionDeUrl ? ubicacionDeUrl.lat.toFixed(4) : undefined}
       />
 
       {!universityOnly && universityFailure && <CatalogQueryState failure={universityFailure} section="tu universidad" />}

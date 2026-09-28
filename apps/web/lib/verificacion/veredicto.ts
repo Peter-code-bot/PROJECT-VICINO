@@ -157,3 +157,45 @@ export function decidirEstado(
   // arreglarlo despues. Sale mas caro que esperar a una persona.
   return aprobacionAutomatica ? "approved" : "pending";
 }
+
+/**
+ * Que condiciones de `todoCuadra` fallan, en palabras para el revisor.
+ *
+ * Existe porque con la aprobacion automatica apagada TODO «aprobar» del modelo
+ * termina en 'pending', y la nota no decia si era un «todo cuadra» o un «el
+ * modelo propone aprobar pero el rostro no coincide». Mismas condiciones que
+ * decidirEstado (si cambian alla, cambian aqui). Sin datos del documento: solo
+ * el nombre de la condicion.
+ */
+export function alarmasDelAnalisis(a: AnalisisDocumento, esUniversitaria: boolean): string[] {
+  const alarmas: string[] = [];
+  if (a.confianza_porcentaje < UMBRAL_CONFIANZA) alarmas.push(`confianza baja (${a.confianza_porcentaje} %)`);
+  if (!a.es_credencial_valida) alarmas.push("documento no válido");
+  if (!a.vigente || !a.frente.vigente) alarmas.push("documento no vigente");
+  if (!a.el_nombre_coincide) alarmas.push("el nombre no coincide");
+  if (!a.frente.legible) alarmas.push("frente ilegible");
+  if (!a.frente.sellos_o_elementos_de_seguridad) alarmas.push("sin elementos de seguridad");
+  if (!a.reverso.presente || !a.reverso.legible) alarmas.push("reverso ausente o ilegible");
+  if (!a.reverso.corresponde_al_frente) alarmas.push("el reverso no corresponde al frente");
+  if (!a.selfie.rostro_detectado) alarmas.push("no se detecta rostro en la selfie");
+  else if (!a.selfie.misma_persona || a.selfie.confianza_rostro_porcentaje < UMBRAL_ROSTRO) {
+    alarmas.push(`el rostro no coincide o no es seguro (${a.selfie.confianza_rostro_porcentaje} %)`);
+  }
+  if (esUniversitaria && a.la_universidad_coincide !== true) alarmas.push("la universidad no coincide");
+  return alarmas;
+}
+
+/**
+ * Las alarmas GRAVES: las que apuntan a identidad o documento falsos, no a una
+ * foto mala. Sirven para que muchas dudas triviales (fotos borrosas) no saquen
+ * del historial una alarma grave. Sin datos del documento.
+ */
+export function alarmasGraves(a: AnalisisDocumento, esUniversitaria: boolean): string[] {
+  const graves: string[] = [];
+  if (!a.es_credencial_valida) graves.push("documento no válido");
+  if (!a.el_nombre_coincide) graves.push("el nombre no coincide");
+  if (a.selfie.rostro_detectado && !a.selfie.misma_persona) graves.push("el rostro no coincide");
+  if (!a.reverso.corresponde_al_frente) graves.push("el reverso no corresponde al frente");
+  if (esUniversitaria && a.la_universidad_coincide === false) graves.push("la universidad no coincide");
+  return graves;
+}

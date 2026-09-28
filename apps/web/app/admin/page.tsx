@@ -56,7 +56,9 @@ export default async function AdminDashboardPage() {
   const { count: pendingVerifications } = await supabase
     .from("seller_verification")
     .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
+    // NULL cuenta como pendiente, igual que en verifyDocument y en la policy:
+    // si no, poner la fila en NULL la sacaba de la cola con su nota negativa.
+    .or("status.is.null,status.eq.pending");
 
   // Open disputes
   const { count: openDisputes } = await supabase

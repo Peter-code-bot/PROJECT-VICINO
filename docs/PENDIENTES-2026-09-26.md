@@ -351,6 +351,37 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
 - [ ] S08 completo (dataset de ventas y reseñas, oráculo del ranking, e2e de pantallas):
       sigue pendiente; plan en `docs/planes-2026-09-26/S08-dataset-auditoria.md`.
 
+## Noche del 27 al 28-sep — revisión adversarial completa y arreglos (Claude)
+Workflow de 21 agentes: 3 lentes sobre el código cambiado desde el 26-sep, S08 H3-H5
+y PT09 (service_role), cada hallazgo con un verificador escéptico. Después, 3 iteraciones
+del loop CODEX sobre los arreglos.
+- [x] **CRÍTICO**: `/admin/verifications` firmaba INE y selfie con service_role
+      confiando solo en el guard del layout, que una navegación RSC parcial no ejecuta.
+      Ahora `requireAdminPage()` (404 si no eres admin o si falla la consulta) va antes
+      del cliente de servicio.
+- [x] El panel firmaba rutas ajenas: una solicitud podía apuntar a la INE de otra
+      persona. Lista blanca `<user_id>/<archivo>`.
+- [x] Nota de la IA: historial de veredictos negativos **por vendedor**. Se funde al
+      escribir y también al pintar el panel, leyendo todas sus filas con el cliente de
+      servicio. Guarda la decisión del servidor y las alarmas (`aprobable`, `grave`), con
+      cupos separados para rechazos, alarmas graves y dudas. La cola incluye `status`
+      NULL, se ven las revisiones humanas previas (también de la misma fila) y un fallo
+      de lectura se avisa en vez de mostrar «sin pendientes».
+- [x] Reseña del comprador: la página toma `product_id` de la venta (antes
+      `product=undefined` → 22P02 cuando el producto ya no era visible).
+- [x] Búsqueda: el botón «Cerca» vuelve a filtrar por `lat/lng/radio`, se mantiene al
+      paginar y avisa si falla el GPS. El precio espera 500 ms, acumula mínimo y máximo
+      y parte de la URL pedida (no se pierden filtros). «Filtros» tiene nombre accesible.
+- [x] Rankings H4: los días 1 y 2 (hora de CDMX) el cron recalcula también el mes
+      anterior, con timeout y avisos a Sentry.
+- [ ] **Base, SIN APLICAR** (el clasificador bloqueó llevar migraciones a prod): rama
+      `fix/base-pendiente-27-sep`, cinco migraciones, guía en
+      `docs/MIGRACIONES-PENDIENTES-2026-09-27.md`, PGlite 15/15. Incluye `categoria_id`
+      forjable, reseñas con columnas forjables, ingresos públicos en `seller_rankings`,
+      mes del ranking en UTC y `notify_push`. **Pedro.**
+- [ ] Sin staging ni servidor (el clasificador bloqueó `preview_start`), no se repitieron
+      las e2e en navegador de este lote: pruebas unitarias, tsc, lint y build 56/56.
+
 ## VERIF-fase7 — corrida unificada sobre master (27-sep, 14:01-14:47)
 SHA `dfb5bda` (+ el arreglo de paginación de Búsqueda); web local :3100 contra staging,
 móvil 390x844. Build 56/56.

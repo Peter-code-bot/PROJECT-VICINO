@@ -24,7 +24,11 @@ export default async function ReviewPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-  if (!params.sale || !params.type || !params.product) redirect("/historial");
+  // `product` de la URL ya no se exige ni se usa: sale de la propia venta. Con el
+  // producto pausado, agotado u oculto el embed llega nulo para el comprador y
+  // el enlace de Historial mandaba product=undefined; el INSERT moria con
+  // 22P02 y el vendedor no recibia la resena (S08, 27-sep).
+  if (!params.sale || !params.type) redirect("/historial");
 
   // `type` viaja en la URL, asi que puede traer cualquier cosa. Se resuelve
   // contra los dos valores del enum antes de consultar, para que un valor
@@ -35,7 +39,7 @@ export default async function ReviewPage({ searchParams }: Props) {
   // Verify the sale exists and is completed
   const { data: sale } = await supabase
     .from("sale_confirmations")
-    .select("id, buyer_id, seller_id, status, products_services(titulo)")
+    .select("id, buyer_id, seller_id, product_id, status, products_services(titulo)")
     .eq("id", params.sale)
     .eq("status", "completed")
     .single();
@@ -82,7 +86,7 @@ export default async function ReviewPage({ searchParams }: Props) {
       </p>
       <ReviewForm
         saleConfirmationId={params.sale}
-        productId={params.product}
+        productId={sale.product_id}
         reviewedId={reviewedId}
         reviewType={reviewType}
       />

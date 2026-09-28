@@ -19,6 +19,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  alarmasDelAnalisis,
+  alarmasGraves,
   decidirEstado,
   type AnalisisDocumento,
 } from "../apps/web/lib/verificacion/veredicto.ts";
@@ -306,4 +308,54 @@ test("una respuesta impecable se interpreta entera y aprobaria con la bandera", 
   assert.notEqual(leido, null);
   assert.ok(leido !== null);
   assert.equal(decidirEstado(leido, false, true), "approved");
+});
+
+test("alarmas: un analisis impecable no tiene ninguna y es aprobable", () => {
+  assert.deepEqual(alarmasDelAnalisis(analisisPerfecto(), false), []);
+  assert.equal(decidirEstado(analisisPerfecto(), false, true), "approved");
+});
+
+test("alarmas: «aprobar» con el rostro dudoso queda pendiente y dice por que", () => {
+  const a = analisisPerfecto();
+  a.selfie.confianza_rostro_porcentaje = 80;
+  assert.equal(decidirEstado(a, false, true), "pending");
+  assert.deepEqual(alarmasDelAnalisis(a, false), ["el rostro no coincide o no es seguro (80 %)"]);
+});
+
+test("alarmas: la lista vacia coincide con «aprobable» en cada condicion de todoCuadra", () => {
+  const variantes: Array<(a: AnalisisDocumento) => void> = [
+    (a) => { a.confianza_porcentaje = 80; },
+    (a) => { a.es_credencial_valida = false; a.confianza_porcentaje = 60; },
+    (a) => { a.vigente = false; },
+    (a) => { a.frente.vigente = false; },
+    (a) => { a.frente.legible = false; },
+    (a) => { a.frente.sellos_o_elementos_de_seguridad = false; },
+    (a) => { a.reverso.presente = false; },
+    (a) => { a.reverso.legible = false; },
+    (a) => { a.reverso.corresponde_al_frente = false; },
+    (a) => { a.selfie.rostro_detectado = false; },
+    (a) => { a.selfie.misma_persona = false; a.selfie.confianza_rostro_porcentaje = 50; },
+  ];
+  for (const cambiar of variantes) {
+    const a = analisisPerfecto();
+    cambiar(a);
+    const aprobable = decidirEstado(a, false, true) === "approved";
+    assert.equal(alarmasDelAnalisis(a, false).length === 0, aprobable, JSON.stringify(a).slice(0, 80));
+  }
+  const u = analisisPerfecto();
+  u.la_universidad_coincide = false;
+  u.confianza_porcentaje = 60;
+  assert.equal(decidirEstado(u, true, true) === "approved", false);
+  assert.ok(alarmasDelAnalisis(u, true).includes("la universidad no coincide"));
+});
+
+test("alarmas graves: identidad o documento, no una foto mala", () => {
+  assert.deepEqual(alarmasGraves(analisisPerfecto(), false), []);
+  const borrosa = analisisPerfecto();
+  borrosa.frente.legible = false;
+  borrosa.confianza_porcentaje = 50;
+  assert.deepEqual(alarmasGraves(borrosa, false), []);
+  const otraCara = analisisPerfecto();
+  otraCara.selfie.misma_persona = false;
+  assert.deepEqual(alarmasGraves(otraCara, false), ["el rostro no coincide"]);
 });
