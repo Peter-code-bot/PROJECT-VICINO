@@ -1,4 +1,4 @@
-# Migraciones del 27-sep-2026 — APLICADAS en producción el 28-sep-2026 (~01:10 CDMX)
+# Migraciones del 27-sep-2026 — APLICADAS en producción el 28-sep-2026 (01:03-01:06 CDMX)
 
 > Aplicadas una por una con `scripts/apply-migration.mjs`, con autorización expresa
 > de Pedro en el chat. Ledger de prod: 184 versiones, máxima `20260927180000`.
