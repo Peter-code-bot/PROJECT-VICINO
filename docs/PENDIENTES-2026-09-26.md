@@ -366,6 +366,34 @@ móvil 390x844. Build 56/56.
   arrancado.
 - Falta: el recorrido en iPhone/iPad (Javier y Pedro).
 
+## S07, S02-B y chat por lotes (27-sep, tarde)
+- [x] **S07 Comunidades funcional**: `scripts/staging/e2e-comunidades.mjs` **21/21**
+      (conteos por SQL antes y después de cada paso):
+      - límites de nombre y descripción; cerrar con X o Escape no crea nada;
+      - fundar crea exactamente una, con el fundador como único miembro (dueño);
+      - tope de 3 («Sin cupo»), regla de 1 km y nombre repetido con error claro;
+      - cuenta suspendida no funda y los intentos fallidos no gastan cupo;
+      - un no-dueño no administra: sin enlace, `/administrar` lo saca y 12 intentos REST/RPC rechazados.
+      Frente al 16-sep: ya no hay espera de 24 h y «Archivar» ya no está.
+      `limpiar()` borra también las comunidades de fixtures (su FK queda en SET NULL).
+- [x] **S02-B matriz de acceso**: `scripts/staging/e2e-s02b-acceso.mjs` 108/109 tras el arreglo
+      (el que falla es la compilación en frío de dev; el enlace se comprobó aparte: 1,5 s). Casos: visitante
+      / sin onboarding / con onboarding / vendedor × rutas, GPS denegado con camino
+      manual, `?siguiente=` externo y preferencias de notificación que persisten).
+- [x] **Bug arreglado (S02-B)**: con el onboarding a medias, `/terminos`, `/privacidad` y
+      `/eliminar-cuenta` rebotaban a `/bienvenida`, aunque el alta de vendedor pide
+      aceptar esos textos con enlaces a ellos. El proxy pasa la ruta real en `x-vicino-ruta`
+      (siempre la sobrescribe) y el layout de `(marketplace)` exime solo esas tres
+      (`lib/navigation/rutas-legales.ts`, unitarias 2/2).
+- [x] **Menor arreglado**: «Ya fundaste N comunidades (limite maximo alcanzado).» salía sin
+      tildes (`lib/comunidades/errores.ts`).
+- [ ] Menores sin arreglar (rediseño S07 / Javier):
+      - el error «Elige el centro…» de `fundar-drawer.tsx:108` nunca se ve: sin centro, el botón solo queda deshabilitado y no dice por qué;
+      - `nombrar_moderador_comunidad` responde «Quien manda ya modera.» a un no-dueño que se nombra a sí mismo (sí lo rechaza, pero con el motivo equivocado).
+- [x] **E2E-chat-lotes**: `scripts/staging/e2e-chat-lotes.mjs` **5/5**. Sin red, 1150
+      mensajes nuevos; al volver sale «Hay mensajes pendientes de recuperar» (1050 en
+      pantalla, 10 páginas de 100); «Cargar mensajes pendientes» completa 1150/1150 sin huecos.
+
 ## S06 funcional — Búsqueda (27-sep)
 - [x] **Bug arreglado**: cambiar precio, orden o ubicación NO volvía a la página 1. En la
       página 3, un precio que deja una sola página mostraba «Página 3 de 1» con la lista

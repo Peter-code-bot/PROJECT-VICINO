@@ -79,6 +79,12 @@ const ACENTUADO_CON_NUMERO: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
     (m) => `Llegaste al límite de ${m[1]} ediciones de descripción en 24 horas.`,
   ],
   [/^Llegaste al limite de (\d+) ([a-z]+) en 24 horas\.$/, (m) => `Llegaste al límite de ${m[1]} ${m[2]} en 24 horas.`],
+  // Cupo de fundacion (20260916140000). Salia sin tildes en el boton y en el
+  // error porque faltaba aqui (hallazgo de la e2e de S07, 27-sep).
+  [
+    /^Ya fundaste (\d+) comunidades \(limite maximo alcanzado\)\.$/,
+    (m) => `Ya fundaste ${m[1]} comunidades (límite máximo alcanzado).`,
+  ],
 ];
 
 /** Devuelve la frase con tildes si es una de las nuestras; si no, la misma. */

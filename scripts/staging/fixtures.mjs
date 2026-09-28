@@ -131,6 +131,10 @@ export const limpiar = async (cfg) => {
   await sql(
     cfg.ref,
     `begin;
+     -- Comunidades: owner_id y fundador_id son ON DELETE SET NULL, asi que
+     -- borrar al usuario las dejaria huerfanas y vivas. Se borran antes; sus
+     -- miembros, solicitudes y publicaciones caen en cascada.
+     delete from public.communities where fundador_id in ${ids} or owner_id in ${ids} or nombre like '[FIXTURE]%';
      delete from public.messages where chat_id in (select id from public.chats where comprador_id in ${ids} or vendedor_id in ${ids});
      delete from public.sale_confirmations where buyer_id in ${ids} or seller_id in ${ids};
      delete from public.chats where comprador_id in ${ids} or vendedor_id in ${ids};
@@ -142,12 +146,14 @@ export const limpiar = async (cfg) => {
      delete from auth.users where id in ${ids};
      commit;`
   );
-  // Usuarios del dominio + solicitudes [FIXTURE] que hayan quedado (p. ej. de
-  // un comprador que no era fixture). Sigue siendo un numero: lo leen 5 scripts.
+  // Usuarios del dominio + solicitudes y comunidades [FIXTURE] que hayan
+  // quedado (p. ej. de un comprador que no era fixture). Sigue siendo un
+  // numero: lo leen varios scripts.
   const [r] = await sql(
     cfg.ref,
     `select (select count(*) from auth.users where email like ${q(`%@${DOMINIO}`)})
-          + (select count(*) from public.purchase_requests where title like '[FIXTURE]%') as n`
+          + (select count(*) from public.purchase_requests where title like '[FIXTURE]%')
+          + (select count(*) from public.communities where nombre like '[FIXTURE]%') as n`
   );
   return Number(r.n);
 };

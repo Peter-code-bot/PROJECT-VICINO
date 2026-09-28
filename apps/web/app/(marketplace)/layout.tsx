@@ -1,4 +1,5 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { CABECERA_RUTA, esRutaLegal } from "@/lib/navigation/rutas-legales";
 import { SessionDataProvider } from "@/components/layout/session-data-provider";
 import { NavigationPrefetch } from "@/components/layout/navigation-prefetch";
 import { Suspense } from "react";
@@ -125,7 +126,13 @@ export default async function MarketplaceLayout({
   // profile === null bundles transient query failures (allSettled), the signup
   // trigger race and genuinely missing rows -- redirecting those loops the user
   // between / and /bienvenida (completeOnboarding updates 0 rows "successfully").
-  if (user && profile && profile.has_seen_onboarding === false) {
+  //
+  // Las paginas legales quedan fuera (S02-B, 27-sep): el alta de vendedor pide
+  // aceptar Terminos y Aviso de Privacidad con enlaces a ellas, y /eliminar-cuenta
+  // es la pagina publica de baja; con el onboarding a medias las tres rebotaban
+  // a /bienvenida. La ruta la pone el proxy (updateSession), no el cliente.
+  const ruta = (await headers()).get(CABECERA_RUTA) ?? "";
+  if (user && profile && profile.has_seen_onboarding === false && !esRutaLegal(ruta)) {
     redirect("/bienvenida");
   }
 

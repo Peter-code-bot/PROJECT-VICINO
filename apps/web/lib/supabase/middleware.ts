@@ -4,11 +4,15 @@ import type { Database } from "@/types/database.types";
 import { NextResponse, type NextRequest } from "next/server";
 import { destinoAutenticadoSeguro } from "../auth/destino-seguro";
 import { usuarioOInvitado } from "../session-auth";
+import { CABECERA_RUTA } from "../navigation/rutas-legales";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
   const forwardHeaders = new Headers(request.headers);
   if (nonce) forwardHeaders.set("x-nonce", nonce);
+  // La ruta real para los layouts, que no la reciben. SIEMPRE se sobrescribe:
+  // un valor que mandara el cliente no llega nunca a los Server Components.
+  forwardHeaders.set(CABECERA_RUTA, request.nextUrl.pathname);
 
   let supabaseResponse = NextResponse.next({
     request: { headers: forwardHeaders },
