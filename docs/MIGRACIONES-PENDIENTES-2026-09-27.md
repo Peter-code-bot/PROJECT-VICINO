@@ -1,4 +1,9 @@
-# Migraciones pendientes del 27-sep-2026 (rama `fix/base-pendiente-27-sep`)
+# Migraciones del 27-sep-2026 — APLICADAS en producción el 28-sep-2026 (~01:10 CDMX)
+
+> Aplicadas una por una con `scripts/apply-migration.mjs`, con autorización expresa
+> de Pedro en el chat. Ledger de prod: 184 versiones, máxima `20260927180000`.
+> `gen-types --check` en verde. Verificación de cada una en solo lectura y humo con
+> la clave anon (abajo). Lo que sigue es la guía original, como registro.
 
 Ninguna está aplicada en producción. Todas salieron de hallazgos confirmados en
 solo lectura contra prod (revisión adversarial del 27-sep con verificación
@@ -34,3 +39,19 @@ npx tsx scripts/test-migraciones-27-sep.ts
 Las ramas `fix/ranking-categoria-id` y `fix/quitar-notify-push` quedan
 sustituidas por esta (la de ranking tenía el trigger que respetaba un
 `categoria_id` explícito).
+
+
+## Resultado en producción (28-sep-2026)
+
+| # | Verificación en prod |
+|---|---|
+| 1 | 0 publicaciones con `categoria_id` NULL; `authenticated` sin UPDATE de la columna; trigger SECURITY DEFINER activo. |
+| 2 | `notify_push` no existe; siguen `push_on_sale_pgnet`, `push-on-booking`, `push_on_message_pgnet`, `push_on_appointment_pgnet`. |
+| 3 | Sin INSERT de `respuesta`/`created_at`; con INSERT de `product_id`/`fotos`; UPDATE de `respuesta` intacto; la policy comprueba `product_id`. |
+| 4 | anon: `select=ingresos` → 42501; `select=category_id,period` → 200; `get_ranking_hiperlocal` → 200 con 10 filas cerca de Villahermosa; `/rankings` 200. |
+| 5 | La función corta el mes en `America/Mexico_City`, sin sobrecargas, EXECUTE solo `service_role`. |
+
+No hizo falta recalcular agosto: 0 ventas, reseñas y chats en la franja del 31-ago de 18:00 a
+24:00 CDMX. Septiembre lo recalcula el cron diario (09:00 UTC) con la ventana nueva.
+Nota: desde Puebla el ranking de septiembre sale vacío porque sus vendedores están a 567 km o
+más (Villahermosa); es el comportamiento hiperlocal esperado, no efecto de estas migraciones.

@@ -374,11 +374,10 @@ del loop CODEX sobre los arreglos.
       y parte de la URL pedida (no se pierden filtros). «Filtros» tiene nombre accesible.
 - [x] Rankings H4: los días 1 y 2 (hora de CDMX) el cron recalcula también el mes
       anterior, con timeout y avisos a Sentry.
-- [ ] **Base, SIN APLICAR** (el clasificador bloqueó llevar migraciones a prod): rama
-      `fix/base-pendiente-27-sep`, cinco migraciones, guía en
-      `docs/MIGRACIONES-PENDIENTES-2026-09-27.md`, PGlite 15/15. Incluye `categoria_id`
-      forjable, reseñas con columnas forjables, ingresos públicos en `seller_rankings`,
-      mes del ranking en UTC y `notify_push`. **Pedro.**
+- [x] **Base: cinco migraciones APLICADAS en prod** (28-sep ~01:10, autorización de Pedro):
+      `categoria_id` derivado del slug, fuera `notify_push`, reseñas sin columnas forjables,
+      `seller_rankings` sin ingresos públicos y mes del ranking en hora de CDMX. Ledger 184,
+      tipos en verde, humo anon correcto. Detalle en `docs/MIGRACIONES-PENDIENTES-2026-09-27.md`.
 - [ ] Sin staging ni servidor (el clasificador bloqueó `preview_start`), no se repitieron
       las e2e en navegador de este lote: pruebas unitarias, tsc, lint y build 56/56.
 
