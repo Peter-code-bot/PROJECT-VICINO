@@ -1,7 +1,7 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { useState, useRef } from "react";
+import { useState, useRef, useId, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
@@ -51,6 +51,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type Mode = "create" | "edit";
+const subscribeHydration = () => () => {};
 
 export interface CategorySelection {
   slug: string;
@@ -241,6 +242,8 @@ function filterCategoriesByTipo(
 }
 
 export function ProductForm({ userId, mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
+  const navigationId = useId();
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
@@ -760,6 +763,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       )}
 
       <form
+        data-navigation-ready={hydrated && !isEdit ? navigationId : undefined}
+        data-navigation-kind="sell"
         ref={formRef}
         action={handleSubmit}
         className="rounded-3xl product-card-custom p-6 md:p-8 space-y-6 animate-scale-in"

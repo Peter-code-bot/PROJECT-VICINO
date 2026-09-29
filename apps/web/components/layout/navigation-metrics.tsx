@@ -19,11 +19,14 @@ export function NavigationMetrics() {
     };
     let current = routeKey(new URL(location.href));
     let frame = 0;
+    let activeId = 0;
+    let activeTarget = "";
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const markers = () => [...document.querySelectorAll<HTMLElement>("[data-navigation-ready]")];
     const inspect = () => {
       frame = 0;
       if (!metrics.active()) return;
+      if (activeTarget === "/vender" && document.querySelector('[data-navigation-feedback="sell"]')) metrics.feedback(activeId);
       for (const node of markers().filter(node => node.getClientRects().length > 0)) metrics.ready(node.dataset.navigationReady!, node.dataset.navigationKind ?? "");
       if (!metrics.active()) clearTimeout(timeout);
     };
@@ -32,6 +35,8 @@ export function NavigationMetrics() {
       clearTimeout(timeout);
       const url = new URL(target, location.href);
       const id = metrics.begin(routeKey(url), current, source, markers().map(node => node.dataset.navigationReady!));
+      activeId = id;
+      activeTarget = url.pathname;
       timeout = setTimeout(() => metrics.close("timeout"), 30_000);
       return id;
     };

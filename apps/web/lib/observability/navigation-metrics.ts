@@ -1,8 +1,9 @@
-export type NavigationKind = "home" | "search" | "profile" | "chat_list" | "chat_detail" | "product" | "other";
+export type NavigationKind = "home" | "search" | "profile" | "chat_list" | "chat_detail" | "product" | "sell" | "other";
 export function navigationKind(path: string): NavigationKind {
   if (path === "/") return "home";
   if (path === "/buscar") return "search";
   if (path === "/perfil") return "profile";
+  if (path === "/vender") return "sell";
   if (path === "/chat") return "chat_list";
   if (path.startsWith("/chat/")) return "chat_detail";
   if (/^\/[^/]+\/[^/]+$/.test(path) && !/^\/(seller|admin|perfil|vendedor|vender|historial|api|solicitudes|citas)\//.test(path)) return "product";

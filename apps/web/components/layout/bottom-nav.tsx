@@ -8,6 +8,7 @@ import { useChatUnread } from "@/components/layout/chat-unread-provider";
 import { hapticLight } from "@/lib/haptics";
 import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 import { CATEGORIES } from "@vicino/shared";
+import { SellLink } from "./sell-link";
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
@@ -114,12 +115,10 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
         </div>
 
         {central && (
-          <Link
-            href={central.href}
+          <SellLink
             aria-label={central.label}
             aria-current={esActivo(central.href) ? "page" : undefined}
             id={`nav-${central.label.toLowerCase()}`}
-            onClick={() => void hapticLight()}
             className={cn(
               "liquid-nav-fab absolute left-1/2 flex h-[60px] w-[60px] -translate-x-1/2",
               "items-center justify-center rounded-full bg-brand text-white",
@@ -129,7 +128,7 @@ export function BottomNav({ isVendedor }: BottomNavProps) {
             style={{ top: "-22px" }}
           >
             <central.icon className="h-7 w-7" strokeWidth={2.5} />
-          </Link>
+          </SellLink>
         )}
       </div>
     </nav>
