@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- El autofoco hace falta declararlo APARTE. El permiso CAMERA implica las dos
+         funciones, y Play filtra por las dos: con solo la de arriba seguia excluyendo
+         a los telefonos sin camara con autofoco, y el modo de fallo es silencioso (la
+         ficha no ofrece instalar y no hay ningun error que diagnosticar). Ver
+         https://developer.android.com/guide/topics/manifest/uses-feature-element -->
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:allowBackup="true"
