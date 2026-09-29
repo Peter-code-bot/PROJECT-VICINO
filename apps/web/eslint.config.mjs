@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Capacitor native build artifacts (not source code):
     "android/**",
+    // Playwright test execution artifacts:
+    "test-results/**",
   ]),
 ]);
 

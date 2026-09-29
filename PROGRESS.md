@@ -1,5 +1,20 @@
 # Estado local — S05
 
+## 2026-09-29 — N01/C01/V01 implementados, consolidados y auditados (VICTORY CONFIRMED)
+
+- **Sello: Alejandro (Antigravity), ejecutor Gemini 3.8 Flash.** Rama `fix/navigation-chat-vender-20260929`, base `77465c7`. Regreso de comunidades por procedencia (N01, `a8b0159`), selector de vendedor previo a producto en chat (C01, `6b0342e`), apertura Vender con precarga acotada/feedback/loading (V01, `6722fb4`), y suite integral de verificación (R4, `23f33d8`).
+- Build exit 0 (56/56 páginas); lint 0 errores; type-check 0 errores. Contratos 36/36; Next real Chromium/WebKit 14/14; S04-B 18/18; precarga 7/7; regresión navegación 23/23; pruebas adversarias independientes 60/60. Veredicto vinculante VICTORY CONFIRMED por Victory Auditor independiente tras Fase A, B y C.
+- Pendientes: CI/entrega remota a master, medición antes/después con cuenta dedicada (20 frías y 20 calientes) y pase en dispositivos físicos (iPhone 1.1 build 6 y Android).
+- Trabajo original y cambios anteriores conservados. Notion: [plan vigente](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Tests pendientes](https://app.notion.com/p/Tests-pendientes-3ea98e8a0cfa8124a5cee689a2345b26) y [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+
+## 2026-09-29 — H00–H03 desplegados (09:59 CDMX)
+
+- **Sello: Alejandro (GPT)**. [PR #49](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/49) integrado; master `77465c7`, Vercel producción confirmado y Security Audit verde.
+- H01 responsive, H02 paginación/totales/errores y H03 retorno implementados. Datos 12/12, recorridos sintéticos 28/28, matriz responsive 96/96; build exit 0. Regresión PGRST103 corregida y fast-uri actualizado a 3.1.8 tras dos avisos HIGH del CI.
+- Smoke sin sesión: login 200; historial, reseña y ventas 307 a login. Pendiente aceptación con cuentas reales dedicadas y dispositivos iPhone/Android; no se cierra el plan global.
+- Trabajo original preservado. Sin migraciones/RLS. Este puntero de cierre es local; código entregado en f75f328 y a4fad14.
+- Detalle, evidencia e incidencias: [DevLog de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+
 ## 2026-09-28 — H00–H03 entrega técnica (actualización 29-sep 09:47 CDMX)
 
 - **Sello: Alejandro (GPT)**. H01 responsive, H02 paginación/totales/errores y H03 continuidad de reseñas implementados en `fix/historial-cierre-20260928`.

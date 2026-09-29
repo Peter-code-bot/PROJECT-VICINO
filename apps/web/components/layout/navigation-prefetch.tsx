@@ -11,7 +11,7 @@ const WINDOW_MS = 30_000;
 
 /** Owns tab warming for swipe, bottom nav and sidebar. This stores scheduling
  * metadata only; Next owns the actual Router Cache and its invalidation. */
-export function NavigationPrefetch({ authenticated }: { authenticated: boolean }) {
+export function NavigationPrefetch({ authenticated, isVendedor = false }: { authenticated: boolean; isVendedor?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const warmed = useRef(new Map<string, number>());
@@ -21,7 +21,8 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
     function prefetch(href: string) {
       const connection = (navigator as Navigator & { connection?: Connection }).connection;
       if (!navigator.onLine || document.visibilityState !== "visible" || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
-      if (!isTabRoute(href) || href === pathname || (!authenticated && (href === "/chat" || href === "/perfil"))) return;
+      const selling = href === "/vender" && authenticated && isVendedor;
+      if ((!isTabRoute(href) && !selling) || href === pathname || (!authenticated && (href === "/chat" || href === "/perfil"))) return;
       const now = performance.now();
       // Bound manual requests even when Next invalidates rapidly. Invalidating
       // a route permits a future intent, never starts a background retry loop.
@@ -49,7 +50,7 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
     }
     const intent = (event: Event) => {
       if (!(event.target instanceof Element)) return;
-      const link = event.target.closest<HTMLAnchorElement>("a[data-tab-prefetch][href]");
+      const link = event.target.closest<HTMLAnchorElement>("a[data-tab-prefetch][href],a[data-sell-prefetch][href]");
       if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
       const url = new URL(link.href, location.href);
       if (url.origin !== location.origin || url.search || url.hash) return;
@@ -57,6 +58,7 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
     };
     // Defer only speculative work; taps never wait for this timer.
     const timer = setTimeout(() => {
+      if (authenticated && isVendedor && !pathname.startsWith("/vender")) prefetch("/vender");
       const index = (TAB_ROUTES as readonly string[]).indexOf(pathname);
       if (index < 0) return;
       for (const neighbor of [TAB_ROUTES[index - 1], TAB_ROUTES[index + 1]]) {
@@ -65,13 +67,15 @@ export function NavigationPrefetch({ authenticated }: { authenticated: boolean }
     }, 300);
     document.addEventListener("pointerover", intent, { passive: true });
     document.addEventListener("pointerdown", intent, { passive: true });
+    document.addEventListener("click", intent, { passive: true });
     document.addEventListener("focusin", intent);
     return () => {
       clearTimeout(timer);
       document.removeEventListener("pointerover", intent);
       document.removeEventListener("pointerdown", intent);
+      document.removeEventListener("click", intent);
       document.removeEventListener("focusin", intent);
     };
-  }, [pathname, router, authenticated]);
+  }, [pathname, router, authenticated, isVendedor]);
   return null;
 }

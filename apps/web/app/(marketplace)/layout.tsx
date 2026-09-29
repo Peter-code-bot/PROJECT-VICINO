@@ -149,7 +149,7 @@ export default async function MarketplaceLayout({
             que pasarle el usuario por props desde media docena de padres. */}
         <MuroSesionProvider haySesion={!!user}>
         <div className="flex min-h-screen">
-          <NavigationPrefetch key={user?.id ?? "guest"} authenticated={!!user} />
+          <NavigationPrefetch key={user?.id ?? "guest"} authenticated={!!user} isVendedor={isVendedor} />
           <Suspense fallback={null}><NavigationMetrics key={user?.id ?? "guest"} /></Suspense>
           <Sidebar
             user={user ? { id: user.id } : null}

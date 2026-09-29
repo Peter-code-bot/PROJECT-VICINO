@@ -75,3 +75,5 @@ apps/web/public/workbox-*.js.map
 # revisar que no lleva correos, telefonos ni ids de cuentas reales.
 supabase/seed-*.sql
 /seed-*.sql
+
+.agents/

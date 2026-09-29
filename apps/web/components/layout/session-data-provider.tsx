@@ -6,6 +6,7 @@ import { SessionCache, type Snapshot } from "@/lib/session-cache";
 import { locationScopeFromDocumentCookie } from "@/lib/session-scope";
 import { consumirRestauracion } from "@/lib/navigation/restauracion-ui";
 import { guardarOrigenVender } from "@/lib/navigation/retorno-vender";
+import { installCommunityNavigation } from "@/lib/navigation/retorno-comunidad";
 
 const Context = createContext<SessionCache | null>(null);
 export function SessionDataProvider({ userId, revision, children }: { userId: string; revision: string; children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => {
+    const stopCommunityNavigation = installCommunityNavigation();
     const guardar = () => {
       if (typeof window === "undefined") return;
       const path = window.location.pathname;
@@ -47,6 +49,7 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
       window.history.pushState = origPush;
       window.history.replaceState = origReplace;
       window.removeEventListener("popstate", guardar);
+      stopCommunityNavigation();
     };
   }, [pathname]);
   useEffect(() => {
