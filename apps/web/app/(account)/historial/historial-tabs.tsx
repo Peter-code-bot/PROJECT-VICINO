@@ -1,37 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { HistorialData } from "@/lib/historial/data";
+import { HISTORIAL_PAGE_SIZE, historialHref, parseHistorialLocation, reviewHref, type HistorialTab } from "@/lib/historial/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatPrice, formatDate } from "@vicino/shared";
-
-interface SaleItem {
-  id: string;
-  precio_acordado: number;
-  cantidad: number;
-  status: string;
-  // sale_confirmations.created_at es NOT NULL solo de palabra: la columna tiene
-  // DEFAULT now() pero admite nulo, asi que el tipo no puede prometer lo que la
-  // base no garantiza. Los dos sitios que lo leen tratan el nulo abajo.
-  created_at: string | null;
-  completed_at: string | null;
-  buyer_id: string;
-  seller_id: string;
-  products_services: { id: string; titulo: string; imagen_principal: string | null } | { id: string; titulo: string; imagen_principal: string | null }[] | null;
-  // profiles.trust_level admite nulo (el enum solo acota los valores, no obliga
-  // a que haya uno), de ahi `| null` y no `?`: ambas consultas lo piden siempre,
-  // lo que falta no es la columna sino su valor. El badge de abajo ya no pinta
-  // nada cuando viene vacio, que es justo lo que toca.
-  buyer?: { nombre: string; trust_level: string | null } | { nombre: string; trust_level: string | null }[] | null;
-  seller?: { nombre: string; trust_level: string | null } | { nombre: string; trust_level: string | null }[] | null;
-}
-
-interface HistorialTabsProps {
-  ventas: SaleItem[];
-  compras: SaleItem[];
-  reviewedSales: Set<string>;
-  currentUserId: string;
-}
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending_confirmation: {
@@ -67,32 +42,41 @@ const TRUST_BADGE_CLASSES: Record<string, string> = {
     "bg-[rgba(212,168,83,0.22)] text-[color:var(--trust-gold)] border border-[rgba(212,168,83,0.36)]",
 };
 
-export function HistorialTabs({
-  ventas,
-  compras,
-  reviewedSales,
-}: HistorialTabsProps) {
-  const [tab, setTab] = useState<"ventas" | "compras">("ventas");
-  const items = tab === "ventas" ? ventas : compras;
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const enCurso = ventas.filter((v) => v.status === "pending_confirmation").length;
-  const completadas = ventas.filter((v) => v.status === "completed").length;
-  // Una venta sin fecha no se puede afirmar que sea de esta semana, asi que no
-  // cuenta. Sin la guarda, `new Date(null)` cae en epoch 0 y la excluiria por
-  // accidente en vez de por decision.
-  const estaSemana = ventas.filter(
-    (v) => v.created_at !== null && new Date(v.created_at) >= weekAgo
-  ).length;
+export function HistorialTabs({ data }: { data: HistorialData }) {
+  const router = useRouter();
+  const params = useSearchParams();
+  const [retrying, startRetry] = useTransition();
+  const location = {
+    ...parseHistorialLocation(Object.fromEntries(params.entries())),
+    ventasPage: data.ventas.page,
+    comprasPage: data.compras.page,
+  };
+  const tab = location.tab;
+  const current = data[tab];
+  const items = current.items;
+  const reviewedSales = new Set(data.reviewedSales);
+  const retry = () => startRetry(() => router.refresh());
+  const setTab = (next: HistorialTab) => window.history.replaceState(null, "", historialHref({ ...location, tab: next }));
+  const pageHref = (page: number) => historialHref({ ...location, [tab === "ventas" ? "ventasPage" : "comprasPage"]: page });
+  const errorMessage = (message: string) => (
+    <div role="alert" className="rounded-[var(--r-xl)] border border-[color:var(--border)] p-4 text-sm space-y-2">
+      <p>{message}</p>
+      <button type="button" onClick={retry} disabled={retrying} className="min-h-11 font-medium text-[color:var(--brand-hi)] disabled:opacity-50">
+        {retrying ? "Reintentando…" : "Reintentar"}
+      </button>
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1 overflow-x-auto scrollbar-hide">
+      <div role="group" aria-label="Tipo de historial" className="grid grid-cols-2 gap-1 bg-[color:var(--card-2)] rounded-[var(--r-pill)] p-1">
         <button
+          type="button"
+          aria-pressed={tab === "ventas"}
           onClick={() => setTab("ventas")}
           className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+            "min-w-0 min-h-11 inline-flex flex-wrap justify-center items-center gap-x-2 gap-y-1 px-2 py-2 text-sm font-medium rounded-[var(--r-pill)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)]",
             tab === "ventas"
               ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
               : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
@@ -100,13 +84,15 @@ export function HistorialTabs({
         >
           Mis ventas
           <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
-            {ventas.length}
+            {data.ventas.total ?? "—"}
           </span>
         </button>
         <button
+          type="button"
+          aria-pressed={tab === "compras"}
           onClick={() => setTab("compras")}
           className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
+            "min-w-0 min-h-11 inline-flex flex-wrap justify-center items-center gap-x-2 gap-y-1 px-2 py-2 text-sm font-medium rounded-[var(--r-pill)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)]",
             tab === "compras"
               ? "bg-[color:var(--brand)] text-white rounded-[var(--r-pill)] font-semibold"
               : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]"
@@ -114,46 +100,49 @@ export function HistorialTabs({
         >
           Mis compras
           <span className="bg-[color:var(--bg-elev-2)] text-[color:var(--fg-dim)] text-[10px] rounded-[var(--r-pill)] px-1.5">
-            {compras.length}
+            {data.compras.total ?? "—"}
           </span>
         </button>
       </div>
 
       {/* Stats Bar (only for ventas tab) */}
-      {tab === "ventas" && (
+      {tab === "ventas" && data.stats && (
         <div className="grid grid-cols-3 divide-x divide-[color:var(--border)] bg-[color:var(--card-2)] rounded-[var(--r-xl)] border border-[color:var(--border)] mb-4">
           {/* EN CURSO */}
-          <div className="flex flex-col items-center py-3 px-2 gap-1">
+          <div className="min-w-0 flex flex-col items-center text-center py-3 px-2 gap-1 [overflow-wrap:anywhere]">
             <span className="text-xl font-bold text-[color:var(--trust-gold)]">
-              {enCurso}
+              {data.stats.enCurso}
             </span>
             <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
               EN CURSO
             </span>
           </div>
           {/* COMPLETADAS */}
-          <div className="flex flex-col items-center py-3 px-2 gap-1">
+          <div className="min-w-0 flex flex-col items-center text-center py-3 px-2 gap-1 [overflow-wrap:anywhere]">
             <span className="text-xl font-bold text-[color:var(--trust-gold)]">
-              {completadas}
+              {data.stats.completadas}
             </span>
             <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
               COMPLETADAS
             </span>
           </div>
-          {/* ESTA SEMANA */}
-          <div className="flex flex-col items-center py-3 px-2 gap-1">
+          {/* ÚLTIMOS 7 DÍAS */}
+          <div className="min-w-0 flex flex-col items-center text-center py-3 px-2 gap-1 [overflow-wrap:anywhere]">
             <span className="text-xl font-bold text-[color:var(--trust-gold)]">
-              {estaSemana}
+              {data.stats.ultimosSieteDias}
             </span>
             <span className="text-[10px] uppercase tracking-wide text-[color:var(--fg-dim)]">
-              ESTA SEMANA
+              ÚLTIMOS 7 DÍAS
             </span>
           </div>
         </div>
       )}
 
+      {tab === "ventas" && !data.stats && errorMessage("No pudimos cargar las estadísticas de ventas.")}
+      {data.reviewsError && !current.error && errorMessage("No pudimos comprobar tus reseñas. Reintenta para poder dejar una reseña.")}
+      <div aria-live="polite" className="sr-only">{retrying ? "Actualizando historial" : ""}</div>
       {/* Items */}
-      {items.length > 0 ? (
+      {current.error ? errorMessage(`No pudimos cargar tus ${tab}.`) : items.length > 0 ? (
         <div className="space-y-3">
           {items.map((item) => {
             const product = Array.isArray(item.products_services)
@@ -165,7 +154,7 @@ export function HistorialTabs({
 
             const reviewType = tab === "ventas" ? "seller_to_buyer" : "buyer_to_seller";
             const hasReviewed = reviewedSales.has(`${item.id}-${reviewType}`);
-            const canReview = item.status === "completed" && !hasReviewed;
+            const canReview = item.status === "completed" && !hasReviewed && !data.reviewsError;
             const status = STATUS_LABELS[item.status] ?? { label: item.status, color: "" };
             const trustLevel = otherUser?.trust_level;
             const trustBadgeClass =
@@ -176,37 +165,37 @@ export function HistorialTabs({
             return (
               <div
                 key={item.id}
-                className="rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-3"
+                className="min-w-0 rounded-[var(--r-xl)] bg-[color:var(--card-2)] border border-[color:var(--border)] p-4 space-y-3 [overflow-wrap:anywhere]"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-medium text-sm text-[color:var(--fg)] truncate">
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                  <h3 className="min-w-0 flex-1 basis-40 font-medium text-sm text-[color:var(--fg)]">
                     {product?.titulo ?? "Producto"}
                   </h3>
-                  <span className={status.color}>
+                  <span className={cn("max-w-full", status.color)}>
                     {status.label}
                   </span>
                 </div>
 
-                <div className="flex">
-                  <span className="text-xs text-[color:var(--fg-dim)] ml-auto">
-                    {item.created_at ? formatDate(item.created_at) : null}
-                  </span>
-                </div>
+                {item.created_at && (
+                  <div className="text-right text-xs text-[color:var(--fg-dim)]">
+                    {formatDate(item.created_at)}
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <span className="w-7 h-7 rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] text-xs font-bold flex items-center justify-center shrink-0">
                     {otherUser?.nombre?.charAt(0).toUpperCase() ?? "U"}
                   </span>
                   <span className="text-xs text-[color:var(--fg-dim)]">
                     {tab === "ventas" ? "Comprador" : "Vendedor"}
                   </span>
-                  <span className="text-sm text-[color:var(--fg)] truncate">
+                  <span className="min-w-0 flex-1 basis-28 text-sm text-[color:var(--fg)]">
                     {otherUser?.nombre ?? "Usuario"}
                   </span>
                   {trustBadgeClass && (
                     <span
                       className={cn(
-                        "shrink-0 rounded-[var(--r-pill)] px-2 py-0.5 text-[10px] font-semibold capitalize",
+                        "max-w-full rounded-[var(--r-pill)] px-2 py-0.5 text-[10px] font-semibold capitalize",
                         trustBadgeClass
                       )}
                     >
@@ -215,16 +204,16 @@ export function HistorialTabs({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-sm text-[color:var(--fg)]">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <span className="min-w-0 max-w-full font-semibold text-sm text-[color:var(--fg)]">
                     {formatPrice(item.precio_acordado)}
                     {item.cantidad > 1 && ` x${item.cantidad}`}
                   </span>
 
                   {canReview && (
                     <Link
-                      href={`/historial/review?sale=${item.id}&type=${reviewType}&product=${product?.id}`}
-                      className="text-xs font-medium text-[color:var(--brand-hi)] hover:underline"
+                      href={reviewHref(item.id, location)}
+                      className="min-h-11 max-w-full inline-flex items-center rounded-lg text-xs font-medium text-[color:var(--brand-hi)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)]"
                     >
                       Dejar reseña →
                     </Link>
@@ -245,6 +234,13 @@ export function HistorialTabs({
             {tab === "ventas" ? "Sin ventas aún" : "Sin compras aún"}
           </p>
         </div>
+      )}
+      {!current.error && current.total !== null && current.total > HISTORIAL_PAGE_SIZE && (
+        <nav aria-label={`Páginas de ${tab}`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          {current.page > 1 && <Link href={pageHref(current.page - 1)} className="min-h-11 inline-flex items-center text-[color:var(--brand-hi)]">Anterior</Link>}
+          <span>Página {current.page} de {Math.ceil(current.total / HISTORIAL_PAGE_SIZE)}</span>
+          {current.page * HISTORIAL_PAGE_SIZE < current.total && <Link href={pageHref(current.page + 1)} className="min-h-11 inline-flex items-center text-[color:var(--brand-hi)]">Siguiente</Link>}
+        </nav>
       )}
     </div>
   );
