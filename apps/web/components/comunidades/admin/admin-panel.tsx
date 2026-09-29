@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BotonRegresar } from "@/components/ui/boton-regresar";
+import { CommunityBackButton } from "../community-back-button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Lock, Globe, MapPin, Loader2, Save } from "lucide-react";
@@ -98,7 +98,7 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
   return (
     <div className="mx-auto w-full max-w-lg space-y-7 px-4 pt-3 pb-28">
       <div className="flex items-center gap-3">
-        <BotonRegresar href={`/comunidades/${detalle.id}`} aria-label="Volver a la comunidad" />
+        <CommunityBackButton id={detalle.id} admin />
         <div className="min-w-0">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">Administrar</p>
           <h1 className="truncate font-heading text-xl font-bold text-[color:var(--fg)]">{detalle.nombre}</h1>
