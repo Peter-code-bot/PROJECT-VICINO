@@ -10,6 +10,7 @@ export const selectChatProductSchema = z.object({
 
 export const getChatProductsSchema = z.object({
   chatId: z.string().uuid(),
+  sellerId: z.string().uuid().optional(),
   query: z.string().trim().max(100).optional(),
 });
 

@@ -22,7 +22,7 @@ async function main() {
     "../actions": `
       export const sendMessage=async()=>({error:'Sending is outside this S04-B fixture'});
       export const getMessagesBefore=async()=>({items:[],nextCursor:null});
-      export async function getChatProducts(input){window.s04b.listCalls.push(input);return {data:window.s04b.products};}
+      export async function getChatProducts(input){window.s04b.listCalls.push(input);return {data:window.s04b.products,sellers:[{id:'seller',nombre:'Vendedor sintético',foto:null}],sellerId:'seller'};}
       export async function selectChatProduct(input){const f=window.s04b;f.selectCalls.push(input);
         if(f.holdSelect)return new Promise(resolve=>{f.finishSelect=resolve;});
         return f.selectResult;
@@ -37,6 +37,7 @@ async function main() {
     `,
     "next/navigation": "const router={refresh:()=>window.s04b.refreshes++,push:()=>{}};export const useRouter=()=>router;",
     "next/link": "import React from 'react';export default function Link(p){return React.createElement('a',p,p.children);}",
+    "next/image": "import React from 'react';export default function Image(p){return React.createElement('img',p);}",
     "@/lib/haptics": "export const hapticMedium=()=>{};export const hapticLight=()=>{};",
     "@/lib/supabase/client": "export const createClient=()=>window.s04b.client;",
     "@/hooks/use-visible-chat-read": "export const useVisibleChatRead=()=>{};",
@@ -118,7 +119,8 @@ async function main() {
         await page.addScriptTag({ content: bundle.outputFiles[0].text });
       }
       async function openSelector() {
-        await expect(page.locator(`select option[value="${products[1].id}"]`)).toHaveCount(1);
+        try { await expect(page.locator(`select option[value="${products[1].id}"]`)).toHaveCount(1); }
+        catch (error) { console.error({ errors, body: await page.locator('body').innerText() }); throw error; }
       }
       async function submitSale() { await page.getByRole("button", { name: "Iniciar Confirmación", exact: true }).click(); }
       async function saleCalls() { return page.evaluate(() => (window as any).s04b.saleCalls); }

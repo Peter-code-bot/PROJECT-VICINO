@@ -33,6 +33,7 @@ function fixture(options: any = {}) {
       calls.push(["from", table]);
       const response = table === "chats"
         ? { data: options.chat ?? { comprador_id: A, vendedor_id: B }, error: options.chatError ?? null }
+        : table === "profiles" ? { data: [{ id: B, nombre: "Vendedor sintético", foto: null }], error: null }
         : { data: options.products ?? [product], error: options.productsError ?? null };
       const chain: any = {
         then: (resolve: any, reject: any) => Promise.resolve(response).then(resolve, reject),
@@ -126,13 +127,18 @@ test("catalog explicitly rejects nonparticipants including privileged sessions",
 });
 test("catalog restricts owners, status, visibility and limits with literal title search", async () => {
   const f = fixture(), actions = await load(f);
-  assert.deepEqual(plain((await actions.getChatProducts({ chatId, query: "  50%_\\  " })).data), [product]);
+  assert.deepEqual(plain((await actions.getChatProducts({ chatId, sellerId: B, query: "  50%_\\  " })).data), [product]);
   const calls = plain(f.calls);
-  assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["in", "creador_id", [A, B]])));
+  assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["eq", "creador_id", B])));
   assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["eq", "estatus", "disponible"])));
   assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["eq", "is_hidden", false])));
   assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["limit", 50])));
   assert.ok(calls.some((c: any) => JSON.stringify(c) === JSON.stringify(["ilike", "titulo", "%50\\%\\_\\\\% ".trim()])));
+});
+test("catalog rejects a seller outside the chat before catalog reads", async () => {
+  const f = fixture(), actions = await load(f);
+  assert.equal((await actions.getChatProducts({ chatId, sellerId: C })).code, "INVALID_INPUT");
+  assert.deepEqual(f.calls.filter(c => c[0] === "from"), [["from", "chats"]]);
 });
 test("selection sends expected revision and returns authoritative shared product", async () => {
   const f = fixture(), actions = await load(f);

@@ -5,6 +5,7 @@ import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductoChat } from "@/lib/chat/producto-activo";
+import { loadChatCatalog, type CatalogoChat } from "@/lib/chat/catalogo-chat";
 import type { Database } from "@/types/database.types";
 import {
   sendMessageSchema,
@@ -455,7 +456,7 @@ function chatContractError(error: { code?: string; hint?: string } | null): Chat
   return { error: "No se pudo comprobar el resultado. Reintenta el mismo envío.", code: "UNAVAILABLE" };
 }
 
-export async function getChatProducts(input: { chatId: string; query?: string }): Promise<{ data: ProductoChat[] } | ChatContractError> {
+export async function getChatProducts(input: { chatId: string; sellerId?: string; query?: string }): Promise<CatalogoChat | ChatContractError> {
   const parsed = getChatProductsSchema.safeParse(input);
   if (!parsed.success) return { error: "Búsqueda inválida.", code: "INVALID_INPUT" };
   try {
@@ -471,19 +472,11 @@ export async function getChatProducts(input: { chatId: string; query?: string })
     if (!chat || (user.id !== chat.comprador_id && user.id !== chat.vendedor_id)) {
       return { error: "Chat no disponible.", code: "NOT_AVAILABLE" };
     }
-    // RLS is retained; membership also checked explicitly (including admins).
-    let query = supabase.from("products_services")
-      .select("id,titulo,precio,modo_precio,imagen_principal,creador_id,estatus,is_hidden")
-      .in("creador_id", [chat.comprador_id, chat.vendedor_id])
-      .eq("estatus", "disponible").eq("is_hidden", false)
-      .order("titulo").order("id").limit(50);
-    if (parsed.data.query) {
-      // Treat SQL LIKE metacharacters as literal search characters.
-      query = query.ilike("titulo", `%${parsed.data.query.replace(/[\\%_]/g, "\\$&")}%`);
+    const participants = [chat.comprador_id, chat.vendedor_id];
+    if (parsed.data.sellerId && !participants.includes(parsed.data.sellerId)) {
+      return { error: "El vendedor no pertenece a esta conversación.", code: "INVALID_INPUT" };
     }
-    const { data, error } = await query;
-    if (error) return chatContractError(error);
-    return { data: data ?? [] };
+    return await loadChatCatalog(supabase, participants, parsed.data.sellerId, parsed.data.query);
   } catch {
     return chatContractError(null);
   }
