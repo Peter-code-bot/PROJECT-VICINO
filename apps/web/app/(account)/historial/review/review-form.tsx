@@ -1,7 +1,7 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Star, ImagePlus, X } from "lucide-react";
@@ -13,6 +13,7 @@ interface ReviewFormProps {
   productId: string;
   reviewedId: string;
   reviewType: "buyer_to_seller" | "seller_to_buyer";
+  returnHref: string;
 }
 
 export function ReviewForm({
@@ -20,6 +21,7 @@ export function ReviewForm({
   productId,
   reviewedId,
   reviewType,
+  returnHref,
 }: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -31,6 +33,14 @@ export function ReviewForm({
   const router = useRouter();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => {
+      router.replace(returnHref);
+      router.refresh();
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [success, returnHref, router]);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -178,10 +188,6 @@ export function ReviewForm({
 
       setSuccess(true);
       setLoading(false);
-      setTimeout(() => {
-        router.push("/historial");
-        router.refresh();
-      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al subir archivos");
       setLoading(false);
@@ -197,7 +203,10 @@ export function ReviewForm({
         <h2 className="text-lg font-heading font-bold">¡Reseña enviada con éxito!</h2>
         <p className="text-sm text-muted-foreground">Gracias por tu feedback. Redirigiendo al historial...</p>
         <button
-          onClick={() => router.push("/historial")}
+          onClick={() => {
+            router.replace(returnHref);
+            router.refresh();
+          }}
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
           ← Volver al historial
@@ -214,6 +223,7 @@ export function ReviewForm({
         </div>
       )}
 
+      <button type="button" onClick={() => router.push(returnHref)} disabled={loading} className="min-h-11 text-sm text-[color:var(--brand-hi)] disabled:opacity-50">Cancelar y volver al historial</button>
       {/* Star rating */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Calificación</label>
@@ -222,6 +232,7 @@ export function ReviewForm({
             <button
               key={star}
               type="button"
+              aria-label={`${star} ${star === 1 ? "estrella" : "estrellas"}`}
               onClick={() => setRating(star)}
               onMouseEnter={() => setHoveredRating(star)}
               onMouseLeave={() => setHoveredRating(0)}
