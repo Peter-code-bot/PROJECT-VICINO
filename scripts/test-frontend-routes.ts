@@ -33,6 +33,9 @@ export async function load(file: string, client: object, overrides: Record<strin
       if (name === 'createServerClient') value = '(_url,_key,options)=>{options.cookies.setAll([{name:"synthetic-refresh",value:"synthetic",options:{httpOnly:true}}]);return globalThis.__testClient;}';
       if (name === 'fetchConLimite') value = '()=>globalThis.__testFetch';
       if (name === 'cookies') value = 'async()=>({get:()=>undefined})';
+      if (name === 'headers') value = 'async()=>new Headers()';
+      if (name === 'CABECERA_RUTA') value = '"x-vicino-ruta"';
+      if (name === 'filasCampus') value = '()=>({filas:[],truncado:false})';
       if (name === 'redirect' || name === 'notFound') value = `()=>{throw new Error("UNEXPECTED_${name}")}`;
       if (name === 'catalogFailure') value = '()=>({kind:"network",message:"unavailable"})';
       if (name === 'CATEGORIES') value = '[]';
@@ -44,7 +47,7 @@ export async function load(file: string, client: object, overrides: Record<strin
       if (name === 'usuarioOInvitado') value = 'async(c)=>{const r=await c.auth.getUser();if(r.error&&r.error.name!=="AuthSessionMissingError")throw r.error;return r.data.user;}';
       lines.push(`export const ${name}=${value};`);
     }
-    if (names && ts.isNamespaceImport(names)) lines.push('export const captureException=()=>{};');
+    if (names && ts.isNamespaceImport(names)) lines.push('export const captureException=()=>{};export const captureMessage=()=>{};');
     mocks.set(specifier, [mocks.get(specifier) ?? '', ...lines].join('\n'));
   }
   for (const [name, source] of Object.entries(overrides)) mocks.set(name, source);

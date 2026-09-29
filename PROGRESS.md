@@ -1,5 +1,20 @@
 # Estado local — S05
 
+## 2026-09-29 — N01/C01/V01 implementados, aceptación pendiente
+
+- **Sello: Alejandro (GPT), Codex familia GPT-6, variante no expuesta.** Rama `fix/navigation-chat-vender-20260929`, base `77465c7`. Regreso de comunidades por procedencia, catálogo por vendedor disponible y apertura Vender con precarga acotada/feedback/loading.
+- Build exit 0; lint 0 errores (una advertencia previa). Contratos 36/36; Next real con catálogo/publicación sintéticos 14/14 Chromium/WebKit; S04-B 18/18; precarga 7/7; regresión navegación 23/23 (incluye 20 casos S01 dentro de una prueba).
+- Pendientes: CI/entrega remota, medición antes/después con cuenta dedicada (20 frías y 20 calientes) y dispositivos físicos. No afirmar mejora porcentual ni cierre del plan con pruebas sintéticas.
+- Trabajo original y cambios anteriores conservados. Notion: [plan vigente](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) y [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+
+## 2026-09-29 — H00–H03 desplegados (09:59 CDMX)
+
+- **Sello: Alejandro (GPT)**. [PR #49](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/49) integrado; master `77465c7`, Vercel producción confirmado y Security Audit verde.
+- H01 responsive, H02 paginación/totales/errores y H03 retorno implementados. Datos 12/12, recorridos sintéticos 28/28, matriz responsive 96/96; build exit 0. Regresión PGRST103 corregida y fast-uri actualizado a 3.1.8 tras dos avisos HIGH del CI.
+- Smoke sin sesión: login 200; historial, reseña y ventas 307 a login. Pendiente aceptación con cuentas reales dedicadas y dispositivos iPhone/Android; no se cierra el plan global.
+- Trabajo original preservado. Sin migraciones/RLS. Este puntero de cierre es local; código entregado en f75f328 y a4fad14.
+- Detalle, evidencia e incidencias: [DevLog de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+
 ## 2026-09-28 — H00–H03 entrega técnica (actualización 29-sep 09:47 CDMX)
 
 - **Sello: Alejandro (GPT)**. H01 responsive, H02 paginación/totales/errores y H03 continuidad de reseñas implementados en `fix/historial-cierre-20260928`.
