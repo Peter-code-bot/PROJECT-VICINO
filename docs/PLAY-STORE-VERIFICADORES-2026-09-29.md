@@ -1,13 +1,28 @@
-# Por qué la app no aparece a los verificadores
+# Verificadores de la prueba cerrada: diagnóstico y arreglo
 
 **Fecha:** 29 de septiembre de 2026
-**Revisado hoy en:** Play Console, el Grupo de Google, la ficha pública, el manifiesto de Android y la documentación oficial de Google
+**Estado: ARREGLADO Y VERIFICADO.** Lo que faltaba era sacar a los 12 de la prueba interna. Ya está hecho, y el alta se probó de punta a punta con una cuenta real.
 
 ---
 
-## La causa más probable, y hay que arreglarla antes de mandar un solo mensaje
+## Lo que cambié hoy en Play Console
 
-**Los 12 verificadores están dados de alta en la PRUEBA INTERNA, no en la cerrada.** Y eso, por regla oficial de Google, los deja fuera de la cerrada.
+1. **Quité a los 12 de la prueba interna.** Las 12 listas seguían existiendo pero ninguna está ya seleccionada en esa pista. El segmento interno pasó solo a **«Inactivo»** al quedarse sin verificadores, así que no hizo falta pausarlo.
+2. **No toqué nada más.** La prueba cerrada sigue **Activa** con la versión **8 (1.7)** y sus 178 países. El Grupo de Google sigue siendo la lista de verificadores.
+
+Las 12 listas de correo siguen guardadas en la consola. Si algún día quieres volver a usar la prueba interna para el equipo, se vuelven a marcar en un clic. **Pero quien esté en la interna no cuenta para los 14 días**, así que no metas ahí a nadie que quieras como verificador.
+
+## Lo que verifiqué después del cambio
+
+- **El grupo acepta a cualquiera sin aprobación:** «Quiénes pueden unirse al grupo» está en *Cualquiera en la Web puede unirse*, y el grupo es visible para todo el mundo. Eso es lo que sostiene tu flujo de mandar el enlace sin tener el correo de nadie.
+- **El alta funciona:** hice el paso 2 con una cuenta real y la página quedó con el sello verde **«Ya eres verificador»** («You are a tester»), y con un enlace de descarga en esa misma pantalla.
+- **La ficha ofrece instalar:** dice «Esta app está disponible para tu dispositivo» con el botón **Instalar**.
+
+---
+
+## Diagnóstico: por qué no aparecía
+
+**Los 12 verificadores estaban dados de alta en la PRUEBA INTERNA, no en la cerrada.** Y eso, por regla oficial de Google, los dejaba fuera de la cerrada.
 
 Lo que hay hoy en Play Console:
 
@@ -27,12 +42,9 @@ Traducido a lo que os está pasando: quien aceptó la prueba interna **no puede 
 
 Los nombres se solapan: Pedro, Alejandro y Javier están en las dos listas. Play Console no muestra quién aceptó de verdad la prueba interna, así que no puedo decirte cuáles de los 12 están bloqueados. Pero el riesgo es concreto y arreglarlo es barato.
 
-### Cómo se arregla
+### Cómo se arregló
 
-1. **Pausa el segmento de la prueba interna** (Prueba y lanza → Pruebas → Prueba interna → Pausar segmento). Así nadie más se da de alta ahí por error.
-2. **Vacía sus listas de verificadores**, o al menos saca a los 12 que quieres en la cerrada.
-3. **Cada persona que aceptó la prueba interna tiene que salirse**, abriendo el enlace de la prueba interna y eligiendo dejar el programa. Mientras siga dentro, Play le sirve la versión de junio y no cuenta.
-4. Comprueba después con una de ellas que ya ve la versión **8 (1.7)** y no la 4 (1.3). Ese es el único indicador fiable de que quedó liberada.
+Ya está hecho: los 12 salieron de la prueba interna y el segmento quedó inactivo. Si alguno sigue atascado, es porque su cuenta guarda el alta de la interna; se suelta abriendo https://play.google.com/apps/internaltest/4701655295868435015 y tocando «Leave the program».
 
 ---
 
@@ -164,60 +176,49 @@ La prueba abierta tampoco es opción todavía: se habilita después de conseguir
 
 ---
 
-## Mensaje nuevo para los verificadores
+## Mensaje para los verificadores
 
 > ¡Hola! 👋 ¿Me ayudas a probar VICINO, nuestra app? Necesitas un celular Android y 3 minutos.
 >
 > ⚠️ Dos cosas antes de empezar, que evitan casi todos los problemas:
-> • Usa **la misma cuenta de Google** en los tres pasos: la que tienes en la Play Store de tu celular.
-> • **No busques «VICINO» en la Play Store.** No va a aparecer, porque todavía no es pública. Sólo se llega por estos enlaces.
+> • Usa **la misma cuenta de Google** en todos los pasos: la que tienes en la Play Store de tu celular.
+> • **No busques «VICINO» en la Play Store.** No aparece, porque todavía no es pública. Sólo se llega por estos enlaces.
 >
-> **1️⃣ Únete al grupo** (10 segundos)
+> **1️⃣ Únete al grupo** (10 segundos, no te pide nada)
 > https://groups.google.com/g/vicino-verificadores
 > → toca «Unirse al grupo»
 >
-> **2️⃣ Acepta ser verificador** (este es el paso que cuenta, no te lo saltes)
+> **2️⃣ Acepta ser verificador** — este es el paso que cuenta
 > https://play.google.com/apps/testing/com.vicino.mx
 > → toca «Convertirse en verificador»
-> → te tiene que quedar una pantalla confirmando que ya eres verificador
+> → tiene que quedarte un sello verde que dice **«Ya eres verificador»** (o «You are a tester»). Si no lo ves, no quedó.
 >
 > **3️⃣ Instala la app**
-> Abre este enlace **en Chrome**, no en la app de Play Store:
-> https://play.google.com/store/apps/details?id=com.vicino.mx
-> → toca «Instalar»
->
-> Si en el paso 3 dice que no está disponible, no es tu culpa: a veces tarda unas horas en activarse. Escríbeme y te aviso en cuanto puedas instalarla.
+> En esa misma pantalla verde, toca **«descárgala en Google Play»**.
+> Si no lo ves, abre este enlace **en Chrome**: https://play.google.com/store/apps/details?id=com.vicino.mx
 >
 > 🙏 Lo único importante: **no la desinstales ni salgas de la prueba durante 2 semanas.** Google nos pide 14 días seguidos para poder publicarla. Y si puedes, ábrela unos minutos varios días: Google nos pregunta si la gente la usó de verdad. ¡Gracias!
 
-### Qué cambió, y por qué
+### Por qué está escrito así
 
-- **El aviso de la cuenta y de no buscar va arriba.** Es lo que más falla y leerlo al final no sirve de nada.
-- **El paso 3 dice «en Chrome»**, no «en Play Store». Es lo que ya descubriste que funciona, y ahora está en el guion en vez de ser el plan B.
-- **El paso 2 dice qué tiene que ver al terminar.** Así puedes confirmar por WhatsApp si lo completó de verdad, que es el dato que hoy no tienes.
-- **Fuera el «espera hasta 24 horas».** No es un plazo de Google.
-- **El plazo se presenta como tu problema, con salida:** que te escriba. Así no abandona en silencio.
+- **El aviso de la cuenta y de no buscar va arriba.** Es lo que más falla, y leerlo al final no sirve de nada.
+- **El paso 2 dice qué tiene que ver al terminar**, con el texto exacto. Así puedes confirmar por WhatsApp si quedó, que es el dato que antes no tenías. Comprobado hoy con una cuenta real.
+- **El paso 3 sale de la misma pantalla del paso 2.** Es un toque en lugar de abrir otro enlace, y evita que la persona acabe en la app de Play Store buscando.
+- **El enlace de respaldo dice «en Chrome»**, que es lo que ya habías descubierto que funciona.
+- **Fuera el «espera hasta 24 horas».** No es un plazo de Google, y le daba permiso a la gente para dejarlo para mañana.
 - **Se pide uso real**, porque Google lo pregunta al final.
 
----
+## Por qué nos quedamos con el Grupo de Google
 
-## Opcional, si quieres que sea aún más fácil: lista de correos en vez de grupo
+Play Console también permite gestionar los verificadores con listas de direcciones de correo, y eso le quitaría el paso 1 a la persona. **No lo hacemos, y con razón:** exigiría tener el correo de cada uno antes de invitarla, y tú muchas veces no lo tienes. El grupo te deja mandar el mismo mensaje a quien sea, por WhatsApp o por donde sea, y que la persona entre sola.
 
-Play Console permite gestionar los verificadores de la cerrada con **listas de direcciones de correo** en lugar del Grupo de Google. Eso **le quita el paso 1 al verificador**: tú pegas su correo en la consola y la persona sólo se da de alta e instala.
+Está configurado para eso y lo comprobé hoy: *cualquiera en la web puede unirse*, sin aprobación tuya, y el grupo es visible para todo el mundo. Puedes mandar el enlace a cien personas y no tienes que hacer nada por ninguna.
 
-- Menos pasos, menos abandono, y desaparece el fallo de orden.
-- Coste: le pides el correo por WhatsApp antes de mandarle el enlace.
-- Ojo: cambiar la configuración es un «cambio adicional», así que puede tardar varias horas en propagarse. Si lo haces, hazlo de una vez y no la víspera de mandar los mensajes.
+El paso 1 cuesta diez segundos y no pide datos. Es un precio pequeño por poder invitar a cualquiera.
 
-Para 12 o 20 personas, vale la pena.
+## Lo que queda de tu lado
 
----
-
-## Qué hacer ya, en orden
-
-1. **Libera a los 12 de la prueba interna.** Pausa el segmento, vacía sus listas, y que quien la aceptó se salga. Sin esto, lo demás no arregla nada.
-2. **Comprueba con una persona** que ya ve la versión 8 (1.7) y que el paso 2 le confirma que es verificador.
-3. **Manda el mensaje nuevo**, con el aviso de «no busques» arriba.
-4. **Añade la línea del autofoco** al manifiesto para el próximo AAB.
-5. **Decide si pasas a lista de correos** para quitarle un paso a la gente.
-6. **No subas otro AAB hasta que pasen los 14 días**, salvo que sea imprescindible.
+1. **Manda el mensaje nuevo** (abajo). Ya puedes.
+2. **Si alguno de los 12 sigue sin poder instalar**, que abra este enlace y toque «Leave the program» / «Abandonar el programa»: https://play.google.com/apps/internaltest/4701655295868435015 — es el de la prueba interna, y sirve para soltar a quien se quedara enganchado ahí. Después que repita el paso 2.
+3. **No subas otro AAB hasta que pasen los 14 días**, salvo que sea imprescindible.
+4. **Añade la línea del autofoco al próximo AAB.** Ya está en el repo, entra sola en el siguiente build.
