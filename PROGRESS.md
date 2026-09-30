@@ -1,5 +1,13 @@
 # Estado local — S10
 
+## 2026-09-30 — S10-R: migración instalada en producción; entrega web pendiente
+
+- **Sello: Codex, familia GPT-6.** Continuación desde 16:56:59 CDMX; corte de pruebas 17:30:42. Código `b57aa89`, base `bd80379`, misma rama y checkout aislado. El trabajo original se conserva.
+- Acceso por dashboard de Supabase, VICINO/main PRODUCTION. Javier autorizó expresamente instalar `20260930220000`; COMMIT confirmado, ledger version/name/statements y recarga PostgREST. Proyección aproximada generada, GiST y RPC instalados. No se actualizaron puntos privados/radios ni se sembraron tablas públicas.
+- PostGIS 3.3.7: 19 controles sintéticos PASS; matriz temporal 0/1/300/301/10 000 PASS, GiST confirmado por EXPLAIN. p95 de 20 llamadas SQL: 232.75 ms con 10 000 sintéticos y 5.00 ms sobre catálogo real instalado (42 elegibles). Permisos anon/authenticated, columnas privadas y RLS comprobados después del COMMIT. No incluye red/API/SDK ni equivale a sesiones reales dedicadas.
+- Generador de transacción y SQL reproducibles añadidos. Acta/evidencia/incidencias: [S10-POSTGIS-2026-09-30.md](docs/S10-POSTGIS-2026-09-30.md) y DevLog de Notion. Capturas ignoradas en `apps/web/test-results/s10/`.
+- **Pendientes:** entrega web, regeneración de tipos, proveedor Apple/dominio real, sesiones/cuentas, cancelación efectiva PostgREST, iPhone/Android, aceptación y activación/rebuild. Flag apagada por defecto; BD instalada no acredita despliegue web. GitHub CLI tiene autenticación vencida; se comprueba acceso Git existente para la entrega.
+
 ## 2026-09-30 — S10: mapa implementado y validado localmente; integración remota pendiente
 
 - **Sello: Codex, familia GPT-6 (variante no expuesta).** Inicio 15:41:15 CDMX; validación local final 16:30:59 (49 min 44 s). Base `bd80379`, rama `feat/s10-mapa-publicaciones-20260930`, checkout aislado `PROJECT-VICINO-S10`. El checkout original y sus cambios se conservaron.
