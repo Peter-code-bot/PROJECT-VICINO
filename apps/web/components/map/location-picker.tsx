@@ -32,6 +32,7 @@ interface LocationPickerProps {
   initialLat?: number;
   initialLng?: number;
   initialRadius?: number;
+  showRadiusControl?: boolean;
 }
 
 export default function LocationPicker({
@@ -42,6 +43,7 @@ export default function LocationPicker({
   initialLat,
   initialLng,
   initialRadius = 5,
+  showRadiusControl = true,
 }: LocationPickerProps) {
   const mapkit = useMapKit();
   const cobertura = useReglaCobertura();
@@ -357,7 +359,7 @@ export default function LocationPicker({
             />
           </div>
 
-          {onRadiusChange && <div className="flex items-center gap-3">
+          {onRadiusChange && showRadiusControl && <div className="flex items-center gap-3">
             <label className="text-xs text-muted-foreground shrink-0">Radio:</label>
             <input
               type="range"

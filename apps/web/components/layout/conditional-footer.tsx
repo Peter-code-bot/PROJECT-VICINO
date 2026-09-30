@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Footer } from './footer';
 
-const HIDE_FOOTER_PATTERN = /^\/chat(\/|$)/;
+const HIDE_FOOTER_PATTERN = /^\/(chat|mapa)(\/|$)/;
 
 interface ConditionalFooterProps {
   /** Phase 9: hides the "Vender" footer link when the user is not a seller. */

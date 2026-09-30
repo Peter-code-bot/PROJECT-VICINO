@@ -1291,6 +1291,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             nace de `hasInitial`, asi que sin ellas el mapa quedaba oculto
             hasta buscar una direccion, tambien al editar. */}
         <DeliveryMap
+          showRadiusControl={false}
           initialLat={initialValues?.ubicacion_lat ?? undefined}
           initialLng={initialValues?.ubicacion_lng ?? undefined}
           initialRadius={initialValues?.delivery_radius_km ?? undefined}

@@ -15,6 +15,7 @@ import { useNotificationUnread } from "@/components/layout/notification-unread-p
 import {
   Home,
   Search,
+  Map,
   Grid3X3,
   PlusCircle,
   MessageCircle,
@@ -103,6 +104,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
         {/* Main nav */}
         <NavItem href="/" icon={Home} label="Inicio" active={isActive("/", true)} />
         <NavItem href="/buscar" icon={Search} label="Buscar" active={isActive("/buscar")} />
+        {process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED === "true" && <NavItem href="/mapa" icon={Map} label="Mapa" active={isActive("/mapa")} />}
         <NavItem href="/rankings" icon={Trophy} label="Rankings" active={isActive("/rankings")} />
 
         {/* Categories expandable */}

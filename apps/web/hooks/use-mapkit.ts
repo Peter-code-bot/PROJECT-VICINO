@@ -85,6 +85,7 @@ export interface MapKitGlobal {
       destroy: () => void;
       setRegionAnimated: (region: unknown, animated: boolean) => void;
       colorScheme: unknown;
+      region?: { center: MapKitCoordinate; span: { latitudeDelta: number; longitudeDelta: number } };
       addEventListener: (type: string, listener: (e: { pointOnPage?: { x: number; y: number } }) => void) => void;
       convertPointOnPageToCoordinate: (point: DOMPoint) => { latitude: number; longitude: number };
       addAnnotation: (annotation: unknown) => void;
@@ -102,6 +103,8 @@ export interface MapKitGlobal {
       color?: string;
       title?: string;
       draggable?: boolean;
+      glyphText?: string;
+      calloutEnabled?: boolean;
     }
   ) => {
     coordinate: { latitude: number; longitude: number };

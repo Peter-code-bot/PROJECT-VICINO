@@ -1179,6 +1179,7 @@ export type Database = {
           titulo_en: string | null
           ubicacion: string | null
           ubicacion_geo: unknown
+          ubicacion_mapa: unknown
           updated_at: string | null
           ventas_count: number | null
           vistas_count: number | null
@@ -1217,6 +1218,7 @@ export type Database = {
           titulo_en?: string | null
           ubicacion?: string | null
           ubicacion_geo?: unknown
+          ubicacion_mapa?: never
           updated_at?: string | null
           ventas_count?: number | null
           vistas_count?: number | null
@@ -1255,6 +1257,7 @@ export type Database = {
           titulo_en?: string | null
           ubicacion?: string | null
           ubicacion_geo?: unknown
+          ubicacion_mapa?: never
           updated_at?: string | null
           ventas_count?: number | null
           vistas_count?: number | null
@@ -3360,6 +3363,10 @@ export type Database = {
           titulo: string
           ventas_count: number
         }[]
+      }
+      search_map_publications_v1: {
+        Args: { p_query: Json }
+        Returns: Json
       }
       search_nearby_products_v4: {
         Args: {

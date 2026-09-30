@@ -104,6 +104,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                   ¿Qué buscas hoy?
                 </span>
               </Link>
+              {process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED === "true" && <Link href="/mapa" className="flex min-h-11 items-center gap-2 rounded-2xl border border-[color:var(--border)] px-4 py-3 text-sm font-semibold text-[color:var(--brand-hi)]"><MapPin className="h-4 w-4" />Explorar publicaciones en el mapa</Link>}
               <div>
                 {/* `hasLocation` sale de la cookie vicino_location, que esta
                     pagina ya leyo arriba para armar el feed. Pasarlo evita que

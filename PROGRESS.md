@@ -1,4 +1,16 @@
-# Estado local — S05
+# Estado local — S10
+
+## 2026-09-30 — S10: mapa implementado y validado localmente; integración remota pendiente
+
+- **Sello: Codex, familia GPT-6 (variante no expuesta).** Inicio 15:41:15 CDMX; validación local final 16:30:59 (49 min 44 s). Base `bd80379`, rama `feat/s10-mapa-publicaciones-20260930`, checkout aislado `PROJECT-VICINO-S10`. El checkout original y sus cambios se conservaron.
+- Nueva página `/mapa`: MapKit, búsqueda/categorías/tipo/precio, zona visible o centro/radio del comprador, grupos de publicaciones, tarjetas paginadas, ubicaciones aproximadas, cambio manual, GPS explícito y recuperación de errores. Enlaces Inicio/Buscar/menú sujetos a `NEXT_PUBLIC_VICINO_MAP_ENABLED=true`; apagado por defecto.
+- Formulario: solo `showRadiusControl={false}` en DeliveryMap. LocationPicker conserva mapa, pin, búsqueda, arrastre, zoom, círculo, default y valor del radio. No se migraron ni borraron radios históricos.
+- Migración local `20260930220000`: proyección pública generada a dos decimales y RPC por área, todos los candidatos agrupados, visibilidad/bloqueo bilateral y cursor por consulta/usuario. API sin service_role, cuerpo acotado, validación de entrada/salida, cuotas, timeout y no-store. No devuelve ubicación privada.
+- **Verificación:** build final **exit 0**, 57/57 páginas, TypeScript integrado; shared type-check/lint exit 0; lint de archivos modificados 0 errores, 5 warnings preexistentes (nuevos módulos sin warnings). Contratos 5/5, SQL 12/12, API 6/6 y navegador 25/25: **48/48 pruebas locales/sintéticas**. SQL en PGlite con sustitutos espaciales point/box; SDK/red/cache de navegador simulados. No acreditan PostGIS, Apple Maps real ni dispositivos físicos.
+- **Pendientes:** acceso Supabase (lectura administrativa dio 401), aplicar/validar migración en staging y permisos reales, EXPLAIN/p95 y cancelación SQL, proveedor Apple real, cuentas dedicadas y iPhone/Android, aceptación visual y activación/rebuild. No está desplegado. Tipos SQL añadidos manualmente; regenerarlos al aplicar la migración.
+- Plan, decisiones, incidencias y cambios: [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26). Capturas sintéticas no versionadas: `apps/web/test-results/s10/`.
+
+Los estados anteriores se conservan como antecedentes.
 
 ## 2026-09-29 — N01/C01/V01 implementados, consolidados y auditados (VICTORY CONFIRMED)
 

@@ -487,6 +487,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <div data-navigation-kind="search" data-navigation-ready={crypto.randomUUID()} className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
+      {process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED === "true" && !universityOnly && <Link href={`/mapa?${new URLSearchParams(Object.entries({q:params.q,category:params.category,tipo:params.tipo,price_min:params.price_min,price_max:params.price_max}).filter((entry): entry is [string,string] => typeof entry[1] === "string")).toString()}`} className="inline-flex min-h-11 items-center rounded-2xl border border-[color:var(--border)] px-4 text-sm font-semibold text-[color:var(--brand-hi)]">Ver publicaciones en el mapa</Link>}
       <SearchFilters
         viewerUniversity={viewerUniversity}
         initialQuery={params.q}
