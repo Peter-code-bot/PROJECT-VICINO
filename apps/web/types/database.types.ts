@@ -3341,6 +3341,7 @@ export type Database = {
         Returns: Json
       }
       ruta_de_chat_referenciada: { Args: { p_ruta: string }; Returns: boolean }
+      search_map_publications_v1: { Args: { p_query: Json }; Returns: Json }
       search_nearby_products: {
         Args: {
           radius_meters?: number
@@ -3363,10 +3364,6 @@ export type Database = {
           titulo: string
           ventas_count: number
         }[]
-      }
-      search_map_publications_v1: {
-        Args: { p_query: Json }
-        Returns: Json
       }
       search_nearby_products_v4: {
         Args: {
