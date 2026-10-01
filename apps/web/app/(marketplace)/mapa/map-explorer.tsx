@@ -1,94 +1,144 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { Search, MapPin, LocateFixed, SlidersHorizontal, X, ArrowRight, Loader2, Store } from "lucide-react";
-import { CATEGORIES, type MapBounds, type MapFeature, type MapQuery } from "@vicino/shared";
-import { PublicationMap } from "@/components/map/publication-map";
-import { ChangeLocationSheet } from "@/components/home/change-location-sheet";
-import { useSessionUI } from "@/components/layout/session-data-provider";
-import { useGeolocation } from "@/hooks/useGeolocation";
-import { usePublicationMap } from "@/hooks/use-publication-map";
-import { boundsAround, intersectMapBounds } from "@/lib/geo/publication-map";
-import { cn } from "@/lib/utils";
-import { iconoDeCategoria } from "@/lib/categories/icons";
 
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Search, X, ArrowRight, MapPin } from "lucide-react";
+import { MAP_AREA, type MapBounds, type MapFeature, type MapQuery } from "@vicino/shared";
+import { PublicationMap } from "@/components/map/publication-map";
+import { PublicationResultsDrawer } from "@/components/map/publication-results-drawer";
+import { ZoneCard } from "@/components/home/zone-card";
+import { DiscoveryFilters, type DiscoveryFilterValues } from "@/components/shared/discovery-filters";
+import { useSessionUI } from "@/components/layout/session-data-provider";
+import { usePublicationCoverage } from "@/hooks/use-publication-coverage";
+import { useCoverageListings } from "@/hooks/use-coverage-listings";
+import { boundsAround, intersectMapBounds, queryFromMapParams } from "@/lib/geo/publication-map";
+import { clusterMapCells, publicDistance } from "@/lib/geo/map-coverage";
+
+type Center = { lat: number; lng: number };
+interface SelectedGroup { feature: MapFeature; query: MapQuery; center: Center | null; revision: string }
+interface MapUI { query: MapQuery; viewport: MapBounds; center: Center | null; locationCenter: Center | null; storedCenter: Center | null; selected: SelectedGroup | null; hasSavedLocation: boolean }
 const EMPTY: MapFeature[] = [];
-const control = "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-[color:var(--brand-hi)]";
-export function MapExplorer({ initialQuery, initialCenter }: { initialQuery: MapQuery; initialCenter: { lat: number; lng: number } }) {
-  const [ui,setUI] = useSessionUI("publication-map:v1:"+JSON.stringify(initialQuery), { query: initialQuery, viewport: initialQuery.bounds, center: initialCenter });
-  const [focus,setFocus] = useState<{ bounds: MapBounds; revision: number }|null>(null);
-  const [filters,setFilters] = useState(false), [locationOpen,setLocationOpen] = useState(false);
-  const [gpsPending,setGpsPending] = useState(false);
-  const geo = useGeolocation();
+
+function searchHref(query: MapQuery) {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.categories.length === 1) params.set("category", query.categories[0]!);
+  if (query.tipo) params.set("tipo", query.tipo);
+  if (query.price_min !== null) params.set("price_min", String(query.price_min));
+  if (query.price_max !== null) params.set("price_max", String(query.price_max));
+  if (query.mode === "nearby" && query.center) { params.set("lat", String(query.center.lat)); params.set("lng", String(query.center.lng)); params.set("radio", String(query.radius_meters)); }
+  return "/buscar" + (params.size ? "?" + params : "");
+}
+
+export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = null, initialHasSavedLocation = false, viewerScope }: { initialQuery: MapQuery; initialCenter: Center | null; initialSavedCenter?: Center | null; initialHasSavedLocation?: boolean; viewerScope: string }) {
+  const [ui, setUI] = useSessionUI<MapUI>("publication-map:v2:" + viewerScope + ":" + JSON.stringify(initialQuery), {
+    query: initialQuery, viewport: initialQuery.bounds, center: initialCenter, locationCenter: initialCenter, storedCenter: initialSavedCenter, selected: null, hasSavedLocation: initialHasSavedLocation,
+  });
+  const [focus, setFocus] = useState<{ bounds: MapBounds; revision: number } | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
   const latest = useRef(ui);
+  const input = useRef<HTMLInputElement>(null);
+  const fallbackFocus = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   useEffect(() => { latest.current = ui; }, [ui]);
-  const area = intersectMapBounds(ui.viewport);
-  const validPrice = ui.query.price_min === null || ui.query.price_max === null || ui.query.price_min <= ui.query.price_max;
-  const { data,error,pending,retry } = usePublicationMap(area && validPrice ? { ...ui.query, bounds: area } : null);
-  function update(patch: Partial<MapQuery>) { setUI({ ...ui,query: { ...ui.query,...patch,cursor: null } }); }
-  function locate(center: {lat:number;lng:number}, radius=latest.current.query.radius_meters) {
-    const bounds = boundsAround(center,radius);
-    setUI({ ...latest.current,center,viewport: bounds,query: { ...latest.current.query,center,radius_meters:radius,cell_id:null,cursor:null } });
-    setFocus({bounds,revision:Date.now()});
+  const area = useMemo(() => intersectMapBounds(ui.viewport), [ui.viewport]);
+  const { data, pending, error, retry } = usePublicationCoverage({ ...ui.query, bounds: area ?? MAP_AREA }, ui.center, viewerScope);
+  const detail = useCoverageListings(ui.selected?.query ?? ui.query, ui.selected ? ui.selected.center : ui.center, ui.selected?.feature.id ?? null, ui.selected?.revision ?? null);
+  const features = useMemo(() => area && data ? data.complete ? clusterMapCells(data.cells, area) : data.features : EMPTY, [data, area]);
+
+  function publishQuery(query: MapQuery) {
+    const params = new URLSearchParams(window.location.search);
+    for (const key of ["q", "category", "tipo", "price_min", "price_max", "lat", "lng", "radio"]) params.delete(key);
+    if (query.q) params.set("q", query.q);
+    if (query.categories.length) params.set("category", query.categories.join(","));
+    if (query.tipo) params.set("tipo", query.tipo);
+    if (query.price_min !== null) params.set("price_min", String(query.price_min));
+    if (query.price_max !== null) params.set("price_max", String(query.price_max));
+    if (query.mode === "nearby" && query.center) { params.set("lat", String(query.center.lat)); params.set("lng", String(query.center.lng)); params.set("radio", String(query.radius_meters)); }
+    window.history.replaceState(window.history.state, "", window.location.pathname + (params.size ? "?" + params : ""));
+  }
+  function updateQuery(patch: Partial<MapQuery>) {
+    const previous = latest.current;
+    const next = { ...previous, selected: null, query: { ...previous.query, ...patch, cell_id: null, cursor: null } };
+    latest.current = next; setUI(next); publishQuery(next.query);
+  }
+  function applyFilters(value: DiscoveryFilterValues) {
+    updateQuery({ categories: value.categories, tipo: value.tipo || null, price_min: value.priceMin === "" ? null : Number(value.priceMin), price_max: value.priceMax === "" ? null : Number(value.priceMax),
+      mode: value.nearby && ui.locationCenter ? "nearby" : "zone", center: value.nearby ? ui.locationCenter : null, radius_meters: value.radiusMeters ?? ui.query.radius_meters });
   }
   useEffect(() => {
     const changed = (event: Event) => {
-      const p = (event as CustomEvent<{lat:number;lng:number;radius?:number}|null>).detail;
-      if (p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) { locate(p,p.radius); setGpsPending(false); }
+      const location = (event as CustomEvent<(Center & { radius?: number }) | null>).detail;
+      const previous = latest.current;
+      const center = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? { lat: location.lat, lng: location.lng } : null;
+      const radius = location?.radius ?? previous.query.radius_meters;
+      const bounds = center ? intersectMapBounds(boundsAround(center, radius)) ?? MAP_AREA : MAP_AREA;
+      const next: MapUI = { ...previous, center, locationCenter: center, storedCenter: center, hasSavedLocation: center !== null, viewport: bounds, selected: null,
+        query: { ...previous.query, center: center && previous.query.mode === "nearby" ? center : null, mode: center ? previous.query.mode : "zone", radius_meters: radius, cell_id: null, cursor: null } };
+      latest.current = next; setUI(next); setFocus({ bounds, revision: Date.now() }); publishQuery(next.query);
     };
-    window.addEventListener("vicino_location_updated",changed);
-    return () => window.removeEventListener("vicino_location_updated",changed);
-  // The listener reads the current view from a ref, independent of render timing.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const restoreHistory = () => {
+      const previous = latest.current;
+      const params = Object.fromEntries(new URLSearchParams(window.location.search));
+      const query = queryFromMapParams(params, previous.storedCenter, previous.query.radius_meters);
+      const position = query.mode === "nearby" ? query.center : previous.storedCenter;
+      const positionChanged = JSON.stringify(position) !== JSON.stringify(previous.locationCenter);
+      const next: MapUI = { ...previous, query, selected: null, locationCenter: position,
+        center: positionChanged ? position : previous.center, viewport: positionChanged ? query.bounds : previous.viewport };
+      latest.current = next; setUI(next);
+      if (positionChanged) setFocus({ bounds: query.bounds, revision: Date.now() });
+    };
+    window.addEventListener("vicino_location_updated", changed);
+    window.addEventListener("popstate", restoreHistory);
+    return () => { window.removeEventListener("vicino_location_updated", changed); window.removeEventListener("popstate", restoreHistory); };
+    // The listener deliberately reads the latest camera/query from the ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const selected = data?.features.find(f=>f.id===ui.query.cell_id);
   function onBounds(viewport: MapBounds) {
-    if (JSON.stringify(viewport)===JSON.stringify(latest.current.viewport)) return;
     const previous = latest.current;
-    setUI({ ...previous,viewport,query:{...previous.query,cell_id:null,cursor:null} });
+    if (JSON.stringify(viewport) === JSON.stringify(previous.viewport)) return;
+    const clipped = intersectMapBounds(viewport);
+    let center = previous.center;
+    if (clipped) {
+      const camera = { lat: (clipped.north + clipped.south) / 2, lng: (clipped.east + clipped.west) / 2 };
+      const diagonal = publicDistance({ lat: clipped.south, lng: clipped.west }, { lat: clipped.north, lng: clipped.east });
+      const loadedCenter = center;
+      const covered = loadedCenter && [[clipped.south, clipped.west], [clipped.south, clipped.east], [clipped.north, clipped.west], [clipped.north, clipped.east]]
+        .every(([lat, lng]) => publicDistance(loadedCenter, { lat: lat!, lng: lng! }) <= 50_000);
+      // A broad viewport needs the complete overview, rather than holes outside
+      // the local circle. A local viewport only recenters after leaving it.
+      if (diagonal > 85_000) center = null;
+      else if (!center || !covered) center = camera;
+    }
+    const next = { ...previous, viewport, center };
+    latest.current = next; setUI(next);
   }
-  const title = ui.query.cell_id ? "Publicaciones en este punto" : "Publicaciones en esta zona";
-  return <div className="mx-auto w-full max-w-7xl space-y-3 px-3 py-4 sm:px-5" data-navigation-kind="map" data-no-page-swipe data-no-pull-to-refresh>
-    <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--brand-hi)]">Explora tu zona</p><h1 className="font-heading text-2xl font-bold">Lo que hay cerca</h1></div><Link href="/buscar" className={control}>Ver búsqueda<ArrowRight className="h-4 w-4" /></Link></div>
-    <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-4"><Search className="h-5 w-5 text-[color:var(--fg-muted)]" /><span className="sr-only">Buscar publicaciones o vendedores</span><input type="search" maxLength={120} value={ui.query.q} onChange={e=>update({q:e.target.value,cell_id:null})} placeholder="Busca comida, clases, regalos…" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" />{ui.query.q && <button aria-label="Limpiar búsqueda" type="button" onClick={()=>update({q:"",cell_id:null})} className="min-h-11 min-w-11"><X className="mx-auto h-4 w-4" /></button>}</label>
-    <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Categorías">
-      <button type="button" aria-pressed={!ui.query.categories.length} onClick={()=>update({categories:[],cell_id:null})} className={cn(control, "shrink-0", !ui.query.categories.length && "bg-[color:var(--brand)] text-white")}>Todas</button>
-      {CATEGORIES.filter(c=>!c.hidden_in_form).map(c=>{const Icon=iconoDeCategoria(c.slug); const active=ui.query.categories.includes(c.slug);return <button type="button" key={c.slug} aria-pressed={active} onClick={()=>update({categories:active?[]:[c.slug],cell_id:null})} className={cn(control,"shrink-0",active && "bg-[color:var(--brand)] text-white")}><Icon className="h-4 w-4" />{c.name}</button>;})}
+  function select(feature: MapFeature) {
+    if (!data) return;
+    const active = document.activeElement;
+    returnFocus.current = active instanceof HTMLElement && active.matches("button,a,input,[tabindex]") ? active : null;
+    const previous = latest.current;
+    const next = { ...previous, selected: { feature, query: { ...previous.query, cell_id: null, cursor: null }, center: previous.center, revision: data.revision } };
+    latest.current = next; setUI(next);
+  }
+  function closeDrawer() { const next = { ...latest.current, selected: null }; latest.current = next; setUI(next); }
+  const filterValues: DiscoveryFilterValues = { categories: ui.query.categories, tipo: ui.query.tipo ?? "", priceMin: ui.query.price_min === null ? "" : String(ui.query.price_min), priceMax: ui.query.price_max === null ? "" : String(ui.query.price_max), nearby: ui.query.mode === "nearby", radiusMeters: ui.query.radius_meters };
+
+  return <div ref={fallbackFocus} tabIndex={-1} role="region" aria-label="Explorar publicaciones en el mapa" className="mx-auto w-full max-w-7xl space-y-3 px-3 py-3 sm:px-5 focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]" data-navigation-kind="map" data-no-page-swipe data-no-pull-to-refresh>
+    <h1 className="sr-only">Explorar publicaciones en el mapa</h1>
+    <label className="flex min-h-12 items-center gap-3 rounded-2xl bg-[color:var(--sidebar-bg)] px-4 text-[color:var(--fg)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--fg)]"><Search className="h-5 w-5 shrink-0" /><span className="sr-only">Buscar publicaciones o vendedores</span><input ref={input} type="search" maxLength={120} value={ui.query.q} onChange={event => updateQuery({ q: event.target.value })} placeholder="Busca comida, clases, regalos…" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-[color:var(--fg)]/70" />{ui.query.q && <button aria-label="Limpiar búsqueda" type="button" onClick={() => updateQuery({ q: "" })} className="min-h-11 min-w-11 rounded-xl focus-visible:outline-2"><X className="mx-auto h-4 w-4" /></button>}</label>
+    <DiscoveryFilters value={filterValues} onApply={applyFilters} multipleCategories showDistance={ui.locationCenter !== null} />
+    <div className="flex min-h-11 items-center justify-between gap-2"><ZoneCard hayUbicacionEnServidor={ui.hasSavedLocation} resolveName={false} positionOverride={ui.locationCenter} selected={ui.locationCenter !== null} /><Link href={searchHref(ui.query)} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]">Ver búsqueda<ArrowRight className="h-4 w-4" /></Link></div>
+    <div className="relative h-[calc(100dvh-260px-var(--bottom-nav-h))] min-h-[340px] md:h-[calc(100dvh-260px)] md:min-h-[440px]">
+      <PublicationMap initialBounds={ui.viewport} focus={focus} features={features} selected={ui.selected?.feature.id ?? null} onBounds={onBounds} onSelect={select} onAvailabilityChange={available => setMapFailed(!available)} />
+      <div role="status" className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-24px)] rounded-2xl bg-[color:var(--sidebar-bg)] px-3 py-2 text-xs text-[color:var(--fg)] shadow-sm">{!area ? "Elige una zona de México" : data ? data.total + " publicaciones · " + data.seller_total + " vendedores" + (pending ? " · Actualizando…" : "") : pending ? "Cargando publicaciones…" : "Explora una zona en el mapa"}</div>
+      {data && !data.complete && ui.center && <span className="absolute bottom-8 left-3 rounded-xl bg-[color:var(--sidebar-bg)] px-3 py-2 text-xs" role="status">Vista general de la zona</span>}
+      {mapFailed && <Link href={searchHref(ui.query)} className="discovery-control absolute bottom-8 inset-x-4 text-center">Ver publicaciones de esta zona<ArrowRight className="h-4 w-4" /></Link>}
     </div>
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex rounded-2xl bg-[color:var(--card-2)] p-1" aria-label="Área de búsqueda">{([['zone','Toda la zona'],['nearby','Cerca de mí']] as const).map(([mode,label])=><button key={mode} type="button" aria-pressed={ui.query.mode===mode} onClick={()=>update({mode,center:ui.center,cell_id:null})} className={`min-h-10 rounded-xl px-3 text-sm font-semibold ${ui.query.mode===mode?'bg-[color:var(--card)] shadow-sm':''}`}>{label}</button>)}</div>
-      <button type="button" onClick={()=>setLocationOpen(true)} className={control}><MapPin className="h-4 w-4" />Cambiar zona</button>
-      <button type="button" aria-label="Usar mi ubicación" onClick={()=>{setGpsPending(true);geo.request();}} className={control}><LocateFixed className="h-4 w-4" />{gpsPending&&geo.state.status!=="error" ? "Localizando…" : "Mi ubicación"}</button>
-      <button type="button" aria-expanded={filters} onClick={()=>setFilters(!filters)} className={`${control} ml-auto`}><SlidersHorizontal className="h-4 w-4" />Filtros</button>
-    </div>
-    {gpsPending&&geo.state.status==="error"&&<p role="status" className="text-sm text-[color:var(--fg-muted)]">{geo.state.message}. Puedes elegir la zona manualmente.</p>}
-    {ui.query.mode==='nearby'&&<label className="flex items-center gap-3 text-sm"><span className="shrink-0">Mi radio: <strong>{ui.query.radius_meters/1000} km</strong></span><input aria-label="Radio de búsqueda en kilómetros" type="range" min={1} max={50} value={ui.query.radius_meters/1000} onChange={e=>update({radius_meters:Number(e.target.value)*1000,cell_id:null})} className="max-w-sm flex-1 accent-[color:var(--brand)]" /></label>}
-    {filters&&<div className="grid grid-cols-2 gap-3 rounded-2xl bg-[color:var(--card-2)] p-4 sm:grid-cols-3">
-      <label className="col-span-2 text-sm sm:col-span-1">Tipo<select aria-label="Tipo de publicación" value={ui.query.tipo??''} onChange={e=>update({tipo:e.target.value as MapQuery['tipo']||null,cell_id:null})} className="mt-1 min-h-11 w-full rounded-xl bg-[color:var(--card)] px-3"><option value="">Productos y servicios</option><option value="producto">Productos</option><option value="servicio">Servicios</option></select></label>
-      {(['price_min','price_max'] as const).map(key=><label key={key} className="text-sm">{key==='price_min'?'Precio mínimo':'Precio máximo'}<input type="number" min={0} max={99999999} step="any" value={ui.query[key]??''} onChange={e=>update({[key]:e.target.value===''?null:Math.min(99999999,Math.max(0,Number(e.target.value))),cell_id:null})} className="mt-1 min-h-11 w-full rounded-xl bg-[color:var(--card)] px-3" /></label>)}
-      {!validPrice&&<p role="alert" className="col-span-2 text-sm sm:col-span-3">El precio máximo debe ser mayor o igual al mínimo.</p>}
-    </div>}
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="relative h-[43dvh] min-h-[300px] lg:sticky lg:top-24 lg:h-[calc(100dvh-220px)] lg:min-h-[500px]">
-        <PublicationMap initialBounds={ui.viewport} focus={focus} features={data?.features??EMPTY} selected={ui.query.cell_id} onBounds={onBounds} onSelect={f=>update({cell_id:f.id})} />
-        <div role="status" className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-24px)] rounded-2xl bg-[color:var(--card)] px-3 py-2 text-xs shadow-sm">{pending ? "Actualizando zona…" : data ? `${data.total} publicaciones · ${data.seller_total} vendedores` : "Explora una zona en el mapa"}</div>
-        {selected&&(selected.bounds.east>selected.bounds.west||selected.bounds.north>selected.bounds.south)&&<button type="button" onClick={()=>setFocus({bounds:boundsAround({lat:selected.public_lat,lng:selected.public_lng},Math.max(1000,Math.max((selected.bounds.north-selected.bounds.south)*111000,(selected.bounds.east-selected.bounds.west)*111000*Math.cos(selected.public_lat*Math.PI/180))/2)),revision:Date.now()})} className={`${control} absolute bottom-8 left-3 shadow`}>Acercar este grupo</button>}
-      </div>
-      <section aria-labelledby="map-results-title" aria-busy={pending} className="min-w-0 space-y-3 rounded-3xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
-        <div className="flex items-start justify-between gap-2"><div><h2 id="map-results-title" className="font-heading text-lg font-bold">{title}</h2><p className="text-xs text-[color:var(--fg-muted)]">{data?`${data.list_total} resultados`:'Resultados del área visible'}</p></div>{ui.query.cell_id&&<button type="button" aria-label="Ver toda la zona" onClick={()=>update({cell_id:null})} className="min-h-11 min-w-11"><X className="mx-auto h-4 w-4" /></button>}</div>
-        <p className="text-xs leading-relaxed text-[color:var(--fg-muted)]">Los puntos muestran ubicaciones aproximadas. Los números indican publicaciones; un vendedor puede tener varias.</p>
-        {!area&&<p role="status" className="py-6 text-sm">Esta zona está fuera del área disponible. Elige una ubicación en México.</p>}
-        {pending&&<div role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="h-5 w-5 animate-spin" />Buscando en esta zona…</div>}
-        {error&&<div role="alert" className="space-y-3 py-5 text-sm"><p>{error}</p><button type="button" onClick={retry} className={control}>Reintentar</button>{ui.query.cursor&&<button type="button" onClick={()=>update({cursor:null})} className={control}>Primera página</button>}</div>}
-        {data&&!data.list_total&&<div className="space-y-2 py-6"><Store className="h-7 w-7 text-[color:var(--fg-muted)]" /><p className="font-semibold">Aún no hay publicaciones aquí</p><p className="text-sm text-[color:var(--fg-muted)]">Mueve el mapa o prueba otra categoría.</p></div>}
-        <div className="max-h-[42dvh] space-y-3 overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-440px)]">{data?.listings.map(item=><article key={item.id} className="border-b border-[color:var(--border)] pb-3 last:border-b-0"><Link href={item.slug?`/${encodeURIComponent(item.categoria)}/${encodeURIComponent(item.slug)}`:`/vendedor/${item.creador_id}`} className="flex gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-[color:var(--brand-hi)]">
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[color:var(--card-2)]">{item.imagen_principal?<Image src={item.imagen_principal} alt="" fill sizes="80px" className="object-cover" />:<Store className="m-6 h-8 w-8 text-[color:var(--fg-muted)]" />}</div>
-          <div className="min-w-0 space-y-1"><h3 className="line-clamp-2 text-sm font-semibold">{item.titulo}</h3><p className="truncate text-xs text-[color:var(--fg-muted)]">{item.vendedor_nombre}</p><p className="text-sm font-bold text-[color:var(--brand-hi)]">{item.modo_precio==='consultar'||item.precio===null?'Consultar precio':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(item.precio)}</p></div>
-        </Link><button type="button" onClick={()=>update({cell_id:item.cell_id})} className="mt-2 flex min-h-9 items-center gap-1 text-xs font-medium text-[color:var(--brand-hi)]"><MapPin className="h-3 w-3" />Ver punto{item.seller_listing_count>1?` · ${item.seller_listing_count} de este vendedor`:''}</button></article>)}</div>
-        {data&&(data.next_cursor||ui.query.cursor)&&<div className="flex flex-wrap gap-2">{ui.query.cursor&&<button type="button" onClick={()=>update({cursor:null})} className={control}>Primera página</button>}{data.next_cursor&&<button type="button" onClick={()=>setUI({...ui,query:{...ui.query,cursor:data.next_cursor}})} className={control}>Siguientes 30<ArrowRight className="h-4 w-4" /></button>}</div>}
-      </section>
-    </div>
-    <ChangeLocationSheet open={locationOpen} onClose={()=>setLocationOpen(false)} />
+    {error && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm">{error}<button type="button" onClick={retry} className="discovery-control">Reintentar publicaciones</button></p>}
+    {features.length > 0 && <details className="rounded-2xl bg-[color:var(--sidebar-bg)] px-4 text-sm"><summary className="min-h-11 cursor-pointer py-3 font-medium">Puntos del mapa</summary><p className="pb-2 text-xs">Cada punto agrupa publicaciones con ubicación aproximada.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto overscroll-contain pb-3 sm:grid-cols-3">{features.map((feature, index) => <button key={feature.id} type="button" onClick={() => select(feature)} className="discovery-control justify-start text-left"><MapPin className="h-4 w-4 shrink-0" /><span>Punto {index + 1} · {feature.count} {feature.count === 1 ? "publicación" : "publicaciones"}</span></button>)}</div></details>}
+    {!pending && data?.total === 0 && <p role="status" className="text-sm">Aún no hay publicaciones aquí. Mueve el mapa o prueba otros filtros.</p>}
+    <p className="text-xs text-[color:var(--fg)]">Ubicaciones aproximadas. {ui.query.mode === "nearby" ? "Resultados dentro de " + ui.query.radius_meters / 1000 + " km de la ubicación elegida." : ui.center ? "Puedes moverte por la zona y tocar un punto para ver sus publicaciones." : "Vista de México; acércate a una zona para explorar sus puntos."}</p>
+    <PublicationResultsDrawer feature={ui.selected?.feature ?? null} data={detail.data ?? null} pending={detail.pending} error={detail.error ?? null} onClose={closeDrawer} onRetry={detail.retry} onLoadMore={detail.loadMore} returnFocus={returnFocus} fallbackFocus={fallbackFocus} />
   </div>;
 }

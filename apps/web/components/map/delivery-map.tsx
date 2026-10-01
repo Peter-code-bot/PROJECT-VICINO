@@ -8,6 +8,7 @@ interface DeliveryMapProps {
   initialLng?: number;
   initialRadius?: number;
   showRadiusControl?: boolean;
+  showRadiusPreview?: boolean;
 }
 /** Adapts the legacy product form contract; the shared picker uses null for absence. */
 export default function DeliveryMap({ onLocationChange, ...props }: DeliveryMapProps) {

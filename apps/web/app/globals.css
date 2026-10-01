@@ -1,5 +1,49 @@
 @import "tailwindcss";
 
+/* S11 discovery controls reuse the product-card surface and charcoal selection. */
+@layer components {
+.discovery-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 48px;
+  padding: .65rem 1rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--sidebar-bg);
+  color: var(--fg);
+  font-size: .875rem;
+  font-weight: 600;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.discovery-active {
+  background: var(--discovery-selected-bg);
+  color: var(--discovery-selected-fg);
+}
+.discovery-control:focus-visible, .discovery-input:focus-visible {
+  outline: 2px solid var(--brand-hi);
+  outline-offset: 3px;
+}
+.discovery-control:disabled { opacity: .5; cursor: not-allowed; }
+.discovery-input {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 1rem;
+  border: 0;
+  background: var(--sidebar-bg);
+  color: var(--fg);
+  padding: .65rem .85rem;
+  font-weight: 400;
+}
+.discovery-dialog { animation: discovery-dialog-in 180ms ease-out; }
+@keyframes discovery-dialog-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .discovery-control { transition: none; }
+  .discovery-dialog { animation: none; }
+}
+}
+
 /* En Tailwind v4 el variant `dark:` es por media query POR DEFECTO, y este
    proyecto no tiene tailwind.config ni @config ni darkMode en ningun sitio.
    Sin esta linea, las 54 utilidades `dark:` del codigo compilan dentro de
@@ -41,6 +85,8 @@
   /* Light theme surfaces & text */
   --bg:            #FFF8F0;
   --sidebar-bg:    #D1D5DB;
+  --discovery-selected-bg: #121212;
+  --discovery-selected-fg: #F4F1EB;
   --bg-elev-1:     #FAF6EE;
   --bg-elev-2:     #F4EFE4;
   --card:          #FFFFFF;

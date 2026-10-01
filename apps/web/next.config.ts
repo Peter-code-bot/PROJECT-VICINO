@@ -114,7 +114,15 @@ const withPWA = withPWAInit({
   reloadOnOnline: false,
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
-    runtimeCaching: [
+      runtimeCaching: [
+        {
+          // These POST responses contain private viewer context or buyer maps.
+          urlPattern: ({ url, sameOrigin }) => sameOrigin &&
+            (url.pathname === "/api/map-preview" || url.pathname.startsWith("/api/publications/map")),
+          method: "POST",
+          handler: "NetworkOnly",
+          options: { cacheName: "publication-map-post-no-cache" },
+        },
       {
         urlPattern: ({ url, sameOrigin }) => sameOrigin &&
           (url.pathname.startsWith("/api/session/") || /^\/api\/products\/[^/]+\/location-map$/.test(url.pathname)),

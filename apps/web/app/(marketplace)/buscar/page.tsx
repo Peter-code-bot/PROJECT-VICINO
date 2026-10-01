@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
+import { LocationMapPreview } from "@/components/map/location-map-preview";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
@@ -80,10 +81,12 @@ export default async function SearchPage({ searchParams }: Props) {
       : undefined;
   const categoriaFiltro = universityOnly ? subcategoriaUniversidad : params.category;
   let viewerUniversity: string | null = null;
+  let viewerScope = "guest";
   let universitySellerIds: string[] = [];
   let universityFailure: CatalogFailure | null = null;
   try {
     const user = await usuarioOInvitado(supabase);
+    viewerScope = user?.id ?? "guest";
     if (user) viewerUniversity = await getViewerUniversity(supabase, user.id);
     if (universityOnly && viewerUniversity) {
       universitySellerIds = await getUniversitySellerIds(viewerUniversity);
@@ -488,7 +491,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <div data-navigation-kind="search" data-navigation-ready={crypto.randomUUID()} className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
-      {isPublicationMapEnabled() && !universityOnly && <Link href={`/mapa?${new URLSearchParams(Object.entries({q:params.q,category:params.category,tipo:params.tipo,price_min:params.price_min,price_max:params.price_max}).filter((entry): entry is [string,string] => typeof entry[1] === "string")).toString()}`} className="inline-flex min-h-11 items-center rounded-2xl border border-[color:var(--border)] px-4 text-sm font-semibold text-[color:var(--brand-hi)]">Ver publicaciones en el mapa</Link>}
+      {isPublicationMapEnabled() && !universityOnly && <LocationMapPreview initialPosition={userLocation} viewerScope={viewerScope} compact href={`/mapa?${new URLSearchParams(Object.entries({q:params.q,category:params.category,tipo:params.tipo,price_min:params.price_min,price_max:params.price_max,lat:params.lat,lng:params.lng,radio:params.radio}).filter((entry): entry is [string,string] => typeof entry[1] === "string")).toString()}`} /> }
       <SearchFilters
         viewerUniversity={viewerUniversity}
         initialQuery={params.q}

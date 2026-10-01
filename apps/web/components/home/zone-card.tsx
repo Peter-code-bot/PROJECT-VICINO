@@ -5,6 +5,7 @@ import { MapPin, ChevronDown } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 import { ChangeLocationSheet } from "./change-location-sheet";
+import type { GeoPosition } from "@/lib/geo/location-storage";
 
 interface ZoneCardProps {
   /**
@@ -32,12 +33,19 @@ interface ZoneCardProps {
    * esa cookie.
    */
   hayUbicacionEnServidor?: boolean;
+  resolveName?: boolean;
+  /** Explicit URL centers must not display the name of a different saved zone. */
+  positionOverride?: Pick<GeoPosition, "lat" | "lng"> | null;
+  selected?: boolean;
 }
 
-export function ZoneCard({ hayUbicacionEnServidor = false }: ZoneCardProps) {
+export function ZoneCard({ hayUbicacionEnServidor = false, resolveName = true, positionOverride, selected = false }: ZoneCardProps) {
   const { state } = useGeolocation();
-  const position = state.status === "success" ? state.position : null;
-  const { name } = useReverseGeocode(position);
+  const stored = state.status === "success" ? state.position : null;
+  const position = positionOverride === undefined ? stored : positionOverride;
+  const sameStoredZone = position && stored && Math.abs(position.lat - stored.lat) < 0.001 && Math.abs(position.lng - stored.lng) < 0.001;
+  const cachedName = sameStoredZone ? stored.name : undefined;
+  const { name } = useReverseGeocode(resolveName ? (sameStoredZone ? stored : position) : null);
   const [open, setOpen] = useState(false);
 
   const hayUbicacion = position !== null || hayUbicacionEnServidor;
@@ -47,16 +55,18 @@ export function ZoneCard({ hayUbicacionEnServidor = false }: ZoneCardProps) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 product-card-custom transition-colors hover:opacity-90"
+        aria-expanded={open}
+        aria-label={hayUbicacion ? `Cambiar ubicación: ${cachedName ?? name ?? "Tu ubicación"}` : "Activar ubicación"}
+        className={`inline-flex min-h-11 items-center gap-1.5 rounded-2xl px-3 py-2 transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--fg)] ${selected ? "discovery-active" : "product-card-custom product-card-text"}`}
       >
-        <MapPin className="h-[13px] w-[13px] product-card-muted" strokeWidth={2} />
-        <span className="font-heading text-[13px] font-semibold product-card-text whitespace-nowrap">
-          {name ?? (hayUbicacion ? "Cerca de ti" : "Activa ubicación")}
+        <MapPin className="h-[13px] w-[13px]" strokeWidth={2} />
+        <span className="font-heading text-[13px] font-semibold whitespace-nowrap">
+          {cachedName ?? name ?? (hayUbicacion ? "Tu ubicación" : "Activar ubicación")}
         </span>
-        <ChevronDown className="h-3 w-3 product-card-muted" strokeWidth={2} />
+        <ChevronDown className="h-3 w-3" strokeWidth={2} />
       </button>
 
-      <ChangeLocationSheet open={open} onClose={() => setOpen(false)} />
+      <ChangeLocationSheet open={open} onClose={() => setOpen(false)} initialPositionOverride={positionOverride} />
     </>
   );
 }

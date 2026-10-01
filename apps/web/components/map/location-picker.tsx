@@ -33,6 +33,8 @@ interface LocationPickerProps {
   initialLng?: number;
   initialRadius?: number;
   showRadiusControl?: boolean;
+  /** The selected point remains visible when the delivery-circle preview is hidden. */
+  showRadiusPreview?: boolean;
 }
 
 export default function LocationPicker({
@@ -44,6 +46,7 @@ export default function LocationPicker({
   initialLng,
   initialRadius = 5,
   showRadiusControl = true,
+  showRadiusPreview = true,
 }: LocationPickerProps) {
   const mapkit = useMapKit();
   const cobertura = useReglaCobertura();
@@ -354,7 +357,7 @@ export default function LocationPicker({
               draggableMarker
               onMarkerDragEnd={handleDrag}
               onMapClick={handleDrag}
-              radiusKm={onRadiusChange ? radius : undefined}
+              radiusKm={onRadiusChange && showRadiusPreview ? radius : undefined}
               height={250}
             />
           </div>

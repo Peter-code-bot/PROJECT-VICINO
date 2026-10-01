@@ -18,8 +18,8 @@ export const COOKIE_LOCATION = "vicino_location";
 export const COOKIE_RADIUS = "vicino_radius";
 
 export function parseCoordinates(val: string): { lat: number; lng: number } | null {
-  const parts = val.split(",").map((p) => parseFloat(p.trim()));
-  if (parts.length === 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
+  const parts = val.split(",").map((p) => p.trim() ? Number(p.trim()) : NaN);
+  if (parts.length === 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1]) && Math.abs(parts[0]!) <= 90 && Math.abs(parts[1]!) <= 180) {
     return { lat: parts[0]!, lng: parts[1]! };
   }
   return null;
@@ -44,7 +44,10 @@ export function readLocation(): GeoPosition | null {
     try {
       const rawMirror = localStorage.getItem(STORAGE_KEY);
       if (rawMirror) {
-        mirror = JSON.parse(rawMirror) as GeoPosition;
+        const candidate = JSON.parse(rawMirror) as GeoPosition;
+        if (candidate && Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng) && Math.abs(candidate.lat) <= 90 && Math.abs(candidate.lng) <= 180) {
+          mirror = { ...candidate, name: typeof candidate.name === "string" ? candidate.name : undefined, fullName: typeof candidate.fullName === "string" ? candidate.fullName : undefined };
+        }
       }
     } catch {
       mirror = null;
@@ -53,11 +56,11 @@ export function readLocation(): GeoPosition | null {
     if (cookieCoords) {
       const radiusVal = radiusCookie ? parseFloat(radiusCookie.split("=")[1] || "10000") : mirror?.radius ?? 10000;
 
-      // Si el espejo coincide con la cookie (hasta 2 decimales ~1km), usar los nombres cacheados
+      // Cookie and mirror must identify the same stored point (cookie precision: 3 decimals).
       if (
         mirror &&
-        Math.abs(mirror.lat - cookieCoords.lat) < 0.01 &&
-        Math.abs(mirror.lng - cookieCoords.lng) < 0.01
+        mirror.lat.toFixed(3) === cookieCoords.lat.toFixed(3) &&
+        mirror.lng.toFixed(3) === cookieCoords.lng.toFixed(3)
       ) {
         return {
           ...mirror,
@@ -72,8 +75,6 @@ export function readLocation(): GeoPosition | null {
         lat: cookieCoords.lat,
         lng: cookieCoords.lng,
         radius: radiusVal,
-        name: mirror?.name,
-        fullName: mirror?.fullName,
       };
 
       try {

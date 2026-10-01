@@ -2,13 +2,13 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
-import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
+
 import { universitySearchUrl } from "@/lib/university";
 import Link from "next/link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
 import { LocationBar } from "@/components/shared/location-bar";
-import { ZoneCard } from "@/components/home/zone-card";
+import { LocationMapPreview } from "@/components/map/location-map-preview";
 import { CATEGORIES, TrustLevel, primaryCategorySlug, primaryCategoryFull } from "@vicino/shared";
 import { HomeTabs, type HomeFeed } from "@/components/home/home-tabs";
 import { FollowingRail } from "@/components/home/following-rail";
@@ -88,33 +88,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
 
       {feed === "parati" ? (
         <>
-          {/* ─── ZONE + SEARCH (app-style hero) ───────────────── */}
-          <section className="px-4 pt-4 pb-4">
-            <div className="max-w-7xl mx-auto space-y-3">
-              <h1 className="font-heading text-3xl font-bold leading-[1.1] tracking-tight text-[color:var(--fg)]">
-                Descubre lo mejor{" "}
-                <span className="text-[color:var(--brand-hi)]">cerca de ti</span>
-              </h1>
-              <Link
-                href="/buscar"
-                id="home-search"
-                className="flex items-center gap-3 rounded-2xl product-card-custom px-4 py-3 transition-colors hover:opacity-90"
-              >
-                <Search className="h-[17px] w-[17px] product-card-muted" strokeWidth={2} />
-                <span className="flex-1 text-sm product-card-muted">
-                  ¿Qué buscas hoy?
-                </span>
-              </Link>
-              {isPublicationMapEnabled() && <Link href="/mapa" className="flex min-h-11 items-center gap-2 rounded-2xl border border-[color:var(--border)] px-4 py-3 text-sm font-semibold text-[color:var(--brand-hi)]"><MapPin className="h-4 w-4" />Explorar publicaciones en el mapa</Link>}
-              <div>
-                {/* `hasLocation` sale de la cookie vicino_location, que esta
-                    pagina ya leyo arriba para armar el feed. Pasarlo evita que
-                    la pildora entre diciendo «Activa ubicacion» y cambie sola
-                    despues de hidratar. */}
-                <ZoneCard hayUbicacionEnServidor={hasLocation} />
-              </div>
-            </div>
-          </section>
+          <section className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl"><LocationMapPreview initialPosition={userLat !== null && userLng !== null ? {lat:userLat,lng:userLng} : null} viewerScope={user?.id ?? 'guest'} /></div></section>
 
           <HomeCategoryOrder
             viewerUniversity={viewerUniversity}

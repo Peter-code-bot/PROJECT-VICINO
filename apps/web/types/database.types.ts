@@ -3342,6 +3342,7 @@ export type Database = {
       }
       ruta_de_chat_referenciada: { Args: { p_ruta: string }; Returns: boolean }
       search_map_publications_v1: { Args: { p_query: Json }; Returns: Json }
+      search_map_publications_v2: { Args: { p_request: Json }; Returns: Json }
       search_nearby_products: {
         Args: {
           radius_meters?: number

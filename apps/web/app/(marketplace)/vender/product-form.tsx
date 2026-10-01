@@ -1292,6 +1292,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             hasta buscar una direccion, tambien al editar. */}
         <DeliveryMap
           showRadiusControl={false}
+          showRadiusPreview={false}
           initialLat={initialValues?.ubicacion_lat ?? undefined}
           initialLng={initialValues?.ubicacion_lng ?? undefined}
           initialRadius={initialValues?.delivery_radius_km ?? undefined}

@@ -37,6 +37,8 @@ export function useGeolocation() {
         startTransition(() => {
           setState({ status: "success", position: customEvent.detail! });
         });
+      } else {
+        startTransition(() => setState({ status: "idle" }));
       }
     };
 

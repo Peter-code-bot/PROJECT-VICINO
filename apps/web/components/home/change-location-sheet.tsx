@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, startTransition } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
@@ -19,6 +19,7 @@ import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { hayCambiosDeUbicacion, mismoPunto } from "@/lib/geo/cambios-ubicacion";
 import { hapticSelection } from "@/lib/haptics";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
+import type { GeoPosition } from "@/lib/geo/location-storage";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -45,6 +46,8 @@ export interface SavedLocation {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** An explicit link affects this draft only; persistence still requires Apply. */
+  initialPositionOverride?: GeoPosition | null;
 }
 
 function isValidSavedLocation(x: unknown): x is SavedLocation {
@@ -113,12 +116,24 @@ async function reverseGeocodeOnce(
   return { name: "Mi ubicación", fullName: "Mi ubicación" };
 }
 
-export function ChangeLocationSheet({ open, onClose }: Props) {
+export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: Props) {
   const router = useRouter();
   const cobertura = useReglaCobertura();
   const { state, setManualPosition } = useGeolocation();
-  const activePosition =
+  const storedPosition =
     state.status === "success" ? state.position : null;
+  const overrideLat = initialPositionOverride?.lat, overrideLng = initialPositionOverride?.lng;
+  const overrideRadius = initialPositionOverride?.radius;
+  const overrideName = initialPositionOverride?.name, overrideFullName = initialPositionOverride?.fullName;
+  const hasOverride = initialPositionOverride !== undefined;
+  const activePosition = useMemo<GeoPosition | null>(() => {
+    if (!hasOverride) return storedPosition;
+    if (overrideLat === undefined || overrideLng === undefined || clasificarResultado({ lat: overrideLat, lng: overrideLng }, null) !== "ok") return null;
+    const matchesStored = mismoPunto({ lat: overrideLat, lng: overrideLng }, storedPosition);
+    return { lat: overrideLat, lng: overrideLng, radius: overrideRadius ?? storedPosition?.radius,
+      name: overrideName ?? (matchesStored ? storedPosition?.name : undefined),
+      fullName: overrideFullName ?? (matchesStored ? storedPosition?.fullName : undefined) };
+  }, [hasOverride, overrideLat, overrideLng, overrideRadius, overrideName, overrideFullName, storedPosition]);
 
   const [center, setCenter] = useState<{ lat: number; lng: number }>(
     activePosition ?? PUEBLA_DEFAULT,
@@ -315,7 +330,7 @@ export function ChangeLocationSheet({ open, onClose }: Props) {
   // cambia el radio) dejaba una palomita que no hacia nada.
   const borradorValido = !!draft && clasificarResultado(draft, null) === "ok";
   const hayCambios =
-    borradorListo && borradorValido && hayCambiosDeUbicacion(draft, draftRadius, activePosition);
+    borradorListo && borradorValido && hayCambiosDeUbicacion(draft, draftRadius, storedPosition);
   const aplicarBloqueado = searching || requestingGps;
 
   const applyLocation = () => {

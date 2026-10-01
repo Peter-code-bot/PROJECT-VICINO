@@ -52,6 +52,37 @@ export const mapResultSchema = z.object({
 });
 export type MapBounds = z.infer<typeof mapBoundsSchema>;
 export type MapQuery = z.infer<typeof mapQuerySchema>;
+export type MapCursor = z.infer<typeof mapCursorSchema>;
 export type MapResult = z.infer<typeof mapResultSchema>;
 export type MapFeature = MapResult["features"][number];
 export type MapListing = MapResult["listings"][number];
+
+const coverageCenterSchema = z.object({
+  lat: z.number().finite().min(MAP_AREA.south).max(MAP_AREA.north),
+  lng: z.number().finite().min(MAP_AREA.west).max(MAP_AREA.east),
+}).strict();
+export const mapCellCursorSchema = z.object({ x: z.number().int().min(-11850).max(-8650), y: z.number().int().min(1450).max(3280) }).strict();
+export const mapCoverageRequestSchema = z.object({
+  action: z.enum(["overview", "cells", "listings", "check"]),
+  query: mapQuerySchema,
+  coverage_center: coverageCenterSchema.nullable(),
+  revision: z.string().regex(/^[a-f0-9]{32}$/).nullable().default(null),
+  cell_cursor: mapCellCursorSchema.nullable().default(null),
+}).strict().superRefine((r, ctx) => {
+  if (r.action === "cells" && !r.coverage_center) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Elige una zona para cargar sus puntos" });
+  if (r.query.cell_id) {
+    const [, level, x, y] = r.query.cell_id.split(":");
+    const stride = Number(level);
+    if (stride > 8192 || (stride & (stride - 1)) !== 0 || !Number.isSafeInteger(Number(x)) || !Number.isSafeInteger(Number(y)) || Number(x) < -11850 || Number(x) > -1 || Number(y) < 0 || Number(y) > 3280) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Grupo inválido" });
+  }
+});
+export const mapCoverageResultSchema = mapResultSchema.extend({
+  list_seller_total: z.number().int().nonnegative(),
+  revision: z.string().regex(/^[a-f0-9]{32}$/),
+  cells: z.array(z.object({ x: z.number().int(), y: z.number().int(), count: z.number().int().positive(), seller_count: z.number().int().positive() })).max(300),
+  next_cell_cursor: mapCellCursorSchema.nullable(),
+  complete: z.boolean(),
+});
+export type MapCoverageRequest = z.infer<typeof mapCoverageRequestSchema>;
+export type MapCoverageResult = z.infer<typeof mapCoverageResultSchema>;
+export type MapCell = MapCoverageResult["cells"][number];
