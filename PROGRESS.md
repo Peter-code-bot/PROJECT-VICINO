@@ -1,4 +1,12 @@
-# Estado — S12 implementado; comprobación y entrega en curso
+# Estado — S12 publicado; aceptación física pendiente
+
+## 2026-10-01 — S12 entregado para revisión de Javier
+
+- **Codex, familia GPT-6.** Aplicación/tests/evidencia en `ea0a3cb5e490bb3e982be3b9d563af53a95f7851`, push sin fuerza a master confirmado. [CI36942169812](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/36942169812): cuatro checks completed/success. [Vercel6ieNoBPGmTqHFqRuMd2qNJMTMEhT](https://vercel.com/peters-projects-b65496a9/vicinomarket/6ieNoBPGmTqHFqRuMd2qNJMTMEhT): success, Deployment has completed. [Mapa publicado](https://vicinomarket.com/mapa).
+- Producción después del deploy: API exit0/7PASS/0SKIP/43elegibles/20lecturas anónimas y smoke de contenido exit0/8enverde, incluido canonical correcto. La diferencia de canonical local queda resuelta en dominio real; no se cambió metadata de aplicación.
+- 162 controles locales, build final configurado, typecheck/lint/audit/Gitleaks y revisión de tres personas en dos rondas aprobados según [Acta](docs/S12-MAPA-FLUIDO-2026-10-01.md). Chrome real393px:3/3PASS de preview/Buscar/hoja, capturas inspeccionadas. Mapa de producción abierto en browser de la app:43publicaciones/31vendedores, sin panel permanente.
+- [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), Diseño y [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) registran implementación y entrega. CI sigue advirtiendo **Tipos desfasados**, success no acredita regeneración completa. Permanecen pendientes físicos/autenticados/p95/heap/PostGIS100k/PAT. El control del browser no permite tocar contenido MapKit dentro de shadow root cerrado; no se declara aprobado pinch ni ausencia de parpadeo físico.
+- Este cierre cambia solo documentación. Los cortes siguientes conservan estados históricos y no sustituyen esta entrega. Sin migración nueva ni cambio de coordenadas públicas aproximadas.
 
 ## 2026-10-01 — S12: implementación tras revisión visual de Javier
 

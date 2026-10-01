@@ -158,4 +158,49 @@ OK     los enlaces de vendedor no apuntan a la ruta muerta /tienda/
 
 La lectura del canonical público, exit0, devuelve `<link rel="canonical" href="http://localhost:3000/privacidad"/>`: configuración local de SITIO; no modificación de metadata en S12. La prueba del dominio real debe validar8/8 tras desplegar.
 
-Push, CI y Vercel se acreditarán solo al confirmarse en el remoto, con recibo en Notion y posterior cierre documental. Reversión web: revert del commit S12 o rollback a `fec6ae4`, conservando DB aditiva instalada y contratos anteriores.
+## Recibo de producción, 01-oct-2026
+
+Aplicación/tests/evidencia: `ea0a3cb5e490bb3e982be3b9d563af53a95f7851`. Los20archivos, incluidos todos los nuevos módulos/scripts, están en el commit. Gitleaks8.28.0staged redactado exit0:
+
+```text
+5:40PM INF scanned ~172771 bytes (172.77 KB) in 260ms
+5:40PM INF no leaks found
+```
+
+`git commit -m "fix(map): preserve annotations and simplify discovery surfaces"`: exit0. `git push origin HEAD:master`: exit0, salida completa:
+
+```text
+To https://github.com/Peter-code-bot/PROJECT-VICINO.git
+   fec6ae4..ea0a3cb  HEAD -> master
+```
+
+`git rev-parse HEAD` devuelve el SHA indicado; `git status --short`, exit0/sin salida. Los cuatro checks de [Security Audit36942169812](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/36942169812) son completed/success: Escaneo de secretos, TypeScript type check (incluye lint), npm audit y Deriva de tipos vs produccion. La anotación de deriva sigue siendo warning **Tipos desfasados**, message literal:
+
+```text
+apps/web/types/database.types.ts no coincide con el esquema de produccion. Corre: node scripts/gen-types.mjs
+```
+
+No se acredita regeneración completa. Se mantiene el pendiente de PAT/tipos anterior. [Vercel6ieNoBPGmTqHFqRuMd2qNJMTMEhT](https://vercel.com/peters-projects-b65496a9/vicinomarket/6ieNoBPGmTqHFqRuMd2qNJMTMEhT) para el mismoSHA: success, Deployment has completed. Consulta GitHub commit/status, exit0, salida literal:
+
+```json
+{"state":"success","statuses":[{"context":"Vercel","description":"Deployment has completed","state":"success","target_url":"https://vercel.com/peters-projects-b65496a9/vicinomarket/6ieNoBPGmTqHFqRuMd2qNJMTMEhT"}]}
+```
+
+Después del despliegue, API real con `$env:S11_BASE_URL = 'https://vicinomarket.com'` y el script HTTP indicado arriba: **exit0,7PASS,0SKIP,43elegibles,20lecturas**; misma salida completa de casos que el candidato local. `node scripts/smoke-produccion.mjs`, **exit0**, salida completa:
+
+```text
+OK     home con ubicacion: el feed trae productos
+OK     buscar sin acento encuentra el producto acentuado
+OK     buscar por ejemplo de categoria
+OK     aviso de privacidad publicado y versionado
+OK     terminos publicados
+OK     canonical apunta al dominio bueno
+OK     rankings responde con contenido
+OK     los enlaces de vendedor no apuntan a la ruta muerta /tienda/
+
+8 comprobaciones, todas en verde.
+```
+
+Browser de la app abierto en `/mapa`, datos reales43publicaciones31vendedores, sin panel permanente. El mecanismo de control rechaza click dentro del shadowroot cerrado de MapKit (`Cannot click content inside a closed shadow root`); esto es límite de automatización, no evidencia de fallo del marcador. Acceso por teclado a grupo disponible. Aceptación pinch/tap físico y pintado estable siguen pendientes.
+
+El recibo final de cualquier commit de cierre documental se registra en Notion; no cambia aplicación/DB. Reversión web: revert del commit S12 o rollback a `fec6ae4`, conservando DB aditiva instalada y contratos anteriores.
