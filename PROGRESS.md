@@ -1,4 +1,21 @@
-# Estado — S11 desplegado y verificado en producción
+# Estado — S12 implementado; comprobación y entrega en curso
+
+## 2026-10-01 — S12: implementación tras revisión visual de Javier
+
+- **Codex, familia GPT-6.** M01–M02/H01/B01/A01/D01 implementados sobre `fec6ae4`, usando Workflow Advisor y equipo por archivos. Los cortes siguientes son historial. [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9) y [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) registran cambios y límites.
+- Marcadores reconciliados por ID y propiedades mutables, sin recreación de puntos estables; agrupación con umbrales 300/180, transición de overview 85/70 km y conservación de centro/revisión de capa. Invalidación aborta inmediatamente cobertura y detalle para impedir respuestas antiguas. Sin SQL ni migración nueva.
+- Inicio conserva imagen completa 16:9, abre `/mapa` al tocar, sin franjas/pie/flecha y con ubicación independiente superpuesta. Buscar elimina preview/snapshot y accede a ubicación dentro de Filtros, conservando borrador y foco con un modal activo. Panel permanente de puntos retirado, alternativa accesible al foco. Hoja crema y tarjetas grises existentes; cierre, drag, paginación y safe areas conservados.
+- **162 controles locales PASS/exit0:** marcadores12+24, agrupación4, caché17, mapa69, preview14 y filtros22. TypeScript exit0; lint completo exit0/61 warnings preexistentes, dirigido exit0/0 errores/2 warnings existentes. Audit exit0/2 moderadas, ninguna alta/crítica. Revisión independiente en dos rondas: tres approve, hallazgos abiertos vacíos.
+- Build configurado final exit0. Primera prueba de contenido local falló por configuración ausente en este checkout; se cargó la configuración existente únicamente en memoria y se recompiló, sin modificar el checkout original. API del candidato127.0.0.1 exit0/7PASS/0SKIP/43elegibles/20lecturas anónimas. Chrome real393px exit0/3PASS: previewApple1280×720 completo, Buscar sin snapshot/selector único y grupo35/28 con tarjetas reales/cierre/foco. Smoke local7/8exit1: solo canonical esperado de producción difiere (`http://localhost:3000/privacidad`), por configuración local. Push autorizado; CI/Vercel y smoke del dominio real se comprobarán después del push.
+- [Acta S12](docs/S12-MAPA-FLUIDO-2026-10-01.md) contiene evidencia y alcance. Quedan pendientes aceptación táctil y ausencia de parpadeo físico en Safari/iPhone/Android, accesibilidad física, métricas p95/heap, escenarios autenticados, tipos completos/PAT y PostGIS100k previamente abiertos. Las pruebas con SDK controlado no acreditan fluidez física.
+
+## 2026-10-01 — S12: plan tras revisión visual de Javier
+
+- **Codex, familia GPT-6. Estado: plan documentado; implementación pendiente.** Revisión de cuatro capturas y código base `fec6ae490d10f92de62813ad0839d2ad21315a6d`, con Workflow Advisor y dos agentes de revisión solo lectura. S11 recibió revisión visual y requiere correcciones; las entregas anteriores se conservan como historial.
+- [Plan S12 en Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263): conservar marcadores por ID, estabilizar agrupación y transiciones de cobertura; Inicio sin franjas/pie/flecha, apertura al tocar y ubicación superpuesta independiente; Buscar sin preview y ubicación dentro de Filtros; retirar panel visible Puntos del mapa con acceso accesible; hoja crema con tarjetas grises existentes.
+- Diagnóstico confirmado por código: `publication-map.tsx` elimina/recrea todas las anotaciones al cambiar features/selección/tema; la cámara recalcula features aun con caché vigente. Agrupación y cambio de cobertura pueden añadir saltos. El parpadeo físico requiere correlación con MapKit real; no se atribuye automáticamente a consultas nuevas. Franjas: altura fija/object-contain/fondo gris y pie del preview.
+- [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) ampliados con identidad de anotaciones, 20 pan/zoom y red por separado, transiciones/privacidad, móvil real, preview/ubicación, Buscar sin snapshots, accesibilidad y hoja. Todos los criterios S12 siguen pendientes; pruebas S11 no acreditan S12.
+- Plan, Diseño y [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9) alineados. Al iniciar implementación se anotará cada cambio, archivos, motivo y evidencia de pruebas. Este corte solo modifica documentación: sin cambios de aplicación, DB, commit ni push.
 
 ## 2026-10-01 — S11 entregado para revisión de Javier
 

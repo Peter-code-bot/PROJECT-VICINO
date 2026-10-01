@@ -5,17 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
-import { LocationMapPreview } from "@/components/map/location-map-preview";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
 import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { parseRadiusCookie } from "@/lib/geo/radius";
+import { parseCoordinates } from "@/lib/geo/location-storage";
 import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
 import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 import { UNIVERSITY_CATEGORY } from "@/lib/university";
 import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
 import { usuarioOInvitado } from "@/lib/session-auth";
-import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
 
 const PAGE_SIZE = 20;
 
@@ -35,10 +34,9 @@ const BARRA = String.fromCharCode(92);
  */
 function latLngDeUrl(a?: string, b?: string): { lat: number; lng: number } | null {
   if (!a || !b) return null;
-  const lat = Number.parseFloat(a);
-  const lng = Number.parseFloat(b);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  const point = parseCoordinates(`${a},${b}`);
+  if (!point) return null;
+  const { lat, lng } = point;
   return { lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4 };
 }
 
@@ -81,12 +79,10 @@ export default async function SearchPage({ searchParams }: Props) {
       : undefined;
   const categoriaFiltro = universityOnly ? subcategoriaUniversidad : params.category;
   let viewerUniversity: string | null = null;
-  let viewerScope = "guest";
   let universitySellerIds: string[] = [];
   let universityFailure: CatalogFailure | null = null;
   try {
     const user = await usuarioOInvitado(supabase);
-    viewerScope = user?.id ?? "guest";
     if (user) viewerUniversity = await getViewerUniversity(supabase, user.id);
     if (universityOnly && viewerUniversity) {
       universitySellerIds = await getUniversitySellerIds(viewerUniversity);
@@ -105,16 +101,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // `if` de abajo las dos coordenadas ya son numeros. Antes el booleano lo
   // sabia el lector y no el compilador, y la llamada al RPC lo afirmaba a
   // mano con dos `!`.
-  let userLocation: { lat: number; lng: number } | null = null;
-
-  if (locationCookie) {
-    const [latStr, lngStr] = locationCookie.split(",");
-    const parsedLat = parseFloat(latStr || "");
-    const parsedLng = parseFloat(lngStr || "");
-    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
-      userLocation = { lat: parsedLat, lng: parsedLng };
-    }
-  }
+  let userLocation = locationCookie ? parseCoordinates(locationCookie) : null;
 
   // El boton «Cerca» escribe lat/lng/radio en la URL, y la pagina los ignoraba
   // desde el merge ccb0e00 (abril): pedia el permiso de ubicacion y la lista no
@@ -491,7 +478,6 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <div data-navigation-kind="search" data-navigation-ready={crypto.randomUUID()} className="w-full max-w-7xl mx-auto px-4 py-6 space-y-4">
-      {isPublicationMapEnabled() && !universityOnly && <LocationMapPreview initialPosition={userLocation} viewerScope={viewerScope} compact href={`/mapa?${new URLSearchParams(Object.entries({q:params.q,category:params.category,tipo:params.tipo,price_min:params.price_min,price_max:params.price_max,lat:params.lat,lng:params.lng,radio:params.radio}).filter((entry): entry is [string,string] => typeof entry[1] === "string")).toString()}`} /> }
       <SearchFilters
         viewerUniversity={viewerUniversity}
         initialQuery={params.q}
@@ -500,7 +486,7 @@ export default async function SearchPage({ searchParams }: Props) {
         initialTipo={params.tipo}
         initialPriceMin={params.price_min}
         initialPriceMax={params.price_max}
-        initialLat={ubicacionDeUrl ? ubicacionDeUrl.lat.toFixed(4) : undefined}
+        initialPosition={userLocation ? { ...userLocation, radius: validRadius } : null}
       />
 
       {!universityOnly && universityFailure && <CatalogQueryState failure={universityFailure} section="tu universidad" />}

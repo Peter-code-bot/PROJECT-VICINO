@@ -105,13 +105,20 @@ export interface MapKitGlobal {
       titleVisibility?: unknown;
       accessibilityLabel?: string;
       draggable?: boolean;
+      selected?: boolean;
       glyphText?: string;
       calloutEnabled?: boolean;
     }
   ) => {
     coordinate: { latitude: number; longitude: number };
+    color: string | undefined;
+    title: string | null | undefined;
+    accessibilityLabel: string | null;
+    glyphText: string | null;
     draggable: boolean;
+    selected: boolean;
     addEventListener: (type: string, listener: () => void) => void;
+    removeEventListener: (type: string, listener: () => void) => void;
   };
   CircleOverlay: new (coordinate: unknown, radius: number, options?: Record<string, unknown>) => unknown;
   Style: new (options?: Record<string, unknown>) => unknown;

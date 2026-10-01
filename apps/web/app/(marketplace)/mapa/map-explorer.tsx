@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, ArrowRight, MapPin } from "lucide-react";
+import { Search, X, ArrowRight } from "lucide-react";
 import { MAP_AREA, type MapBounds, type MapFeature, type MapQuery } from "@vicino/shared";
 import { PublicationMap } from "@/components/map/publication-map";
 import { PublicationResultsDrawer } from "@/components/map/publication-results-drawer";
@@ -12,7 +12,7 @@ import { useSessionUI } from "@/components/layout/session-data-provider";
 import { usePublicationCoverage } from "@/hooks/use-publication-coverage";
 import { useCoverageListings } from "@/hooks/use-coverage-listings";
 import { boundsAround, intersectMapBounds, queryFromMapParams } from "@/lib/geo/publication-map";
-import { clusterMapCells, publicDistance } from "@/lib/geo/map-coverage";
+import { clusterMapLayer, publicDistance } from "@/lib/geo/map-coverage";
 
 type Center = { lat: number; lng: number };
 interface SelectedGroup { feature: MapFeature; query: MapQuery; center: Center | null; revision: string }
@@ -42,9 +42,16 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
   const returnFocus = useRef<HTMLElement | null>(null);
   useEffect(() => { latest.current = ui; }, [ui]);
   const area = useMemo(() => intersectMapBounds(ui.viewport), [ui.viewport]);
-  const { data, pending, error, retry } = usePublicationCoverage({ ...ui.query, bounds: area ?? MAP_AREA }, ui.center, viewerScope);
+  const { data, center: layerCenter, contextKey, pending, error, retry } = usePublicationCoverage({ ...ui.query, bounds: area ?? MAP_AREA }, ui.center, viewerScope);
   const detail = useCoverageListings(ui.selected?.query ?? ui.query, ui.selected ? ui.selected.center : ui.center, ui.selected?.feature.id ?? null, ui.selected?.revision ?? null);
-  const features = useMemo(() => area && data ? data.complete ? clusterMapCells(data.cells, area) : data.features : EMPTY, [data, area]);
+  const [level, setLevel] = useState({ contextKey: "", stride: 1 });
+  const layer = useMemo(() => area && data?.complete
+    ? clusterMapLayer(data.cells, area, level.contextKey === contextKey ? level.stride : 1)
+    : null, [data, area, contextKey, level]);
+  // Adjust before committing the new camera layer; an effect would paint an
+  // intermediate level and refs are not render state.
+  if (layer && (level.contextKey !== contextKey || level.stride !== layer.stride)) setLevel({ contextKey, stride: layer.stride });
+  const features = area && data ? layer?.features ?? data.features : EMPTY;
 
   function publishQuery(query: MapQuery) {
     const params = new URLSearchParams(window.location.search);
@@ -108,6 +115,8 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
       // A broad viewport needs the complete overview, rather than holes outside
       // the local circle. A local viewport only recenters after leaving it.
       if (diagonal > 85_000) center = null;
+      // Once broad, refine below a separate threshold to avoid toggling at 85km.
+      else if (!center && diagonal > 70_000) center = null;
       else if (!center || !covered) center = camera;
     }
     const next = { ...previous, viewport, center };
@@ -118,7 +127,7 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
     const active = document.activeElement;
     returnFocus.current = active instanceof HTMLElement && active.matches("button,a,input,[tabindex]") ? active : null;
     const previous = latest.current;
-    const next = { ...previous, selected: { feature, query: { ...previous.query, cell_id: null, cursor: null }, center: previous.center, revision: data.revision } };
+    const next = { ...previous, selected: { feature, query: { ...previous.query, cell_id: null, cursor: null }, center: layerCenter, revision: data.revision } };
     latest.current = next; setUI(next);
   }
   function closeDrawer() { const next = { ...latest.current, selected: null }; latest.current = next; setUI(next); }
@@ -136,7 +145,7 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
       {mapFailed && <Link href={searchHref(ui.query)} className="discovery-control absolute bottom-8 inset-x-4 text-center">Ver publicaciones de esta zona<ArrowRight className="h-4 w-4" /></Link>}
     </div>
     {error && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm">{error}<button type="button" onClick={retry} className="discovery-control">Reintentar publicaciones</button></p>}
-    {features.length > 0 && <details className="rounded-2xl bg-[color:var(--sidebar-bg)] px-4 text-sm"><summary className="min-h-11 cursor-pointer py-3 font-medium">Puntos del mapa</summary><p className="pb-2 text-xs">Cada punto agrupa publicaciones con ubicación aproximada.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto overscroll-contain pb-3 sm:grid-cols-3">{features.map((feature, index) => <button key={feature.id} type="button" onClick={() => select(feature)} className="discovery-control justify-start text-left"><MapPin className="h-4 w-4 shrink-0" /><span>Punto {index + 1} · {feature.count} {feature.count === 1 ? "publicación" : "publicaciones"}</span></button>)}</div></details>}
+    {features.length > 0 && <div aria-label="Seleccionar puntos con teclado" className="sr-only focus-within:not-sr-only focus-within:rounded-2xl focus-within:bg-[color:var(--bg)] focus-within:p-3"><p className="mb-2 text-sm">Selecciona un punto para ver sus publicaciones.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-3">{features.map((feature, index) => <button key={feature.id} type="button" onClick={() => select(feature)} className="discovery-control justify-start text-left">Punto {index + 1} · {feature.count} {feature.count === 1 ? "publicación" : "publicaciones"}</button>)}</div></div>}
     {!pending && data?.total === 0 && <p role="status" className="text-sm">Aún no hay publicaciones aquí. Mueve el mapa o prueba otros filtros.</p>}
     <p className="text-xs text-[color:var(--fg)]">Ubicaciones aproximadas. {ui.query.mode === "nearby" ? "Resultados dentro de " + ui.query.radius_meters / 1000 + " km de la ubicación elegida." : ui.center ? "Puedes moverte por la zona y tocar un punto para ver sus publicaciones." : "Vista de México; acércate a una zona para explorar sus puntos."}</p>
     <PublicationResultsDrawer feature={ui.selected?.feature ?? null} data={detail.data ?? null} pending={detail.pending} error={detail.error ?? null} onClose={closeDrawer} onRetry={detail.retry} onLoadMore={detail.loadMore} returnFocus={returnFocus} fallbackFocus={fallbackFocus} />

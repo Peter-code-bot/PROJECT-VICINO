@@ -42,31 +42,31 @@ export function PublicationResultsDrawer({ feature, data, pending, error, onClos
             else fallbackFocus.current?.focus({ preventScroll: true });
           }}>
           <motion.div data-modal-open="true" data-no-page-swipe data-no-pull-to-refresh
-            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(86dvh,900px)] max-w-2xl flex-col rounded-t-3xl bg-[color:var(--sidebar-bg)] text-[color:var(--fg)] outline-none"
+            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(86dvh,900px)] max-w-2xl flex-col rounded-t-3xl bg-[color:var(--bg)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-[color:var(--fg)] outline-none"
             initial={{ y: reducedMotion ? 0 : "100%", opacity: reducedMotion ? 0 : 1 }} animate={{ y: 0, opacity: 1 }} exit={{ y: reducedMotion ? 0 : "100%", opacity: reducedMotion ? 0 : 1 }}
             transition={{ duration: reducedMotion ? 0 : .24, ease: [.22, 1, .36, 1] }}
             drag="y" dragListener={false} dragControls={controls} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .45 }}
             onDragEnd={(_, info) => { if (info.offset.y > 96 || info.velocity.y > 650) onClose(); }}>
             <button type="button" aria-label="Cerrar o deslizar hacia abajo las publicaciones" onPointerDown={event => controls.start(event)}
-              onClick={onClose} className="flex min-h-11 shrink-0 touch-none items-center justify-center rounded-t-3xl focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]">
-              <span className="h-1.5 w-12 rounded-full bg-[color:var(--fg)]/35" />
+              onClick={onClose} className="flex min-h-12 shrink-0 touch-none items-center justify-center rounded-t-3xl focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]">
+              <span aria-hidden="true" className="h-1.5 w-12 rounded-full bg-[color:var(--fg)]/35" />
             </button>
-            <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3">
-              <div className="min-w-0"><Dialog.Title className="font-heading text-xl font-bold">{title}</Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm">{data ? `${data.list_total} publicaciones · ${data.list_seller_total} vendedores` : `${feature.count} ${feature.count === 1 ? "publicación" : "publicaciones"}`}<span className="mt-1 block text-xs">Las ubicaciones son aproximadas.</span></Dialog.Description>
+            <div className="flex shrink-0 items-start justify-between gap-4 px-4 pb-4 sm:px-6">
+              <div className="min-w-0"><Dialog.Title className="font-heading text-xl leading-tight font-bold">{title}</Dialog.Title>
+                <Dialog.Description className="mt-2 text-sm leading-relaxed">{data ? `${data.list_total} publicaciones · ${data.list_seller_total} vendedores` : `${feature.count} ${feature.count === 1 ? "publicación" : "publicaciones"}`}<span className="mt-1 block text-xs">Las ubicaciones son aproximadas.</span></Dialog.Description>
               </div>
               <Dialog.Close asChild><button ref={close} type="button" aria-label="Cerrar publicaciones" className="discovery-control min-w-12 shrink-0 px-2"><X className="h-5 w-5" /></button></Dialog.Close>
             </div>
-            <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)]" aria-busy={pending}>
+            <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-6" aria-busy={pending}>
               {pending && !data?.listings.length && <p role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />Buscando publicaciones…</p>}
               {error && <div role="alert" className="space-y-3 py-5 text-sm"><p>{error}</p><button type="button" onClick={onRetry} className="discovery-control">Reintentar</button></div>}
               {data && !data.listings.length && !pending && !error && <div className="space-y-2 py-6"><Store className="h-7 w-7" /><p className="font-semibold">Ya no hay publicaciones en este punto</p><p className="text-sm">Prueba otro punto o cambia los filtros.</p></div>}
-              <div className="space-y-3">{data?.listings.map(item => <article key={item.id} className="product-card-custom rounded-2xl p-3">
+              <div className="space-y-4">{data?.listings.map(item => <article key={item.id} className="product-card-custom rounded-2xl p-4">
                 <Link href={item.slug ? `/${encodeURIComponent(item.categoria)}/${encodeURIComponent(item.slug)}` : `/vendedor/${item.creador_id}`} className="flex gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]">
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[color:var(--sidebar-bg)]">{item.imagen_principal ? <Image src={item.imagen_principal} alt="" fill sizes="80px" className="object-cover" /> : <Store className="m-6 h-8 w-8" />}</div>
-                  <div className="min-w-0 space-y-1"><h3 className="line-clamp-2 text-sm font-semibold">{item.titulo}</h3><p className="text-sm font-bold"><PriceDisplay amount={item.precio} fallback={priceFallbackLabel(item.modo_precio)} /></p></div>
+                  <div className="min-w-0 flex-1 space-y-2"><h3 className="line-clamp-2 font-heading text-base leading-snug font-semibold">{item.titulo}</h3><p className="text-base font-bold tabular-nums"><PriceDisplay amount={item.precio} fallback={priceFallbackLabel(item.modo_precio)} /></p></div>
                 </Link>
-                <Link href={`/vendedor/${item.creador_id}`} className="mt-2 flex min-h-11 items-center justify-between gap-2 rounded-xl px-1 text-sm focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]"><span className="truncate">{item.vendedor_nombre}</span><span className="inline-flex shrink-0 items-center gap-1 text-xs">Ver negocio<ArrowRight className="h-3 w-3" /></span></Link>
+                <Link href={`/vendedor/${item.creador_id}`} className="mt-3 flex min-h-12 items-center justify-between gap-3 rounded-xl px-1 text-sm focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]"><span className="truncate">{item.vendedor_nombre}</span><span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold">Ver negocio<ArrowRight aria-hidden="true" className="h-3 w-3" /></span></Link>
               </article>)}</div>
               {data?.next_cursor && <button type="button" disabled={pending} onClick={onLoadMore} className="discovery-control mt-4 w-full">{pending ? <><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />Cargando…</> : <>Ver más publicaciones<ArrowRight className="h-4 w-4" /></>}</button>}
             </div>

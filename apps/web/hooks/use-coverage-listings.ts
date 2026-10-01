@@ -10,6 +10,7 @@ export function useCoverageListings(query: MapQuery, center: CoverageCenter, nod
   const [cursor, setCursor] = useState<MapCursor | null>(null);
   const [state, setState] = useState<{ key: string; attempt: number; data?: MapCoverageResult; pending: boolean; error?: string }>({ key: '', attempt: -1, pending: false });
   const sequence = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
   const previous = useRef<{ key: string; data: MapCoverageResult } | null>(null);
   const activeRevision = useRef<{ key: string; revision: string | null }>({ key: '', revision: null });
   const blockedUntil = useRef(0);
@@ -18,6 +19,7 @@ export function useCoverageListings(query: MapQuery, center: CoverageCenter, nod
     if (!node) { previous.current = null; return; }
     const id = ++sequence.current;
     const abort = new AbortController();
+    activeRequest.current = abort;
     const same = previous.current?.key === key;
     const old = same ? previous.current?.data : undefined;
     let pageCursor = same ? cursor : null;
@@ -71,12 +73,16 @@ export function useCoverageListings(query: MapQuery, center: CoverageCenter, nod
     const resume = () => { if (document.visibilityState !== 'hidden') void load(true); };
     document.addEventListener('visibilitychange', resume);
     window.addEventListener('online', resume);
-    return () => { abort.abort(); clearInterval(interval); document.removeEventListener('visibilitychange', resume); window.removeEventListener('online', resume); };
+    return () => { abort.abort(); if (activeRequest.current === abort) activeRequest.current = null; clearInterval(interval); document.removeEventListener('visibilitychange', resume); window.removeEventListener('online', resume); };
   // Frozen drawer context and page cursor; camera bounds do not participate.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, cursorKey, attempt, node]);
   useEffect(() => {
-    const invalid = (event: Event) => { if ((event as CustomEvent).detail === '/api/session/chats') return; previous.current = null; activeRevision.current = { key: '', revision: null }; setCursor(null); setAttempt(n => n + 1); };
+    const invalid = (event: Event) => {
+      if ((event as CustomEvent).detail === '/api/session/chats') return;
+      activeRequest.current?.abort(); sequence.current++;
+      previous.current = null; activeRevision.current = { key: '', revision: null }; setCursor(null); setAttempt(n => n + 1);
+    };
     window.addEventListener('vicino:data-invalidated', invalid);
     return () => window.removeEventListener('vicino:data-invalidated', invalid);
   }, []);

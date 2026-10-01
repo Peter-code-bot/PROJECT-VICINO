@@ -7,6 +7,7 @@ import { SearchAutocompleteDropdown } from "@/components/search/search-autocompl
 import { DiscoveryFilters } from "@/components/shared/discovery-filters";
 import { useSearchHistory } from "@/hooks/use-search-history";
 import { UNIVERSITY_CATEGORY } from "@/lib/university";
+import type { GeoPosition } from "@/lib/geo/location-storage";
 
 interface SearchFiltersProps {
   viewerUniversity?: string | null;
@@ -16,8 +17,7 @@ interface SearchFiltersProps {
   initialTipo?: string;
   initialPriceMin?: string;
   initialPriceMax?: string;
-  /** Legacy callers may still pass this; location now lives in the preview. */
-  initialLat?: string;
+  initialPosition?: GeoPosition | null;
 }
 
 export function SearchFilters({
@@ -27,10 +27,16 @@ export function SearchFilters({
   initialTipo,
   initialPriceMin,
   initialPriceMax,
+  initialPosition,
   viewerUniversity,
 }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locationSource = `${initialPosition?.lat ?? ""},${initialPosition?.lng ?? ""},${initialPosition?.radius ?? ""}`;
+  const [location, setLocation] = useState({ source: locationSource, value: initialPosition ?? null });
+  // A confirmed URL/SSR zone wins over a previous client-side location event.
+  if (location.source !== locationSource) setLocation({ source: locationSource, value: initialPosition ?? null });
+  const effectivePosition = location.source === locationSource ? location.value : initialPosition ?? null;
   const committedQuery = initialQuery ?? "";
   const [input, setInput] = useState({ source: committedQuery, value: committedQuery });
   // Back/Forward or an external navigation wins over an old input draft.
@@ -66,7 +72,9 @@ export function SearchFilters({
   useEffect(() => { updateParamsRef.current = updateParams; }, [updateParams]);
   useEffect(() => () => clearTimeout(blurTimer.current), []);
   useEffect(() => {
-    const locationChanged = () => {
+    const locationChanged = (event: Event) => {
+      const position = (event as CustomEvent<GeoPosition | null>).detail;
+      if (position !== undefined) setLocation({ source: locationSource, value: position });
       const params = new URLSearchParams(pendienteRef.current ?? searchParams.toString());
       // An old explicit GPS link must not override a newly saved/cleared zone.
       if (params.has("lat") || params.has("lng") || params.has("radio")) {
@@ -75,7 +83,7 @@ export function SearchFilters({
     };
     window.addEventListener("vicino_location_updated", locationChanged);
     return () => window.removeEventListener("vicino_location_updated", locationChanged);
-  }, [searchParams]);
+  }, [locationSource, searchParams]);
 
   function handleSearchProducts(value: string) {
     const trimmed = value.trim();
@@ -142,6 +150,8 @@ export function SearchFilters({
           subcategory: searchParams.get("subcategory") ?? undefined,
         }}
         showSort
+        showLocation
+        initialPosition={effectivePosition}
         viewerUniversity={viewerUniversity}
         pending={navegando}
         onApply={(value) => updateParams({

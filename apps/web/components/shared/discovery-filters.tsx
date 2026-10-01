@@ -1,9 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronDown, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { CATEGORIES } from "@vicino/shared";
+import { ChangeLocationSheet } from "@/components/home/change-location-sheet";
+import type { GeoPosition } from "@/lib/geo/location-storage";
 import { UNIVERSITY_CATEGORY } from "@/lib/university";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,8 @@ export interface DiscoveryFiltersProps {
   multipleCategories?: boolean;
   showSort?: boolean;
   showDistance?: boolean;
+  showLocation?: boolean;
+  initialPosition?: GeoPosition | null;
   viewerUniversity?: string | null;
   pending?: boolean;
 }
@@ -31,18 +35,24 @@ export interface DiscoveryFiltersProps {
 const VISIBLE_CATEGORIES = CATEGORIES.filter((category) => !category.hidden_in_form);
 const MAX_CATEGORIES = 10;
 
-/** Draft changes remain local until Apply; closing always discards the draft. */
+/** Filter edits stay local until Apply; the location editor has its own explicit Apply. */
 export function DiscoveryFilters({
   value,
   onApply,
   multipleCategories = false,
   showSort = false,
   showDistance = false,
+  showLocation = false,
+  initialPosition,
   viewerUniversity,
   pending = false,
 }: DiscoveryFiltersProps) {
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<"closed" | "filters" | "location">("closed");
   const [draft, setDraft] = useState(value);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const locationButtonRef = useRef<HTMLButtonElement>(null);
+  const nextFocus = useRef<"initial" | "trigger" | "location">("initial");
+  const restoreTriggerFocus = useRef(false);
   const priceErrorId = useId();
   const universityHelpId = useId();
   const minPrice = draft.priceMin === "" ? null : Number(draft.priceMin);
@@ -59,6 +69,59 @@ export function DiscoveryFilters({
     + Number(Boolean(value.priceMin || value.priceMax))
     + Number(showDistance && Boolean(value.nearby))
     + Number(showSort && Boolean(value.sort && value.sort !== "newest"));
+
+  // Applying starts a navigation that temporarily disables the trigger. Radix
+  // closes before it can receive focus; restore it when navigation settles.
+  useEffect(() => {
+    if (panel === "closed" && !pending && restoreTriggerFocus.current) {
+      restoreTriggerFocus.current = false;
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+  }, [panel, pending]);
+
+  // The existing location sheet renders its own portal. Focus follows that
+  // portal while Radix is closed, then returns to the action inside Filters.
+  useEffect(() => {
+    if (panel !== "location") return;
+    let sheet: HTMLElement | null = null;
+    const focusable = () => sheet ? Array.from(sheet.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+    )).filter((element) => element.getClientRects().length > 0 && !element.closest('[aria-hidden="true"]')) : [];
+    const focusFirst = () => focusable()[0]?.focus();
+    const attach = () => {
+      sheet = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Cambiar ubicación"]');
+      if (sheet) {
+        focusFirst();
+        observer.disconnect();
+      }
+    };
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
+    attach();
+    const keepFocus = (event: FocusEvent) => {
+      if (sheet?.isConnected && !sheet.contains(event.target as Node)) focusFirst();
+    };
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !sheet?.isConnected) return;
+      const elements = focusable();
+      const first = elements[0], last = elements.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("focusin", keepFocus);
+    document.addEventListener("keydown", handleTab);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("focusin", keepFocus);
+      document.removeEventListener("keydown", handleTab);
+    };
+  }, [panel]);
 
   function toggleCategory(slug: string) {
     setDraft((previous) => {
@@ -83,20 +146,26 @@ export function DiscoveryFilters({
       subcategory: draft.categories.includes(UNIVERSITY_CATEGORY) ? draft.subcategory : undefined,
       ...(showDistance && draft.nearby ? { radiusMeters } : {}),
     });
-    setOpen(false);
+    nextFocus.current = "trigger";
+    setPanel("closed");
   }
 
   return (
+    <>
     <Dialog.Root
-      open={open}
+      open={panel === "filters"}
       onOpenChange={(next) => {
-        if (next) setDraft({ ...value, categories: [...value.categories] });
-        setOpen(next);
+        if (next) {
+          setDraft({ ...value, categories: [...value.categories] });
+          nextFocus.current = "initial";
+        } else nextFocus.current = "trigger";
+        setPanel(next ? "filters" : "closed");
       }}
     >
       <Dialog.Trigger asChild>
         <button
           type="button"
+          ref={triggerRef}
           disabled={pending}
           data-testid="discovery-filters-trigger"
           className={cn("discovery-control relative w-full", activeCount > 0 && "discovery-active")}
@@ -110,6 +179,19 @@ export function DiscoveryFilters({
         <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/35" />
         <Dialog.Content
           data-modal-open="true"
+          onOpenAutoFocus={(event) => {
+            if (nextFocus.current === "location") {
+              event.preventDefault();
+              locationButtonRef.current?.focus();
+            }
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (nextFocus.current === "trigger") {
+              restoreTriggerFocus.current = Boolean(triggerRef.current?.disabled);
+              if (!restoreTriggerFocus.current) triggerRef.current?.focus({ preventScroll: true });
+            }
+          }}
           className="discovery-dialog fixed bottom-0 left-0 right-0 z-[81] mx-auto flex max-h-[90dvh] max-w-xl flex-col rounded-t-3xl bg-[color:var(--card)] text-[color:var(--fg)] outline-none sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         >
           <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-4">
@@ -124,6 +206,30 @@ export function DiscoveryFilters({
             Elige lo que quieres ver y pulsa Aplicar.
           </Dialog.Description>
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4">
+            {showLocation && (
+              <section aria-label="Ubicación de búsqueda" className="space-y-2">
+                <button
+                  ref={locationButtonRef}
+                  type="button"
+                  aria-label="Cambiar ubicación"
+                  className="discovery-control w-full justify-start text-left"
+                  onClick={() => {
+                    nextFocus.current = "location";
+                    setPanel("location");
+                  }}
+                >
+                  <MapPin aria-hidden="true" className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block">Ubicación</span>
+                    <span className="block text-xs font-normal text-[color:var(--fg-muted)]">
+                      {initialPosition ? `${initialPosition.name ?? "Zona actual"} · ${(initialPosition.radius ?? 10000) / 1000} km` : "Todo México"}
+                    </span>
+                  </span>
+                  <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
+                </button>
+                <p className="text-xs text-[color:var(--fg-muted)]">Confirma la zona con Aplicar ubicación. Tus filtros se conservan al volver.</p>
+              </section>
+            )}
             <fieldset>
               <legend className="mb-2 text-sm font-semibold">Publicaciones</legend>
               <div className="grid grid-cols-3 gap-2">
@@ -276,5 +382,13 @@ export function DiscoveryFilters({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+    {panel === "location" && (
+      <ChangeLocationSheet
+        open
+        initialPositionOverride={initialPosition}
+        onClose={() => setPanel("filters")}
+      />
+    )}
+    </>
   );
 }
