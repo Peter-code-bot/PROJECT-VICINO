@@ -1,6 +1,7 @@
 "use client";
 
 import { isTabRoute } from "@/lib/navigation/tab-routes";
+import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
 import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 import { useState, type MouseEvent } from "react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
@@ -104,7 +105,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
         {/* Main nav */}
         <NavItem href="/" icon={Home} label="Inicio" active={isActive("/", true)} />
         <NavItem href="/buscar" icon={Search} label="Buscar" active={isActive("/buscar")} />
-        {process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED === "true" && <NavItem href="/mapa" icon={Map} label="Mapa" active={isActive("/mapa")} />}
+        {isPublicationMapEnabled() && <NavItem href="/mapa" icon={Map} label="Mapa" active={isActive("/mapa")} />}
         <NavItem href="/rankings" icon={Trophy} label="Rankings" active={isActive("/rankings")} />
 
         {/* Categories expandable */}

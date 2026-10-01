@@ -1,5 +1,13 @@
 # Estado local — S10
 
+## 2026-09-30 — S10-W: entrega web autorizada y verificación final
+
+- **Sello: Codex, familia GPT-6.** Inicio 17:54:49 CDMX. Javier autoriza push a producción después de las pruebas; resuelve el rechazo de exportación previo. `origin/master` sigue en `bd80379`. Se entregará sin fuerza y sin modificar el checkout original.
+- La página/API/enlaces comparten activación por defecto; `NEXT_PUBLIC_VICINO_MAP_ENABLED=false` y rebuild permiten apagarla. La BD ya está instalada, no se reaplica. Solo se oculta el control de radio del formulario; selector y datos conservados.
+- Pruebas locales 49/49 (contratos 5, SQL aislado 12, API 7, navegador 25), HTTP real anónimo 7/7 con 42 elegibles, y smoke 8/8 tanto en producción previa como en el build final local. Build final después del ajuste de etiquetas exit 0, 57/57 páginas; TypeScript integrado y lint de los módulos finales exit 0. Apple SDK real dibuja calles y puntos en localhost, escritorio y vista móvil sin desbordamiento. Etiquetas corregidas: números visibles y descripción accesible. Git push dry-run a master exit 0; entrega preparada.
+- Configuración local existente reutilizada por proceso, sin copiar/imprimir secretos ni incluir service_role. Su Redis no resuelve DNS: el limitador compartido entra en fail-open y el freno local permanece; no se acredita cuota global. No se cambiaron credenciales ni se provisionaron servicios.
+- Pendientes de aceptación: cuentas dedicadas/bloqueos bajo sesiones HTTP reales, cancelación efectiva PostgREST, iPhone/Android físicos y revisión visual de Javier. Se distinguirán de verificación del despliegue y pruebas automatizadas.
+
 ## 2026-09-30 — S10-R: migración instalada en producción; entrega web pendiente
 
 - **Sello: Codex, familia GPT-6.** Continuación desde 16:56:59 CDMX; corte de pruebas 17:30:42. Código `b57aa89`, base `bd80379`, misma rama y checkout aislado. El trabajo original se conserva.

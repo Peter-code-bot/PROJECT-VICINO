@@ -102,6 +102,8 @@ export interface MapKitGlobal {
     options?: {
       color?: string;
       title?: string;
+      titleVisibility?: unknown;
+      accessibilityLabel?: string;
       draggable?: boolean;
       glyphText?: string;
       calloutEnabled?: boolean;

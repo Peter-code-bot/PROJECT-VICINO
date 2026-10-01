@@ -50,9 +50,10 @@ export function PublicationMap({ initialBounds, focus, features, selected, onBou
     for (const marker of markers.current) map.removeAnnotation(marker);
     const brand = node.current ? getComputedStyle(node.current).getPropertyValue("--brand").trim() : "";
     markers.current = features.map(feature => {
+      const label = `${feature.count} ${feature.count === 1 ? "publicación" : "publicaciones"} · ${feature.seller_count} ${feature.seller_count === 1 ? "vendedor" : "vendedores"} · ubicación aproximada`;
       const marker = new mapkit.MarkerAnnotation(new mapkit.Coordinate(feature.public_lat,feature.public_lng), {
         color: selected === feature.id ? "#1c3024" : brand || "#2e7d48", draggable: false, calloutEnabled: false,
-        title: `${feature.count} publicaciones · ${feature.seller_count} vendedores · ubicación aproximada`,
+        title: label, accessibilityLabel: label, titleVisibility: mapkit.FeatureVisibility.Hidden,
         glyphText: feature.count > 99 ? "99+" : String(feature.count),
       });
       marker.addEventListener("select", () => callbacks.current.onSelect(feature));

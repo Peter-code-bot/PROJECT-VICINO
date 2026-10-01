@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { usuarioOInvitado } from "@/lib/session-auth";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 import { frenoEnMemoria } from "@/lib/freno-en-memoria";
+import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
 
 export const dynamic = "force-dynamic";
 const localQuota = frenoEnMemoria({ tope: 60, ventanaMs: 60_000 });
@@ -14,7 +15,7 @@ function reply(body: unknown, status: number, extra = {}) {
 
 /** Read-only POST: the viewer's search center stays out of URLs and caches. */
 export async function POST(request: Request) {
-  if (process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED !== "true") return reply({ error: "El mapa estará disponible pronto." }, 503);
+  if (!isPublicationMapEnabled()) return reply({ error: "El mapa estará disponible pronto." }, 503);
   const ip = getClientIp(request.headers);
   if (!localQuota.permitir(`map:${ip}`) || !(await enforce(readHeavyRateLimit, `map:${ip}`)).ok) {
     return reply({ error: "Espera un minuto antes de actualizar el mapa." }, 429, { "Retry-After": "60" });

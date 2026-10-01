@@ -29,6 +29,11 @@ async function main(){
     const r=await send({...base,q:' cafe ',center:{lat:19,lng:-98}});assert.equal(r.status,200);assert.equal(r.headers.get('vary'),'Cookie');assert.ok(!JSON.stringify(await r.json()).includes('private'));
     assert.equal(f.calls.at(-1).name,'search_map_publications_v1');assert.equal(f.calls.at(-1).args.p_query.q,'cafe');assert.equal(f.calls.at(-1).args.p_query.center,null);
   });
+  await test('production release is enabled when the optional flag is absent',async()=>{
+    delete process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED;
+    assert.equal((await send()).status,200);
+    process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED='true';
+  });
   await test('bad SQL response and SQL failures expose generic errors only',async()=>{
     f.rpc={data:{ubicacion_geo:'private'},error:null};assert.equal((await send()).status,503);
     f.rpc={data:null,error:{code:'XX000',message:'sensitive SQL details'}};const r=await send();assert.equal(r.status,503);assert.ok(!(await r.text()).includes('sensitive'));
