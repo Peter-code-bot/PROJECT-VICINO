@@ -272,3 +272,46 @@ Gesto nativo de pin/swipe,20pan/zoom medidos, hardware/cuentas/Form autenticado,
 cancelación/offline/heap y revisión visual de Javier siguen en Tests pendientes.
 Entrega web autorizada: revisar staged/Gitleaks, commit y push sin fuerza a
 master; después verificar CI/Vercel/SHA y repetir HTTP/smoke en producción.
+
+## Entrega comprobada 01-oct-2026
+
+Push sin fuerza exit0: `1cbcb8b..2a05986 HEAD -> master`.
+`git ls-remote origin refs/heads/master`, exit0:
+`2a0598624d567fd8c2acb60d035ed3960de93de9`.
+Gitleaks staged exit0,12252bytes/sin fugas; diff/ancestry exit0;
+rutas73/TODOstubs0 exit0. Revisión independiente de ambos scripts sin bloqueantes.
+[CI36902757349](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/36902757349):
+cuatrochecks success. [Vercel14abijk8b6BfknN19z6eDqmqUiQs](https://vercel.com/peters-projects-b65496a9/vicinomarket/14abijk8b6BfknN19z6eDqmqUiQs):
+success,Deployment has completed. Estado leído por APIpública,exit0.
+
+```text
+S11_BASE_URL=https://vicinomarket.com
+node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts
+S11 HTTP: 7 PASS, 0 SKIP; 43 eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
+exit_code 0
+node scripts/smoke-produccion.mjs
+8 comprobaciones, todas en verde.
+exit_code 0
+```
+
+Navegador393x852,Apple real: Inicio previewMéxico sin hero/buscador,
+Buscar43resultados/3páginas, misma BlobURL y PNG1280x720 al navegar dentro
+de vigencia. CancelarServicios conserva43 yURL. Mapa43/31; grupo35/28 abre
+30tarjetas reales paginadas desde lista accesible. Pin nativo bloqueado por
+limitación del control de navegador sobre shadowroot cerrado; no es evidencia
+de gesto ni aceptación física. Capturas ignoradas production-home-oct1.png,
+production-search-oct1.png y production-drawer-oct1.png.
+
+AnotacionesCI revisadas: **Tipos desfasados** en database.types.ts pese a success,
+avisoslint y deprecaciónrunner. Intento `node scripts/gen-types.mjs` exit1
+(wrapper solo reporta primera línea npmwarning); endpoint oficial tipos
+read-only con PATexistente **HTTP401,exit1**. Credencial no se imprime, rota ni
+reemplaza; sin extracciones de cookies/token de sesión. Dashboard DataAPI/docs/
+Connect no ofrece generador en opciones visibles. Archivo intacto. Firma/body
+v2 sí auditados e integración real aprobada; equivalencia de TODOschema no
+se acredita. Regeneración tras renovarPAT por usuario queda pendiente.
+
+Se registra entrega técnica comprobada para revisión de Javier; no se cierran
+los tests restantes de PostGIS100k bloqueado, cuentas/Form/hardware/gestos,
+cancelación/offline/p95/heap/20panzoom ni aceptación visual. Cierre documental
+posterior no cambia aplicación/DB y no exige repetir suites runtime idénticas.

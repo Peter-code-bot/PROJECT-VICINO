@@ -1,4 +1,12 @@
-# Estado local — S11, entrega en cierre
+# Estado — S11 desplegado y verificado en producción
+
+## 2026-10-01 — S11 entregado para revisión de Javier
+
+- **Codex, familia GPT-6.** Push sin fuerza confirmado a master `2a0598624d567fd8c2acb60d035ed3960de93de9`; código de aplicación `19c7903`. Cuatro controles CI success y Vercel `14abijk8b6BfknN19z6eDqmqUiQs` success, Deployment has completed. [Mapa publicado](https://vicinomarket.com/mapa).
+- Producción: `S11_BASE_URL=https://vicinomarket.com node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts` (variable de proceso en PowerShell), **exit0,7PASS,0SKIP,43 elegibles,20 lecturas anónimas**; `node scripts/smoke-produccion.mjs`, **exit0,8/8**. Migración instalada/auditoría8/8; build y123pruebas previas aprobados, más100k local aislado.
+- Navegador real, ancho393: Inicio sin hero/buscador y previewMéxico; Buscar43resultados/3páginas. Home→Buscar misma imagen Apple PNG1280x720/BlobURL, cargada; Cancelar filtroServicios conserva43 y URL. MapaMéxico43publicaciones/31vendedores; grupo35/28 abre30tarjetas paginadas reales por selector accesible. El control automatizado no permite tocar contenido MapKit en shadowroot cerrado; gesto físico sigue pendiente.
+- CI mantiene advertencia **Tipos desfasados** pese a success. Regeneración completa: scriptCLI exit1, endpoint oficial read-only devuelve401 con PATconfigurado. No se extrajeron cookies ni se crearon/rotaron credenciales; archivo intacto. Contrato v2 manual validado por auditoría instalada y HTTP real. RenovarPAT y regenerar completo queda en [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26), junto a PostGIS100k bloqueado, cuentas/Form autenticado, hardware/gestos/20panzoom/p95/heap/cancelación/offline y aceptación visual.
+- Este cierre documental no cambia aplicación ni DB. Conserva evidencia y límites de cada prueba. Reversión web: Instant Rollback a S10/revert S11, conservando DBaditiva/v1. Cortes anteriores son historial.
 
 ## 2026-10-01 — S11 instalado; integración real y revisión de entrega
 
