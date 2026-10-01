@@ -170,7 +170,10 @@ AUDIT_EXIT=0
 ```
 
 Contratos 5/5, SQL aislado 12/12 y API 7/7 repetidos exit 0. Build parcheado
-en curso al registrar este corte. Lint concurrente al build devolvió exit 2:
+cerrado en el corte 18:31:44 CDMX: exit 0, 57/57 páginas y TypeScript integrado.
+Navegador 25/25, HTTP real 7/7 (42 elegibles) y smoke 8/8 repetidos exit 0.
+Lint secuencial repetido exit 0, 0 errores/149 warnings. El intento concurrente
+anterior devolvió exit 2:
 
 ```text
 Error: ENOENT: no such file or directory, open 'C:\Users\Hp User\Documents\Javier\proyectos\VICINO\PROJECT-VICINO-S10\apps\web\public\sw.js'
@@ -178,6 +181,19 @@ Error: ENOENT: no such file or directory, open 'C:\Users\Hp User\Documents\Javie
 
 Se debe a que build regeneraba ese artefacto PWA durante la lectura de lint.
 Se repite secuencialmente tras el build; no se desactiva ninguna regla.
+
+Candidato de aplicación: `23a7bcb`. Gitleaks 8.28.0 desde la herramienta local
+existente, rango `--no-merges bd80379..HEAD`, exit 0:
+
+```text
+6:28PM INF 4 commits scanned.
+6:28PM INF scanned ~174434 bytes (174.43 KB) in 756ms
+6:28PM INF no leaks found
+```
+
+Árbol limpio tras el commit de aplicación; solo esta acta/PROGRESS se actualizan
+con el cierre de pruebas antes del push. La entrega y su SHA/CI/URL se registran
+en el [DevLog operativo](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
 
 Lint completo anterior: exit 0, 0 errores/149 warnings de fuente existente y
 artefactos PWA generados. El log completo está ignorado; nuevos módulos limpios.
