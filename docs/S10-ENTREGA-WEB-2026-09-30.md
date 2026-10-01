@@ -205,3 +205,50 @@ de Git sin enviar cambios. El
 resultado operativo se registrará en el DevLog de Notion y en PROGRESS.md.
 Si la versión falla, false/rebuild o Instant Rollback de Vercel permite volver;
 no es necesario borrar la proyección ni tocar puntos privados.
+
+## Producción confirmada — 18:43:34 CDMX
+
+Aplicación `23a7bcb`; entrega a master
+`1cbcb8b38dcc31b2d6eefb89310d4dae21d73056`. Push sin fuerza exit 0 y ls-remote
+coincidente. CI de GitHub: Escaneo de secretos, npm audit, Deriva de tipos vs
+produccion y TypeScript type check completed/success. La comparación de tipos
+también cuenta con exportación real de Supabase, descrita en el acta de BD.
+
+[Vercel del SHA](https://vercel.com/peters-projects-b65496a9/vicinomarket/65hs6WixR74rkxszR3o1Fvs5FsmM):
+
+```text
+state: success
+description: Deployment has completed
+```
+
+[Página de producción](https://vicinomarket.com/mapa), abierta y conservada en
+el navegador de la app. Prueba real posterior, sin sesión ni escrituras:
+
+```text
+PASS real catalogue, bounded markers/cards and complete aggregate counts
+PASS real cursor covers catalogue without repeating listings
+PASS selecting a real group retains area totals and filters its cards
+PASS real type/category/price filters and empty result
+PASS buyer nearby radius through the real API
+PASS invalid and oversized HTTP input refused
+PASS page enabled and linked from search
+S10 HTTP: 7/7 PASS; 42 eligible catalogue rows; anonymous real HTTP, no dedicated account/device acceptance
+```
+
+Exit 0. Smoke de producción posterior: mismas ocho comprobaciones del informe
+previo, 8/8 exit 0. Medición de 20 lecturas anónimas secuenciales, exit 0:
+
+```json
+{"requests":20,"p50_ms":202,"p95_ms":327,"max_ms":606,"scope":"anonymous real HTTP/API/network; excludes UI/MapKit and physical mobile"}
+```
+
+Apple real autorizado y cargado en el dominio: calles y grupos visibles, 7
+publicaciones/2 vendedores en zona inicial. Selección desde tarjeta: 6
+resultados del punto, total de zona conservado; retorno a toda la zona funciona.
+Captura ignorada `apps/web/test-results/s10/production-map.jpg`. No se automatiza
+el gesto nativo sobre el pin dentro del shadow root cerrado.
+
+La lista de aceptación autenticada/física, cancelación SQL, proveedor en
+expiración/offline y revisión de Javier permanece abierta. Servidor de pruebas
+local detenido intencionalmente tras la verificación. Árbol de aplicación
+entregado limpio; este cierre documental no requiere otro despliegue de producción.

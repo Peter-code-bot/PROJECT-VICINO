@@ -1,5 +1,12 @@
 # Estado local — S10
 
+## 2026-09-30 — S10 desplegado y verificado en producción
+
+- **Sello: Codex, familia GPT-6. Corte 18:43:34 CDMX.** Master `1cbcb8b38dcc31b2d6eefb89310d4dae21d73056`, push sin fuerza confirmado. CI: cuatro controles success; Vercel `65hs6WixR74rkxszR3o1Fvs5FsmM`, Deployment has completed. [Mapa activo](https://vicinomarket.com/mapa), abierto en el navegador de la app.
+- Verificación posterior: HTTP real anónimo 7/7 exit 0 (42 elegibles), smoke de producción 8/8 exit 0. Veinte lecturas API/red: p50 202 ms, p95 327 ms, máximo 606 ms; excluye render/SDK/teléfono físico. Apple real autorizado/cargado; vista inicial 7 publicaciones/2 vendedores y selección accesible desde tarjeta 6 resultados del punto.
+- Aplicación `23a7bcb`, con Next/eslint-config-next 16.3.6 y brace-expansion resuelto 1.1.21. Build/49 pruebas locales/lint/audit HIGH/Gitleaks aprobados antes del push. Puntos públicos aproximados; coordenadas privadas protegidas. Solo control de expansión de radio oculto en el formulario, selector conservado.
+- Aceptación restante: cuentas dedicadas y formulario autenticado, móviles físicos, gestos nativos del pin/expiración/offline, cancelación PostgREST y revisión de Javier. No se declara completa con mocks ni prueba anónima. Evidencia final en [acta web](docs/S10-ENTREGA-WEB-2026-09-30.md) y [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). Este cierre documental no modifica aplicación ni requiere otro despliegue de producción.
+
 ## 2026-09-30 — S10-W: entrega web autorizada y verificación final
 
 - **Sello: Codex, familia GPT-6.** Inicio 17:54:49 CDMX. Javier autoriza push a producción después de las pruebas; resuelve el rechazo de exportación previo. `origin/master` sigue en `bd80379`. Se entregará sin fuerza y sin modificar el checkout original.
