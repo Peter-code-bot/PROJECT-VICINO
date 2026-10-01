@@ -212,3 +212,63 @@ dependiente de v2. No declarar S11 en producción ni todas las aceptaciones
 cerradas. Reversión web: Instant Rollback al despliegue S10 o revert de S11;
 mantener DB aditiva/v1 compatible. No se añadió flag independiente S11;
 la flag existente apaga mapa completo con rebuild.
+
+## Continuación 01-oct-2026 — instalación e integración aprobadas
+
+Codex, familia GPT-6. Javier pide completar comprobaciones, push para revisar
+en producción y registrar tests pendientes. Código `19c79030cfc9691424ecd59020faea7a5da898c4`.
+Migración `20261001020000_mapa_cobertura_cache.sql` instalada: dashboard devuelve
+`APPLIED; coverage RPC registered`. SHA256 fuente:
+`BFA8FB09E4B35F395C745F1F753A9D17BC971E91EE0A385023D0421B76E4CF3F`.
+No se reaplica S10 ni se modifica la fuente instalada.
+
+Diagnóstico `scripts/sql/test-s11-map-installed.sql` reformulado exclusivamente
+read-only: sin tablas temporales/semillas/grants/escrituras. Primer Run falló
+con ERROR42601 por CASE sin paréntesis; corrección acotada y segundo Run:
+**8 filas PASS** (v2/v1 cuerpos, firmas/configuración, ACL, ledger, RLS,
+proyección, catálogo/privacidad y ejecución roles anon/authenticated).
+Authenticated sin JWT de cuenta dedicada no acredita bloqueos reales.
+Capturas ignoradas: `apps/web/test-results/s11/installed-s11.png` y
+`installed-audit.png`.
+
+Integración HTTP real contra build local y RPC instalada:
+
+```text
+node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts
+PASS real national overview is complete, bounded and excludes eager publication cards
+PASS national publication keyset covers every eligible row without duplicates
+PASS one actual stable group has coherent counts and distinct sellers
+INFO local coverage: 8 public cells, 1 pages, 35 publications
+PASS local 50 km public cells page to completion in one consistent revision
+PASS real type/price/category filters retain their membership
+PASS an empty search returns zero counts without false points or cards
+PASS invalid, oversized, malformed and stale requests fail privately
+S11 HTTP: 7 PASS, 0 SKIP; 43 eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
+exit_code 0
+```
+
+Primer intento ECONNREFUSED: servidor anterior detenido; reinicio Next local
+mediante wrapper ignorado y nueva ejecución completa. Redis DNS local falla
+abierto con cuotas locales; no acredita cuota compartida. Catálogo dinámico:
+43 actual frente a42 del corte anterior no constituye fixture ni conteo fijo.
+
+```text
+node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-sql.ts --scale-100k
+INFO LOCAL 100000: 16 overview groups; spatial substitutes, not PostGIS
+INFO LOCAL 100000 complete: 2025 cells / 7 pages / 2 distinct sellers; harness elapsed 36379 ms; NOT PostGIS/network/device performance
+PASS 100000 LOCAL rows: complete overview/cells/revision and distinct seller counts
+S11 SQL: 10/10 PASS (isolated spatial shims; real PostGIS still required)
+exit_code 0
+```
+
+Ensayo local en memoria, sin URL remota. Revisión coherente, keysets completos
+y vendedores distintos; no sustituye matriz PostGIS100000 ni su rendimiento.
+La matriz remota bloqueada permanece pendiente, sin volver a confirmar Run
+without RLS ni ejecutarla mediante otro canal.
+
+Apple real local:8publicaciones/3vendedores; lista accesible→grupo7/2 abre
+7tarjetas y enlaces reales. Escape cierra y devuelve foco al botón del punto.
+Gesto nativo de pin/swipe,20pan/zoom medidos, hardware/cuentas/Form autenticado,
+cancelación/offline/heap y revisión visual de Javier siguen en Tests pendientes.
+Entrega web autorizada: revisar staged/Gitleaks, commit y push sin fuerza a
+master; después verificar CI/Vercel/SHA y repetir HTTP/smoke en producción.

@@ -1,4 +1,13 @@
-# Estado local — S11 (S10 en producción)
+# Estado local — S11, entrega en cierre
+
+## 2026-10-01 — S11 instalado; integración real y revisión de entrega
+
+- **Codex, familia GPT-6.** Continuación por Javier; push a master autorizado. Código local `19c79030cfc9691424ecd59020faea7a5da898c4`, con build final/123 pruebas previas aprobadas. Checkout original preservado.
+- Migración `20261001020000_mapa_cobertura_cache` instalada en VICINO/main/PRODUCTION y registrada. SHA256 fuente BFA8FB09E4B35F395C745F1F753A9D17BC971E91EE0A385023D0421B76E4CF3F. Auditoría exclusivamente read-only: **8/8 PASS**; firmas, cuerpos, ledger, ACL/RLS, proyección y v1 compatibles. Se corrigieron paréntesis de CASE en el diagnóstico tras ERROR42601; fuente de migración intacta.
+- Integración local Next→RPC instalada: `node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts`, **exit0,7 PASS,0 SKIP,43 elegibles,20 lecturas anónimas**. Primer intento ECONNREFUSED por servidor detenido; reinicio y ejecución completa aprobada.
+- Ensayo `scripts/test-s11-map-sql.ts --scale-100k` **local PGlite**, exit0,10/10PASS: 2025 celdas,7páginas,100000 publicaciones,2 vendedores distintos. Harness36379ms con sustitutos espaciales; no equivale a PostGIS/API/rendimiento físico. PostGIS100000 sigue pendiente tras rechazo automático de Run without RLS; no se eludió ni ejecutó.
+- Apple/Mapa real local: 8publicaciones/3vendedores; grupo7publicaciones/2vendedores abre tarjetas reales. Escape devuelve foco al punto. Gesto nativo y aceptación física/autenticada siguen abiertos en [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+- Push sin fuerza, CI/Vercel y smoke de producción son los siguientes pasos. Los estados fechados anteriores se conservan como historial. Reversión: despliegue S10/revert S11, manteniendo RPC aditiva/v1.
 
 ## 2026-09-30 — S11 implementado localmente; instalación y entrega pendientes
 

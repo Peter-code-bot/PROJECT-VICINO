@@ -112,6 +112,54 @@ async function main(){
  const p=await db.query<{ok:boolean}>("SELECT has_column_privilege($1,'products_services',$2,'SELECT') ok",[role,column]);assert.equal(p.rows[0]!.ok,false);}
  const v1=await db.query<{r:any}>('SELECT search_map_publications_v1($1::jsonb) r',[JSON.stringify(base)]);assert.ok(v1.rows[0]!.r.total>0);
  });
+ if(process.argv.includes('--scale-100k')) await test('100000 LOCAL rows: complete overview/cells/revision and distinct seller counts',async()=>{
+ const started=performance.now(),budgetMs=90_000;
+ // This PGlite instance is local and in-memory. No connection URL or remote data is used.
+ await db.exec(`DELETE FROM product_categories;DELETE FROM products_services;DELETE FROM user_blocks;
+   UPDATE profiles SET is_hidden=false;
+   INSERT INTO products_services(id,creador_id,titulo,slug,precio,ubicacion_geo,created_at)
+   SELECT ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
+     CASE WHEN n%2=0 THEN '${a}'::uuid ELSE '${b}'::uuid END,'Local scale '||n,'local-scale-'||n,1,
+     point(-98.43+(n%45)*0.01,18.82+(floor(n/45.0)::int%45)*0.01),
+     CASE WHEN n%3=0 THEN NULL ELSE '2026-09-30'::timestamptz END
+   FROM generate_series(1,100000)n;`);
+ const overview=await query(req());assert.ok(mapCoverageResultSchema.safeParse(overview).success);
+ assert.equal(overview.total,100000);assert.equal(overview.seller_total,2);
+ assert.ok(overview.features.length<=300);assert.equal(overview.features.reduce((n:number,f:any)=>n+f.count,0),100000);
+ assert.equal(overview.listings.length,0);assert.equal(overview.cells.length,0);
+ assert.ok(overview.features.every((f:any)=>f.seller_count===2));
+ console.log(`INFO LOCAL 100000: ${overview.features.length} overview groups; spatial substitutes, not PostGIS`);
+ let cursor:any=null,last:[number,number]|null=null,count=0,pages=0;
+ const seen=new Set<string>(),cursors=new Set<string>();
+ do{
+   assert.ok(performance.now()-started<budgetMs,'Local scale time budget exhausted; no completeness claim');
+   assert.ok(++pages<=8,'Local fixture exceeded its bounded eight-page budget');
+   const page=await query(req('cells',base,{revision:overview.revision,cell_cursor:cursor}));
+   assert.equal(page.revision,overview.revision);assert.equal(page.total,100000);assert.equal(page.seller_total,2);
+   assert.ok(page.cells.length<=300);assert.ok(mapCoverageResultSchema.safeParse(page).success);
+   for(const cell of page.cells){
+     const key=`${cell.x}:${cell.y}`;assert.ok(!seen.has(key),'Repeated public cell');seen.add(key);count+=cell.count;
+     assert.equal(cell.seller_count,2,'A repeated seller must remain distinct within each public cell');
+     if(last)assert.ok(cell.x>last[0]||(cell.x===last[0]&&cell.y>last[1]),'Cell keyset did not progress monotonically');
+     last=[cell.x,cell.y];
+   }
+   cursor=page.next_cell_cursor;assert.equal(page.complete,cursor===null);
+   if(cursor){const key=JSON.stringify(cursor);assert.ok(!cursors.has(key),'Repeated cell cursor');cursors.add(key);}
+   console.log(`INFO LOCAL 100000 cells page ${pages}: ${page.cells.length} cells; cumulative ${count} publications`);
+ }while(cursor);
+ assert.equal(seen.size,2025);assert.equal(pages,7);assert.equal(count,100000);
+ // Summing sellers across cells would be incorrect: the two sellers occur in many cells.
+ assert.equal(overview.seller_total,2);assert.ok(seen.size*2>overview.seller_total);
+ const feature=overview.features.find((f:any)=>f.count>60);assert.ok(feature);
+ const first=await query(req('listings',{...base,cell_id:feature.id},{revision:overview.revision}));
+ assert.equal(first.list_total,feature.count);assert.equal(first.list_seller_total,2);assert.equal(first.listings.length,30);
+ assert.ok(first.listings.every((item:any)=>item.cell_id===feature.id));assert.ok(first.next_cursor);
+ const second=await query(req('listings',{...base,cell_id:feature.id,cursor:first.next_cursor},{revision:overview.revision}));
+ assert.equal(second.revision,first.revision);assert.equal(second.list_total,first.list_total);assert.equal(second.list_seller_total,2);
+ const ids=new Set(first.listings.map((item:any)=>item.id));assert.ok(second.listings.every((item:any)=>!ids.has(item.id)));
+ assert.ok(performance.now()-started<budgetMs,'Local scale time budget exhausted; no completeness claim');
+ console.log(`INFO LOCAL 100000 complete: 2025 cells / 7 pages / 2 distinct sellers; harness elapsed ${Math.round(performance.now()-started)} ms; NOT PostGIS/network/device performance`);
+ });
  await db.close();console.log(`S11 SQL: ${passed}/${passed} PASS (isolated spatial shims; real PostGIS still required)`);
 }
 main().catch(async e=>{console.error(e);await db.close();process.exitCode=1;});

@@ -1,17 +1,12 @@
 -- Run ONLY after the separately approved S11 installation.
--- No seeds, public writes, NOTIFY or persistent DDL. All diagnostic objects end in ROLLBACK.
+-- Read-only installed-contract diagnosis: no diagnostic tables, grants, seeds or writes.
+-- This does not run or replace the separately blocked 100k fixture/volume test.
 -- Fingerprints are from tracked migration text: LF-normalized prosrc and whitespace-normalized ledger source.
 -- If a migration is intentionally revised, regenerate these expected fingerprints before approving its installation.
-BEGIN ISOLATION LEVEL REPEATABLE READ;
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='15s';
 SET LOCAL lock_timeout='2s';
 SELECT set_config('request.jwt.claim.sub','',true);
-
-CREATE TEMP TABLE s11_installed_results(check_name text,result text);
-DO $temporary_grants$ BEGIN
-  EXECUTE format('GRANT USAGE ON SCHEMA %I TO anon,authenticated',(SELECT nspname FROM pg_namespace WHERE oid=pg_my_temp_schema()));
-END $temporary_grants$;
-GRANT INSERT ON pg_temp.s11_installed_results TO anon,authenticated;
 
 DO $verify$
 DECLARE
@@ -43,21 +38,20 @@ BEGIN
       IF NOT has_function_privilege(role_name,fn.oid,'EXECUTE') THEN RAISE EXCEPTION 'S11 FAIL: % cannot execute %',role_name,fn.proname; END IF;
     END LOOP;
   END LOOP;
-  INSERT INTO pg_temp.s11_installed_results VALUES
-    ('01 v2 signature/source/STABLE/SECURITY DEFINER/configured deadline','PASS; reviewed body fingerprint matches'),
-    ('02 v1 signature/source/configuration remains intact','PASS; S10 body fingerprint unchanged'),
-    ('03 anon/authenticated execute and PUBLIC revoked','PASS');
+  RAISE NOTICE '01 PASS: v2 signature/source/STABLE/SECURITY DEFINER/configured deadline; reviewed body fingerprint matches';
+  RAISE NOTICE '02 PASS: v1 signature/source/configuration remains intact; S10 body fingerprint unchanged';
+  RAISE NOTICE '03 PASS: anon/authenticated execute and PUBLIC revoked';
 
   FOREACH version_name IN ARRAY ARRAY['20260930220000','20261001020000'] LOOP
     expected_hash:=CASE WHEN version_name='20260930220000' THEN v1_ledger ELSE v2_ledger END;
     SELECT md5(btrim(regexp_replace(replace(array_to_string(statements,E'\n'),E'\r\n',E'\n'),'[[:space:]]+',' ','g'))),name
       INTO source_hash,ledger_name FROM supabase_migrations.schema_migrations WHERE version=version_name;
     IF source_hash IS DISTINCT FROM expected_hash OR ledger_name IS DISTINCT FROM
-      CASE WHEN version_name='20260930220000' THEN 'mapa_publicaciones_aproximadas' ELSE 'mapa_cobertura_cache' END THEN
+      (CASE WHEN version_name='20260930220000' THEN 'mapa_publicaciones_aproximadas' ELSE 'mapa_cobertura_cache' END) THEN
       RAISE EXCEPTION 'S11 FAIL: ledger % missing or differs from reviewed migration source/name',version_name;
     END IF;
   END LOOP;
-  INSERT INTO pg_temp.s11_installed_results VALUES('04 S10/S11 ledger and equivalent migration source','PASS; whitespace-normalized fingerprints match');
+  RAISE NOTICE '04 PASS: S10/S11 ledger and equivalent migration source; whitespace-normalized fingerprints match';
 
   IF NOT(SELECT relrowsecurity FROM pg_class WHERE oid='public.products_services'::regclass) THEN RAISE EXCEPTION 'S11 FAIL: products RLS disabled'; END IF;
   FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
@@ -73,7 +67,7 @@ BEGIN
       OR ST_X(ubicacion_mapa)<>round(ST_X(ubicacion_geo::geometry)::numeric,2)::double precision
       OR ST_Y(ubicacion_mapa)<>round(ST_Y(ubicacion_geo::geometry)::numeric,2)::double precision);
   IF projection_bad<>0 THEN RAISE EXCEPTION 'S11 FAIL: approximate projection changed'; END IF;
-  INSERT INTO pg_temp.s11_installed_results VALUES('05 RLS/geometry privileges/generated projection/index','PASS; exact points remain private and projection stays at 2 decimals');
+  RAISE NOTICE '05 PASS: RLS/geometry privileges/generated projection/index; exact points remain private and projection stays at 2 decimals';
 
   request:=jsonb_build_object('action','overview','query',query,'coverage_center',NULL,'revision',NULL,'cell_cursor',NULL);
   old_result:=public.search_map_publications_v1(query); new_result:=public.search_map_publications_v2(request);
@@ -84,19 +78,28 @@ BEGIN
   IF new_result::text~'"(ubicacion_geo|ubicacion_mapa|ubicacion|direccion|address|lat|lng|distance_meters|exact_lat|exact_lng)"[[:space:]]*:' THEN
     RAISE EXCEPTION 'S11 FAIL: private field in response';
   END IF;
-  INSERT INTO pg_temp.s11_installed_results VALUES('06 real catalogue v1/v2 totals/overview/no eager cards/privacy','PASS; '||(new_result->>'total')||' eligible publications');
+  RAISE NOTICE '06 PASS: real catalogue v1/v2 totals/overview/no eager cards/privacy; % eligible publications',new_result->>'total';
 END $verify$;
 
 SET LOCAL ROLE anon;
-INSERT INTO pg_temp.s11_installed_results
-SELECT '07 anon executes installed real-table v2',
-  'PASS; '||(public.search_map_publications_v2('{"action":"overview","query":{"bounds":{"west":-118.5,"south":14.5,"east":-86.5,"north":32.8}},"coverage_center":null,"revision":null,"cell_cursor":null}')->>'total')||' eligible publications';
+SELECT '07 anon executes installed real-table v2' AS check_name,
+  'PASS; '||(public.search_map_publications_v2('{"action":"overview","query":{"bounds":{"west":-118.5,"south":14.5,"east":-86.5,"north":32.8}},"coverage_center":null,"revision":null,"cell_cursor":null}')->>'total')||' eligible publications' AS result;
 RESET ROLE;
 SET LOCAL ROLE authenticated;
 -- This role execution has no account JWT. Dedicated account/block coverage remains separate.
-INSERT INTO pg_temp.s11_installed_results
-SELECT '08 authenticated role executes installed real-table v2',
-  'PASS; '||(public.search_map_publications_v2('{"action":"overview","query":{"bounds":{"west":-118.5,"south":14.5,"east":-86.5,"north":32.8}},"coverage_center":null,"revision":null,"cell_cursor":null}')->>'total')||' eligible publications; no dedicated account';
+SELECT '08 authenticated role executes installed real-table v2' AS check_name,
+  'PASS; '||(public.search_map_publications_v2('{"action":"overview","query":{"bounds":{"west":-118.5,"south":14.5,"east":-86.5,"north":32.8}},"coverage_center":null,"revision":null,"cell_cursor":null}')->>'total')||' eligible publications; no dedicated account' AS result;
 RESET ROLE;
-SELECT check_name,result FROM pg_temp.s11_installed_results ORDER BY check_name;
+-- The transaction reaches this owner summary only after all fail-closed checks
+-- and both preceding role-only invocations have completed without SQL errors.
+SELECT check_name,result FROM (VALUES
+  ('01 v2 signature/source/STABLE/SECURITY DEFINER/configured deadline','PASS; reviewed body fingerprint matches'),
+  ('02 v1 signature/source/configuration remains intact','PASS; S10 body fingerprint unchanged'),
+  ('03 anon/authenticated execute and PUBLIC revoked','PASS'),
+  ('04 S10/S11 ledger and equivalent migration source','PASS; whitespace-normalized fingerprints match'),
+  ('05 RLS/geometry privileges/generated projection/index','PASS; exact points remain private and projection stays at 2 decimals'),
+  ('06 real catalogue v1/v2 totals/overview/no eager cards/privacy','PASS; see verified catalogue total in NOTICE 06'),
+  ('07 anon executes installed real-table v2','PASS; see preceding anon SELECT for real catalogue total'),
+  ('08 authenticated role executes installed real-table v2','PASS; role only, no account JWT; dedicated account/block tests remain pending')
+) AS diagnostics(check_name,result) ORDER BY check_name;
 ROLLBACK;
