@@ -114,9 +114,9 @@ Y lo que sí rompe el conteo es **salirse** de la prueba, no desinstalar la app.
 
 ---
 
-## Cuidado con subir otro AAB durante los 14 días
+## Subir otro AAB durante los 14 días: qué pasa de verdad
 
-Esto no lo estabas preguntando y es lo que más caro puede salir, porque estás publicando código todos los días.
+> **Corrección del 1-oct-2026.** La primera versión de este apartado decía que subir un AAB nuevo podía dejar a los verificadores «sin nada que instalar». Eso estaba exagerado. Play separa el estado de la app del estado de la actualización: la versión publicada **sigue disponible** mientras la nueva está «en revisión», y a quien ya la tiene le llega la actualización cuando se aprueba. Subir un AAB nuevo **no saca a nadie de la prueba** ni reinicia el contador de 14 días, porque lo que cuenta es seguir dado de alta.
 
 Las versiones de prueba cerrada **también pasan revisión**:
 
@@ -130,9 +130,9 @@ Y las cuentas nuevas se revisan más despacio a propósito:
 >
 > — [Tiempos de revisión](https://support.google.com/googleplay/android-developer/answer/9859751)
 
-La cuenta de VICINO es personal y reciente, o sea justo ese perfil. Hoy la versión 8 (1.7) **ya está aprobada y disponible**, eso lo comprobé. Pero si subes un AAB 9 mientras los verificadores están instalando, esa subida **reabre la revisión** y puede dejarlos otra vez sin nada que instalar, en medio de la ventana de 14 días.
+La cuenta de VICINO es personal y reciente, o sea justo ese perfil. Lo que cuesta subir un AAB nuevo es **tiempo hasta que llega**, no disponibilidad: mientras Google revisa la versión nueva, los verificadores siguen instalando y usando la anterior.
 
-Regla práctica: **congela la pista cerrada mientras corren los 14 días.** Si hay que arreglar algo en la app, que vaya en la web (que se despliega sola) y guarda los cambios nativos para un AAB posterior. Y cuando toque subir uno, hazlo sabiendo que pueden pasar días antes de que nadie lo pueda instalar.
+Regla práctica: **sube un AAB sólo cuando valga la pena esperar por él.** Lo que se pueda arreglar en la web, que vaya en la web, porque se despliega sola y llega al instante a la app. Lo nativo (íconos, permisos, plugins) sí necesita AAB; agrúpalo para no encadenar revisiones.
 
 ---
 
@@ -220,5 +220,5 @@ El paso 1 cuesta diez segundos y no pide datos. Es un precio pequeño por poder 
 
 1. **Manda el mensaje nuevo** (abajo). Ya puedes.
 2. **Si alguno de los 12 sigue sin poder instalar**, que abra este enlace y toque «Leave the program» / «Abandonar el programa»: https://play.google.com/apps/internaltest/4701655295868435015 — es el de la prueba interna, y sirve para soltar a quien se quedara enganchado ahí. Después que repita el paso 2.
-3. **No subas otro AAB hasta que pasen los 14 días**, salvo que sea imprescindible.
+3. **Agrupa los cambios nativos** en un mismo AAB para no encadenar revisiones. Subir uno no saca a nadie de la prueba.
 4. **Añade la línea del autofoco al próximo AAB.** Ya está en el repo, entra sola en el siguiente build.
