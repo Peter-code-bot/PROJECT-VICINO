@@ -1,4 +1,5 @@
 "use client";
+import { restaurarRetornoHome } from "@/lib/auth/retorno-home";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -185,6 +186,7 @@ export function SessionScroll({ route, scope = route }: { route: string; scope?:
       const y = restauracion === "restaurar" ? cache.ui.get(key) : 0;
       window.scrollTo({ top: typeof y === "number" ? y : 0, behavior: "instant" });
     }
+    if (route === "/") restaurarRetornoHome();
     const save = () => { if (location.pathname === route) cache.ui.set(key, window.scrollY); };
     window.addEventListener("scroll", save, { passive: true });
     return () => { window.removeEventListener("scroll", save); };

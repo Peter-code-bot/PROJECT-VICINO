@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { destinoAutenticadoSeguro } from "../auth/destino-seguro";
 import { usuarioOInvitado } from "../session-auth";
 import { CABECERA_RUTA } from "../navigation/rutas-legales";
+import { requiereSesion, loginPara, COOKIE_DESTINO_ONBOARDING } from "../auth/acceso-invitado";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
@@ -12,7 +13,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   if (nonce) forwardHeaders.set("x-nonce", nonce);
   // La ruta real para los layouts, que no la reciben. SIEMPRE se sobrescribe:
   // un valor que mandara el cliente no llega nunca a los Server Components.
-  forwardHeaders.set(CABECERA_RUTA, request.nextUrl.pathname);
+  forwardHeaders.set(CABECERA_RUTA, request.nextUrl.pathname + request.nextUrl.search);
 
   let supabaseResponse = NextResponse.next({
     request: { headers: forwardHeaders },
@@ -62,6 +63,16 @@ export async function updateSession(request: NextRequest, nonce?: string) {
 
   const pathname = request.nextUrl.pathname;
 
+  if (!user && requiereSesion(pathname + request.nextUrl.search)) {
+    const response = NextResponse.redirect(new URL(loginPara(pathname + request.nextUrl.search), request.url));
+    for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+    return response;
+  }
+  if (user && pathname === "/bienvenida" && request.nextUrl.searchParams.has("next")) {
+    const next = destinoAutenticadoSeguro(request.nextUrl.searchParams.get("next"));
+    supabaseResponse.cookies.set(COOKIE_DESTINO_ONBOARDING, next, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/", maxAge: 1800 });
+  }
+
   // Redirect authenticated users away from auth pages.
   //
   // Se respeta el ?next= para volver a donde la persona iba, preservando destinos
@@ -83,59 +94,6 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     return redirectResponse;
   }
 
-  // Protect seller routes
-  if (!user && pathname.startsWith("/seller")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  // Protect admin routes
-  if (!user && pathname.startsWith("/admin")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  // Protect account routes
-  if (!user && pathname.startsWith("/historial")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (!user && pathname.startsWith("/perfil")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (!user && pathname.startsWith("/favoritos")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (!user && pathname.startsWith("/notificaciones")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  // Protect /vender for unauthenticated users (matches existing pattern above).
-  if (!user && pathname.startsWith("/vender")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
   // Phase 9: gate /vender and /seller/* on `profiles.es_vendedor` for
   // authenticated users. Defense-in-depth — seller layout also redirects.
   //
@@ -155,7 +113,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   ) {
     const { data: gateProfile, error: gateError } = await supabase
       .from("profiles")
-      .select("es_vendedor")
+      .select("es_vendedor, has_seen_onboarding")
       .eq("id", user.id)
       .maybeSingle();
     if (gateError) {
@@ -166,11 +124,22 @@ export async function updateSession(request: NextRequest, nonce?: string) {
       for (const cookie of supabaseResponse.cookies.getAll()) unavailable.cookies.set(cookie);
       return unavailable;
     }
+    if (gateProfile?.has_seen_onboarding === false) {
+      const url = request.nextUrl.clone();
+      const destino = destinoAutenticadoSeguro(url.pathname + url.search);
+      url.pathname = "/bienvenida";
+      url.search = new URLSearchParams({ next: destino }).toString();
+      const response = NextResponse.redirect(url);
+      for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+      return response;
+    }
     if (!gateProfile?.es_vendedor) {
       const url = request.nextUrl.clone();
       url.pathname = "/empezar-a-vender";
       url.search = "";
-      return NextResponse.redirect(url);
+      const response = NextResponse.redirect(url);
+      for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+      return response;
     }
   }
 

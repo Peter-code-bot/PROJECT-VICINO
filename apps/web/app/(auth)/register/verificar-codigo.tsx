@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { guardarCorreoAuth } from "@/lib/auth/contexto-temporal";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { CodigoInput } from "@/components/auth/codigo-input";
 import { LARGO_CODIGO } from "@/lib/auth/otp-formato";
@@ -299,11 +300,11 @@ export function VerificarCodigo({
             ¿Ya tienes cuenta o prefieres otra opción?
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
-            <Link href={hrefLogin} className="font-medium text-primary hover:underline">
+            <Link href={hrefLogin} onClick={() => guardarCorreoAuth(email)} className="font-medium text-primary hover:underline">
               Iniciar sesión
             </Link>
             <span className="text-muted-foreground/40" aria-hidden="true">•</span>
-            <Link href={hrefForgot} className="font-medium text-primary hover:underline">
+            <Link href={hrefForgot} onClick={() => guardarCorreoAuth(email)} className="font-medium text-primary hover:underline">
               Recuperar contraseña
             </Link>
             <span className="text-muted-foreground/40" aria-hidden="true">•</span>

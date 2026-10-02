@@ -1,12 +1,13 @@
 "use client";
 
 import { Fragment, type ReactNode, useState, useMemo, useCallback } from "react";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, GraduationCap } from "lucide-react";
 import { UNIVERSITY_CATEGORY, universityStyle, universitySearchUrl } from "@/lib/university";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { hapticSelection } from "@/lib/haptics";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 
 type CategoryRow = { slug: string; name: string; content: ReactNode };
 
@@ -32,6 +33,7 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, univers
   empty: ReactNode;
 }) {
   const params = useSearchParams();
+  const { pedirSesion } = useMuroSesion();
   const available = useMemo(() => {
     const s = new Set(rows.map(row => row.slug));
     if (viewerUniversity) s.add(UNIVERSITY_CATEGORY);
@@ -60,6 +62,7 @@ export function HomeCategoryOrder({ rows, intro, afterIntro, university, univers
   const universitySelected = selectedSet.has(UNIVERSITY_CATEGORY);
 
   function toggle(slug: string) {
+    if (!pedirSesion("Inicia sesión para filtrar", `/?cats=${encodeURIComponent(slug)}`)) return;
     const next = selected.includes(slug) ? selected.filter(item => item !== slug) : [...selected, slug];
     const value = next.length ? next.join(",") : null;
     setRaw(value);

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { MapPin, Loader2 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useNearbyProducts } from "@/hooks/useNearbyProducts";

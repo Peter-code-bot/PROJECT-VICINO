@@ -1,5 +1,5 @@
 import { StorePostOptions } from "@/components/home/store-post-options";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import Image from "next/image";
 import { MessageCircle, MapPin, Tag, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";

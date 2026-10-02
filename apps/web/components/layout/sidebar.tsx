@@ -5,7 +5,8 @@ import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
 import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 import { useState, type MouseEvent } from "react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { usePathname, useRouter } from "next/navigation";
@@ -67,6 +68,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const { pedirSesion } = useMuroSesion();
 
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname.startsWith(href);
@@ -110,7 +112,7 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
 
         {/* Categories expandable */}
         <button
-          onClick={() => setCategoriesOpen(!categoriesOpen)}
+          onClick={() => { if (pedirSesion("Inicia sesión para buscar categorías", "/buscar")) setCategoriesOpen(!categoriesOpen); }}
           className={cn(
             "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
             categoriesOpen

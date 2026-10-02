@@ -2357,6 +2357,10 @@ export type Database = {
       }
     }
     Functions: {
+      registration_email_exists: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 
 import { Bell, Trophy, Sparkles, Menu } from "lucide-react";
 import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";

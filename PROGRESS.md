@@ -1,4 +1,14 @@
-# Estado — S12 publicado; aceptación física pendiente
+# Estado — S02 registro/invitados implementado; entrega pendiente de Redis y validación real
+
+## 2026-10-02 — S02-A / S02-B: implementación en checkout aislado
+
+- **Codex, familia GPT-6.** Sesión iniciada 2026-10-01 23:01:53 America/Mexico_City; continúa después de medianoche. Plan y avances por append en [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Base vigente `b70fe9196fbaf8c2e49031fd0f25d300748c62fd`, trabajo ajeno conservado; rama `feat/registro-invitados-20261001`.
+- Registro existente muestra aviso explícito en la tarjeta, login/recuperación/cambio de correo; no OTP ni llamada signup cuando lookup existe. Lookup booleano restringido service_role, cuota estricta previa y reserva distribuida por hash de correo. Fallos se recuperan en el formulario. Recuperación cambia contraseña antes del destino, correo temporal y next seguro, login no confirmado ofrece reenvío, callbacks web/nativos conservan contexto incluso al fallar.
+- Home/previews permanecen públicos; rutas y acciones privadas van a login directamente. Destino seguro, onboarding previo y retorno a posición Home; las acciones con efectos regresan a contexto sin ejecución automática. API mapa exige sesión; migración de permisos directos preparada y ensayada.
+- Revisión independiente backend y QA aprobó correcciones de código. Pruebas locales: 91 Node, 40 Chromium + 40 WebKit (componentes reales; Auth/SDK/router simulados), SQL PGlite14/14 y API16/16. Tipos/build final exit0,58/58; lint exit0/0 errores/61 warnings existentes (sin PWA generado). Next real:20/20 HTTP y Chromium Home→producto→login→Home restaura posición; caída Redis real devuelve error recuperable y no OTP. Evidencia en la [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). No equivale a SMTP, dispositivos ni concurrencia Auth real.
+- **Aplicación pendiente de publicación:** Redis local configurado devuelve ENOTFOUND; Vercel requiere sesión para comprobar variables. Lookup remoto instalado y ACL auditada. Migración mapa también instalada: anon/PUBLIC denegados, authenticated/service_role conservados. Restauración temporal para aplicación anterior rechazada por revisión automática; aprobación del usuario pendiente, restricción sigue activa. PAT Management401 impide ejecutar fixtures staging/regeneración completa. Pendientes: Redis funcional, pruebas Auth/correo real, Google/Apple e iPhone/Android, publicación y aceptación definitiva. Tarea EN PROCESO; fin de sesión no es cierre de tarea.
+
+# Historial — S12 publicado; aceptación física pendiente
 
 ## 2026-10-01 — S12 entregado para revisión de Javier
 

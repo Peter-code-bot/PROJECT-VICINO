@@ -1,7 +1,8 @@
 "use client";
 
 import { isTabRoute } from "@/lib/navigation/tab-routes";
-import Link, { type LinkProps } from "next/link";
+import Link from "@/components/auth/auth-link";
+import type { LinkProps } from "next/link";
 import { hapticLight, hapticMedium, hapticSelection } from "@/lib/haptics";
 import type { ComponentPropsWithoutRef, MouseEvent, ReactNode } from "react";
 

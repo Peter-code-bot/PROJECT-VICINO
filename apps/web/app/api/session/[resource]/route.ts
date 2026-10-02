@@ -5,6 +5,7 @@ import { getChatList } from "@/lib/chat-list-data";
 import { getHomeSession, homeSearchSchema } from "@/lib/home-session-data";
 import { getProfileSession } from "@/lib/profile-session-data";
 import { esAuthNoDisponible } from "@/lib/session-auth";
+import { requiereSesion } from "@/lib/auth/acceso-invitado";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ reso
       const input = homeSearchSchema.safeParse(query);
       if (!input.success) return new Response(null, { status: 400, headers });
       const result = await getHomeSession(input.data);
+      if (!result.userId && requiereSesion(`/${new URL(request.url).search}`)) return new Response(null, { status: 401, headers });
       // El feed «Para ti» caido no es un exito vacio: en una revalidacion en
       // segundo plano el cliente debe conservar lo que tenia, no sustituirlo
       // por una portada sin productos. La primera visita, en cambio, recibe

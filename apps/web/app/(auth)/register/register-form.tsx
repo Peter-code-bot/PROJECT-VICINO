@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { guardarCorreoAuth, limpiarCorreoAuth, useCorreoAuth, hrefAuth } from "@/lib/auth/contexto-temporal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import Link from "next/link";
@@ -20,11 +21,13 @@ import { ArrowRight, Loader2 } from "lucide-react";
 
 export function RegisterForm() {
   const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useCorreoAuth();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [loading, setLoading] = useState(false);
+  const submitting = useRef(false);
+  const [existente, setExistente] = useState(false);
 
   // Respaldo en memoria del correo pendiente.
   //
@@ -90,6 +93,7 @@ export function RegisterForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting.current) return;
     setError("");
     setAviso("");
 
@@ -99,6 +103,7 @@ export function RegisterForm() {
     }
 
     setLoading(true);
+    submitting.current = true;
 
     // El correo se normaliza con la misma regla que el servidor (trim +
     // minusculas) para que lo que se pinta en pantalla, lo que se guarda en el
@@ -112,7 +117,7 @@ export function RegisterForm() {
     // lanzaba sin que nadie lo recogiera: mismo resultado, spinner eterno.
     let result;
     try {
-      result = await conTope(signUp(correo, password, nombre));
+      result = await conTope(signUp(correo, password, nombre, destino));
     } catch (err) {
       setError(
         esTope(err)
@@ -121,19 +126,28 @@ export function RegisterForm() {
       );
       setLoading(false);
       return;
+    } finally {
+      submitting.current = false;
+    }
+
+    if (result.estado === "existente") {
+      borrarPendiente();
+      setPendienteMemoria(null);
+      setPassword("");
+      guardarCorreoAuth(correo);
+      setEmail(correo);
+      setExistente(true);
+      setLoading(false);
+      return;
     }
 
     if (result.error) {
       const msg = result.error.toLowerCase();
-      if (result.sessionUnavailable || result.invalidInput) {
+      if (result.sessionUnavailable || result.invalidInput || result.error.startsWith("No pudimos")) {
         setError(result.error);
         setLoading(false);
       } else if (msg.includes("security purposes") || msg.includes("only request this after")) {
-        // GoTrue responde esto cuando se solicita un envio en menos de 60 s.
-        // Mantenemos disponible la pantalla de verificacion con un aviso neutral
-        // sin asumir la entrega confirmada de ningun correo.
-        abrirVerificacion(correo);
-        setAviso("Si solicitaste un código recientemente, espera unos momentos antes de pedir otro.");
+        setError("Espera unos momentos antes de solicitar otro registro. Si ya tienes cuenta, inicia sesión.");
         setLoading(false);
       } else if (msg.includes("demasiadas") || msg.includes("too many")) {
         setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
@@ -163,7 +177,12 @@ export function RegisterForm() {
       return;
     }
 
-    // Sin sesion = queda confirmacion pendiente o respuesta ambigua.
+    // Only a real new signup enters verification; duplicates stay in the form.
+    if (result.estado !== "verificacion_pendiente") {
+      setError("No pudimos completar el registro. Intenta de nuevo.");
+      setLoading(false);
+      return;
+    }
     abrirVerificacion(correo);
     setLoading(false);
   }
@@ -207,6 +226,21 @@ export function RegisterForm() {
           borrarPendiente();
         }}
       />
+    );
+  }
+
+  if (existente) {
+    return (
+      <div className="space-y-4">
+        <div role="status" className="space-y-3 text-center">
+          <h1 className="font-heading text-2xl font-bold">Ya existe una cuenta con este correo.</h1>
+          <p className="break-all text-sm font-medium">{email}</p>
+          <p className="text-sm text-muted-foreground">Inicia sesión o recupera tu contraseña para continuar.</p>
+        </div>
+        <Link href={hrefLogin} onClick={() => guardarCorreoAuth(email)} className="flex min-h-12 items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Iniciar sesión</Link>
+        <Link href={hrefAuth("/forgot-password", destino)} onClick={() => guardarCorreoAuth(email)} className="flex min-h-12 items-center justify-center rounded-xl border border-primary px-4 py-3 text-sm font-semibold text-primary">Recuperar contraseña</Link>
+        <button type="button" onClick={() => { limpiarCorreoAuth(); setExistente(false); setEmail(""); setError(""); }} className="min-h-12 w-full text-sm text-muted-foreground">Cambiar correo</button>
+      </div>
     );
   }
 

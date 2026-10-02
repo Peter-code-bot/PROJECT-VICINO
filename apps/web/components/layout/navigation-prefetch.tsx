@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 // Next 16.2.12 requires kind when passing onInvalidate (unlike newer docs).
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { isTabRoute, TAB_ROUTES } from "@/lib/navigation/tab-routes";
+import { requiereSesion } from "@/lib/auth/acceso-invitado";
 
 type Connection = { saveData?: boolean; effectiveType?: string };
 const WINDOW_MS = 30_000;
@@ -22,7 +23,7 @@ export function NavigationPrefetch({ authenticated, isVendedor = false }: { auth
       const connection = (navigator as Navigator & { connection?: Connection }).connection;
       if (!navigator.onLine || document.visibilityState !== "visible" || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
       const selling = href === "/vender" && authenticated && isVendedor;
-      if ((!isTabRoute(href) && !selling) || href === pathname || (!authenticated && (href === "/chat" || href === "/perfil"))) return;
+      if ((!isTabRoute(href) && !selling) || href === pathname || (!authenticated && requiereSesion(href))) return;
       const now = performance.now();
       // Bound manual requests even when Next invalidates rapidly. Invalidating
       // a route permits a future intent, never starts a background retry loop.

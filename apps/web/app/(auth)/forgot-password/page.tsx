@@ -4,9 +4,14 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "../actions";
 import { conTope, esTope } from "@/lib/auth/con-tope";
+import { useSearchParams } from "next/navigation";
+import { useCorreoAuth, hrefAuth } from "@/lib/auth/contexto-temporal";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
+import { Suspense } from "react";
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+function ForgotPasswordForm() {
+  const [email, setEmail] = useCorreoAuth();
+  const destino = destinoAutenticadoSeguro(useSearchParams().get("next"));
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +32,9 @@ export default function ForgotPasswordPage() {
     // land on the server handler so the recovery code is exchanged for
     // a session; otherwise the user is redirected to / unauthenticated
     // and the editar-password flow never gets a usable session.
-    const redirectTo = `${window.location.origin}/auth/callback-server?next=/perfil/editar`;
+    const next = `/reset-password?next=${encodeURIComponent(destino)}`;
+    const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    const redirectTo = `${sitio}/auth/callback-server?next=${encodeURIComponent(next)}`;
     const result = await conTope(requestPasswordReset(email, redirectTo));
 
     if (result.error) {
@@ -57,10 +64,10 @@ export default function ForgotPasswordPage() {
         {sent ? (
           <div className="space-y-4 text-center">
             <p className="text-sm">
-              Te enviamos un enlace de recuperación a <strong>{email}</strong>.
+              Si este correo puede recibir recuperación, encontrarás un enlace en <strong>{email}</strong>.
               Revisa tu bandeja de entrada.
             </p>
-            <Link href="/login" className="text-sm text-primary hover:underline">
+            <Link href={hrefAuth("/login", destino)} className="text-sm text-primary hover:underline">
               Volver a iniciar sesión
             </Link>
           </div>
@@ -96,7 +103,7 @@ export default function ForgotPasswordPage() {
             </button>
 
             <p className="text-center text-sm text-muted-foreground">
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href={hrefAuth("/login", destino)} className="text-primary hover:underline">
                 Volver a iniciar sesión
               </Link>
             </p>
@@ -105,4 +112,8 @@ export default function ForgotPasswordPage() {
       </div>
     </div>
   );
+}
+
+export default function ForgotPasswordPage() {
+  return <Suspense fallback={<p role="status">Cargando recuperación…</p>}><ForgotPasswordForm /></Suspense>;
 }

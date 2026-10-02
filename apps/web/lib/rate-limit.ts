@@ -244,6 +244,17 @@ export async function enforce(
   }
 }
 
+/** Duplicate-email lookup must never run without a working throttle. */
+export async function enforceStrict(limit: Ratelimit | null, identifier: string): Promise<EnforceResult> {
+  if (!limit) return { ok: false, error: "No pudimos comprobar el correo. Intenta de nuevo más tarde." };
+  try {
+    const { success } = await limit.limit(identifier);
+    return success ? { ok: true } : { ok: false, error: "Demasiadas solicitudes. Espera un momento e intenta de nuevo." };
+  } catch {
+    return { ok: false, error: "No pudimos comprobar el correo. Intenta de nuevo más tarde." };
+  }
+}
+
 /**
  * Middleware-friendly variant: returns success/fail without throwing.
  * Use from middleware.ts to short-circuit the request with 429.

@@ -13,5 +13,6 @@ export const CABECERA_RUTA = "x-vicino-ruta";
 const RUTAS_LEGALES = ["/terminos", "/privacidad", "/eliminar-cuenta"] as const;
 
 export function esRutaLegal(ruta: string): boolean {
+  ruta = ruta.split(/[?#]/, 1)[0] ?? "";
   return RUTAS_LEGALES.some((base) => ruta === base || ruta.startsWith(`${base}/`));
 }

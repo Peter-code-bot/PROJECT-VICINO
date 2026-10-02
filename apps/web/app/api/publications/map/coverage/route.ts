@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     // Auth transport failures must not silently turn a blocked viewer into a guest.
-    await usuarioOInvitado(supabase);
+    if (!await usuarioOInvitado(supabase)) return reply({ error: "Inicia sesión para abrir el mapa." }, 401);
     const { data, error } = await supabase.rpc("search_map_publications_v2", { p_request: parsed.data })
       .abortSignal(AbortSignal.timeout(10_000));
     if (error) return reply({ error: error.code === "22023" ? "La búsqueda cambió. Vuelve a la primera página." : "No pudimos cargar las publicaciones. Intenta de nuevo." }, error.code === "22023" ? 409 : 503);

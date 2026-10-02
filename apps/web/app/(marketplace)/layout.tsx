@@ -133,7 +133,7 @@ export default async function MarketplaceLayout({
   // a /bienvenida. La ruta la pone el proxy (updateSession), no el cliente.
   const ruta = (await headers()).get(CABECERA_RUTA) ?? "";
   if (user && profile && profile.has_seen_onboarding === false && !esRutaLegal(ruta)) {
-    redirect("/bienvenida");
+    redirect(`/bienvenida?next=${encodeURIComponent(ruta || "/")}`);
   }
 
   return (

@@ -25,7 +25,9 @@ async function main(){
   await test('invalid and oversized body never query database',async()=>{assert.equal((await send({...base,unknown:1})).status,400);assert.equal((await send({...base,query:{...q,q:'x'.repeat(9000)}})).status,413);assert.equal(f.clients,0);});
   await test('transient auth failure is not downgraded to guest',async()=>{f.auth={data:{user:null},error:{name:'AuthRetryableFetchError',status:503}};assert.equal((await send()).status,503);assert.equal(f.calls.length,0);});
   f.auth={data:{user:null},error:{name:'AuthSessionMissingError'}};
-  await test('valid guest response strips private fields and passes canonical filters',async()=>{
+  await test('guest cannot query map RPC',async()=>{assert.equal((await send()).status,401);assert.equal(f.calls.length,0);});
+  f.auth={data:{user:{id:'synthetic'}},error:null};
+  await test('authenticated response strips private fields and passes canonical filters',async()=>{
     f.rpc={error:null,data:{query_key:'a'.repeat(32),projection_version:1,as_of:'2026-09-30',features:[],listings:[],total:0,seller_total:0,list_total:0,next_cursor:null,list_seller_total:0,revision:'b'.repeat(32),cells:[],next_cell_cursor:null,complete:false,ubicacion_geo:'private'}};
     const r=await send({...base,query:{...q,q:' cafe ',center:{lat:19,lng:-98}}});assert.equal(r.status,200);assert.equal(r.headers.get('vary'),'Cookie');assert.ok(!JSON.stringify(await r.json()).includes('private'));
     assert.equal(f.calls.at(-1).name,'search_map_publications_v2');assert.equal(f.calls.at(-1).args.p_request.query.q,'cafe');assert.equal(f.calls.at(-1).args.p_request.query.center,null);

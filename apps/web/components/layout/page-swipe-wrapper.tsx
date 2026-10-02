@@ -9,6 +9,7 @@ import { gestureAxis, pageGestureBlocked } from "@/lib/navigation/gestures";
 import { consumirRestauracion, marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
 
 import { TAB_ROUTES } from "@/lib/navigation/tab-routes";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 
 const PAGES: readonly string[] = TAB_ROUTES;
 const EDGE_GUARD_PX = 20;
@@ -20,6 +21,7 @@ interface PageSwipeWrapperProps {
 
 export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
   const router = useRouter();
+  const { pedirSesion } = useMuroSesion();
   const pathname = usePathname();
   const currentIndex = PAGES.indexOf(pathname);
   const elementRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
   // mas tarde, pero tampoco tenia nada que restaurar (el scroll guardado vive
   // en la misma memoria que los datos): subir arriba es el mismo resultado.
   useEffect(() => {
-    if (consumirRestauracion(pathname)) window.scrollTo({ top: 0, behavior: "instant" });
+    if (consumirRestauracion(pathname) !== "nada") window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
 
   useEffect(() => {
@@ -98,6 +100,7 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
       if (!completed || completed.axis !== "x" || Math.abs(completed.dx) < 50 || inFlight.current) return;
       const target = PAGES[currentIndex + (completed.dx < 0 ? 1 : -1)];
       if (!target) return;
+      if (!pedirSesion("Inicia sesión para continuar", target)) return;
       inFlight.current = true;
       // RSC can take time: retain a visible surface, and start routing now.
       x.stop();
@@ -124,7 +127,7 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
       x.stop();
       x.set(0);
     };
-  }, [currentIndex, pathname, router, isPending, reducedMotion, x]);
+  }, [currentIndex, pathname, router, isPending, reducedMotion, x, pedirSesion]);
 
   if (currentIndex < 0) return <>{children}</>;
 

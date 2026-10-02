@@ -6,20 +6,17 @@
 // ocurre exactamente una vez por despliegue, y ademas las variables de entorno
 // de Vercel solo cambian con un redespliegue, asi que es el sitio correcto.
 //
-// NO falla el build a proposito: decidir si produccion puede salir sin freno es
-// decision de Pedro, no de un script. Solo deja constancia.
+// Registration now requires the limiter before its explicit email lookup.
+// A production build without it would disable signup for everyone.
 const enProduccion = process.env.VERCEL_ENV === "production";
 const faltan =
   !process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN;
 
 if (enProduccion && faltan) {
   console.error(
-    "[rate-limit][build] Este despliegue de PRODUCCION sale sin " +
-      "UPSTASH_REDIS_REST_URL y/o UPSTASH_REDIS_REST_TOKEN. Todos los " +
-      "limitadores de apps/web/lib/rate-limit.ts quedaran inactivos: login, " +
-      "OTP, escrituras, busqueda, reportes y verificacion de documento " +
-      "(que gasta OpenAI) aceptaran peticiones sin freno.",
+    "[rate-limit][build] Registro requiere UPSTASH_REDIS_REST_URL y UPSTASH_REDIS_REST_TOKEN. Configure ambas antes de publicar a PRODUCCION.",
   );
+  process.exit(1);
 }
 
 process.exit(0);

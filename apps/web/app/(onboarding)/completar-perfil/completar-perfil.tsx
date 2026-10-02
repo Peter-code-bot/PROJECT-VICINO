@@ -154,7 +154,7 @@ export function CompletarPerfil({
         setError(fin.error);
         return;
       }
-      router.push("/");
+      router.push(fin.destino ?? "/");
     });
   }
 

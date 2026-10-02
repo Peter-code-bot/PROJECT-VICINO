@@ -1,6 +1,7 @@
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { usuarioOInvitado } from "@/lib/session-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productMapZone } from "@/lib/geo/product-map-zone";
 import { productMapSnapshot } from "@/lib/geo/product-map-snapshot";
@@ -50,6 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const limit = await enforce(productMapRateLimit, `product-map:${ip}`);
     if (!limit.ok) return unavailable(429, "rate_limited", "60");
     const supabase = await createClient();
+    if (!await usuarioOInvitado(supabase)) return unavailable(401, "authentication_required");
     // RLS enforces status, visibility, blocks and creator access.
     const { data: visible, error } = await supabase.from("products_services")
       .select("id, updated_at").eq("id", id.data).neq("estatus", "eliminado").maybeSingle();

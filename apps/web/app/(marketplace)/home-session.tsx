@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
 
 import { universitySearchUrl } from "@/lib/university";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
 import { LocationBar } from "@/components/shared/location-bar";

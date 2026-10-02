@@ -3,6 +3,9 @@
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { COOKIE_DESTINO_ONBOARDING } from "@/lib/auth/acceso-invitado";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { updateProfileSchema, usernameSchema, cleanDisplayName } from "@vicino/shared";
 
@@ -194,5 +197,8 @@ export async function completeOnboarding() {
   }
 
   await revalidatePath("/");
-  return { success: true };
+  const store = await cookies();
+  const destino = destinoAutenticadoSeguro(store.get(COOKIE_DESTINO_ONBOARDING)?.value);
+  store.delete(COOKIE_DESTINO_ONBOARDING);
+  return { success: true, destino };
 }
