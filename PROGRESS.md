@@ -1,11 +1,12 @@
-# Estado — Nombre de tienda validado localmente; entrega remota en preparación
+# Estado — Nombre de tienda validado localmente; PR #51 en borrador
 
 ## 2026-10-03 — PLAN-20261003-NOMBRE-TIENDA: implementación local
 
 - **Codex, familia GPT-6.** Inicio autorizado: 2026-10-03 15:13:47 CDMX. Rama `fix/nombre-tienda-global-20261003`, base remota verificada `b70fe9196fbaf8c2e49031fd0f25d300748c62fd`. Checkout original preservado.
 - Tienda activa (`es_vendedor=true`, `seller_type=business`) muestra el nombre comercial en publicaciones, perfil, búsqueda, chats, comunidades, reseñas, solicitudes, citas, historial, ventas y paneles. Nombre vacío legado usa “Tienda”; modo individual/desactivado conserva el nombre personal. Validación al guardar/activar y revalidación global tras guardar perfil.
 - 25/25 pruebas locales PASS, TypeScript web/shared exit0, lint completo exit0/61 warnings y build configurado exit0 (57/57 páginas estáticas). La prueba SQL verifica las 16 definiciones del repositorio, preserva filtros/firmas/ACL/RLS y ejecuta un aviso de reseña con nombre renombrado; no sustituye producción/PostGIS/dispositivos.
-- Migración `20261003213000_identidad_publica_modo_tienda.sql` preparada, **sin aplicar**. Lectura administrativa de Supabase fuera del sandbox: HTTP401; falta restablecer `VICINO_SUPABASE_PAT` y contrastar las funciones instaladas antes de aplicar. PR en preparación; sin integración/despliegue. NT01–NT04 y fin de corrección pendientes.
+- Entrega técnica local: 2026-10-03 16:48:38 CDMX, commit de aplicación `515632ba323e2a4f615bdd99d8ce00b5bfedd1a9`, [PR #51 en borrador](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/51). CI de ese commit aprobó tipos/lint/secretos y Vercel Preview. Auditoría falló por `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm), presente en el lock de la base y sin cambios de dependencias en este PR; el aviso no ofrece versión corregida. No se rebaja el umbral de auditoría.
+- Migración `20261003213000_identidad_publica_modo_tienda.sql` preparada, **sin aplicar**. Lectura administrativa de Supabase fuera del sandbox: HTTP401; falta restablecer `VICINO_SUPABASE_PAT` y contrastar las funciones instaladas antes de aplicar. Sin integración ni despliegue de producción. Resolver auditoría/revisión y NT01–NT04 antes de cerrar; fin de corrección pendiente.
 - [Plan y evidencia en Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26). Notion conserva el detalle y las fechas de entrega/cierre; los cortes siguientes son historial.
 
 ## 2026-10-01 — S12 entregado para revisión de Javier
