@@ -32,24 +32,46 @@ async function main() {
   const browser = await engine.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.setDefaultTimeout(30_000);
     await page.goto(base.href);
     const search = page.locator('a[href="/login?next=%2Fbuscar"]:visible');
     await expect(search.first()).toBeVisible();
-    await search.first().click(); await expect(page).toHaveURL(/\/login\?next=%2Fbuscar/);
+    await search.first().click(); await expect(page).toHaveURL(/\/login\?next=%2Fbuscar/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "¡Hola de nuevo!" })).toBeVisible();
     await page.screenshot({ path: `apps/web/test-results/registro-http/login-${process.env.TEST_BROWSER ?? "chromium"}.png` });
     console.log(`PASA navegador Next real ${process.env.TEST_BROWSER ?? "chromium"}: Home → Buscar → login, destino conservado.`);
     await page.goto(base.href);
-    const product = page.locator('main a[href^="/login?next=%2F"]:has(h3)').first();
-    await expect(product).toBeVisible({ timeout: 30_000 });
-    await product.scrollIntoViewIfNeeded();
-    const homeY = await page.evaluate(() => window.scrollY);
-    assert.ok(homeY > 0, "Home must have scrollable catalogue content");
-    const requested = await product.getAttribute("href");
-    await product.click(); await expect(page).toHaveURL(new URL(requested!, base).href);
+    const products = page.locator('main a[href^="/login?next=%2F"]:has(h3)');
+    await expect(products.first()).toBeVisible({ timeout: 30_000 });
+    // A font promise may stay pending in a headless engine; click-time scroll
+    // capture below makes the assertion independent of later font layout.
+    await page.evaluate(() => Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 5_000))]));
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+    const target = await products.evaluateAll((links: HTMLAnchorElement[]) => links.map((link, index) => {
+      const r = link.getBoundingClientRect();
+      return { index, href: link.getAttribute("href"), left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+    }).find(r => r.left >= 0 && r.right <= window.innerWidth && r.top >= 80 && r.top < window.innerHeight - 150 && r.height > 120));
+    assert.ok(target, "A product must be visible after scrolling Home");
+    // Capture at the actual click: WebKit's wheel can still be settling, and
+    // Playwright may adjust the viewport when it brings the link into view.
+    await page.evaluate(() => document.addEventListener("click", () => {
+      sessionStorage.setItem("qa-home-click-y", String(window.scrollY));
+    }, { capture: true, once: true }));
+    // A product can occur in several preview rows. Click the visible instance,
+    // rather than the first anchor sharing its href higher up the catalogue.
+    await products.nth(target.index).click({ position: { x: Math.min(40, target.width / 2), y: 60 } });
+    await expect(page).toHaveURL(new URL(target.href!, base).href, { timeout: 30_000 });
+    const homeY = await page.evaluate(() => Number(sessionStorage.getItem("qa-home-click-y")));
+    // The wheel assertion above proves substantial scroll. WebKit can adjust
+    // it when clicking a partly clipped card; preserve the actual click-time
+    // position, rather than demand that Playwright leave it at exactly 600px.
+    assert.ok(homeY > 0, `Click must start from a scrolled Home catalogue; observed ${homeY}px`);
     await page.locator('a[href="/"]').first().click();
-    await expect(page).toHaveURL(base.href);
+    await expect(page).toHaveURL(base.href, { timeout: 30_000 });
     await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 30_000 }).toBe(homeY);
+    await page.waitForTimeout(1000);
+    assert.equal(await page.evaluate(() => window.scrollY), homeY, "Home restoration must remain stable after Next handles scroll/focus");
     console.log(`PASA Home real: producto → login → Home restaura scroll ${homeY}px.`);
     if (process.env.REGISTRO_TEST_EMAIL) {
       const { createClient } = require("@supabase/supabase-js");
@@ -85,4 +107,4 @@ async function main() {
     }
   } finally { await browser.close(); }
 }
-main().catch(error => { console.error(error); process.exitCode = 1; });
+main().catch(error => { console.error(error instanceof Error ? error.stack : error); process.exitCode = 1; });

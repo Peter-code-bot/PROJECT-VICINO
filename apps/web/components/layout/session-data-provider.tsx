@@ -186,10 +186,10 @@ export function SessionScroll({ route, scope = route }: { route: string; scope?:
       const y = restauracion === "restaurar" ? cache.ui.get(key) : 0;
       window.scrollTo({ top: typeof y === "number" ? y : 0, behavior: "instant" });
     }
-    if (route === "/") restaurarRetornoHome();
+    const cancelarRetorno = route === "/" ? restaurarRetornoHome() : undefined;
     const save = () => { if (location.pathname === route) cache.ui.set(key, window.scrollY); };
     window.addEventListener("scroll", save, { passive: true });
-    return () => { window.removeEventListener("scroll", save); };
+    return () => { cancelarRetorno?.(); window.removeEventListener("scroll", save); };
   }, [cache, route, scope]);
   return null;
 }
