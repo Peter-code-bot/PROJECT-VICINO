@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -50,7 +51,7 @@ export default async function AdministrarPage({ params }: Props) {
     esOwner
       ? supabase
           .from("community_members")
-          .select("user_id, role, joined_at, profiles!community_members_user_id_fkey(nombre, foto)")
+          .select("user_id, role, joined_at, profiles!community_members_user_id_fkey(nombre, foto, es_vendedor, seller_type, nombre_negocio)")
           .eq("community_id", id)
           .is("left_at", null)
           .order("joined_at", { ascending: true })
@@ -79,7 +80,7 @@ export default async function AdministrarPage({ params }: Props) {
   const miembros = (miembrosData?.data ?? []).flatMap((m) => {
     const perfil = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
     if (!perfil) return [];
-    return [{ user_id: m.user_id, role: m.role, joined_at: m.joined_at, nombre: perfil.nombre, foto: perfil.foto ?? null }];
+    return [{ user_id: m.user_id, role: m.role, joined_at: m.joined_at, nombre: publicProfileName(perfil), foto: perfil.foto ?? null }];
   });
 
   return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useRef } from "react";
 import { MessageCircle, X } from "lucide-react";
 import Image from "next/image";
@@ -166,11 +168,11 @@ export function ProductReviewsDrawer({
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-card dark:bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0 font-medium text-primary">
-                      {reviewer?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
+                      {publicProfileName(reviewer)?.charAt(0)?.toUpperCase() ?? "?"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm truncate">
-                        {reviewer?.nombre ?? "Usuario Verificado"}
+                        {publicProfileName(reviewer, "Usuario Verificado")}
                       </div>
                       <RatingStars rating={review.rating} size="sm" />
                     </div>
@@ -181,7 +183,7 @@ export function ProductReviewsDrawer({
                         targetLabel={
                           review.comentario
                             ? review.comentario.slice(0, 60)
-                            : `Reseña de ${reviewer?.nombre ?? "usuario"}`
+                            : `Reseña de ${publicProfileName(reviewer, "usuario")}`
                         }
                         iconSize={14}
                         ariaLabel="Reportar reseña"

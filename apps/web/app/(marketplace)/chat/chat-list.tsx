@@ -1,4 +1,6 @@
 "use client";
+
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cleanDisplayName } from "@vicino/shared";
@@ -74,7 +76,7 @@ export function ChatList({ seed }: ChatListProps) {
                   id: chat.id,
                   updated_at: chat.updated_at,
                   otherUser: otherProfile
-                    ? { id: otherProfile.id, nombre: cleanDisplayName(otherProfile.nombre), foto: otherProfile.foto }
+                    ? { id: otherProfile.id, nombre: cleanDisplayName(publicProfileName(otherProfile)), foto: otherProfile.foto }
                     : null,
                   unread: unread ?? 0,
                   productoTitulo: producto?.titulo ?? null,

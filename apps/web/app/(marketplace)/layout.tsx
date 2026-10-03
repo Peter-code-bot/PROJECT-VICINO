@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { cookies, headers } from "next/headers";
 import { CABECERA_RUTA, esRutaLegal } from "@/lib/navigation/rutas-legales";
 import { SessionDataProvider } from "@/components/layout/session-data-provider";
@@ -60,7 +61,7 @@ export default async function MarketplaceLayout({
     ] = await Promise.allSettled([
       supabase
         .from("profiles")
-        .select("nombre, foto, es_vendedor, has_seen_onboarding, username")
+        .select("nombre, foto, es_vendedor, has_seen_onboarding, username, seller_type, nombre_negocio")
         .eq("id", user.id)
         .single(),
       supabase
@@ -161,7 +162,7 @@ export default async function MarketplaceLayout({
             profile={
               profile
                 ? {
-                    nombre: profile.nombre,
+                    nombre: publicProfileName(profile),
                     foto: profile.foto,
                     es_vendedor: isVendedor,
                   }
@@ -183,7 +184,7 @@ export default async function MarketplaceLayout({
                 profile={
                   profile
                     ? {
-                        nombre: profile.nombre,
+                        nombre: publicProfileName(profile),
                         foto: profile.foto,
                         username: profile.username,
                         es_vendedor: isVendedor,

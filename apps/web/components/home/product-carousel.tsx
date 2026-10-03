@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import useEmblaCarousel from "embla-carousel-react";
 import { ProductCard } from "@/components/product/product-card";
 import { normalizeCardCategories } from "@vicino/shared";
@@ -50,7 +52,7 @@ export function ProductCarousel({ products, priorityFirstItem = false }: Product
                 categoria={p.categoria}
                 slug={p.slug ?? p.id}
                 vendedor={{
-                  nombre: profile?.nombre ?? "Vendedor",
+                  nombre: publicProfileName(profile, "Vendedor"),
                   trust_level: (profile?.trust_level as TrustLevel) ?? "nuevo",
                 }}
                 rating={Number(profile?.average_rating ?? 0)}

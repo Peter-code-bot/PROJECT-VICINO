@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -34,8 +35,8 @@ export default async function ReviewsModerationPage() {
         .from("reviews")
         .select(`
           id, rating, comentario, is_hidden, visible, created_at,
-          reviewer:profiles!reviewer_id(nombre, user_id),
-          reviewed:profiles!reviewed_id(nombre, user_id)
+          reviewer:profiles!reviewer_id(nombre, user_id, es_vendedor, seller_type, nombre_negocio),
+          reviewed:profiles!reviewed_id(nombre, user_id, es_vendedor, seller_type, nombre_negocio)
         `)
         .in("id", targetIds)
     : { data: [] };
@@ -70,7 +71,7 @@ export default async function ReviewsModerationPage() {
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
+                    Reportado por {publicProfileName(reporter, "?")} · {formatDate(rep.created_at)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
@@ -85,7 +86,7 @@ export default async function ReviewsModerationPage() {
                   <div className="rounded-md bg-muted/40 p-3 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        {reviewer?.nombre ?? "?"} → {reviewed?.nombre ?? "?"}
+                        {publicProfileName(reviewer, "?")} → {publicProfileName(reviewed, "?")}
                       </span>
                       <RatingStars rating={review.rating} size="sm" />
                     </div>

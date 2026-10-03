@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -48,7 +49,7 @@ export default async function PublicacionPage({ params }: Props) {
       .eq("community_id", id)
       .maybeSingle(),
     supabase.rpc("detalle_comunidad", { p_community_id: id }),
-    supabase.from("profiles").select("nombre, foto").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("nombre, foto, es_vendedor, seller_type, nombre_negocio").eq("id", user.id).maybeSingle(),
   ]);
 
   if (filaR.error) Sentry.captureException(filaR.error, { tags: { action: "community_posts@hilo" } });
@@ -89,7 +90,7 @@ export default async function PublicacionPage({ params }: Props) {
       post={post}
       comentarios={comentarios}
       cursor={comentarios.length === PAGINA && ultimo ? { time: ultimo.created_at, id: ultimo.id } : null}
-      currentUser={{ id: user.id, nombre: perfilR.data?.nombre ?? "Tú", foto: perfilR.data?.foto ?? null }}
+      currentUser={{ id: user.id, nombre: publicProfileName(perfilR.data, "Tú"), foto: perfilR.data?.foto ?? null }}
       puedoComentar={detalle.soy_miembro && detalle.disponible}
       puedoModerar={esMando(detalle.mi_rol)}
     />

@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -60,7 +62,7 @@ function normalizarPadron(filas: FilaPadron[]): MiembroComunidad[] {
         user_id: f.user_id,
         role: f.role,
         joined_at: f.joined_at,
-        nombre: perfil.nombre,
+        nombre: publicProfileName(perfil),
         foto: perfil.foto ?? null,
       },
     ];
@@ -103,7 +105,7 @@ export function ComunidadMiembrosDrawer({
       try {
         const { data, error } = await createClient()
           .from("community_members")
-          .select("user_id, role, joined_at, profiles!community_members_user_id_fkey(nombre, foto)")
+          .select("user_id, role, joined_at, profiles!community_members_user_id_fkey(nombre, foto, es_vendedor, seller_type, nombre_negocio)")
           .eq("community_id", communityId)
           .is("left_at", null)
           .order("joined_at", { ascending: true })

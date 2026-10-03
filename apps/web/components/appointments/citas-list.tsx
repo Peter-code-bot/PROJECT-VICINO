@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useState, useMemo } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { CalendarOff, Clock } from "lucide-react";
@@ -133,11 +135,11 @@ export function CitasList({ appointments, currentUserId }: Props) {
               <li key={a.id}>
                 <Link href={`/citas/${a.id}`} className={cn("block bg-[color:var(--sidebar-bg)] rounded-[var(--r-xl)] p-4 hover:opacity-90 transition-opacity", a.status === "cancelled" && "opacity-60")}>
                   <div className="flex items-start gap-3">
-                    <UserAvatar src={other?.foto} name={other?.nombre ?? "?"} size="md" />
+                    <UserAvatar src={other?.foto} name={publicProfileName(other)} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-1.5 mb-0.5">
                         <span className="text-xs text-[color:var(--fg-muted)]">{isBuyer ? "Con" : "Para"}</span>
-                        <span className="text-sm font-semibold text-[color:var(--fg)] truncate">{other?.nombre ?? "Usuario"}</span>
+                        <span className="text-sm font-semibold text-[color:var(--fg)] truncate">{publicProfileName(other)}</span>
                       </div>
                       {product && <p className="text-sm text-[color:var(--fg)] truncate mb-1">{product.titulo}</p>}
                       <div className="flex items-center gap-1.5 text-xs">

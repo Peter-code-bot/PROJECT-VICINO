@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ProductCard } from "@/components/product/product-card";
@@ -188,7 +190,7 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
                   categoria={p.categoria}
                   slug={p.slug ?? p.id}
                   vendedor={{
-                    nombre: profileShape?.nombre ?? "Vendedor",
+                    nombre: publicProfileName(profileShape, "Vendedor"),
                     trust_level: (profileShape?.trust_level as TrustLevel) ?? "nuevo",
                   }}
                   rating={Number(profileShape?.average_rating ?? 0)}

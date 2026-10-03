@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileHeader } from "../../perfil/profile-header";
@@ -13,13 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("nombre, nombre_negocio, seller_type")
+    .select("nombre, nombre_negocio, seller_type, es_vendedor")
     .eq("id", id)
     .single();
-  const name =
-    data?.seller_type === "business" && data?.nombre_negocio
-      ? data.nombre_negocio
-      : data?.nombre ?? "Vendedor";
+  const name = publicProfileName(data, "Vendedor");
   return { title: `${name} — VICINO` };
 }
 
@@ -58,7 +56,7 @@ export default async function VendedorPage({ params }: Props) {
 
   const { data: reviewsAsSeller } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto, es_vendedor, seller_type, nombre_negocio), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
     .eq("reviewed_id", id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
@@ -72,7 +70,7 @@ export default async function VendedorPage({ params }: Props) {
 
   const { data: reviewsAsBuyer } = await supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto, es_vendedor, seller_type, nombre_negocio), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))")
     .eq("reviewed_id", id)
     .eq("review_type", "seller_to_buyer")
     .eq("visible", true)

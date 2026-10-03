@@ -1,4 +1,4 @@
-import type { TrustLevel } from "@vicino/shared";
+import type { PublicProfileIdentity, TrustLevel } from "@vicino/shared";
 
 export interface ProductDetailProduct {
   id: string;
@@ -29,7 +29,7 @@ export interface ProductDetailProduct {
   created_at: string;
 }
 
-export interface ProductDetailSeller {
+export interface ProductDetailSeller extends PublicProfileIdentity {
   id: string;
   nombre: string | null;
   foto: string | null;
@@ -43,7 +43,7 @@ export interface ProductDetailSeller {
   is_verified?: boolean | null;
 }
 
-export interface ProductDetailReviewerProfile {
+export interface ProductDetailReviewerProfile extends PublicProfileIdentity {
   nombre: string | null;
   foto: string | null;
   trust_level?: string | null;

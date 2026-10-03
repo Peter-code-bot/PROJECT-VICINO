@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect, notFound } from "next/navigation";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { priceFallbackLabel } from "@/lib/price-mode";
@@ -60,8 +61,8 @@ export default async function CitaDetailPage({ params }: PageProps) {
       id, appointment_date, appointment_start, appointment_end,
       status, notes, buyer_id, seller_id, created_at,
       products_services(id, titulo, imagen_principal, precio, modo_precio, categoria, slug, ubicacion, product_categories(is_primary, categories(slug))),
-      buyer:profiles!buyer_id(id, nombre, foto),
-      seller:profiles!seller_id(id, nombre, foto)
+      buyer:profiles!buyer_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio),
+      seller:profiles!seller_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio)
     `)
     .eq("id", id)
     .single();
@@ -230,8 +231,8 @@ export default async function CitaDetailPage({ params }: PageProps) {
               href={`/vendedor/${otherUser.id}`}
               className="flex items-center gap-3 hover:bg-muted/40 -mx-2 px-2 py-1.5 rounded-xl transition-colors"
             >
-              <UserAvatar src={otherUser.foto} name={otherUser.nombre} size="sm" />
-              <span className="font-semibold text-foreground">{otherUser.nombre}</span>
+              <UserAvatar src={otherUser.foto} name={publicProfileName(otherUser)} size="sm" />
+              <span className="font-semibold text-foreground">{publicProfileName(otherUser)}</span>
             </Link>
           </div>
         )}

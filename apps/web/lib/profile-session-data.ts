@@ -91,7 +91,7 @@ async function cargarProducts(supabase: Client, user: Usuario) {
 async function cargarReviews(supabase: Client, user: Usuario) {
   const reviewsAsSellerQuery = supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))").throwOnError()
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto, es_vendedor, seller_type, nombre_negocio), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))").throwOnError()
     .eq("reviewed_id", user.id)
     .eq("review_type", "buyer_to_seller")
     .eq("visible", true)
@@ -105,7 +105,7 @@ async function cargarReviews(supabase: Client, user: Usuario) {
 
   const reviewsAsBuyerQuery = supabase
     .from("reviews")
-    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))").throwOnError()
+    .select("id, rating, comentario, created_at, review_type, reviewer_id, profiles!reviewer_id(nombre, foto, es_vendedor, seller_type, nombre_negocio), products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))").throwOnError()
     .eq("reviewed_id", user.id)
     .eq("review_type", "seller_to_buyer")
     .eq("visible", true)

@@ -1,3 +1,4 @@
+import { publicProfileName, publicProfileSearchFilter } from "@vicino/shared";
 import * as Sentry from "@sentry/nextjs";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
@@ -143,7 +144,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // the shape is single-sourced.
   const sellersTypeRef = supabase
     .from("profiles")
-    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count").throwOnError();
+    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio").throwOnError();
   type Seller = NonNullable<Awaited<typeof sellersTypeRef>["data"]>[number];
 
   let topUsers: Seller[] = [];
@@ -181,8 +182,8 @@ export default async function SearchPage({ searchParams }: Props) {
     try {
     const { data: sellers, error: sellersError } = await supabase
       .from("profiles")
-      .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count").throwOnError()
-      .ilike("nombre", `%${nombreVendedorLike}%`)
+      .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio").throwOnError()
+      .or(publicProfileSearchFilter(`%${nombreVendedorLike}%`))
       .limit(4);
 
     // El error se reporta en vez de descartarse. Esta consulta pedia una
@@ -532,11 +533,11 @@ export default async function SearchPage({ searchParams }: Props) {
               >
                 {/* Mismo motivo que en /buscar/usuarios: los avatares de
                     Google caducan y <img> dejaba el icono de imagen rota. */}
-                <UserAvatar src={user.avatar_url} name={user.nombre ?? "Usuario"} size="md" className="w-12 h-12" />
+                <UserAvatar src={user.avatar_url} name={publicProfileName(user, "Usuario")} size="md" className="w-12 h-12" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-semibold text-sm text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)] transition-colors truncate">
-                      {user.nombre}
+                      {publicProfileName(user)}
                     </h3>
                     {user.trust_level === "verificado" && (
                       <ShieldCheck className="w-3.5 h-3.5 text-[color:var(--brand)] flex-shrink-0" />
@@ -579,7 +580,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 categoria={product.categoria}
                 slug={product.slug ?? product.id}
                 vendedor={{
-                  nombre: profile?.nombre ?? "Vendedor",
+                  nombre: publicProfileName(profile, "Vendedor"),
                   trust_level: (profile?.trust_level as TrustLevel) ?? "nuevo",
                 }}
                 rating={Number(profile?.average_rating ?? 0)}

@@ -73,9 +73,7 @@ export async function updateProfile(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  await revalidatePath("/perfil");
-  await revalidatePath(`/vendedor/${user.id}`);
-  await revalidatePath("/seller/listings");
+  await revalidatePath("/", "layout");
   return { success: true };
 }
 

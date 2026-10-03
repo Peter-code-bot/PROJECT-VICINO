@@ -15,8 +15,8 @@ export default async function CitasPage() {
       id, appointment_date, appointment_start, appointment_end, status, notes,
       buyer_id, seller_id,
       products_services(id, titulo, imagen_principal, precio),
-      buyer:profiles!buyer_id(id, nombre, foto),
-      seller:profiles!seller_id(id, nombre, foto)
+      buyer:profiles!buyer_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio),
+      seller:profiles!seller_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio)
     `)
     .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
     .order("appointment_date", { ascending: true })

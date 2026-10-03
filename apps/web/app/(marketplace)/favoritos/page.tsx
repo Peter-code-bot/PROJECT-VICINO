@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { clasificarFavorito } from "./clasificar-favorito";
@@ -28,7 +29,7 @@ export default async function FavoritosPage() {
       producto_id,
       products_services(
         id, titulo, precio, imagen_principal, categoria, slug, precio_negociable, modo_precio, estatus, is_hidden,
-        profiles(nombre, trust_level, average_rating, reviews_count),
+        profiles(nombre, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio),
         product_categories(is_primary, categories(slug, nombre))
       )
     `
@@ -64,7 +65,7 @@ export default async function FavoritosPage() {
                   imagen={product?.imagen_principal}
                   precio={product?.precio}
                   modoPrecio={product?.modo_precio}
-                  vendedorNombre={profile?.nombre}
+                  vendedorNombre={publicProfileName(profile)}
                   motivo={clasificacion.motivo}
                 />
               );
@@ -82,7 +83,7 @@ export default async function FavoritosPage() {
                 categoria={product.categoria}
                 slug={product.slug ?? product.id}
                 vendedor={{
-                  nombre: profile?.nombre ?? "Vendedor",
+                  nombre: publicProfileName(profile, "Vendedor"),
                   trust_level: (profile?.trust_level as TrustLevel) ?? "nuevo",
                 }}
                 rating={Number(profile?.average_rating ?? 0)}
