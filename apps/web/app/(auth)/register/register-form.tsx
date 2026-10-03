@@ -19,7 +19,14 @@ import {
 import { VerificarCodigo } from "./verificar-codigo";
 import { ArrowRight, Loader2 } from "lucide-react";
 
+const suscribirInicio = () => () => {};
+const inicioCliente = () => true;
+const inicioServidor = () => false;
+
 export function RegisterForm() {
+  // Los campos controlados no deben aceptar escritura antes de hidratar:
+  // Safari puede borrar lo escrito al sustituir el HTML inicial por React.
+  const listo = useSyncExternalStore(suscribirInicio, inicioCliente, inicioServidor);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useCorreoAuth();
   const [password, setPassword] = useState("");
@@ -93,7 +100,7 @@ export function RegisterForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (submitting.current) return;
+    if (!listo || submitting.current) return;
     setError("");
     setAviso("");
 
@@ -270,6 +277,7 @@ export function RegisterForm() {
         <input
           id="nombre"
           type="text"
+          disabled={!listo}
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           required
@@ -285,6 +293,7 @@ export function RegisterForm() {
         <input
           id="email"
           type="email"
+          disabled={!listo}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -300,6 +309,7 @@ export function RegisterForm() {
         <input
           id="password"
           type="password"
+          disabled={!listo}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -323,7 +333,7 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !listo}
         className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
       >
         {loading ? (
@@ -348,6 +358,7 @@ export function RegisterForm() {
       <button
         type="button"
         onClick={handleGoogleSignup}
+        disabled={!listo}
         className="flex w-full items-center justify-center gap-3 rounded-xl border border-border/50 bg-white text-black px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -362,6 +373,7 @@ export function RegisterForm() {
       <button
         type="button"
         onClick={handleAppleSignup}
+        disabled={!listo}
         aria-label="Continuar con Apple"
         className="flex w-full items-center justify-center gap-3 rounded-xl bg-black text-white dark:bg-white dark:text-black px-4 py-3 text-sm font-medium transition-colors hover:bg-black/90 dark:hover:bg-white/90"
       >

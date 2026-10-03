@@ -30,6 +30,7 @@ async function main() {
   await mkdir("apps/web/test-results/registro-http", { recursive: true });
   const engine = process.env.TEST_BROWSER === "webkit" ? webkit : chromium;
   const browser = await engine.launch({ headless: true });
+  let huboError = false;
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     page.setDefaultTimeout(30_000);
@@ -73,17 +74,44 @@ async function main() {
     await page.waitForTimeout(1000);
     assert.equal(await page.evaluate(() => window.scrollY), homeY, "Home restoration must remain stable after Next handles scroll/focus");
     console.log(`PASA Home real: producto → login → Home restaura scroll ${homeY}px.`);
+    // Hold application JS to exercise the initial HTML, then let React hydrate.
+    // Text must only become editable once its change handlers are installed.
+    const inicio = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    inicio.setDefaultTimeout(30_000);
+    let habilitar!: () => void;
+    const listo = new Promise<void>(resolve => { habilitar = resolve; });
+    await inicio.route("**/_next/**/*.js", async route => { await listo; await route.continue(); });
+    try {
+      await inicio.goto(new URL("/register", base).href, { waitUntil: "commit" });
+      for (const nombre of ["Nombre completo", "Email", "Contraseña"]) {
+        await expect(inicio.getByLabel(nombre, { exact: true })).toBeDisabled();
+      }
+      habilitar();
+      await expect(inicio.getByLabel("Nombre completo")).toBeEnabled();
+      await inicio.getByLabel("Nombre completo").fill("Nombre conservado");
+      await inicio.getByLabel("Email", { exact: true }).fill("qa@example.invalid");
+      await inicio.getByLabel("Contraseña", { exact: true }).fill("synthetic-unused-password");
+      await expect(inicio.getByLabel("Nombre completo")).toHaveValue("Nombre conservado");
+      console.log(`PASA hidratación ${process.env.TEST_BROWSER ?? "chromium"}: campos iniciales protegidos y nombre conservado al habilitarse; sin enviar registro.`);
+    } finally { habilitar(); await inicio.close(); }
     if (process.env.REGISTRO_TEST_EMAIL) {
       const { createClient } = require("@supabase/supabase-js");
       const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
       const email = process.env.REGISTRO_TEST_EMAIL.trim().toLowerCase();
-      const check = await admin.rpc("registration_email_exists", { p_email: email });
+      const check = await admin.rpc("registration_email_exists", { p_email: email }).abortSignal(AbortSignal.timeout(15_000));
       assert.equal(check.error, null); assert.equal(check.data, true, "Test must use an existing account; never create it");
+      console.log("PRECONDICIÓN: correo existente confirmado; empieza formulario real.");
       await page.goto(new URL("/register?next=%2Ftecnologia%2Fproducto", base).href);
       await page.getByLabel("Nombre completo").fill("Prueba de formulario");
       await page.getByLabel("Email", { exact: true }).fill(email);
       await page.getByLabel("Contraseña", { exact: true }).fill("synthetic-unused-password");
+      await expect(page.getByLabel("Nombre completo")).toHaveValue("Prueba de formulario");
+      await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
+      await expect(page.getByLabel("Contraseña", { exact: true })).toHaveValue("synthetic-unused-password");
+      const enviada = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/register");
       await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
+      assert.equal((await enviada).status(), 200);
+      console.log("PASA envío real: los tres campos conservados y POST de registro recibido por Next.");
       if (process.env.REGISTRO_EXPECT_UNAVAILABLE === "1") {
         await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
         await expect(page.locator('input[autocomplete="one-time-code"]')).toHaveCount(0);
@@ -93,7 +121,7 @@ async function main() {
       }
       await expect(page.getByRole("heading", { name: "Ya existe una cuenta con este correo." })).toBeVisible({ timeout: 30_000 });
       await expect(page.locator('input[autocomplete="one-time-code"]')).toHaveCount(0);
-      await page.screenshot({ path: `apps/web/test-results/registro-http/existing-${process.env.TEST_BROWSER ?? "chromium"}.png`, mask: [page.locator("p.break-all")] });
+      await page.screenshot({ path: `apps/web/test-results/registro-http/existing-${process.env.TEST_BROWSER ?? "chromium"}.png`, mask: [page.locator("p.break-all")], timeout: 15_000, animations: "disabled" });
       await page.getByRole("link", { name: "Recuperar contraseña", exact: true }).click();
       await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
       await expect(page).toHaveURL(/\/forgot-password\?next=%2Ftecnologia%2Fproducto/);
@@ -105,6 +133,25 @@ async function main() {
         console.log("RECUPERACIÓN: solicitud real aceptada. Entrega y cambio de contraseña requieren confirmación del titular.");
       }
     }
-  } finally { await browser.close(); }
+  } catch (error) { huboError = true; throw error; }
+  finally {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([browser.close(), new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("No se pudo cerrar el navegador de pruebas en 10s.")), 10_000);
+      })]);
+    } catch (error) {
+      if (!huboError) throw error;
+      console.warn("El cierre del navegador falló; se conserva el error original de la prueba.");
+    } finally { if (timer) clearTimeout(timer); }
+  }
 }
-main().catch(error => { console.error(error instanceof Error ? error.stack : error); process.exitCode = 1; });
+const tiempoMaximo = setTimeout(() => {
+  console.error("La prueba HTTP/navegador excedió el máximo global de 180s.");
+  process.exit(1);
+}, 180_000);
+main().finally(() => clearTimeout(tiempoMaximo)).catch(error => {
+  const mensaje = error instanceof Error ? error.stack ?? error.message : String(error);
+  console.error(process.env.REGISTRO_TEST_EMAIL ? mensaje.replaceAll(process.env.REGISTRO_TEST_EMAIL, "[correo de prueba]") : mensaje);
+  process.exit(1);
+});
