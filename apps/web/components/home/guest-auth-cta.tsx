@@ -22,7 +22,7 @@ export function GuestAuthCta({ destino = "/" }: { destino?: string }) {
           prefetch={false}
           className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-6 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg!"
         >
-          Crea tu cuenta
+          Únete a VICINO
         </AuthLink>
         <AuthLink
           id="home-sign-in"

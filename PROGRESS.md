@@ -1,5 +1,13 @@
 # Estado — S02 validado localmente; entrega y pruebas físicas pendientes
 
+## 2026-10-03 — «Únete a VICINO» y revisión previa a push
+
+- Javier confirma el texto definitivo **«Únete a VICINO»**, con tilde. Componente Home y expectativas existentes actualizados; vista local recargada y nombre accesible comprobado. Sin cambio de rutas, estilos ni política de invitados.
+- Build final58/58 con TypeScript, lint del componente, SSR2/2 y componentes44/44 Chromium: exit0. Backend y QA independientes no detectaron defectos nuevos de código; las pruebas controladas no acreditan SMTP, Auth completo ni dispositivos.
+- **Nuevo bloqueo P0 MP11-A:** `corepack pnpm audit --audit-level=high` falla exit1: una alta en braces3.0.3 y dos moderadas. Afecta rutas next-pwa y ESLint; [aviso oficial](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) sin versión corregida publicada al revisar. Plan y aceptación añadidos a [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263); no se ignora el aviso ni se eleva el umbral.
+- Fetch origin exit0: base origin/master b70fe91, sin cambios remotos pendientes de integrar en este corte. Push sigue condicionado y no realizado: faltan evidencia MP00, SMTP/entrega MP02, recorridos reales/dispositivos MP03 y auditoría verde MP11-A. MP04 comprobará CI/deploy/Redis y revocación del permiso temporal del mapa tras la entrega compatible. Google Play sigue su seguimiento paralelo.
+- Sesión MEGA-REV-20261003-172710 iniciada17:27:10 America/Mexico_City; fin real y commit local en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) actualizados con evidencia literal y fallo inicial de red preservado. Sesión terminada no significa cierre del mega plan.
+
 ## 2026-10-03 — mega plan iniciado: MP01 y MP03-C validados localmente
 
 - **Codex, familia GPT-6.** Inicio real de implementación 15:16:24 America/Mexico_City; cierre de sesión y evidencia en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). [Mega plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) registran estados actuales; cortes inferiores son historia.

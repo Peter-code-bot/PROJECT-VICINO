@@ -182,7 +182,7 @@ async function main() {
       await mount({}, "/", "/", true);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(homeY); passed++;
       await mount({}, "/", "/");
-      const createAccount = page.getByRole("link", { name: "Crea tu cuenta", exact: true });
+      const createAccount = page.getByRole("link", { name: "Únete a VICINO", exact: true });
       const loginAccount = page.getByRole("link", { name: "Ya tengo cuenta · Iniciar sesión", exact: true });
       await expect(createAccount).toHaveAttribute("href", "/register?next=%2F%3Fnext%3D%252F");
       await expect(loginAccount).toHaveAttribute("href", "/login?next=%2F%3Fnext%3D%252F");

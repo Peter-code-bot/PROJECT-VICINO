@@ -33,7 +33,7 @@ const rendering = esbuild.build({
 
 test("invitado: SSR incluye ambos accesos con destino Home", async () => {
   const html = (await rendering)(false);
-  assert.match(html, /Crea tu cuenta/);
+  assert.match(html, /Únete a VICINO/);
   assert.match(html, /Ya tengo cuenta · Iniciar sesión/);
   assert.match(html, /href="\/register\?next=%2F%3Ffeed%3Dparati"/);
   assert.match(html, /href="\/login\?next=%2F%3Ffeed%3Dparati"/);
