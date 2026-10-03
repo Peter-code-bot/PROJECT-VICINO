@@ -39,13 +39,14 @@ async function main() {
       import {ResetPasswordForm} from './app/(auth)/reset-password/reset-password-form';
       import {MuroSesionProvider,useMuroSesion} from './components/auth/muro-sesion';
       import AuthLink from './components/auth/auth-link';
+      import {GuestAuthCta} from './components/home/guest-auth-cta';
       import {useFavorite} from './hooks/use-favorite';
       import {SessionDataProvider,SessionScroll} from './components/layout/session-data-provider';
       import {PageSwipeWrapper} from './components/layout/page-swipe-wrapper';
       import {OAuthUrlListener} from './components/auth/oauth-url-listener';
       import {guardarDestinoPendiente} from './lib/auth/destino-pendiente';
-      function Guest(){const {toggle}=useFavorite('synthetic',false,'/tecnologia/producto');return <><SessionScroll route='/'/><div style={{height:700}}>Previews</div><AuthLink href='/tecnologia/producto'>Ver producto</AuthLink><button onClick={()=>void toggle()}>Guardar favorito</button><div style={{height:2000}}>Previews</div></>}
-      function GuestPage(){return <SessionDataProvider userId='' revision=''><MuroSesionProvider haySesion={false}><PageSwipeWrapper isVendedor={false}><Guest /></PageSwipeWrapper></MuroSesionProvider></SessionDataProvider>}
+      function Guest(){const {toggle}=useFavorite('synthetic',false,'/tecnologia/producto');return <><SessionScroll route='/'/><GuestAuthCta destino={location.pathname+location.search}/><div style={{height:700}}>Previews</div><AuthLink href='/tecnologia/producto'>Ver producto</AuthLink><button onClick={()=>void toggle()}>Guardar favorito</button><div style={{height:2000}}>Previews</div></>}
+      function GuestPage(){return <SessionDataProvider userId='' revision=''><MuroSesionProvider haySesion={Boolean(window.testResult.hasSession)}><PageSwipeWrapper isVendedor={false}><Guest /></PageSwipeWrapper></MuroSesionProvider></SessionDataProvider>}
       if(location.pathname==='/native' && window.testResult.pending)guardarDestinoPendiente(window.testResult.pending);
       createRoot(document.getElementById('root')).render(React.createElement(location.pathname==='/native'?OAuthUrlListener:location.pathname==='/login'?LoginForm:location.pathname==='/forgot-password'?ForgotPassword:location.pathname==='/reset-password'?(()=>React.createElement(ResetPasswordForm,{destino:'/tecnologia/producto'})):['/guest','/'].includes(location.pathname)?GuestPage:RegisterForm));`,
       resolveDir: web, loader: "tsx" },
@@ -180,6 +181,16 @@ async function main() {
       assert.ok(homeY > 0);
       await mount({}, "/", "/", true);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(homeY); passed++;
+      await mount({}, "/", "/");
+      const createAccount = page.getByRole("link", { name: "Crea tu cuenta", exact: true });
+      const loginAccount = page.getByRole("link", { name: "Ya tengo cuenta · Iniciar sesión", exact: true });
+      await expect(createAccount).toHaveAttribute("href", "/register?next=%2F%3Fnext%3D%252F");
+      await expect(loginAccount).toHaveAttribute("href", "/login?next=%2F%3Fnext%3D%252F");
+      await createAccount.click();
+      const stored = await page.evaluate(() => sessionStorage.getItem("vicino:home-antes-login"));
+      assert.ok(stored, "CTA preserves the Home context before registration"); passed++;
+      await mount({ hasSession: true }, "/", "/", true);
+      await expect(page.locator("#home-guest-auth")).toHaveCount(0); passed++;
       for (const result of [
         { nativeUrl: 'vicino://auth/callback?error=access_denied', pending: '/tecnologia/producto' },
         { nativeUrl: 'vicino://auth/callback?code=synthetic', pending: '/tecnologia/producto', exchangeError: { message: 'expired' } },
@@ -199,7 +210,7 @@ async function main() {
       await page.evaluate(() => (window as any).nativeOpen({url:'vicino://auth/callback?code=synthetic'}));
       assert.deepEqual(await calls(), ['exchange']); passed++;
       assert.deepEqual(errors, []); assert.deepEqual(unexpectedNetwork, []);
-      console.log(`PASA: 20 casos de componentes reales en ${process.env.TEST_BROWSER ?? "chromium"} ${viewport.width}x${viewport.height}; Auth, SDK nativo y router simulados.`);
+      console.log(`PASA: ${passed / (viewport.width === 1280 ? 1 : 2)} casos de componentes reales por viewport en ${process.env.TEST_BROWSER ?? "chromium"}; Auth, SDK nativo y router simulados.`);
       await context.close();
     }
     console.log(`PASA ${passed}/${passed}; sin tráfico externo. No acredita Auth/SMTP remoto.`);

@@ -9,6 +9,15 @@ const { chromium, webkit, expect } = require("@playwright/test");
 const base = new URL(process.env.REGISTRO_BASE_URL ?? "http://localhost:3105");
 assert.ok(["localhost", "127.0.0.1", "vicinomarket.com"].includes(base.hostname) && !base.username && !base.password, "Only VICINO or local Next server");
 
+function contrast(a: string, b: string) {
+  const luminance = (color: string) => color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(value => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+  const values = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
 async function main() {
   let passed = 0;
   for (const path of ["/buscar?q=mesa", "/tecnologia/producto", "/vendedor/123", "/mapa", "/favoritos", "/vender", "/chat", "/?cats=comida", "/?feed=following"]) {
@@ -19,7 +28,13 @@ async function main() {
   }
   for (const path of ["/", "/login", "/register", "/forgot-password", "/reset-password", "/privacidad", "/terminos", "/centro-de-ayuda"]) {
     const response = await fetch(new URL(path, base), { redirect: "manual" });
-    assert.equal(response.status, 200, path); passed++;
+    assert.equal(response.status, 200, path);
+    if (path === "/") {
+      const html = await response.text();
+      assert.match(html, /id="home-create-account"[^>]*href="\/register\?next=%2F"/);
+      assert.match(html, /id="home-sign-in"[^>]*href="\/login\?next=%2F"/);
+    }
+    passed++;
   }
   for (const [path, body] of [["/api/publications/map", { bounds: MAP_AREA }], ["/api/publications/map/coverage", { action: "overview", query: { bounds: MAP_AREA }, coverage_center: null, revision: null, cell_cursor: null }]] as const) {
     const response = await fetch(new URL(path, base), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -35,6 +50,66 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     page.setDefaultTimeout(30_000);
     await page.goto(base.href);
+    const createAccount = page.locator("#home-create-account");
+    const loginAccount = page.locator("#home-sign-in");
+    await expect(createAccount).toBeVisible();
+    await expect(createAccount).toHaveAttribute("href", "/register?next=%2F");
+    await expect(loginAccount).toHaveAttribute("href", "/login?next=%2F");
+    const buttonBox = await createAccount.boundingBox();
+    assert.ok(buttonBox && buttonBox.height >= 48, "Create-account target is at least 48px");
+    assert.ok(await page.locator("#home-guest-auth").evaluate(element => {
+      const categories = document.getElementById("home-see-all-categories");
+      return element.previousElementSibling?.querySelector("img,button") && categories &&
+        Boolean(element.compareDocumentPosition(categories) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), "CTA sits after the map/location and before category controls");
+    const initialTheme = await page.evaluate(() => document.documentElement.className);
+    try {
+      for (const dark of [false, true]) {
+        await page.evaluate(value => document.documentElement.classList.toggle("dark", value), dark);
+        for (const link of [createAccount, loginAccount]) {
+          for (const hover of [false, true]) {
+            if (hover) await link.hover(); else await page.mouse.move(0, 0);
+            // Set keyboard modality: mouse focus intentionally need not show
+            // a :focus-visible outline, whereas a keyboard user must see it.
+            await page.keyboard.press("Tab");
+            await link.focus();
+            await link.evaluate(async element => {
+              // Flush styles so the hover transition exists before awaiting it.
+              getComputedStyle(element).backgroundColor;
+              let timer: ReturnType<typeof setTimeout> | undefined;
+              try {
+                await Promise.race([
+                  Promise.allSettled(element.getAnimations().map(animation => animation.finished)),
+                  new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("CTA transition exceeded 2s")), 2_000); }),
+                ]);
+              } finally { if (timer) clearTimeout(timer); }
+            });
+            let observed: Record<string, unknown> | undefined;
+            await expect.poll(async () => {
+              const colors = await link.evaluate(element => {
+                const style = getComputedStyle(element);
+                const card = getComputedStyle(element.parentElement!).backgroundColor;
+                return { text: style.color, background: style.backgroundColor === "rgba(0, 0, 0, 0)" ? card : style.backgroundColor,
+                  card, outline: style.outlineColor, outlineStyle: style.outlineStyle, hovering: element.matches(":hover") };
+              });
+              observed = { ...colors, textRatio: contrast(colors.text, colors.background), focusRatio: contrast(colors.outline, colors.card) };
+              return colors.hovering === hover && contrast(colors.text, colors.background) >= 4.5 &&
+                colors.outlineStyle !== "none" && contrast(colors.outline, colors.card) >= 3;
+            }, { message: `CTA text/focus contrast, ${dark ? "dark" : "light"}, hover=${hover}` }).toBe(true).catch(async error => {
+              console.error("CTA contrast diagnostic:", await link.getAttribute("id"), observed);
+              throw error;
+            });
+          }
+        }
+      }
+    } finally { await page.evaluate(value => { document.documentElement.className = value; }, initialTheme); }
+    await createAccount.focus(); await expect(createAccount).toBeFocused();
+    await page.screenshot({ path: `apps/web/test-results/registro-http/home-cta-${process.env.TEST_BROWSER ?? "chromium"}.png` });
+    await createAccount.click(); await expect(page).toHaveURL(/\/register\?next=%2F$/);
+    await page.locator('a[href="/"]').first().click(); await expect(page).toHaveURL(base.href);
+    await loginAccount.click(); await expect(page).toHaveURL(/\/login\?next=%2F$/);
+    await page.locator('a[href="/"]').first().click(); await expect(page).toHaveURL(base.href);
+    console.log("PASA CTA Home real: SSR invitado, ubicación entre mapa/categorías, 48px, contraste texto/foco claro/oscuro y hover, registro/login y regreso.");
     const search = page.locator('a[href="/login?next=%2Fbuscar"]:visible');
     await expect(search.first()).toBeVisible();
     await search.first().click(); await expect(page).toHaveURL(/\/login\?next=%2Fbuscar/, { timeout: 30_000 });

@@ -1,4 +1,44 @@
-# Estado — S02 implementado; Redis creado, conexión y entrega pendientes
+# Estado — S02 validado localmente; entrega y pruebas físicas pendientes
+
+## 2026-10-03 — mega plan iniciado: MP01 y MP03-C validados localmente
+
+- **Codex, familia GPT-6.** Inicio real de implementación 15:16:24 America/Mexico_City; cierre de sesión y evidencia en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). [Mega plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) registran estados actuales; cortes inferiores son historia.
+- MP01 corregido: el freno estricto rechaza reason=timeout aunque success=true, con presupuesto explícito5000ms.95pruebas de SDK/ServerAction/política, incluidas cero lookup/signup/reserva/sesión en fallos, exit0. Límites generales sin cambiar.
+- MP03-C implementado: bloque compacto entre mapa/ubicación y categorías, solo sin sesión desde SSR/provider. Verde «Crea tu cuenta» y «Ya tengo cuenta · Iniciar sesión», AuthLink/next seguro/retorno Home.48px, contraste texto/foco claro/oscuro/hover; excepción local outline-fg! resuelve :focus-visible global sin @layer que anulaba el foco oscuro. Revisión QA independiente final aprobada.
+- SSR2/2, componentes44Chromium+44WebKit (Auth/SDK/router simulados), Next real HTTP20/20 por motor y recorridos/contraste finales exit0. Home retorna al scroll600px Chromium/180px WebKit en el pase final; Chromium confirma además correo existente autorizado/POST/aviso sin OTP con Redis+Supabase reales. Build final58/58/TypeScript exit0; lint fuente0errores/61warnings preexistentes, componente finalsin salida/exit0. [Acta con comandos y fallos conservados](docs/MP01-MP03C-2026-10-03.md); capturas inspeccionadas en test-results ignorado. WebKit tuvo un cierre>10s/exit1 después de aprobar casos; repetición sin ampliar límites ni cambiar código exit0.
+- MP02 leído en Supabase UI vigente: SMTP personalizado false/servicio integrado y Auth Hooks sin filas; altas y confirmación activas; Email/Google/Apple habilitados; OTP6/600s y plantilla vigente Token/10min con enlace alternativo; captcha false. SiteURL/10redirects y límites de requests conciliados; cuota de correo ocultada por herramienta, no nueva cifra afirmada. Configurar transporte/remitente verificados con Pedro y comprobar entrega sigue pendiente; ningún ajuste remoto realizado.
+- MP00 permanece POR CONFIRMAR: Javier aclara que no tiene fecha ni registro de revocación/rotación de Pedro. Principal autorizado para existente/recuperación; alias propuesto no autorizado, sin cuenta nueva/correo solicitado/contraseña modificada. Pendientes: correo nuevo real/recuperación/OAuth/onboarding/dispositivos, luego push condicionado/CI/deploy/Redis y revocación permiso temporal mapa. Google Play conserva pendientes de envío/aprobación9/conteo/icono-splash. **Sin push/deploy; sesión terminada no significa cierre S02/mega plan.**
+
+
+## 2026-10-03 — prioridad añadida: acceso visible Home para invitados
+
+- MP03-C P0 añadido al [mega plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) dentro de S02-B, antes de entrega MP04. Bloque compacto solo sin sesión, entre mapa/ubicación y categorías: botón verde «Crea tu cuenta» y enlace «Ya tengo cuenta · Iniciar sesión».
+- Reusar sesión SSR/MuroSesionProvider y AuthLink/retorno Home; conservar Home pública, scroll, next seguro y onboarding. No consultar existencia de cuenta en Home. [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Tests MP-Q11](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) actualizados; estado PLANIFICADO/SIN IMPLEMENTAR.
+- Sesión iniciada 15:11:51 America/Mexico_City; fin y revisión en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). Solo documentación y lectura de UI; sin cambio de aplicación ni push/deploy.
+
+## 2026-10-03 — mega plan conjunto por prioridades en Notion
+
+- [Jornada / MEGAPLAN-20261003-VICINO](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) reúne los 17 grupos abiertos en 20 paquetes MP00–MP19: responsables, dependencias, pasos, aceptación y reversión. [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) enlaza la cola P0/P1/P2/P3; historial conservado. Planificación completada, ejecución por paquetes pendiente.
+- **Nuevo hallazgo P0, solo lectura:** SDK Redis puede devolver success=true con reason=timeout; enforceStrict actual lo admite. MP01 exige rechazar ese resultado y probar cero lookup/signup antes del push S02. Los pases anteriores no cubren ese caso; no se corrigió código de aplicación en esta sesión.
+- Planes incompletos completados: MP13 pantalla Android offline local/errorPath/empaquetado/AAB; MP08 ayuda FUNDAR y orden de permisos MODERADOR; MP19 reactivación condicional de aparcados. PT04/PT09/S08 y guiones invitados conciliados con las entregas/decisión S02 vigentes; preservar BB03 y piloto nativo.
+- Camino crítico: confirmar seguridad/configuración, corregir MP01, aceptación Auth real y dispositivos, después push autorizado condicionado y deploy/Redis/permisos mapa. Google Play MP05 avanza en paralelo: Javier no envió invitación ni probó icono/splash; rotación por confirmar; aprobación9/conteo actuales sin nueva comprobación.
+- Workflow Advisor del hub aplicado; revisión de planificación backend, móvil/QA y frontend solo lectura. [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26) y [Android](https://app.notion.com/p/3b698e8a0cfa8111a9b5fb054aa154c8) enlazan criterios pendientes; sin push, deploy, correos, notificaciones ni cambios de consola en esta sesión.
+- Sesión MEGA-S-20261003-145102: inicio real 14:51:02 America/Mexico_City, fin y evidencia en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). S02 y jornada global EN PROCESO; siguiente paso técnico MP01.
+
+## 2026-10-03 — conciliación de pendientes y planes en Notion
+
+- [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) tiene un corte vigente al inicio: 10 grupos de avances y 17 grupos abiertos con responsable, plan y siguiente paso. Se corrigieron 15 entradas antiguas; configuración Redis/proveedor MapKit completados, entregas Historial/chat/mapas reconocidas, S02 local aún sin publicar. Historial conservado.
+- Código existente revisado: recorte de avatar conectado en tres pantallas, reordenación de categorías y entrada de cupones oculta. Se registra implementación, no aceptación física ni nueva prueba de subida. c152b20 es ancestro de la base b70fe919; no se modificó código de aplicación.
+- Javier confirma: invitación no enviada, icono/splash no probados y rotación/revocación de credenciales por confirmar. Google Play y plantilla de invitación alineados; aprobación 9 y verificadores actuales sin nueva evidencia.
+- Plan completo no encontrado para pantalla Android propia sin conexión; S07 fundar/moderador y eventual reactivación de funciones aparcadas requieren detalle. PT04/PT09 y S08 tienen planes, pero deben conciliar configuración Redis y precondiciones ya superadas. Estado/alcance en Notion; no se implementan nuevos bloques por esta revisión.
+- Sesión de conciliación iniciada 14:32:43 America/Mexico_City; fin real, evidencia y verificación en [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). S02 y Google Play EN PROCESO; sin push/deploy nuevo.
+
+## 2026-10-03 — seguimiento de Google Play por sesión en Notion
+
+- Invitación Android del usuario guardada íntegra como GPLAY-INV-20261003 en [Plantillas WhatsApp](https://app.notion.com/p/3b598e8a0cfa8190b6f3ff240da4cf7b); envío a participantes no confirmado en esta sesión.
+- [Android / Google Play](https://app.notion.com/p/3b698e8a0cfa8111a9b5fb054aa154c8) incluye panel vigente, historial de versiones y verificadores, incidencias/pruebas, comentarios y plantilla de sesiones con inicio/fin reales en America/Mexico_City. Se mantienen nombres e historial; cada sesión añade evidencia y su siguiente paso con responsable. Backlog, Tests y Bitácora enlazados.
+- Corte de Pedro del 03-oct: 3/12 verificadores y versión 9 enviada a revisión; no nueva comprobación de consola ni aprobación. Siguen pendientes continuidad de participantes, aprobación/disponibilidad 9 y pruebas físicas de icono, splash conectado/modo avión y acceso Google. La guía oficial distingue cumplir 12/14 días, solicitar acceso a producción y publicarla.
+- Sesión documental GPLAY-S-20261003-141115: inicio real 14:11:15; cierre y verificación en Bitácora de Notion. Sin cambios de aplicación, Play Console o Vercel, sin envío de invitaciones ni despliegue. Google Play y S02 EN PROCESO.
 
 ## 2026-10-03 — reporte de Pedro y Redis local conectado
 

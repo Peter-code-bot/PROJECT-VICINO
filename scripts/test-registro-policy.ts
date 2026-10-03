@@ -4,6 +4,7 @@ import { requiereSesion, loginPara } from "../apps/web/lib/auth/acceso-invitado"
 import { destinoCallbackSeguro } from "../apps/web/lib/auth/destino-seguro";
 import { destinoAutenticadoSeguro } from "../apps/web/lib/auth/destino-seguro";
 import { enforceStrict } from "../apps/web/lib/rate-limit";
+import { Ratelimit } from "../apps/web/node_modules/@upstash/ratelimit";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +18,26 @@ test("lookup se detiene sin limitador, ante caída y ante exceso", async () => {
   assert.equal((await enforceStrict({ limit: async () => { throw new Error("offline"); } } as never, "test")).ok, false);
   assert.equal((await enforceStrict({ limit: async () => ({ success: false }) } as never, "test")).ok, false);
   assert.equal((await enforceStrict({ limit: async () => ({ success: true }) } as never, "test")).ok, true);
+});
+test("timeout del SDK no cuenta como comprobación válida aunque success sea true", async () => {
+  const result = await enforceStrict({ limit: async () => ({ success: true, reason: "timeout" }) } as never, "test");
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.error, /No pudimos comprobar/);
+});
+test("timeout real del SDK con Redis sin respuesta falla de forma recuperable", async () => {
+  const pending = () => new Promise<never>(() => {});
+  const limiter = new Ratelimit({
+    redis: { evalsha: pending, eval: pending } as never,
+    limiter: Ratelimit.slidingWindow(5, "1 m"),
+    timeout: 20,
+    ephemeralCache: false,
+  });
+  const sdk = await limiter.limit("synthetic");
+  assert.equal(sdk.success, true);
+  assert.equal(sdk.reason, "timeout");
+  const result = await enforceStrict(limiter, "synthetic");
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.error, /No pudimos comprobar/);
 });
 test("política cubre consultas y rutas codificadas, sin afectar Home ni legales", () => {
   for (const route of ["/buscar", "/%62uscar", "/?cats=comida", "/?feed=comunidades", "/vendedor/123", "/tecnologia/producto", "/vender"]) assert.equal(requiereSesion(route), true);

@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
+import { GuestAuthCta } from "@/components/home/guest-auth-cta";
 
 import { universitySearchUrl } from "@/lib/university";
 import Link from "@/components/auth/auth-link";
@@ -89,6 +90,8 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       {feed === "parati" ? (
         <>
           <section className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl"><LocationMapPreview initialPosition={userLat !== null && userLng !== null ? {lat:userLat,lng:userLng} : null} viewerScope={user?.id ?? 'guest'} /></div></section>
+
+          <GuestAuthCta destino={`/${search.size ? `?${search}` : ""}`} />
 
           <HomeCategoryOrder
             viewerUniversity={viewerUniversity}

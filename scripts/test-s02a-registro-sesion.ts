@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import vm from "node:vm";
 import { destinoAutenticadoSeguro } from "../apps/web/lib/auth/destino-seguro";
+import { enforceStrict } from "../apps/web/lib/rate-limit";
 
 const require = createRequire(new URL("../apps/web/package.json", import.meta.url));
 const esbuild = require(require.resolve("esbuild", { paths: [require.resolve("tsx")] }));
@@ -65,7 +66,7 @@ async function load(file: string, state: ReturnType<typeof fixture>) {
       "@sentry/nextjs": "export const captureException=()=>{};export const captureMessage=()=>{};",
       "@/lib/rate-limit": `export const authRateLimit={};export const writeRateLimit={};export const otpResendIpRateLimit={};export const otpResendRateLimit={};
         export const otpVerifyIpRateLimit={};export const otpVerifyRateLimit={};export const getClientIp=()=> 'synthetic-ip';
-        export const enforceStrict=async(_limit,key)=>{globalThis.state.rateKeys.push(key);return globalThis.state.rate;};export const enforce=async(_limiter,key)=>{globalThis.state.rateKeys.push(key);return globalThis.state.rate;};`,
+        export const enforceStrict=async(_limit,key)=>{globalThis.state.rateKeys.push(key);return globalThis.state.strictRateCheck ? globalThis.state.strictRateCheck(key) : globalThis.state.rate;};export const enforce=async(_limiter,key)=>{globalThis.state.rateKeys.push(key);return globalThis.state.rate;};`,
       "./register-form": "export const RegisterForm=()=>null;",
       "./login-form": "export const LoginForm=()=>null;",
       "next/link": "export default function Link(){return null;}",
@@ -147,6 +148,26 @@ test("acción real: rate limit detiene registro", async () => {
   assert.equal(f.calls.length, 0);
   assert.deepEqual(f.rateKeys, ["auth:signup:synthetic-ip"]);
 });
+
+for (const [name, limiter] of [
+  ["ausente", null],
+  ["error", { limit: async () => { throw new Error("offline"); } }],
+  ["exceso", { limit: async () => ({ success: false }) }],
+  ["timeout SDK permitido", { limit: async () => ({ success: true, reason: "timeout" }) }],
+] as const) {
+  test(`acción real con freno estricto ${name}: cero lookup, signup, reserva y sesión`, async () => {
+    const f = fixture();
+    Object.assign(f, { strictRateCheck: (key: string) => enforceStrict(limiter as never, key) });
+    const action = await load("app/(auth)/actions.ts", f);
+    const result = await action.signUp("test@example.com", "123456", "Prueba");
+    assert.equal(result.estado, "error");
+    assert.notEqual(result.hasSession, true);
+    assert.equal(f.rpcCalls.length, 0);
+    assert.equal(f.calls.length, 0);
+    assert.equal(f.leases.size, 0);
+    assert.equal(f.authCalls.length, 0);
+  });
+}
 
 for (const route of ["/register", "/login"]) {
   for (const next of ["/buscar?q=mesa", "/login", "/a/../register", "//evil.invalid"]) {
