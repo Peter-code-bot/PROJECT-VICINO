@@ -56,6 +56,27 @@ function tieneCaracterDeControl(valor: string): boolean {
  *  facil es equivocarse, y el error no falla, solo cambia lo que casa. */
 const BARRA_INVERTIDA = String.fromCharCode(92);
 
+/** Email recovery has its own authenticated step, before returning to next. */
+export function destinoCallbackSeguro(next: unknown): string {
+  if (typeof next === "string" && destinoSeguro(next) === next) {
+    try {
+      const url = new URL(next, "https://vicino.invalid");
+      if (url.pathname === "/reset-password") return `/reset-password?next=${encodeURIComponent(destinoAutenticadoSeguro(url.searchParams.get("next")))}`;
+    } catch { return "/"; }
+  }
+  return destinoAutenticadoSeguro(next);
+}
+
+/** A failed recovery callback returns to login with the final context, never
+ * to the password-change step without a session. Shared with native callbacks.
+ */
+export function destinoTrasErrorAuth(next: unknown): string {
+  const callback = destinoCallbackSeguro(next);
+  return callback.startsWith("/reset-password?")
+    ? destinoAutenticadoSeguro(new URL(callback, "https://vicino.invalid").searchParams.get("next"))
+    : destinoAutenticadoSeguro(callback);
+}
+
 /**
  * Detecta si una ruta interna corresponde a una superficie de autenticacion.
  * Extrae el pathname antes de cualquier '?' o '#' y normaliza a minusculas.
@@ -63,12 +84,14 @@ const BARRA_INVERTIDA = String.fromCharCode(92);
 export function esRutaAuth(ruta: string): boolean {
   const path = (ruta.split(/[?#]/, 1)[0] ?? "/").toLowerCase();
   return (
+    path === "/auth" || path.startsWith("/auth/") || path === "/callback" || path.startsWith("/callback/") ||
     path === "/login" ||
     path.startsWith("/login/") ||
     path === "/register" ||
     path.startsWith("/register/") ||
     path === "/forgot-password" ||
-    path.startsWith("/forgot-password/")
+    path.startsWith("/forgot-password/") ||
+    path === "/reset-password" || path.startsWith("/reset-password/")
   );
 }
 
@@ -93,8 +116,14 @@ export function destinoAutenticadoSeguro(next: unknown): string {
     // el pathname decodificado: /%6cogin y /%2fhost no son destinos válidos.
     const decodedPath = decodeURIComponent(url.pathname);
     if (destinoSeguro(decodedPath) !== decodedPath) return "/";
-    const normalizedPath = new URL(decodedPath, base).pathname;
+    const normalizedPath = new URL(decodedPath, base).pathname.replace(/\/{2,}/g, "/").replace(/\/$/, "") || "/";
     if (url.origin !== base || esRutaAuth(normalizedPath)) return "/";
+    // Opening /chat?seller=… creates a conversation (and can send a purchase
+    // notice). Authentication must return to its context without executing it.
+    if (normalizedPath === "/chat" && url.searchParams.has("seller")) {
+      const seller = url.searchParams.get("seller") ?? "";
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seller) ? `/vendedor/${seller}` : "/chat";
+    }
     const result = url.pathname + url.search + url.hash;
     return destinoSeguro(result) === result ? result : "/";
   } catch {

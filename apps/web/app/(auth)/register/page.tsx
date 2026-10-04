@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { RegisterForm } from "./register-form";
-import Link from "next/link";
+import { AuthHomeLink } from "@/components/auth/auth-home-link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -41,10 +41,10 @@ export default async function RegisterPage({
               depende de en que paso esta la persona, y esto es un componente de
               servidor que no se entera del cambio. */}
           <div className="text-center mb-6">
-            <Link href="/" className="inline-flex items-center justify-center">
+            <AuthHomeLink className="inline-flex items-center justify-center" aria-label="Volver a Inicio">
               <Image src="/vicino-logo-light-v2.png" alt="VICINO" width={48} height={48} className="shrink-0 show-in-light" priority />
               <Image src="/vicino-logo-dark.png" alt="VICINO" width={48} height={48} className="shrink-0 show-in-dark" priority />
-            </Link>
+            </AuthHomeLink>
           </div>
 
           {/* Mismo limite que /login. Hace falta desde que el formulario lee

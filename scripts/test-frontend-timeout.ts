@@ -79,6 +79,9 @@ test('solo lecturas verificadas: mutaciones, Auth, Storage y otros origenes dele
     ['/rest/v1/messages', 'DELETE', false], ['/rest/v1/rpc/mark_messages_as_read', 'POST', false],
     ['/auth/v1/user', 'GET', false], ['/storage/v1/object/file', 'GET', false],
     ['/functions/v1/function', 'GET', false], ['/rest/v1/rpc/search_nearby_products_v4', 'POST', true],
+    ['/rest/v1/rpc/home_guest_requests_preview', 'POST', true],
+    ['/rest/v1/rpc/home_guest_communities_preview', 'POST', true],
+    ['/rest/v1/rpc/home_guest_posts_preview', 'POST', true],
     ['https://other.invalid/rest/v1/messages', 'GET', false],
   ] as const) {
     const options = { method, headers: { 'x-test': 'kept' } };
@@ -98,7 +101,7 @@ test('PostgREST real convierte timeout en {error}, tanto select como RPC', async
   const client = createClient(origin, 'synthetic-key', { accessToken: async () => 'synthetic-token', auth: { persistSession: false, autoRefreshToken: false }, global: {
     fetch: fetchConLimite(async (_input, init) => new Promise<Response>((_r, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))), origin),
   } });
-  for (const query of [client.from('messages').select(), client.rpc('search_nearby_products_v4')]) {
+  for (const query of [client.from('messages').select(), client.rpc('search_nearby_products_v4'), client.rpc('home_guest_requests_preview'), client.rpc('home_guest_communities_preview'), client.rpc('home_guest_posts_preview')]) {
     const response = Promise.resolve(query);
     for (let i = 0; i < 20; i++) await Promise.resolve();
     t.mock.timers.tick(15_000);

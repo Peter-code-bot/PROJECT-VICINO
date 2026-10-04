@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { ZoneCard } from "@/components/home/zone-card";
 import { mapPreviewCache, emptyMapPreview, clearMapPreviews, type MapPreviewInput } from "@/lib/geo/map-preview-cache";
 import { resolverRecarga, previewNoDisponible, presupuestoRecargas, type EventoRecarga } from "@/lib/geo/map-preview-recarga";

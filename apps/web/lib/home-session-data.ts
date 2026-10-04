@@ -18,6 +18,7 @@ import { parseRadiusCookie } from "@/lib/geo/radius";
 import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad } from "@/lib/comunidades/errores";
 import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
+import { getGuestHomePreview } from "@/lib/home-guest-preview";
 
 /**
  * Parametros de busqueda que acepta el inicio, tanto en la URL de la pagina
@@ -67,6 +68,9 @@ export async function getHomeSession(
   // leería como cuenta ajena, vaciaría la memoria y lo mandaría a /login. Se
   // lanza para que la ruta responda 503 y el cliente conserve lo que tenía.
   const user = ctx ? ctx.user : await usuarioOInvitado(supabase);
+  const isGuestPreview = !user && (feed === "solicitudes" || feed === "comunidades");
+  const guestPreviewPromise = isGuestPreview && !catsParam && subTabComunidades !== "mias"
+    ? getGuestHomePreview(feed) : Promise.resolve(null);
 
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("vicino_location")?.value;
@@ -79,7 +83,7 @@ export async function getHomeSession(
 
   let userLat: number | null = null;
   let userLng: number | null = null;
-  if (locationCookie) {
+  if (locationCookie && !isGuestPreview) {
     const [latStr, lngStr] = locationCookie.split(",");
     const lat = parseFloat(latStr ?? "");
     const lng = parseFloat(lngStr ?? "");
@@ -461,7 +465,8 @@ export async function getHomeSession(
   // dentro del home). La API decide aparte si eso merece un 503 (ver
   // app/api/session/[resource]/route.ts): asi la revalidacion en segundo
   // plano conserva lo que habia, y la primera visita explica que paso.
-  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user: user ? { id: user.id } : null } };
+  const guestPreview = await guestPreviewPromise;
+  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, guestPreview, user: user ? { id: user.id } : null } };
 }
 
 /**

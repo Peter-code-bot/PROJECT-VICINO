@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 

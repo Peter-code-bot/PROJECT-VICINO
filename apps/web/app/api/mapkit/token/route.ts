@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { createClient } from "@/lib/supabase/server";
+import { usuarioOInvitado } from "@/lib/session-auth";
 
 import {
   check,
@@ -106,6 +108,9 @@ function contar(clave: keyof typeof contadores, ahora: number): void {
 }
 
 export async function GET(req: Request) {
+  try {
+    if (!await usuarioOInvitado(await createClient())) return NextResponse.json({ error: "Inicia sesión para abrir el mapa." }, { status: 401, headers: { "Cache-Control": "private, no-store" } });
+  } catch { return NextResponse.json({ error: "No pudimos comprobar tu sesión." }, { status: 503, headers: { "Cache-Control": "private, no-store" } }); }
   // 1. Validar credenciales de Apple Developer requeridas.
   //    Va ANTES de la cuota a proposito: un 503 por configuracion ausente no
   //    tiene por que gastarle el cupo a nadie.

@@ -1,6 +1,6 @@
 import { publicProfileName } from "@vicino/shared";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { CheckCircle2 } from "lucide-react";
 import type { TrustLevel } from "@vicino/shared";
 import { RatingStars } from "@/components/shared/rating-stars";

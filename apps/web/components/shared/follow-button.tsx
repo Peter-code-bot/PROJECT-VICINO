@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toggleFollowStore } from "@/app/actions";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { toast } from "sonner";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 
 export interface FollowButtonProps {
   storeId: string;
@@ -25,6 +26,7 @@ export function FollowButton({
   variant = "default",
 }: FollowButtonProps) {
   const [following, setFollowing] = useState(initialFollowing);
+  const { pedirSesion } = useMuroSesion();
 
   const { mutate, isPending } = useOptimisticMutation(
     async () => {
@@ -47,7 +49,7 @@ export function FollowButton({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          mutate(undefined);
+          if (pedirSesion("Inicia sesión para seguir", `/vendedor/${storeId}`)) mutate(undefined);
         }}
         disabled={isPending}
         className={cn(
@@ -65,7 +67,7 @@ export function FollowButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        mutate(undefined);
+        if (pedirSesion("Inicia sesión para seguir", `/vendedor/${storeId}`)) mutate(undefined);
       }}
       disabled={isPending}
       className={cn(

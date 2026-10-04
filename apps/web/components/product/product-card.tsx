@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import Image from "next/image";
 import { SellerBadge } from "@/components/shared/seller-badge";
 import { RatingStars } from "@/components/shared/rating-stars";
@@ -64,7 +64,7 @@ export function ProductCard({
   categories = [],
   priority = false,
 }: ProductCardProps) {
-  const { isFavorite, isPending, toggle } = useFavorite(id, initialFavorite);
+  const { isFavorite, isPending, toggle } = useFavorite(id, initialFavorite, `/${categories[0]?.slug ?? categoria}/${slug}`);
 
   // A5.3: just-in-time view-transition-name. Applied imperatively on the
   // image wrapper at the moment of click so only the CLICKED card

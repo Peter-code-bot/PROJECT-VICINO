@@ -91,6 +91,8 @@ function makeLimiter(window: Parameters<typeof Ratelimit.slidingWindow>[1], coun
     limiter: Ratelimit.slidingWindow(count, window),
     prefix,
     analytics: true,
+    // Preserve the SDK's 5 s budget explicitly; strict callers reject timeout.
+    timeout: 5_000,
   });
 }
 
@@ -241,6 +243,18 @@ export async function enforce(
   } catch (err) {
     console.warn("[rate-limit] fail-open after error:", err);
     return { ok: true };
+  }
+}
+
+/** Duplicate-email lookup must never run without a working throttle. */
+export async function enforceStrict(limit: Ratelimit | null, identifier: string): Promise<EnforceResult> {
+  if (!limit) return { ok: false, error: "No pudimos comprobar el correo. Intenta de nuevo más tarde." };
+  try {
+    const { success, reason } = await limit.limit(identifier);
+    if (reason === "timeout") return { ok: false, error: "No pudimos comprobar el correo. Intenta de nuevo más tarde." };
+    return success ? { ok: true } : { ok: false, error: "Demasiadas solicitudes. Espera un momento e intenta de nuevo." };
+  } catch {
+    return { ok: false, error: "No pudimos comprobar el correo. Intenta de nuevo más tarde." };
   }
 }
 

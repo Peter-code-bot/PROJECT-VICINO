@@ -4,6 +4,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { ResultadoRegistro } from "@/lib/auth/registro-resultado";
+import { reservarRegistro } from "@/lib/auth/registro-exclusivo";
+import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
+import { z } from "zod";
 import { usuarioOInvitado } from "@/lib/session-auth";
 import { signUpSchema } from "@vicino/shared";
 import {
@@ -16,6 +21,7 @@ import {
 import {
   authRateLimit,
   enforce,
+  enforceStrict,
   getClientIp,
   otpResendIpRateLimit,
   otpResendRateLimit,
@@ -53,22 +59,24 @@ import {
  */
 async function throttleAuth(accion: "login" | "signup" | "reset") {
   const ip = getClientIp(await headers());
-  return enforce(authRateLimit, `auth:${accion}:${ip}`);
+  return (accion === "signup" ? enforceStrict : enforce)(authRateLimit, `auth:${accion}:${ip}`);
 }
 
 export async function signInWithPassword(email: string, password: string) {
+  const parsed = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1) }).safeParse({ email, password });
+  if (!parsed.success) return { error: "Revisa tu correo y contraseña." };
   const rate = await throttleAuth("login");
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  if (error) return { error: error.message, requiereConfirmacion: error.code === "email_not_confirmed" || error.message.toLowerCase().includes("email not confirmed") };
   return { success: true };
 }
 
-export async function signUp(email: string, password: string, fullName: string) {
+export async function signUp(email: string, password: string, fullName: string, next?: unknown): Promise<ResultadoRegistro> {
   const rate = await throttleAuth("signup");
-  if (!rate.ok) return { error: rate.error };
+  if (!rate.ok) return { estado: "error", error: rate.error };
 
   // El camino normal ahora es el codigo de 6 digitos, pero el correo sigue
   // llevando un enlace de respaldo (para quien lo abre en el ordenador, o para
@@ -78,7 +86,7 @@ export async function signUp(email: string, password: string, fullName: string) 
   // nada se lo explique. Apuntandolo a /auth/callback-server (que ya esta en la
   // lista de redirecciones permitidas del proyecto) el enlace ademas entra.
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
-  const supabase = await createClient();
+  const supabase = await createClient({ registro: true });
 
   // Guarda de sesión activa en el servidor:
   // Comprueba getUser antes de intentar el alta para no sustituir una sesión
@@ -87,36 +95,56 @@ export async function signUp(email: string, password: string, fullName: string) 
   try {
     user = await usuarioOInvitado(supabase);
   } catch {
-    return { error: "No pudimos comprobar tu sesión. Intenta de nuevo.", sessionUnavailable: true };
+    return { estado: "error", error: "No pudimos comprobar tu sesión. Intenta de nuevo.", sessionUnavailable: true };
   }
   if (user) {
-    return { hasSession: true, alreadyLoggedIn: true };
+    return { estado: "autenticado", hasSession: true, alreadyLoggedIn: true };
   }
 
   const parsed = signUpSchema.safeParse({ email, password, fullName });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos de registro.", invalidInput: true };
+  if (!parsed.success) return { estado: "error", error: parsed.error.issues[0]?.message ?? "Revisa los datos de registro.", invalidInput: true };
 
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${sitio}/auth/callback-server`,
-    },
-  });
-  if (error) {
-    // También tratamos como ambiguo el error explícito de cuenta existente.
-    // La acción no publica un indicador para consultar la existencia de correos.
-    if (error.code === "user_already_exists" || error.code === "email_exists" ||
-        error.message.toLowerCase().includes("already registered")) {
-      return { hasSession: false };
+  const reserva = await reservarRegistro(parsed.data.email);
+  if (!reserva) return { estado: "error", error: "No pudimos comprobar el correo ahora. Espera un momento e intenta de nuevo." };
+  let terminado = true;
+  try {
+    // Explicit disclosure approved on 2026-10-01, after throttling/reservation.
+    // No account rows or metadata reach the client.
+    try {
+      const { data: existe, error: lookupError } = await createAdminClient().rpc("registration_email_exists", { p_email: parsed.data.email });
+      if (lookupError || typeof existe !== "boolean") return { estado: "error", error: "No pudimos comprobar el correo. Intenta de nuevo." };
+      if (existe) return { estado: "existente", hasSession: false };
+    } catch {
+      return { estado: "error", error: "No pudimos comprobar el correo. Intenta de nuevo." };
     }
-    // GoTrue failures (SMTP rate limit, auth.users trigger errors) reach the
-    // user as a generic message; keep the literal cause in the server logs.
-    console.error("[signUp] GoTrue error:", error.status, error.message);
-    return { error: error.message };
+
+    if (!reserva.vigente()) return { estado: "error", error: "No pudimos completar el registro. Espera un momento e intenta de nuevo." };
+    terminado = false;
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: { full_name: parsed.data.fullName },
+        emailRedirectTo: `${sitio}/auth/callback-server${destinoAutenticadoSeguro(next) === "/" ? "" : `?next=${encodeURIComponent(destinoAutenticadoSeguro(next))}`}`,
+      },
+    });
+    if (error) {
+      terminado = error.name !== "AuthRetryableFetchError" && Boolean(error.status);
+      // Defensive handling for account creation outside VICINO's reservation.
+      if (error.code === "user_already_exists" || error.code === "email_exists" || error.message.toLowerCase().includes("already registered")) return { estado: "existente", hasSession: false };
+      console.error("[signUp] GoTrue error:", error.status, error.message);
+      return { estado: "error", error: error.message };
+    }
+    if (data.session) { terminado = true; return { estado: "autenticado", hasSession: true }; }
+    if (data.user?.identities?.length === 0) { terminado = true; return { estado: "existente", hasSession: false }; }
+    if (!data.user || !Array.isArray(data.user.identities)) return { estado: "error", error: "No pudimos completar el registro. Intenta de nuevo." };
+    terminado = true;
+    return { estado: "verificacion_pendiente", hasSession: false };
+  } catch {
+    return { estado: "error", error: "No pudimos completar el registro. Espera un momento e intenta de nuevo." };
+  } finally {
+    if (terminado) await reserva.liberar();
   }
-  return { hasSession: Boolean(data.session) };
 }
 
 // ---------------------------------------------------------------------------
@@ -279,13 +307,33 @@ export async function reenviarCodigo(email: string): Promise<ResultadoOtp> {
 }
 
 export async function requestPasswordReset(email: string, redirectTo: string) {
+  const parsed = z.string().trim().toLowerCase().email().safeParse(email);
+  if (!parsed.success) return { error: "Escribe un correo válido." };
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
+  let callback;
+  try {
+    callback = new URL(redirectTo);
+    if (callback.origin !== new URL(sitio).origin || callback.pathname !== "/auth/callback-server") throw new Error("invalid");
+  } catch { return { error: "No pudimos preparar la recuperación. Intenta de nuevo." }; }
   const rate = await throttleAuth("reset");
   if (!rate.ok) return { error: rate.error };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, { redirectTo: callback.toString() });
   if (error) return { error: error.message };
   return { success: true };
+}
+
+export async function cambiarPasswordRecuperada(password: string, next: unknown) {
+  if (!z.string().min(6).safeParse(password).success) return { error: "La contraseña debe tener al menos 6 caracteres." };
+  const supabase = await createClient();
+  const user = await usuarioOInvitado(supabase);
+  if (!user) return { error: "El enlace venció. Solicita un nuevo enlace de recuperación." };
+  const rate = await throttleAuth("reset");
+  if (!rate.ok) return { error: rate.error };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: "No pudimos cambiar tu contraseña. Intenta de nuevo." };
+  return { success: true, destino: destinoAutenticadoSeguro(next) };
 }
 
 export async function signOut() {

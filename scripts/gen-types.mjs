@@ -22,6 +22,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { protectGeneratedMapColumn } from './lib/database-type-overrides.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PROJECT_REF = 'oxxdkwywprkfghhbnoto';
@@ -92,7 +93,7 @@ const main = async () => {
   // El CLI emite LF; el repo tiene .gitattributes pero este archivo no es .sql.
   // Se normaliza para que la comparacion de --check no dependa del sistema.
   const normalizar = (s) => s.replace(/\r\n/g, '\n').trimEnd() + '\n';
-  const nuevo = normalizar(generado);
+  const nuevo = protectGeneratedMapColumn(normalizar(generado));
 
   const actual = fs.existsSync(DESTINO)
     ? normalizar(fs.readFileSync(DESTINO, 'utf8'))

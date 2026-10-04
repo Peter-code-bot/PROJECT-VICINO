@@ -1,14 +1,18 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { Lock, Globe, Users, MessageSquare, MapPin, Crown, Shield } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 import type { ComunidadResumen } from "@/lib/comunidades/tipos";
+import type { GuestCommunityPreview } from "@/lib/home-guest-contract";
 import { JoinButton, type EstadoRelacion } from "./join-button";
 
+/** The guest DTO omits membership, roles and geographic distance. */
+export type ComunidadCardPreview = GuestCommunityPreview & { es_privada: false };
+
 interface ComunidadCardProps {
-  comunidad: ComunidadResumen;
+  comunidad: ComunidadResumen | ComunidadCardPreview;
   /** Muestra el boton de relacion (Descubrir). En "Mis comunidades" sobra. */
   conBoton?: boolean;
   onEstado?: (id: string, estado: EstadoRelacion) => void;
@@ -56,6 +60,7 @@ export function ChipRol({ rol }: { rol: string | null }) {
 }
 
 export function ComunidadCard({ comunidad, conBoton = false, onEstado }: ComunidadCardProps) {
+  const guestPreview = !("mi_rol" in comunidad);
   const distancia = "distancia_m" in comunidad ? comunidad.distancia_m : null;
   // mis_comunidades lista tambien las archivadas u ocultas donde sigo siendo
   // miembro (es la unica ruta para llegar y salir); descubrir no las trae.
@@ -66,21 +71,21 @@ export function ComunidadCard({ comunidad, conBoton = false, onEstado }: Comunid
   return (
     <article className={cn("rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md", !disponible && "opacity-75")}>
       <div className="flex items-start justify-between gap-3">
-        <Link href={`/comunidades/${comunidad.id}`} className="min-w-0 flex-1">
+        <Link href={`/comunidades/${comunidad.id}`} className={cn("min-w-0 flex-1", guestPreview && "min-h-12 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg!")}>
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <BadgeVisibilidad esPrivada={comunidad.es_privada} />
-            <ChipRol rol={comunidad.mi_rol} />
+            {"mi_rol" in comunidad && <ChipRol rol={comunidad.mi_rol} />}
           </div>
           <h3 className="font-heading text-[16px] font-bold leading-snug text-[color:var(--fg)] line-clamp-2">
             {comunidad.nombre}
           </h3>
           {comunidad.descripcion && (
-            <p className="mt-1 text-sm text-[color:var(--fg-muted)] line-clamp-2">{comunidad.descripcion}</p>
+            <p className={cn("mt-1 text-sm line-clamp-2", guestPreview ? "text-fg dark:text-fg-muted" : "text-[color:var(--fg-muted)]")}>{comunidad.descripcion}</p>
           )}
         </Link>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[color:var(--fg-muted)]">
+      <div className={cn("mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs", guestPreview ? "text-fg dark:text-fg-muted" : "text-[color:var(--fg-muted)]")}>
         <span className="inline-flex items-center gap-1">
           <Users className="h-3.5 w-3.5" />
           {comunidad.miembros_count} {comunidad.miembros_count === 1 ? "persona" : "personas"}
@@ -99,7 +104,7 @@ export function ComunidadCard({ comunidad, conBoton = false, onEstado }: Comunid
         )}
       </div>
 
-      {conBoton && (
+      {conBoton && "soy_miembro" in comunidad && (
         <div className="mt-3 flex justify-end">
           <JoinButton
             communityId={comunidad.id}

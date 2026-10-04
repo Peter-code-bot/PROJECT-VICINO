@@ -1,8 +1,7 @@
 "use client";
 
+import Link from "@/components/auth/auth-link";
 import { publicProfileName } from "@vicino/shared";
-
-import Link from "next/link";
 
 import { Bell, Trophy, Sparkles, Menu } from "lucide-react";
 import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";

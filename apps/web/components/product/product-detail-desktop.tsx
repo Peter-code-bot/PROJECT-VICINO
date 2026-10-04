@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { Edit3, Eye, MessageCircle, ShoppingBag } from "lucide-react";

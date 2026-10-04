@@ -6,8 +6,8 @@
  *
  *   node scripts/staging/e2e-s02a.mjs
  *
- * No manda correos: el alta se prueba con un correo que YA tiene cuenta (GoTrue
- * no envia nada y devuelve una respuesta sin sesion), que es justo el P0
+ * No manda correos: el alta se prueba con un correo que YA tiene cuenta (el
+ * lookup del servidor detiene GoTrue y devuelve estado existente), justo el P0
  * «Registro con correo existente». La entrega real del codigo depende de
  * PT04-SMTP y no se prueba aqui. Fixtures @staging.vicino.test; se retiran.
  */
@@ -64,7 +64,7 @@ const main = async () => {
   try {
     const { ctx: ctxV, page: v } = await nueva();
 
-    await paso('Registro con correo YA registrado: pantalla neutral, sin sesion y sin delatar la cuenta', async () => {
+    await paso('Registro con correo YA registrado: aviso explícito, sin OTP ni sesion', async () => {
       await v.goto(`${BASE}/register?next=${encodeURIComponent('/buscar?q=mesa')}`, { timeout: 180_000 });
       await v.locator('#email').waitFor({ timeout: 60_000 });
       await v.waitForTimeout(1500);
@@ -72,11 +72,8 @@ const main = async () => {
       await v.locator('#email').fill(existente.email);
       await v.locator('#password').fill('Staging-S02a-2026!x');
       await v.locator('button[type="submit"]').first().click();
-      await v.getByRole('heading', { name: 'Revisa tu correo' }).waitFor({ timeout: 30_000 });
-      const texto = (await v.locator('body').innerText()).toLowerCase();
-      for (const delator of ['ya está registrado', 'ya existe', 'already registered', 'ya tiene cuenta']) {
-        if (texto.includes(delator)) throw new Error(`delata la cuenta: «${delator}»`);
-      }
+      await v.getByRole('heading', { name: 'Ya existe una cuenta con este correo.' }).waitFor({ timeout: 30_000 });
+      if (await v.locator('input[autocomplete="one-time-code"]').count()) throw new Error('mostró OTP para correo existente');
       if (await haySesion(ctxV)) throw new Error(`se creo una sesion: ${(await ctxV.cookies()).map((c) => c.name).join(', ')}`);
       // Prueba de verdad: una ruta que exige sesion manda a /login.
       const sonda = await ctxV.newPage();
@@ -88,7 +85,7 @@ const main = async () => {
       await v.screenshot({ path: path.join(OUT, 's02a-correo-existente.png') });
     });
 
-    await paso('La pantalla neutral ofrece Iniciar sesion (conservando next), Recuperar contrasena y Cambiar correo', async () => {
+    await paso('El aviso explícito ofrece Iniciar sesion (conservando next), Recuperar contrasena y Cambiar correo', async () => {
       const login = v.getByRole('link', { name: 'Iniciar sesión' });
       const href = await login.getAttribute('href');
       if (!href?.startsWith('/login') || !decodeURIComponent(href).includes('/buscar?q=mesa')) throw new Error(`Iniciar sesión → ${href}`);

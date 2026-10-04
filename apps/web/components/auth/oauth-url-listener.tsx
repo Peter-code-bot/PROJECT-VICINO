@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { tomarDestinoPendiente } from "@/lib/auth/destino-pendiente";
+import { destinoCallbackSeguro, destinoTrasErrorAuth } from "@/lib/auth/destino-seguro";
 import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
@@ -32,6 +33,7 @@ export function OAuthUrlListener() {
     let unmounted = false;
     const supabase = createClient();
     const processedUrls = processedUrlsRef.current;
+    let destinoEnProceso: string = "/";
 
     async function handleUrl(url: string) {
       if (unmounted) return;
@@ -49,14 +51,18 @@ export function OAuthUrlListener() {
 
       let code: string | null = null;
       let errorParam: string | null = null;
+      let nextEmail: string | null = null;
       try {
         const parsed = new URL(url);
         code = parsed.searchParams.get("code");
         errorParam = parsed.searchParams.get("error");
+        nextEmail = isUniversalLink ? parsed.searchParams.get("next") : null;
       } catch {
         // URL malformada -> ignorar; no es un retorno OAuth valido.
         return;
       }
+      const pending = tomarDestinoPendiente();
+      destinoEnProceso = destinoCallbackSeguro(nextEmail ?? pending);
 
       // CODEX I2: Supabase puede redirigir con ?error=... (user denego scope,
       // cancelo en la pantalla Google, etc.). Sin manejarlo el user queda
@@ -64,7 +70,7 @@ export function OAuthUrlListener() {
       if (errorParam) {
         await Browser.close().catch(() => {});
         if (unmounted) return;
-        router.push(`/login?error=${encodeURIComponent(errorParam)}`);
+        router.push(`/login?error=${encodeURIComponent(errorParam)}&next=${encodeURIComponent(destinoTrasErrorAuth(destinoEnProceso))}`);
         return;
       }
       if (!code) return;
@@ -80,7 +86,7 @@ export function OAuthUrlListener() {
       
       if (error) {
         setIsProcessing(false);
-        router.push("/login?error=auth_callback_failed");
+        router.push(`/login?error=auth_callback_failed&next=${encodeURIComponent(destinoTrasErrorAuth(destinoEnProceso))}`);
         return;
       }
 
@@ -96,7 +102,7 @@ export function OAuthUrlListener() {
           // Volver a donde se queria ir, no a la portada. Sin esto, entrar con
           // Google desde "Quiero comprarlo" dejaba a la persona en el home y sin
           // el producto, justo en el momento de mayor intencion de compra.
-          router.replace(tomarDestinoPendiente());
+          router.replace(destinoEnProceso);
           // En Next.js, la navegación cliente no desmonta el Root Layout.
           // Debemos limpiar explícitamente el estado de carga después
           // de un breve periodo para permitir que la navegación termine.
@@ -119,7 +125,7 @@ export function OAuthUrlListener() {
       handleUrl(url).catch(() => {
         if (unmounted) return;
         setIsProcessing(false);
-        router.push("/login?error=auth_callback_failed");
+        router.push(`/login?error=auth_callback_failed&next=${encodeURIComponent(destinoTrasErrorAuth(destinoEnProceso))}`);
       });
     }
 

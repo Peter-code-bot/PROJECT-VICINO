@@ -9,9 +9,15 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/native-oauth";
 import { hapticLight } from "@/lib/haptics";
 import { conTope, esTope } from "@/lib/auth/con-tope";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { guardarCorreoAuth, useCorreoAuth, limpiarCorreoAuth, hrefAuth } from "@/lib/auth/contexto-temporal";
+import { reenviarCodigo } from "../actions";
+import { VerificarCodigo } from "../register/verificar-codigo";
+import { guardarPendiente, borrarPendiente } from "@/lib/auth/verificacion-pendiente";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useCorreoAuth();
+  const [sinConfirmar, setSinConfirmar] = useState(false);
+  const [verificar, setVerificar] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,6 +34,7 @@ export function LoginForm() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setError("");
+    setSinConfirmar(false);
     setLoading(true);
     try {
       const result = await conTope(signInWithPassword(email, password));
@@ -35,12 +42,9 @@ export function LoginForm() {
         const msg = result.error.toLowerCase();
         if (msg.includes("invalid login credentials")) {
           setError("Email o contraseña incorrectos");
-        } else if (msg.includes("email not confirmed")) {
-          // La salida real es volver a "Crear cuenta" con el mismo correo:
-          // para una cuenta sin confirmar, signUp reenvía el código.
-          setError(
-            "Te falta confirmar tu correo. Vuelve a “Regístrate gratis” con este mismo correo y te enviamos un código nuevo.",
-          );
+        } else if (result.requiereConfirmacion || msg.includes("email not confirmed")) {
+          setSinConfirmar(true);
+          setError("Te falta confirmar tu correo. Puedes pedir un código para continuar.");
         } else if (msg.includes("too many requests") || msg.includes("demasiadas")) {
           setError("Demasiados intentos. Espera un momento e intenta de nuevo.");
         } else {
@@ -48,6 +52,8 @@ export function LoginForm() {
         }
         return;
       }
+      limpiarCorreoAuth();
+      borrarPendiente();
       router.push(destinoAutenticadoSeguro(destino));
       router.refresh();
     } catch (err) {
@@ -75,13 +81,31 @@ export function LoginForm() {
     if (result.error) setError(result.error);
   }
 
+  async function confirmarCorreo() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setLoading(true);
+    try {
+      const result = await conTope(reenviarCodigo(email));
+      if (!result.ok && result.motivo !== "espera") { setError(result.mensaje); return; }
+      guardarCorreoAuth(email);
+      guardarPendiente(email);
+      setPassword("");
+      setVerificar(true);
+    } catch { setError("No pudimos conectar. Intenta de nuevo."); }
+    finally { submittingRef.current = false; setLoading(false); }
+  }
+
+  if (verificar) return <VerificarCodigo email={email} destino={destino} onCambiarCorreo={() => { borrarPendiente(); setVerificar(false); setSinConfirmar(false); setError(""); }} onVerificado={() => { borrarPendiente(); limpiarCorreoAuth(); }} />;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+        <div role="alert" className="rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
           {error}
         </div>
       )}
+      {sinConfirmar && <button type="button" disabled={loading} onClick={() => void confirmarCorreo()} className="min-h-12 w-full rounded-xl border border-primary px-4 py-3 text-sm font-semibold text-primary">Enviar código de confirmación</button>}
 
       <div className="space-y-2">
         <label htmlFor="email" className="text-sm font-medium text-foreground/80">
@@ -91,7 +115,7 @@ export function LoginForm() {
           id="email"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => { setEmail(e.target.value); setSinConfirmar(false); }}
           required
           placeholder="tu@email.com"
           className="w-full rounded-xl border border-border/50 bg-auth-input text-auth-text px-4 py-3 text-sm outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
@@ -104,7 +128,8 @@ export function LoginForm() {
             Contraseña
           </label>
           <Link
-            href="/forgot-password"
+            href={hrefAuth("/forgot-password", destino)}
+            onClick={() => guardarCorreoAuth(email)}
             className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
           >
             ¿Olvidaste?

@@ -1,0 +1,48 @@
+name: Production database types
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/database-types.yml'
+      - 'scripts/gen-types.mjs'
+      - 'scripts/lib/database-type-overrides.mjs'
+      - 'scripts/test-database-type-overrides.mjs'
+      - 'supabase/migrations/**'
+      - 'apps/web/types/database.types.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate production schema artifact
+    # Repository secrets are never passed to a fork's code.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate generated column protection
+        run: node scripts/test-database-type-overrides.mjs
+      - name: Generate read-only schema types
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo '::error::SUPABASE_ACCESS_TOKEN is missing; schema was not read.'
+            exit 1
+          fi
+          node scripts/gen-types.mjs
+      - name: Upload schema artifact for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-types-production
+          path: apps/web/types/database.types.ts
+          if-no-files-found: error
+          retention-days: 3
+      - name: Require committed types to match production
+        run: git diff --exit-code -- apps/web/types/database.types.ts

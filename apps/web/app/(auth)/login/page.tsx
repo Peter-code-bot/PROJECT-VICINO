@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { LoginForm } from "./login-form";
-import Link from "next/link";
+import { AuthHomeLink } from "@/components/auth/auth-home-link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -38,10 +38,10 @@ export default async function LoginPage({
         <div className="p-8 rounded-3xl bg-auth-card border border-border/40 shadow-xl shadow-charcoal/5 dark:shadow-none animate-scale-in">
           
           <div className="text-center space-y-3 mb-8">
-            <Link href="/" className="inline-flex items-center justify-center mb-2">
+            <AuthHomeLink className="inline-flex items-center justify-center mb-2" aria-label="Volver a Inicio">
               <Image src="/vicino-logo-light-v2.png" alt="VICINO" width={48} height={48} className="shrink-0 show-in-light" priority />
               <Image src="/vicino-logo-dark.png" alt="VICINO" width={48} height={48} className="shrink-0 show-in-dark" priority />
-            </Link>
+            </AuthHomeLink>
             <h1 className="text-2xl font-heading font-bold">¡Hola de nuevo!</h1>
             <p className="text-sm text-muted-foreground">Tu mercado de confianza</p>
           </div>

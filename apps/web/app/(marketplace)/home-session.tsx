@@ -4,9 +4,11 @@ import { publicProfileName } from "@vicino/shared";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
+import { GuestAuthCta } from "@/components/home/guest-auth-cta";
+import { GuestRequestsFeed, GuestCommunitiesFeed } from "@/components/home/guest-home-feeds";
 
 import { universitySearchUrl } from "@/lib/university";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { ProductCarousel } from "@/components/home/product-carousel";
 import { MasProductos } from "@/components/home/mas-productos";
 import { LocationBar } from "@/components/shared/location-bar";
@@ -79,7 +81,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       </div>
     );
   }
-  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, user } = data;
+  const { feed, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, guestPreview, user } = data;
   const subTabComunidades = search.get("tab") === "mias" ? "mias" : search.get("tab") === "descubrir" ? "descubrir" : "muro";
   const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
   return (
@@ -91,6 +93,8 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       {feed === "parati" ? (
         <>
           <section className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl"><LocationMapPreview initialPosition={userLat !== null && userLng !== null ? {lat:userLat,lng:userLng} : null} viewerScope={user?.id ?? 'guest'} /></div></section>
+
+          <GuestAuthCta destino={`/${search.size ? `?${search}` : ""}`} />
 
           <HomeCategoryOrder
             viewerUniversity={viewerUniversity}
@@ -314,17 +318,17 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
       ) : feed === "solicitudes" ? (
         /* ─── SOLICITUDES FEED ─────────────────────────────── */
         <div className="pt-4">
-          <SolicitudesFeed
+          {!user ? <GuestRequestsFeed preview={guestPreview?.kind === "solicitudes" ? guestPreview : null} /> : <SolicitudesFeed
             userLat={userLat}
             userLng={userLng}
             radiusMeters={validRadius}
             userId={user?.id ?? null}
-          />
+          />}
         </div>
       ) : feed === "comunidades" ? (
         /* ─── COMUNIDADES FEED ─────────────────────────────── */
         <div className="pt-3">
-          <ComunidadesFeed
+          {!user ? <GuestCommunitiesFeed preview={guestPreview?.kind === "comunidades" ? guestPreview : null} activeTab={subTabComunidades} /> : <ComunidadesFeed
             user={comunidades?.user ?? null}
             userLat={userLat}
             userLng={userLng}
@@ -335,7 +339,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
             cercanas={comunidades?.cercanas ?? null}
             cuota={comunidades?.cuota ?? leerEstadoCuota(null)}
             errores={comunidades?.errores}
-          />
+          />}
         </div>
       ) : (
         /* ─── SIGUIENDO FEED ─────────────────────────────── */

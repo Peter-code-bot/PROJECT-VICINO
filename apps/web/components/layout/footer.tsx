@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import Image from "next/image";
 import { ShieldCheck } from "lucide-react";
 
@@ -75,7 +75,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
             <ul className="flex flex-col gap-2">
               <li>
                 <Link
-                  href="/chat"
+                  href="/centro-de-ayuda"
                   className="text-xs hover:text-primary transition-colors"
                 >
                   Centro de Ayuda

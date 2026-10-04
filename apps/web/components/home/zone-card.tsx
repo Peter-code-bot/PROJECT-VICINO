@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { MapPin, ChevronDown } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
@@ -47,6 +48,7 @@ export function ZoneCard({ hayUbicacionEnServidor = false, resolveName = true, p
   const cachedName = sameStoredZone ? stored.name : undefined;
   const { name } = useReverseGeocode(resolveName ? (sameStoredZone ? stored : position) : null);
   const [open, setOpen] = useState(false);
+  const { pedirSesion } = useMuroSesion();
 
   const hayUbicacion = position !== null || hayUbicacionEnServidor;
 
@@ -54,7 +56,7 @@ export function ZoneCard({ hayUbicacionEnServidor = false, resolveName = true, p
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { if (!pedirSesion("Inicia sesión para cambiar ubicación")) return; setOpen(true); }}
         aria-expanded={open}
         aria-label={hayUbicacion ? `Cambiar ubicación: ${cachedName ?? name ?? "Tu ubicación"}` : "Activar ubicación"}
         className={`inline-flex min-h-11 items-center gap-1.5 rounded-2xl px-3 py-2 transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--fg)] ${selected ? "discovery-active" : "product-card-custom product-card-text"}`}

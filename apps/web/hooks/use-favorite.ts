@@ -8,7 +8,7 @@ import { useFavorites } from "@/components/layout/favorites-provider";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 
 /** All controls for a product share both optimistic state and an in-flight lock. */
-export function useFavorite(productId: string, initialFavorite: boolean) {
+export function useFavorite(productId: string, initialFavorite: boolean, destino?: string) {
   const favorites = useFavorites();
   const localLock = useRef(false);
   const [local, setLocal] = useState(initialFavorite);
@@ -29,7 +29,7 @@ export function useFavorite(productId: string, initialFavorite: boolean) {
   });
   async function toggle() {
     if (localLock.current || favorites.pending(productId)) return;
-    if (!pedirSesion("Inicia sesión para guardar tus favoritos")) return;
+    if (!pedirSesion("Inicia sesión para guardar tus favoritos", destino)) return;
     if (!favorites.acquire(productId)) return;
     localLock.current = true;
     try { await mutate(productId); }
