@@ -238,18 +238,28 @@ tiene 7.4 GB de RAM con 1.2 GB libres, y un emulador la habría trabado.
 
 Por orden de rendimiento esperado contra riesgo:
 
-1. **Un solo Sentry en Android.** `instrumentation-client.ts` importa `@sentry/nextjs` (con Replay
-   y `supabaseIntegration`) de forma estática; en Capacitor no lo inicializa, pero igual se descarga
-   y se evalúa, y además `sentry-nativo.ts` carga `@sentry/capacitor` + `@sentry/react`. Mover el
-   SDK web a `import()` solo cuando no es Capacitor, y cargar Replay después del arranque
-   (`Sentry.addIntegration(...)`, como recomienda la guía de Replay de Sentry). Verificar con el
-   analizador que el chunk baja.
+1. **Sacar el SDK completo de Sentry del arranque — HECHO.** La causa real no era el
+   doble SDK. `instrumentation-client.ts` pasaba el **namespace entero**
+   (`supabaseIntegration(SupabaseClient, Sentry, ...)`), y un `import * as` usado como valor
+   obliga a webpack a dar por usadas todas sus exportaciones: Replay (rrweb), Feedback, profiling...
+   Prueba: un build **sin ninguna referencia a Replay** dejaba el chunk principal idéntico byte a
+   byte (mismo hash). Arreglo: pasar a la integración solo los 5 miembros que lee (sus fuentes,
+   `v8.js` 0.3.0) y cargar Replay después del arranque (`import()` + `Sentry.addIntegration`, solo
+   en web; en la app nativa Replay ya no se descarga). Medido en `rootMainFiles`, que se descargan
+   en cualquier página: **1 253 → 922 KB sin comprimir (−26 %), ~389 → 280 KB gzip (−28 %)**.
+   Efecto aceptado: Replay empieza a grabar unos segundos después de cargar, así que un error en
+   esos primeros segundos llega sin video (el error sí se reporta). Que `@sentry/nextjs` esté
+   también en 8 componentes de cliente no importa: esos usan miembros sueltos.
 2. **`tracesSampleRate: 1.0`** en web (`instrumentation-client.ts:25`) y en nativo
    (`sentry-nativo.ts:84`): bajarlo a 0.1-0.2 en producción. Ahorra CPU y cuota.
    Decisión de Pedro, porque el comentario dice que se dejó en 1.0 "durante verificación".
+   **No aplicado** el 3-oct por ese motivo.
 3. **Preview del mapa como LCP.** Hoy no puede empezar a bajar hasta que React hidrata.
-   - a) Convertir el PNG a WebP en `/api/map-preview` (con `sharp`, que ya trae Next):
-     unos 160 KB menos por imagen y menos riesgo de pasar los 15 s con datos móviles.
+   - a) Convertir el PNG a WebP en `/api/map-preview`: unos 160 KB menos por imagen y menos
+     riesgo de pasar los 15 s con datos móviles. **Corrección del 3-oct:** `sharp` NO se resuelve
+     desde `apps/web` (solo es dependencia opcional de Next). Habría que añadirla como dependencia
+     directa con binario nativo en la función de Vercel. No aplicado: requiere decidirlo y medir el
+     tamaño de la función.
    - b) Para el caso sin ubicación (México, igual para todos los visitantes) servir una imagen que
      entre en el HTML del servidor con `fetchpriority="high"`. **Decisión de Pedro:** S11 eligió a
      propósito no guardar imágenes del proveedor; hay que revisar los términos de Apple sobre
