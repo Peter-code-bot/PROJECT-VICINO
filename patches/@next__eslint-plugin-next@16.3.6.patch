@@ -1,8 +1,8 @@
 diff --git a/dist/utils/get-root-dirs.js b/dist/utils/get-root-dirs.js
-index 47108c943514a1d7e686c5eb18aad00a59963c83..61493b9a6004c177cfb15ef69af2e69ba35cb773 100644
+index 47108c943514a1d7e686c5eb18aad00a59963c83..37131493a1814faa599f69776fededc33fce6c55 100644
 --- a/dist/utils/get-root-dirs.js
 +++ b/dist/utils/get-root-dirs.js	
-@@ -8,12 +8,27 @@ Object.defineProperty(exports, "getRootDirs", {
+@@ -8,12 +8,31 @@ Object.defineProperty(exports, "getRootDirs", {
          return getRootDirs;
      }
  });
@@ -15,6 +15,11 @@ index 47108c943514a1d7e686c5eb18aad00a59963c83..61493b9a6004c177cfb15ef69af2e69b
 -    return (0, _fastglob.globSync)(rootDir.replace(/\\/g, '/'), {
 -        onlyDirectories: true
 +    var normalized = rootDir.replace(/\\/g, '/');
++    var cleanPattern = normalized.replace(/\/+$/, '');
++    var isWildcard = cleanPattern.endsWith('/**') || cleanPattern.endsWith('/*');
++    var prefixResolved = isWildcard
++        ? _path.resolve(cleanPattern.replace(/\/\*\*?$/, ''))
++        : null;
 +    return (0, _tinyglobby.globSync)(normalized, {
 +        cwd: process.cwd(),
 +        onlyDirectories: true,
@@ -25,9 +30,8 @@ index 47108c943514a1d7e686c5eb18aad00a59963c83..61493b9a6004c177cfb15ef69af2e69b
 +            ? entry.slice(0, -1)
 +            : entry;
 +    }).filter(function(entry) {
-+        if (normalized.endsWith('/**') || normalized.endsWith('/*')) {
-+            var prefix = normalized.replace(/\/\*\*?$/, '');
-+            if (entry === prefix) return false;
++        if (prefixResolved !== null) {
++            if (_path.resolve(entry) === prefixResolved) return false;
 +        }
 +        return true;
      });
