@@ -1,6 +1,22 @@
 "use client";
+import { requiereSesion } from "./acceso-invitado";
 
 const CLAVE = "vicino:home-antes-login";
+/** The auth logo returns to the public Home preview that opened login.
+ * Session storage is untrusted; never accept a private or external target.
+ */
+export function leerRetornoHome(): string {
+  if (typeof window === "undefined") return "/";
+  try {
+    const raw = sessionStorage.getItem(CLAVE);
+    if (!raw) return "/";
+    const value = JSON.parse(raw);
+    if (typeof value.ruta !== "string" || !Number.isFinite(value.vence) || value.vence <= Date.now()) return "/";
+    const url = new URL(value.ruta, window.location.origin);
+    if (url.origin !== window.location.origin || url.pathname !== "/" || requiereSesion(value.ruta)) return "/";
+    return url.pathname + url.search;
+  } catch { return "/"; }
+}
 export function guardarRetornoHome(): void {
   if (window.location.pathname !== "/") return;
   try {

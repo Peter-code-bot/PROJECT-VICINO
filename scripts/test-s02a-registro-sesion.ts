@@ -225,7 +225,7 @@ for (const lookup of [{ data: null, error: { code: "offline" } }, { data: null, 
     assert.equal(f.calls.length, 0);
   });
 }
-for (const route of ["/buscar?q=mesa", "/tecnologia/producto", "/vendedor/123", "/mapa", "/chat", "/comunidades", "/?feed=following", "/?feed=solicitudes", "/?cats=comida"]) {
+for (const route of ["/buscar?q=mesa", "/tecnologia/producto", "/vendedor/123", "/mapa", "/chat", "/comunidades", "/?feed=following", "/?feed=comunidades&tab=mias", "/?feed=solicitudes&cats=comida", "/?cats=comida"]) {
   test(`invitado ruta directa ${route} conserva destino/cookies`, async () => {
     const middleware = await load("lib/supabase/middleware.ts", fixture({ error: missing }));
     const result = await middleware.updateSession(new NextRequest(`https://app.invalid${route}`));
@@ -234,7 +234,7 @@ for (const route of ["/buscar?q=mesa", "/tecnologia/producto", "/vendedor/123", 
     assert.equal(result.cookies.get("synthetic-refresh")?.value, "refreshed");
   });
 }
-for (const route of ["/", "/?feed=parati", "/terminos", "/privacidad", "/centro-de-ayuda", "/forgot-password", "/auth/callback-server?code=synthetic"]) {
+for (const route of ["/", "/?feed=parati", "/?feed=solicitudes", "/?feed=comunidades", "/?feed=comunidades&tab=descubrir", "/terminos", "/privacidad", "/centro-de-ayuda", "/forgot-password", "/auth/callback-server?code=synthetic"]) {
   test(`invitado ruta pública ${route}`, async () => {
     const middleware = await load("lib/supabase/middleware.ts", fixture({ error: missing }));
     assert.equal((await middleware.updateSession(new NextRequest(`https://app.invalid${route}`))).status, 200);

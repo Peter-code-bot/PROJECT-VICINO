@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { usuarioOInvitado } from "@/lib/session-auth";
 import {
   getHomeSession,
   homeSearchSchema,
@@ -45,9 +46,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   // Un solo cliente y un solo viaje a Auth para todo el render; el cargador
   // los recibe por ctx en vez de repetir lo que esta pagina acaba de hacer.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   // Un feed caido NO lanza: viaja dentro del valor como feedResultado.failure
   // y HomeSession pinta CatalogQueryState con la causa. Lo que si puede lanzar
@@ -55,7 +53,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   // pagina no se cae, se pinta sin semilla y el cliente pide la API, pero el
   // error queda en Sentry, porque un catch mudo aqui lo escondería para
   // siempre.
-  const inicio = await getHomeSession(params, { supabase, user }).catch((error: unknown) => {
+  const inicio = await (async () => {
+    // A transient Auth failure is not a guest preview. Match the API's
+    // classification and let the session cache retain its previous value.
+    const user = await usuarioOInvitado(supabase);
+    return getHomeSession(params, { supabase, user });
+  })().catch((error: unknown) => {
     Sentry.captureException(error, { tags: { surface: "inicio", query: "home_seed" } });
     return null;
   });

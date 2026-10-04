@@ -2,16 +2,22 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/auth/auth-link";
 import { Clock, MapPin, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { cn } from "@/lib/utils";
 
-export interface RequestCardData {
+/** Public preview fields; no buyer, location or private attachment is needed. */
+export interface RequestCardPreviewData {
   id: string;
   title: string;
   description: string | null;
   budget_estimated: number | null;
+  created_at: string | null;
+  categories: Array<{ slug: string; nombre: string }>;
+}
+
+export interface RequestCardData extends RequestCardPreviewData {
   image_url: string | null;
   expires_at: string;
   created_at: string;
@@ -20,7 +26,6 @@ export interface RequestCardData {
     nombre: string;
     avatar_url: string | null;
   };
-  categories: Array<{ slug: string; nombre: string }>;
   response_count: number;
 }
 
@@ -29,17 +34,21 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
-export function RequestCard({ data }: { data: RequestCardData }) {
+export function RequestCard({ data }: { data: RequestCardData | RequestCardPreviewData }) {
+  const guestPreview = !("buyer_profile" in data);
+  const image = "image_url" in data ? data.image_url : null;
+  const distance = "distance_meters" in data ? data.distance_meters : null;
+  const responses = "response_count" in data ? data.response_count : 0;
   return (
     <Link
       href={`/solicitudes/${data.id}`}
-      className="block rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md active:scale-[0.98]"
+      className={cn("block rounded-2xl bg-[color:var(--sidebar-bg)] p-4 transition-all hover:shadow-md active:scale-[0.98]", guestPreview && "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg!")}
     >
       <div className="flex gap-3">
         {/* Text content */}
         <div className="flex-1 min-w-0">
           {/* Top category (only if no image) */}
-          {!data.image_url && data.categories.length > 0 && (
+          {!image && data.categories.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
               {data.categories.slice(0, 2).map((cat) => (
                 <span
@@ -59,7 +68,7 @@ export function RequestCard({ data }: { data: RequestCardData }) {
 
           {/* Description */}
           {data.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            <p className={cn("text-sm line-clamp-2 mb-2", guestPreview ? "text-fg dark:text-fg-muted" : "text-muted-foreground")}>
               {data.description}
             </p>
           )}
@@ -75,33 +84,33 @@ export function RequestCard({ data }: { data: RequestCardData }) {
             )}
 
             {/* Metadata row (Location, Time) */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
+            <div className={cn("flex items-center gap-1.5 text-xs", guestPreview ? "text-fg dark:text-fg-muted" : "text-muted-foreground")}>
+              {distance !== null && <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
-                A {formatDistance(data.distance_meters)}
-              </span>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1">
+                A {formatDistance(distance)}
+              </span>}
+              {distance !== null && data.created_at && <span>·</span>}
+              {data.created_at && <span className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formatRelativeTime(data.created_at)}
-              </span>
+              </span>}
             </div>
 
             {/* Response count */}
-            {data.response_count > 0 && (
+            {responses > 0 && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground ml-auto">
                 <MessageSquare className="h-3 w-3" />
-                {data.response_count} {data.response_count === 1 ? "oferta" : "ofertas"}
+                {responses} {responses === 1 ? "oferta" : "ofertas"}
               </span>
             )}
           </div>
         </div>
 
         {/* Optional image thumbnail */}
-        {data.image_url && (
+        {image && (
           <div className="relative h-20 w-24 flex-shrink-0 overflow-hidden rounded-xl">
             <Image
-              src={data.image_url}
+              src={image}
               alt={data.title}
               fill
               className="object-cover"

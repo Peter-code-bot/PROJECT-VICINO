@@ -28,7 +28,7 @@ export function GuestAuthCta({ destino = "/" }: { destino?: string }) {
           id="home-sign-in"
           href={`/login?next=${next}`}
           prefetch={false}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg px-2 text-sm font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg! dark:text-fg"
+          className="inline-flex min-h-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg! dark:text-fg"
         >
           Ya tengo cuenta · Iniciar sesión
         </AuthLink>

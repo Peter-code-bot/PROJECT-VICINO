@@ -2361,6 +2361,40 @@ export type Database = {
         Args: { p_email: string }
         Returns: boolean
       }
+      home_guest_requests_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          id: string
+          titulo: string
+          descripcion: string | null
+          presupuesto_max: number | null
+          categoria: string | null
+          created_at: string | null
+        }[]
+      }
+      home_guest_communities_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          id: string
+          nombre: string
+          descripcion: string | null
+          miembros_count: number
+          publicaciones_count: number
+          ultima_publicacion_at: string | null
+        }[]
+      }
+      home_guest_posts_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          id: string
+          community_id: string
+          community_nombre: string
+          contenido: string
+          created_at: string
+          likes_count: number
+          comentarios_count: number
+        }[]
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

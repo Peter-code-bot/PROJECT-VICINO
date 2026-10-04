@@ -10,7 +10,15 @@ export function requiereSesion(ruta: string): boolean {
     const url = new URL(ruta, "https://vicino.invalid");
     if (url.origin !== "https://vicino.invalid") return false;
     const path = decodeURIComponent(url.pathname).replace(/\/$/, "") || "/";
-    if (path === "/") return Boolean(url.searchParams.get("cats") || (url.searchParams.get("feed") && url.searchParams.get("feed") !== "parati"));
+    if (path === "/") {
+      const feeds = url.searchParams.getAll("feed");
+      const tabs = url.searchParams.getAll("tab");
+      // Solicitudes y comunidades tienen previews nacionales propios. Los
+      // filtros, Siguiendo y Mis comunidades siguen siendo de la cuenta.
+      return url.searchParams.getAll("cats").some(Boolean) || feeds.length > 1 || tabs.length > 1 ||
+        feeds.some(feed => !["", "parati", "solicitudes", "comunidades"].includes(feed)) ||
+        tabs.some(tab => !["", "muro", "descubrir"].includes(tab));
+    }
     if (esRutaLegal(path)) return false;
     return ![...PUBLICAS, ...TECNICAS].some(base => path === base || path.startsWith(`${base}/`));
   } catch { return true; }

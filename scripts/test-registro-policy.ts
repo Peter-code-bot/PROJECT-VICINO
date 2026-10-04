@@ -40,8 +40,8 @@ test("timeout real del SDK con Redis sin respuesta falla de forma recuperable", 
   if (!result.ok) assert.match(result.error, /No pudimos comprobar/);
 });
 test("política cubre consultas y rutas codificadas, sin afectar Home ni legales", () => {
-  for (const route of ["/buscar", "/%62uscar", "/?cats=comida", "/?feed=comunidades", "/vendedor/123", "/tecnologia/producto", "/vender"]) assert.equal(requiereSesion(route), true);
-  for (const route of ["/", "/?feed=parati", "/terminos?version=1", "/privacidad", "/centro-de-ayuda", "/auth/callback-server?code=test", "/reset-password"]) assert.equal(requiereSesion(route), false);
+  for (const route of ["/buscar", "/%62uscar", "/?cats=comida", "/?feed=following", "/?feed=comunidades&tab=mias", "/?feed=solicitudes&cats=servicios", "/?feed=comunidades&cats=&cats=comida", "/?feed=solicitudes&feed=following", "/?feed=comunidades&tab=muro&tab=mias", "/vendedor/123", "/tecnologia/producto", "/vender"]) assert.equal(requiereSesion(route), true, route);
+  for (const route of ["/", "/?feed=parati", "/?feed=solicitudes", "/?feed=comunidades", "/?feed=comunidades&tab=descubrir", "/terminos?version=1", "/privacidad", "/centro-de-ayuda", "/auth/callback-server?code=test", "/reset-password"]) assert.equal(requiereSesion(route), false, route);
   assert.equal(loginPara("/buscar?q=mesa"), "/login?next=%2Fbuscar%3Fq%3Dmesa");
 });
 test("chat después de autenticación vuelve al vendedor sin crear contacto/compra", () => {

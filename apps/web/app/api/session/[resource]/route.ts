@@ -4,7 +4,8 @@ import * as Sentry from "@sentry/nextjs";
 import { getChatList } from "@/lib/chat-list-data";
 import { getHomeSession, homeSearchSchema } from "@/lib/home-session-data";
 import { getProfileSession } from "@/lib/profile-session-data";
-import { esAuthNoDisponible } from "@/lib/session-auth";
+import { esAuthNoDisponible, usuarioOInvitado } from "@/lib/session-auth";
+import { createClient } from "@/lib/supabase/server";
 import { requiereSesion } from "@/lib/auth/acceso-invitado";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 
@@ -50,14 +51,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ reso
     if (resource === "home") {
       const input = homeSearchSchema.safeParse(query);
       if (!input.success) return new Response(null, { status: 400, headers });
-      const result = await getHomeSession(input.data);
-      if (!result.userId && requiereSesion(`/${new URL(request.url).search}`)) return new Response(null, { status: 401, headers });
+      const supabase = await createClient();
+      const user = await usuarioOInvitado(supabase);
+      if (!user && requiereSesion(`/${new URL(request.url).search}`)) return new Response(null, { status: 401, headers });
+      const result = await getHomeSession(input.data, { supabase, user });
       // El feed «Para ti» caido no es un exito vacio: en una revalidacion en
       // segundo plano el cliente debe conservar lo que tenia, no sustituirlo
       // por una portada sin productos. La primera visita, en cambio, recibe
       // el mismo valor por la semilla de page.tsx y pinta la causa.
       if (result.value.feed === "parati" && result.value.feedResultado.failure) {
         return NextResponse.json({ error: "No se pudieron cargar los productos." }, { status: 503, headers });
+      }
+      const preview = result.value.guestPreview;
+      if (preview && (preview.kind === "solicitudes" ? preview.failure : preview.communityFailure || preview.postFailure)) {
+        return NextResponse.json({ error: "No se pudo actualizar la vista previa." }, { status: 503, headers });
       }
       return NextResponse.json(result, { headers });
     }

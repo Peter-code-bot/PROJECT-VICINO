@@ -10,6 +10,8 @@ interface SubTabsProps {
   onChange: (tab: SubTabComunidades) => void;
   /** Cuantas solicitudes pendientes tengo, para el punto en "Mis comunidades". */
   pendientes?: number;
+  /** Guest previews use the same tabs with 48px touch targets. */
+  largeTargets?: boolean;
 }
 
 const TABS: Array<{ id: SubTabComunidades; label: string }> = [
@@ -24,7 +26,7 @@ const TABS: Array<{ id: SubTabComunidades; label: string }> = [
  * texto extrabold de 19 px. Dos filas de tabs identicos se leerian como un
  * solo nivel.
  */
-export function SubTabs({ active, onChange, pendientes = 0 }: SubTabsProps) {
+export function SubTabs({ active, onChange, pendientes = 0, largeTargets = false }: SubTabsProps) {
   return (
     <div
       role="tablist"
@@ -46,9 +48,10 @@ export function SubTabs({ active, onChange, pendientes = 0 }: SubTabsProps) {
             }}
             className={cn(
               "relative flex-1 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold transition-all",
+              largeTargets && "min-h-12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg!",
               selected
                 ? "bg-[color:var(--card)] text-[color:var(--fg)] shadow-[var(--shadow-sm)]"
-                : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]",
+                : largeTargets ? "text-fg dark:text-fg-muted hover:text-fg" : "text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]",
             )}
           >
             {tab.label}

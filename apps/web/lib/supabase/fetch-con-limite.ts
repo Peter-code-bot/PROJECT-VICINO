@@ -3,7 +3,7 @@ export const LIMITE_LECTURA_MS = 15_000;
 // Manifiesto de solo lectura: cuerpo efectivo STABLE de 20260826400000,
 // firma antigua retirada en 20260826410000. Solo SELECT, funciones integradas,
 // auth.uid y PostGIS; no mutaciones. Las demas RPC quedan excluidas.
-const RPC_LECTURA = new Set(["/rest/v1/rpc/search_nearby_products_v4", "/rest/v1/rpc/search_map_publications_v1", "/rest/v1/rpc/search_map_publications_v2", "/rest/v1/rpc/registration_email_exists"]);
+const RPC_LECTURA = new Set(["/rest/v1/rpc/search_nearby_products_v4", "/rest/v1/rpc/search_map_publications_v1", "/rest/v1/rpc/search_map_publications_v2", "/rest/v1/rpc/registration_email_exists", "/rest/v1/rpc/home_guest_requests_preview", "/rest/v1/rpc/home_guest_communities_preview", "/rest/v1/rpc/home_guest_posts_preview"]);
 
 /** Adaptador PostgREST: bufferiza JSON, no sirve para Storage ni streaming.
  * El presupuesto incluye cuerpo y cabeceras, pero no la obtencion previa del
