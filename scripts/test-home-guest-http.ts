@@ -113,9 +113,28 @@ async function main() {
       await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
       await page.getByRole("tab", { name: "Descubrir", exact: true }).click();
       await expect(page).toHaveURL(new URL("/?feed=comunidades&tab=descubrir", base).href);
+      await expect(page.getByRole("tab", { name: "Descubrir", exact: true })).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByRole("tab", { name: "Muro", exact: true })).toHaveAttribute("aria-selected", "false");
       await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
       pass("primary tabs and public discovery navigate without login");
       await page.screenshot({ path: `${output}/comunidades.png`, fullPage: false });
+      // Exercise the destination before leaving Home: a later return from login
+      // can remount the feed and hide stale useSearchParams after a tab change.
+      await page.getByRole("button", { name: "Fundar comunidad", exact: true }).click();
+      await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=descubrir")}`, base).href);
+      const discoveryLogo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
+      await expect(discoveryLogo).toHaveAttribute("href", "/?feed=comunidades&tab=descubrir");
+      await discoveryLogo.click();
+      await expect(page.getByRole("tab", { name: "Descubrir", exact: true })).toHaveAttribute("aria-selected", "true");
+      await page.getByRole("tab", { name: "Muro", exact: true }).click();
+      await expect(page).toHaveURL(new URL("/?feed=comunidades", base).href);
+      await expect(page.getByRole("tab", { name: "Muro", exact: true })).toHaveAttribute("aria-selected", "true");
+      await page.getByRole("button", { name: "Fundar comunidad", exact: true }).click();
+      await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades")}`, base).href);
+      await page.getByRole("link", { name: "Volver a Inicio", exact: true }).click();
+      await page.getByRole("tab", { name: "Descubrir", exact: true }).click();
+      await expect(page.getByRole("tab", { name: "Descubrir", exact: true })).toHaveAttribute("aria-selected", "true");
+      pass("discovery/wall selection and immediate login destination stay in sync without reload");
       await page.getByRole("tab", { name: "Mis comunidades", exact: true }).click();
       await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=mias")}`, base).href);
       const returnLogo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
