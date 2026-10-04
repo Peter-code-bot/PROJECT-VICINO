@@ -1,3 +1,11 @@
+## 04-oct-2026 — MP04 candidato de publicación (sesión en curso)
+
+- Javier solicita terminar pendientes y publicar en master. Inicio real 11:27:09 CDMX; fin aún pendiente. Antigravity y NT publicado preservados.
+- OpenTelemetry core 2.7.1 → 2.8.0 (override solo 2.x vulnerable); auditoría completa ahora 0 vulnerabilidades/exit0. Prueba baggage hostil y SDK en memoria4/4, instalación congelada/tipos/lint/build58/58 exit0; lint148warnings. Gitleaks12 commits nuevos sin hallazgos/exit0.
+- Tipos completos MP11: PAT local HTTP401; exportación del panel sin archivo capturado. Nuevo workflow de artefacto de esquema en PR para usar la credencial ya configurada en CI, sin datos ni cambios remotos. No se declara regeneración completa todavía.
+- Claves legacy habilitadas en panel; entorno local aún legacy. MP00 requiere continuidad/revocación acreditada. Prueba con clave expuesta bloqueada por revisión automática, permiso específico pendiente; no se ejecutó. Correo nuevo/recuperación completa/OAuth/onboarding y teléfonos MP02/MP03 siguen pendientes reales.
+- Se prepara push de rama y PR en borrador para CI/Preview; master no se ha modificado con S02. Mapa conserva autorización temporal anterior hasta app compatible. Acta: docs/MP04-2026-10-04.md; Notion conserva estados y salidas literales.
+
 # Estado — NT publicado; previews invitados locales en validación
 
 ## 2026-10-04 — MP03-D: continuación 10:41:31 CDMX
