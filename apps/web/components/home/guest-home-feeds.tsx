@@ -2,6 +2,7 @@
 
 import { CATEGORIES, formatRelativeTime } from "@vicino/shared";
 import { Heart, MessageCircle, LayoutGrid, Plus, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import AuthLink from "@/components/auth/auth-link";
 import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { RequestCard, type RequestCardPreviewData } from "@/components/solicitudes/request-card";
@@ -74,13 +75,14 @@ export function GuestCommunitiesFeed({ preview, activeTab }: {
   activeTab: SubTabComunidades;
 }) {
   const { pedirSesion } = useMuroSesion();
+  const router = useRouter();
   const context = activeTab === "descubrir" ? "/?feed=comunidades&tab=descubrir" : "/?feed=comunidades";
   function changeTab(tab: SubTabComunidades) {
     if (tab === "mias") { pedirSesion("Inicia sesión para ver tus comunidades", "/?feed=comunidades&tab=mias"); return; }
     const url = new URL(window.location.href);
     if (tab === "muro") url.searchParams.delete("tab");
     else url.searchParams.set("tab", tab);
-    window.history.replaceState(window.history.state, "", url.toString());
+    router.replace(url.pathname + url.search, { scroll: false });
   }
   const communities = preview?.communities ?? [];
   const posts = preview?.posts ?? [];

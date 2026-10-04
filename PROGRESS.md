@@ -1,3 +1,12 @@
+## 04-oct-2026 — S02 publicado a master; Redis y permisos de mapa verificados
+
+- Javier confirma revocación/acceso Preview y ordena publicar; confirmación humana registrada sin inventar fecha histórica de rotación. Inicio de sesión14:16:42CDMX; fin real en Bitácora de Notion.
+- PR52 integrado04-oct14:20:26CDMX, master6c3750dcafa022f174794c75a7a2186ca32dadcf. Vercel producción4EJTjwR7dqdpykhmUGM4rge9WMYq SUCCESS; CI37231717436 secretos/audit/tipos-lint/deriva SUCCESS. Tipos completos y versiones legales coinciden con producción, sin advertencia efectiva de deriva. NT/Antigravity preservados.
+- Producción comprobada: «Únete a VICINO», Solicitudes/Comunidades públicas, tarjeta→login/next y logo→feed; APIs reales16/16/exit0 y Redis activo (callback sin código limitado en petición21, sin cuentas/correos/códigos). Las0comunidades/posts actuales producen vacío honesto.
+- Cierre del permiso temporal del mapa: migración20261004202352 aplicada con ledger en la misma transacción, después de ensayo ROLLBACK. anon/PUBLIC sin EXECUTE; authenticated/service_role, dueños y definiciones MD5 intactos. Home/preview conservan sus RPC. FuenteMD5LF7473398d40a0a14edea41ca825b9fef9; no db push histórico ni cambios de cuentas/RLS.
+- Acta literal: docs/MP04-PUBLICACION-2026-10-04.md. Se versiona el cierre de permisos separado del código publicado. Publicación técnica no acredita automáticamente Android/iPhone, recepción/recuperación/OAuth completos, NT01–NT04 ni Google Play; los casos y responsables permanecen en Notion.
+- Revisión final detectó desincronización Muro/Descubrir después de login: URL cambiaba pero selección/next de Fundar quedaban en Muro. Corrección con router.replace y scroll:false; regresión ampliada falló antes y pasó después: Next/Supabase real18/18 Chromium +18/18 WebKit, cero POST y scroll474px; componentes36+36, tipos/lint/build58/58 exit0. Primer ensayo History null no bastó; type-check concurrente con build falló por tipos generados y se repitió secuencialmente. Fallos literales y diff en acta; controles remotos finales/SHA se actualizan en Notion tras integrar el cierre.
+
 ## 04-oct-2026 — PR52 remoto; tipos completos de Supabase conciliados (sesión en curso)
 
 - [PR52 en borrador](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/52), rama feat/registro-invitados-20261001 subida; master a2a2d70 sigue con NT. CI37222838059 secretos/audit/tipos-lint y Preview25m1K5NJ1KkLBodkPfnLZWikDjd8 SUCCESS sobre f97bfd3; todavía no S02 en producción.

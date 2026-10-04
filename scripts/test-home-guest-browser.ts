@@ -55,7 +55,7 @@ async function main() {
         <div style={{height:1600}}/></MuroSesionProvider>;}
     function App(){const pathname=usePathname();return pathname==='/'?<Home/>:<main><h1>Autenticación simulada</h1><AuthHomeLink>Volver a Inicio</AuthHomeLink></main>;}
     const replace=history.replaceState.bind(history);history.replaceState=(...args)=>{replace(...args);dispatchEvent(new Event('fixture-navigation'));};
-    window.f.router={push:route=>{window.f.routes.push(route);history.pushState(null,'',route);dispatchEvent(new Event('fixture-navigation'));requestAnimationFrame(()=>scrollTo(0,0));},refresh:()=>{}};
+    window.f.router={push:route=>{window.f.routes.push(route);history.pushState(null,'',route);dispatchEvent(new Event('fixture-navigation'));requestAnimationFrame(()=>scrollTo(0,0));},replace:route=>{history.replaceState(null,'',route);},refresh:()=>{}};
     createRoot(document.getElementById('root')).render(<App/>);`;
   const bundle = await esbuild.build({ stdin: { contents: fixture, loader: "tsx", resolveDir: web }, bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic", tsconfig: path.join(web, "tsconfig.json"),
     define: { "process.env.NODE_ENV": '"production"', "process.env": "{}" }, plugins: [{ name: "controlled-boundaries", setup(b: any) {
