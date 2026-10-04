@@ -1,3 +1,11 @@
+## 04-oct-2026 — PR52 remoto; tipos completos de Supabase conciliados (sesión en curso)
+
+- [PR52 en borrador](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/52), rama feat/registro-invitados-20261001 subida; master a2a2d70 sigue con NT. CI37222838059 secretos/audit/tipos-lint y Preview25m1K5NJ1KkLBodkPfnLZWikDjd8 SUCCESS sobre f97bfd3; todavía no S02 en producción.
+- MP11 tipos: artefacto completo real del CI37222838184 incorporado, conservando únicamente las dos restricciones never de la columna mapa GENERATED STORED. Normalizador acotado e idempotente probado; nuevo CI compara todo el archivo con producción. Se corrige nulabilidad DTO con z.infer de esquemas existentes tras TS2322; 25 pruebas, tipos web y lint dirigido exit0, sin cambiar runtime ni validación.
+- Auditoría completa 0 vulnerabilidades, OpenTelemetry2.8 y arreglo Antigravity preservados. Build local final58/58 y lint148warnings ya comprobados. Cierre explícito de contextos corrige bloqueo WebKit de harness: 17/17 Next/Supabase real/exit0, scroll474px y cero POST. Android/iPhone y Auth completo siguen separados.
+- MP00 revocación/continuidad y MP02/MP03 correo/recuperación/OAuth/onboarding/dispositivos siguen pendientes con preguntas concretas. Preview está protegido por acceso Vercel de Pedro; construcción verde no acredita recorrido remoto. Revisión automática rechazó prueba con clave histórica y autenticación GitHub no autorizada; ninguna ejecutada para completar el acceso. Sin elusión.
+- Inicio de esta sesión11:27:09 CDMX; fin en Bitácora al terminar. Mapa mantiene permiso temporal autorizado hasta aplicación compatible; NT01–NT04, Google Play y demás paquetes del mega plan conservan seguimiento. Acta literal: docs/MP04-2026-10-04.md.
+
 ## 04-oct-2026 — MP04 candidato de publicación (sesión en curso)
 
 - Javier solicita terminar pendientes y publicar en master. Inicio real 11:27:09 CDMX; fin aún pendiente. Antigravity y NT publicado preservados.

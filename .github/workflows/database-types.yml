@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/database-types.yml'
       - 'scripts/gen-types.mjs'
+      - 'scripts/lib/database-type-overrides.mjs'
+      - 'scripts/test-database-type-overrides.mjs'
       - 'supabase/migrations/**'
       - 'apps/web/types/database.types.ts'
 
@@ -24,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate generated column protection
+        run: node scripts/test-database-type-overrides.mjs
       - name: Generate read-only schema types
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -40,3 +44,5 @@ jobs:
           path: apps/web/types/database.types.ts
           if-no-files-found: error
           retention-days: 3
+      - name: Require committed types to match production
+        run: git diff --exit-code -- apps/web/types/database.types.ts

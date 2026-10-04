@@ -1,11 +1,5 @@
 import { z } from "zod";
-import type { Database } from "@/types/database.types";
 import type { CatalogFailure } from "@/lib/catalogo/estado-consulta";
-
-type Functions = Database["public"]["Functions"];
-export type GuestRequestPreview = Functions["home_guest_requests_preview"]["Returns"][number];
-export type GuestCommunityPreview = Functions["home_guest_communities_preview"]["Returns"][number];
-export type GuestPostPreview = Functions["home_guest_posts_preview"]["Returns"][number];
 
 export const HOME_GUEST_PREVIEW_LIMIT = 12;
 const id = z.string().uuid();
@@ -59,6 +53,12 @@ const postSchema = z.object({
   contenido: previewText(240).refine(value => value.length > 0), created_at: date,
   likes_count: count, comentarios_count: count,
 });
+
+// The generated TABLE-return RPC types do not express SQL nullable outputs.
+// Public DTOs describe the validated/stripped payload, including genuine nulls.
+export type GuestRequestPreview = z.infer<typeof requestSchema>;
+export type GuestCommunityPreview = z.infer<typeof communitySchema>;
+export type GuestPostPreview = z.infer<typeof postSchema>;
 
 export function parseGuestRequests(value: unknown): GuestRequestPreview[] {
   return z.array(requestSchema).max(HOME_GUEST_PREVIEW_LIMIT).parse(value);

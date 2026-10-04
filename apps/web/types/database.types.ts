@@ -2357,44 +2357,6 @@ export type Database = {
       }
     }
     Functions: {
-      registration_email_exists: {
-        Args: { p_email: string }
-        Returns: boolean
-      }
-      home_guest_requests_preview: {
-        Args: { result_limit?: number }
-        Returns: {
-          id: string
-          titulo: string
-          descripcion: string | null
-          presupuesto_max: number | null
-          categoria: string | null
-          created_at: string | null
-        }[]
-      }
-      home_guest_communities_preview: {
-        Args: { result_limit?: number }
-        Returns: {
-          id: string
-          nombre: string
-          descripcion: string | null
-          miembros_count: number
-          publicaciones_count: number
-          ultima_publicacion_at: string | null
-        }[]
-      }
-      home_guest_posts_preview: {
-        Args: { result_limit?: number }
-        Returns: {
-          id: string
-          community_id: string
-          community_nombre: string
-          contenido: string
-          created_at: string
-          likes_count: number
-          comentarios_count: number
-        }[]
-      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -3168,6 +3130,40 @@ export type Database = {
         Returns: boolean
       }
       hay_bloqueo_con: { Args: { p_otro: string }; Returns: boolean }
+      home_guest_communities_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          descripcion: string
+          id: string
+          miembros_count: number
+          nombre: string
+          publicaciones_count: number
+          ultima_publicacion_at: string
+        }[]
+      }
+      home_guest_posts_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          comentarios_count: number
+          community_id: string
+          community_nombre: string
+          contenido: string
+          created_at: string
+          id: string
+          likes_count: number
+        }[]
+      }
+      home_guest_requests_preview: {
+        Args: { result_limit?: number }
+        Returns: {
+          categoria: string
+          created_at: string
+          descripcion: string
+          id: string
+          presupuesto_max: number
+          titulo: string
+        }[]
+      }
       increment_product_view: { Args: { p_id: string }; Returns: undefined }
       iniciar_confirmacion_venta: {
         Args: {
@@ -3327,6 +3323,15 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      profile_public_name: {
+        Args: {
+          p_es_vendedor: boolean
+          p_nombre: string
+          p_nombre_negocio: string
+          p_seller_type: string
+        }
+        Returns: string
+      }
       publicar_en_comunidad: {
         Args: {
           p_community_id: string
@@ -3362,6 +3367,7 @@ export type Database = {
         Args: { p_aviso_version: string; p_ip?: string; p_user_agent?: string }
         Returns: string
       }
+      registration_email_exists: { Args: { p_email: string }; Returns: boolean }
       reject_verification_atomic: {
         Args: { p_note: string; p_verification_id: string }
         Returns: Json

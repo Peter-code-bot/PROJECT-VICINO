@@ -64,7 +64,8 @@ async function main() {
   const browser = await engine.launch({ headless: true });
   try {
     // The product intentionally renders its footer only on desktop.
-    const desktop = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const desktopContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const desktop = await desktopContext.newPage();
     try {
       await desktop.goto(new URL("/?feed=solicitudes", base).href);
       const helpLink = desktop.getByRole("link", { name: "Centro de Ayuda", exact: true });
@@ -72,59 +73,72 @@ async function main() {
       await helpLink.click();
       await expect(desktop).toHaveURL(new URL("/centro-de-ayuda", base).href);
       pass("desktop footer opens the public help page, never the private chat");
-    } finally { await desktop.close(); }
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    page.setDefaultTimeout(30_000);
-    const authPosts: string[] = [];
-    page.on("request", (request: { method(): string; url(): string }) => {
-      if (request.method() === "POST" && /\/auth\/|\/login|\/register|\/comunidades|\/solicitudes/.test(request.url())) authPosts.push(new URL(request.url()).pathname);
-    });
-    await page.goto(new URL("/?feed=solicitudes", base).href);
-    await expect(page.locator('[data-guest-preview="solicitudes"]')).toBeVisible();
-    const request = requests.at(-1);
-    if (request) {
-      const href = `/login?next=${encodeURIComponent(`/solicitudes/${request.id}`)}`;
-      const card = page.locator(`[data-guest-preview] a[href="${href}"]`);
-      await expect(card).toBeVisible();
-      await card.scrollIntoViewIfNeeded();
-      await card.focus();
-      let clickedY = 0;
-      await page.evaluate(() => document.addEventListener("click", () => { document.documentElement.dataset.clickedY = String(scrollY); }, { capture: true, once: true }));
-      await card.press("Enter");
-      clickedY = Number(await page.locator("html").getAttribute("data-clicked-y"));
-      if (requests.length > 1) assert.ok(clickedY > 0, "Real request return must exercise a nonzero scroll");
-      await expect(page).toHaveURL(new URL(href, base).href);
-      await expect(page.getByRole("heading", { name: "¡Hola de nuevo!" })).toBeVisible();
-      const logo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
-      await expect(logo).toHaveAttribute("href", "/?feed=solicitudes");
-      await expect(logo).toBeVisible();
-      await logo.click();
-      await expect(page).toHaveURL(new URL("/?feed=solicitudes", base).href);
+    } finally { await desktopContext.close(); }
+    const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    try {
+      const page = await mobileContext.newPage();
+      page.setDefaultTimeout(30_000);
+      const authPosts: string[] = [];
+      page.on("request", (request: { method(): string; url(): string }) => {
+        if (request.method() === "POST" && /\/auth\/|\/login|\/register|\/comunidades|\/solicitudes/.test(request.url())) authPosts.push(new URL(request.url()).pathname);
+      });
+      await page.goto(new URL("/?feed=solicitudes", base).href);
       await expect(page.locator('[data-guest-preview="solicitudes"]')).toBeVisible();
-      await expect.poll(() => page.evaluate(() => scrollY)).toBe(clickedY);
-      await page.waitForTimeout(1000); assert.equal(await page.evaluate(() => scrollY), clickedY);
-      pass(`real request -> login -> original preview/scroll ${clickedY}px stable`);
-    } else console.log("PENDING real request-card navigation: no eligible data; never fabricated");
-    await page.screenshot({ path: `${output}/solicitudes.png`, fullPage: false });
-    await page.getByRole("link", { name: "Comunidades", exact: true }).click();
-    await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
-    await page.getByRole("tab", { name: "Descubrir", exact: true }).click();
-    await expect(page).toHaveURL(new URL("/?feed=comunidades&tab=descubrir", base).href);
-    await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
-    pass("primary tabs and public discovery navigate without login");
-    await page.screenshot({ path: `${output}/comunidades.png`, fullPage: false });
-    await page.getByRole("tab", { name: "Mis comunidades", exact: true }).click();
-    await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=mias")}`, base).href);
-    const returnLogo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
-    await expect(returnLogo).toHaveAttribute("href", "/?feed=comunidades&tab=descubrir");
-    await returnLogo.click();
-    await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
-    await page.getByRole("button", { name: "Fundar comunidad", exact: true }).click();
-    await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=descubrir")}`, base).href);
-    assert.deepEqual(authPosts, []);
-    pass("private community actions -> login, logo returns discovery; zero Auth/action POST");
-  } finally { await browser.close(); }
+      const request = requests.at(-1);
+      if (request) {
+        const href = `/login?next=${encodeURIComponent(`/solicitudes/${request.id}`)}`;
+        const card = page.locator(`[data-guest-preview] a[href="${href}"]`);
+        await expect(card).toBeVisible();
+        await card.scrollIntoViewIfNeeded();
+        await card.focus();
+        let clickedY = 0;
+        await page.evaluate(() => document.addEventListener("click", () => { document.documentElement.dataset.clickedY = String(scrollY); }, { capture: true, once: true }));
+        await card.press("Enter");
+        clickedY = Number(await page.locator("html").getAttribute("data-clicked-y"));
+        if (requests.length > 1) assert.ok(clickedY > 0, "Real request return must exercise a nonzero scroll");
+        await expect(page).toHaveURL(new URL(href, base).href);
+        await expect(page.getByRole("heading", { name: "¡Hola de nuevo!" })).toBeVisible();
+        const logo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
+        await expect(logo).toHaveAttribute("href", "/?feed=solicitudes");
+        await expect(logo).toBeVisible();
+        await logo.click();
+        await expect(page).toHaveURL(new URL("/?feed=solicitudes", base).href);
+        await expect(page.locator('[data-guest-preview="solicitudes"]')).toBeVisible();
+        await expect.poll(() => page.evaluate(() => scrollY)).toBe(clickedY);
+        await page.waitForTimeout(1000); assert.equal(await page.evaluate(() => scrollY), clickedY);
+        pass(`real request -> login -> original preview/scroll ${clickedY}px stable`);
+      } else console.log("PENDING real request-card navigation: no eligible data; never fabricated");
+      await page.screenshot({ path: `${output}/solicitudes.png`, fullPage: false });
+      await page.getByRole("link", { name: "Comunidades", exact: true }).click();
+      await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
+      await page.getByRole("tab", { name: "Descubrir", exact: true }).click();
+      await expect(page).toHaveURL(new URL("/?feed=comunidades&tab=descubrir", base).href);
+      await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
+      pass("primary tabs and public discovery navigate without login");
+      await page.screenshot({ path: `${output}/comunidades.png`, fullPage: false });
+      await page.getByRole("tab", { name: "Mis comunidades", exact: true }).click();
+      await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=mias")}`, base).href);
+      const returnLogo = page.getByRole("link", { name: "Volver a Inicio", exact: true });
+      await expect(returnLogo).toHaveAttribute("href", "/?feed=comunidades&tab=descubrir");
+      await returnLogo.click();
+      await expect(page.locator('[data-guest-preview="comunidades"]')).toBeVisible();
+      await page.getByRole("button", { name: "Fundar comunidad", exact: true }).click();
+      await expect(page).toHaveURL(new URL(`/login?next=${encodeURIComponent("/?feed=comunidades&tab=descubrir")}`, base).href);
+      assert.deepEqual(authPosts, []);
+      pass("private community actions -> login, logo returns discovery; zero Auth/action POST");
+    } finally { await mobileContext.close(); }
+  } finally {
+    let closeTimeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        browser.close(),
+        new Promise<never>((_, reject) => {
+          closeTimeout = setTimeout(() => reject(new Error("Test browser shutdown exceeded 15s; run failed, not accepted.")), 15_000);
+        }),
+      ]);
+    } finally { clearTimeout(closeTimeout); }
+  }
   console.log(`RESULT ${process.env.TEST_BROWSER ?? "chromium"}: ${checks}/${checks} PASS; Next/Supabase real read-only; device/Auth completion pending`);
 }
 
-main().catch(error => { console.error(error); process.exitCode = 1; });
+main().catch(error => { console.error(error); process.exit(1); });
