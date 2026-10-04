@@ -90,6 +90,20 @@ componente.
 | Dex en el AAB (versionCode 9) | **15.5 MB** (`classes.dex` 7.9 + `classes2.dex` 7.5), R8 apagado | `unzip -l` del AAB |
 | Librerías nativas y 16 KB | **Todas alineadas a 16 KB** (`libsentry*.so`, `libdatastore_shared_counter.so`, arm64 y x86_64) | lectura de cabeceras ELF del AAB |
 
+**Después de las Fases 1-3.1 en producción (3-oct, `af2a825`; misma emulación; una corrida antes y
+dos después):**
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Lighthouse móvil | 35 | 41-42 |
+| Total Blocking Time | 5,520 ms | **2,530-2,640 ms (−53 %)** |
+| Trabajo del hilo principal | 18.9 s | **7.0-7.8 s (−60 %)** |
+| Time to Interactive | 11.1 s | 8.4-8.7 s |
+| Speed Index | 8.5 s | 4.8-5.1 s |
+| LCP | 10.9 s | 8.4-8.7 s (sigue siendo el preview del mapa: Fase 3.3/3.4) |
+| Arranque del chunk principal | 11.2 s | 2.6-2.8 s |
+| JS transferido en la carga | 652 KB | 581-582 KB |
+
 Referencia de presupuesto: Alex Russell (2026) propone ~0.3 MiB de JS para cargar en 3 s en un
 sitio ligero en JS y ~0.62 MiB para uno pesado. El home ya está en 1.97 MB sin comprimir.
 
@@ -274,7 +288,8 @@ Por orden de rendimiento esperado contra riesgo:
    valorar `prefetch={false}` en las tarjetas de producto. Impacto bajo: 60 KB en total.
 
 Criterio de aceptación de la fase: Lighthouse móvil del home ≥ 60, TBT < 2 s, LCP < 4 s, sin
-cambio visual (capturas antes y después a 375 y 1280).
+cambio visual (capturas antes y después a 375 y 1280). **Al 3-oct, tras 3.1:** 41-42, TBT ~2.6 s,
+LCP ~8.5 s. Lo que falta del LCP es el preview (3.3) y la hidratación del inicio (3.4).
 
 ### Fase 4: build nativo (M, ~1-2 días con pruebas en dispositivo)
 
