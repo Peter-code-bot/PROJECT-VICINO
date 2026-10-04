@@ -1,4 +1,14 @@
-# Estado — Nombre de tienda validado localmente; PR #51 en borrador
+# Estado — Nombre de tienda: migración aplicada; integración de PR #51 en revisión
+
+## 2026-10-03 — continuación NT y revisión de Antigravity
+
+- **Codex, familia GPT-6.** Reanudación real: 22:00:27 CDMX tras interrupción del corte de 17:48; no se cuenta el intervalo como trabajo continuo. Implementación original `515632b` conservada. Los cortes siguientes son historia.
+- Supabase VICINO/main `oxxdkwywprkfghhbnoto` confirmado por SQL Editor autenticado: Alex Cabrera, tienda activa/business, nombre Creed. CLI administrativa sigue HTTP401. Producción tiene 15 funciones vigentes; `notify_new_message` se retiró intencionalmente en mayo. El emisor desplegado despacha mensajes a Edge con título genérico; se conserva intacto.
+- Migración `20261003213000` aplicada y registrada en la misma transacción tras dos ensayos con ROLLBACK. Guardas de hashes/firmas, atributos de funciones, ACL/RLS/policies/triggers y emisor actual pasaron. Sin DML de cuentas. Evidencia contrastada 22:22:22 CDMX: source registrado coincide exactamente al normalizar CRLF del portapapeles a LF; SHA256 `8cd11e0ebc8ee2a1a61f9f0ab984b8f0b473a3d4459cbaa86c1648f565f6435b`. MD5 raw ledger `e7cde7901b745abf81eccb6ed63b9ff6`, normalizado LF `af5c536b69e2960c523415e1e4f5979c`.
+- Corregida búsqueda sin ubicación que omitía campos de tienda: tres regresiones ejecutan SearchPage y ProductCard reales con proyección de datos. SQL maneja trim exacto JS, formato multiline, aliases y retiro CREATE/DROP. Suite identidad 11/11 más ranking final 1/1, búsqueda 3/3, catálogo 6/6, historial 12/12; PostGIS/dispositivos no acreditados por PGlite.
+- Revisión de Antigravity: commits `9cd3048`/`e5ac753` importados exclusivamente como `7b85a5a`/`afc904e`, sin traer S02 al PR51. Prototipo anterior conservado en stash dirigido. Instalación congelada, audit high (0 altas/críticas, una moderada), glob 62/62, tipos web/shared y build 57/57 aprobados. Lint secuencial exit0/149 warnings; intento concurrente con build falló ENOENT de `public/sw.js`, evidencia conservada.
+- Nueva base remota `a7262ab` incorpora cuatro commits de Android/Sentry/mapa; conciliación y controles del candidato final pendientes. PR #51 aún en borrador; push, CI, integración y producción de aplicación no acreditados en este corte. Aceptación NT01–NT04 y Android/iPhone siguen pendientes; no se fabrica evidencia modificando Alex/Creed.
+- MP03-D solicitado por Javier: previews nacionales de solicitudes/comunidades para invitados, clic → login con next seguro. Implementación y pruebas en checkout REGISTRO separado; no cambia el alcance de este PR. [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
 
 ## 2026-10-03 — PLAN-20261003-NOMBRE-TIENDA: implementación local
 
