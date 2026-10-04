@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Settings, Star, ShoppingBag, Handshake, MapPin } from "lucide-react";
@@ -61,11 +63,7 @@ export function ProfileHeader({
   followingCount = 0,
 }: ProfileHeaderProps) {
 
-  const displayName = profile
-    ? profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio
-      ? profile.nombre_negocio
-      : (profile.nombre?.trim().split(" ")[0] ?? profile.nombre)
-    : "";
+  const displayName = publicProfileName(profile);
 
   if (!profile) {
     return (
@@ -84,7 +82,7 @@ export function ProfileHeader({
           <AvatarWithUpload
             userId={profile.id}
             currentAvatarUrl={profile.foto}
-            displayName={profile.nombre}
+            displayName={displayName}
             isOwnProfile={!isPublic}
           />
         </div>
@@ -93,20 +91,9 @@ export function ProfileHeader({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1">
-              {profile.es_vendedor && profile.seller_type === "business" && profile.nombre_negocio ? (
-                <>
-                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre_negocio}</h1>
-                  {profile.username && (
-                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <h1 className="font-heading font-bold text-xl truncate">{profile.nombre}</h1>
-                  {profile.username && (
-                    <p className="text-xs text-muted-foreground">@{profile.username}</p>
-                  )}
-                </>
+              <h1 className="font-heading font-bold text-xl truncate">{displayName}</h1>
+              {profile.username && (
+                <p className="text-xs text-muted-foreground">@{profile.username}</p>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -245,7 +232,7 @@ export function ProfileHeader({
             <ReportMenuButton
               targetType="user"
               targetId={profile.id}
-              targetLabel={profile.nombre_negocio ?? profile.nombre}
+              targetLabel={displayName}
               blockableUserId={profile.id}
               ariaLabel="Más opciones"
               iconSize={18}

@@ -28,8 +28,8 @@ export async function getChatList(ctx?: ChatListContext) {
       `
       id, updated_at, no_leidos_comprador, no_leidos_vendedor,
       oculto_para_comprador, oculto_para_vendedor,
-      comprador:profiles!comprador_id(id, nombre, foto),
-      vendedor:profiles!vendedor_id(id, nombre, foto),
+      comprador:profiles!comprador_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio),
+      vendedor:profiles!vendedor_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio),
       ultimo_producto:products_services!ultimo_producto_id(titulo)
     `
     ).throwOnError()

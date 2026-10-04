@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +30,7 @@ export default async function UsersModerationPage() {
   const { data: profiles } = targetIds.length > 0
     ? await supabase
         .from("profiles")
-        .select("id, nombre, user_id, username, foto, es_vendedor, nombre_negocio, is_hidden, trust_level, created_at")
+        .select("id, nombre, user_id, username, foto, es_vendedor, nombre_negocio, is_hidden, trust_level, created_at, seller_type")
         .in("id", targetIds)
     : { data: [] };
 
@@ -59,7 +60,7 @@ export default async function UsersModerationPage() {
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
+                    Reportado por {publicProfileName(reporter, "?")} · {formatDate(rep.created_at)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
@@ -74,7 +75,7 @@ export default async function UsersModerationPage() {
                   <div className="rounded-md bg-muted/40 p-3 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        {profile.nombre_negocio ?? profile.nombre}
+                        {publicProfileName(profile)}
                       </span>
                       {/* El @ puede cambiar; user_id no. Se ensenan los dos
                           para que un reporte que cite cualquiera de ellos

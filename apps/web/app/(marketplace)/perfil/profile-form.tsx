@@ -1,10 +1,13 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useState, useRef, useEffect } from "react";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateProfile, setUsername } from "./actions";
+import { invalidateSessionData } from "@/lib/session-events";
 import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
@@ -143,6 +146,7 @@ export function ProfileForm({
         setError(describeFailure(result.error));
         return;
       }
+      invalidateSessionData();
       router.replace("/perfil");
       router.refresh();
       navigating = true;
@@ -251,7 +255,7 @@ export function ProfileForm({
           apaisada, eso es una cara cortada. */}
       <AvatarInlineUpload
         conRecorte
-        initial={profile?.nombre?.charAt(0)?.toUpperCase() ?? "?"}
+        initial={publicProfileName(profile).charAt(0).toUpperCase()}
         avatarUrl={avatarUrl}
         onUploadSuccess={(url) => setAvatarUrl(url)}
         onError={(msg) => setError(msg)}

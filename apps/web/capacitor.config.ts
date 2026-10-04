@@ -11,6 +11,13 @@ const config: CapacitorConfig = {
     // con la aplicacion completa. Se queda en allowNavigation porque la Data
     // Safety URL de Google Play todavia lo referencia, no porque redirija.
     url: 'https://vicinomarket.com',
+    // Pagina LOCAL (dist/offline.html, copiada a los assets por `cap sync`) para
+    // cuando una navegacion completa falla por red; sobre todo, abrir la app sin
+    // conexion. Sin esto se veia la pagina de error generica del WebView, que es
+    // justo lo que prueba un revisor de tienda. Capacitor la sirve desde
+    // https://localhost/offline.html; en Android no tiene acceso a plugins.
+    // Plan Android 3-oct-2026, Fase 2.
+    errorPath: 'offline.html',
     cleartext: false,
     iosScheme: 'https',
     allowNavigation: [

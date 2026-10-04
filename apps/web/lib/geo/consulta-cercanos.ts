@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 /**
  * La consulta de productos cercanos, compartida por las dos superficies que la
  * necesitan: la server action del cliente y el render del servidor del home.
@@ -145,7 +146,7 @@ export async function consultarProductosCercanos(
       categoria: p.categoria,
       tipo_entrega: p.tipo_entrega,
       distance_meters: fuzzDistance(p.distance_meters),
-      vendedor_nombre: leerTexto(vendedor, "nombre") ?? "",
+      vendedor_nombre: publicProfileName(vendedor, "Vendedor"),
       vendedor_trust: leerTexto(vendedor, "trust_level") ?? "new",
       vendedor_rating: leerNumero(vendedor, "average_rating") ?? 0,
       vendedor_reviews: leerNumero(vendedor, "reviews_count") ?? 0,

@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +35,7 @@ export default async function ListingsModerationPage() {
         .from("products_services")
         .select(`
           id, titulo, precio, modo_precio, slug, categoria, is_hidden, estatus, imagen_principal,
-          creador:profiles!creador_id(nombre, user_id),
+          creador:profiles!creador_id(nombre, user_id, es_vendedor, seller_type, nombre_negocio),
           product_categories(is_primary, categories(slug))
         `)
         .in("id", targetIds)
@@ -67,7 +68,7 @@ export default async function ListingsModerationPage() {
               <div key={rep.id} className="rounded-lg border p-4 space-y-2 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <span className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
-                    Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
+                    Reportado por {publicProfileName(reporter, "?")} · {formatDate(rep.created_at)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/10 text-warning shrink-0 text-center">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
@@ -94,7 +95,7 @@ export default async function ListingsModerationPage() {
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>{formatPrice(listing.precio) ?? priceFallbackLabel(listing.modo_precio)}</span>
                       <span className="hidden sm:inline">·</span>
-                      <span className="truncate flex-1 min-w-0">Vendedor: {creador?.nombre ?? "?"}</span>
+                      <span className="truncate flex-1 min-w-0">Vendedor: {publicProfileName(creador, "?")}</span>
                     </div>
                     <div className="flex gap-2">
                       <span

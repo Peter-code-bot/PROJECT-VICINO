@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SellerSidebar } from "@/components/layout/seller-sidebar";
@@ -21,7 +22,7 @@ export default async function SellerLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("nombre_negocio, nombre, trust_level, es_vendedor").throwOnError()
+    .select("nombre_negocio, nombre, trust_level, es_vendedor, seller_type").throwOnError()
     .eq("id", user.id)
     .single();
 
@@ -34,7 +35,7 @@ export default async function SellerLayout({
   }
 
   const storeName =
-    profile?.nombre_negocio ?? profile?.nombre ?? "Mi Tienda Local";
+    publicProfileName(profile, "Mi Tienda Local");
 
   return (
     <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-8 md:py-10 animate-fade-in">

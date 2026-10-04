@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import "server-only";
 import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
 import { filasCampus, UNIVERSITY_POOL_SIZE, UNIVERSITY_ROW_SIZE } from "@/lib/university-rows";
@@ -137,7 +138,7 @@ export async function getHomeSession(
         created_at,
         precio_negociable,
         modo_precio,
-        profiles!inner(nombre, trust_level, average_rating, reviews_count),
+        profiles!inner(nombre, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio),
         product_categories(is_primary, categories(slug, nombre))
           `
         ).throwOnError()
@@ -242,7 +243,7 @@ export async function getHomeSession(
           created_at,
           precio_negociable,
           modo_precio,
-          profiles!inner(nombre, trust_level, average_rating, reviews_count),
+          profiles!inner(nombre, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio),
           product_categories(is_primary, categories(slug, nombre))
         `).throwOnError()
         .eq("estatus", "disponible")
@@ -333,14 +334,14 @@ export async function getHomeSession(
       }
       const { data: follows } = await supabase
         .from("store_follows")
-        .select("store_id, profiles!store_id(id, nombre, foto)").throwOnError()
+        .select("store_id, profiles!store_id(id, nombre, foto, es_vendedor, seller_type, nombre_negocio)").throwOnError()
         .eq("follower_id", user.id);
 
       if (!follows || follows.length === 0) {
         // Fetch some suggestions
         const { data: suggestions } = await supabase
           .from("profiles")
-          .select("id, nombre, foto, trust_level").throwOnError()
+          .select("id, nombre, foto, trust_level, es_vendedor, seller_type, nombre_negocio").throwOnError()
           .eq("es_vendedor", true)
           .limit(3);
         return {
@@ -365,7 +366,7 @@ export async function getHomeSession(
           created_at,
           precio_negociable,
           modo_precio,
-          profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count),
+          profiles!inner(id, nombre, foto, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio),
           product_categories(is_primary, categories(slug, nombre))
         `).throwOnError()
         .eq("estatus", "disponible")
@@ -395,8 +396,8 @@ export async function getHomeSession(
         const hasPosts = followingPosts.some((p) => p.creador_id === store.id);
         return [{
           id: store.id,
-          name: store.nombre,
-          letter: store.nombre.charAt(0).toUpperCase(),
+          name: publicProfileName(store),
+          letter: publicProfileName(store).charAt(0).toUpperCase(),
           imgUrl: store.foto,
           hasRecentPosts: hasPosts,
         }];
@@ -417,7 +418,7 @@ export async function getHomeSession(
   const comunidades = await (async () => {
     if (feed !== "comunidades" || !user) return null;
     const [perfil, muroR, miasR, solicitudesR, cuotaR, cercanasR] = await Promise.allSettled([
-      supabase.from("profiles").select("nombre, foto").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("nombre, foto, es_vendedor, seller_type, nombre_negocio").eq("id", user.id).maybeSingle(),
       supabase.rpc("feed_comunidades_explorar", { result_limit: 30 }),
       supabase.rpc("mis_comunidades"),
       supabase.rpc("mis_solicitudes_union"),
@@ -445,7 +446,7 @@ export async function getHomeSession(
 
     const posts = muroData?.data ?? [];
     return {
-      user: { id: user.id, nombre: perfilData?.nombre ?? "Tú", foto: perfilData?.foto ?? null },
+      user: { id: user.id, nombre: publicProfileName(perfilData, "Tú"), foto: perfilData?.foto ?? null },
       muro: { posts, cursor: cursorDeUltimo(posts, 30) },
       mias: miasData?.data ?? [],
       misSolicitudes: solicitudesData?.data ?? [],

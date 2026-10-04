@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { notFound } from "next/navigation";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import Image from "next/image";
@@ -87,8 +88,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
       created_at,
       profiles!purchase_requests_buyer_id_fkey (
         nombre,
-        avatar_url:foto
-      )
+        avatar_url:foto, es_vendedor, seller_type, nombre_negocio)
     `
     )
     .eq("id", id)
@@ -126,8 +126,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
         nombre,
         avatar_url:foto,
         average_rating,
-        reviews_count
-      )
+        reviews_count, es_vendedor, seller_type, nombre_negocio)
     `
     )
     .eq("request_id", id)
@@ -174,20 +173,20 @@ export default async function SolicitudDetailPage({ params }: Props) {
             {buyerProfile.avatar_url ? (
               <Image
                 src={buyerProfile.avatar_url}
-                alt={buyerProfile.nombre}
+                alt={publicProfileName(buyerProfile)}
                 width={40}
                 height={40}
                 className="h-full w-full object-cover"
               />
             ) : (
               <span className="font-semibold text-foreground">
-                {buyerProfile.nombre.charAt(0).toUpperCase()}
+                {publicProfileName(buyerProfile).charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div>
             <p className="font-medium text-foreground text-sm">
-              {buyerProfile.nombre}
+              {publicProfileName(buyerProfile)}
             </p>
             {/* created_at admite NULL en la base. Sin fecha no se pinta la
                 linea: formatRelativeTime sobre un nulo daria "Invalid Date"

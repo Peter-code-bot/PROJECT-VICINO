@@ -1,3 +1,37 @@
+# Estado — NT publicado; previews invitados locales en validación
+
+## 2026-10-04 — MP03-D: continuación 10:41:31 CDMX
+
+- PR #51 / nombre de tienda integrado y publicado el 03-oct-2026 22:36:10 CDMX, master a2a2d708c8aaada26a56f5533d71c737661b9324. Vercel Production CP7axQxXAXvtu1VnmpgzNKRA76AU SUCCESS y UI real Creed en Home/detalle/perfil. NT01–NT04 con cuentas dedicadas y teléfonos todavía PENDIENTE.
+- Trabajo de Antigravity 9cd3048/e5ac753 revisado y preservado. Auditoría alta corregida sin cambiar umbral; publicado con NT. CI avisó que los tipos completos del esquema están desfasados: MP07 permanece abierto.
+- MP03-D implementado en commit local 3a753d1: Home Solicitudes/Comunidades públicas con DTO limitado; detalles, filtros, Mis comunidades y acciones van a login con contexto seguro. Retorno de logo Home preserva feed y scroll. Sin efectos automáticos ni datos de perfil/contacto/geografía/media en RPC; redacción acotada de formatos comunes de contacto/ubicación en texto libre.
+- Migración 20261004041500 aplicada junto con ledger en transacción única, solo service_role; MD5LF6dc531f917577da4701e7fec7f9767b3. Ensayo ROLLBACK y permisos/PostGIS reales comprobados. Corte de datos: 4 solicitudes, 0 comunidades/publicaciones elegibles; no fabricar ejemplos ni editar cuentas reales.
+- Conciliación con master vigente preserva las dos decisiones en Header: AuthLink para invitados y publicProfileName para tiendas. Historial documental de ambas ramas conservado debajo. Build, Chromium/WebKit y recorrido Next real final EN VALIDACIÓN; no declarar publicación de S02 por el despliegue NT.
+- MP00, SMTP/entrega MP02, Auth completo y dispositivos MP03 pendientes; push S02 condicionado no realizado. Mantener permiso temporal anterior del mapa hasta aplicación compatible. Inicio sesión real 04-oct-2026 10:41:31 America/Mexico_City; cierre/evidencia en Notion, sin contar la interrupción anterior como trabajo activo.
+- [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+
+# Historial de cortes NT y S02 — los estados inferiores no sustituyen el corte vigente
+# Estado — Nombre de tienda: migración aplicada; integración de PR #51 en revisión
+
+## 2026-10-03 — continuación NT y revisión de Antigravity
+
+- **Codex, familia GPT-6.** Reanudación real: 22:00:27 CDMX tras interrupción del corte de 17:48; no se cuenta el intervalo como trabajo continuo. Implementación original `515632b` conservada. Los cortes siguientes son historia.
+- Supabase VICINO/main `oxxdkwywprkfghhbnoto` confirmado por SQL Editor autenticado: Alex Cabrera, tienda activa/business, nombre Creed. CLI administrativa sigue HTTP401. Producción tiene 15 funciones vigentes; `notify_new_message` se retiró intencionalmente en mayo. El emisor desplegado despacha mensajes a Edge con título genérico; se conserva intacto.
+- Migración `20261003213000` aplicada y registrada en la misma transacción tras dos ensayos con ROLLBACK. Guardas de hashes/firmas, atributos de funciones, ACL/RLS/policies/triggers y emisor actual pasaron. Sin DML de cuentas. Evidencia contrastada 22:22:22 CDMX: source registrado coincide exactamente al normalizar CRLF del portapapeles a LF; SHA256 `8cd11e0ebc8ee2a1a61f9f0ab984b8f0b473a3d4459cbaa86c1648f565f6435b`. MD5 raw ledger `e7cde7901b745abf81eccb6ed63b9ff6`, normalizado LF `af5c536b69e2960c523415e1e4f5979c`.
+- Corregida búsqueda sin ubicación que omitía campos de tienda: tres regresiones ejecutan SearchPage y ProductCard reales con proyección de datos. SQL maneja trim exacto JS, formato multiline, aliases y retiro CREATE/DROP. Suite identidad 11/11 más ranking final 1/1, búsqueda 3/3, catálogo 6/6, historial 12/12; PostGIS/dispositivos no acreditados por PGlite.
+- Revisión de Antigravity: commits `9cd3048`/`e5ac753` importados exclusivamente como `7b85a5a`/`afc904e`, sin traer S02 al PR51. Prototipo anterior conservado en stash dirigido. Instalación congelada, audit high (0 altas/críticas, una moderada), glob 62/62, tipos web/shared y build 57/57 aprobados. Lint secuencial exit0/149 warnings; intento concurrente con build falló ENOENT de `public/sw.js`, evidencia conservada.
+- Nueva base remota `a7262ab` incorpora cuatro commits de Android/Sentry/mapa; conciliación y controles del candidato final pendientes. PR #51 aún en borrador; push, CI, integración y producción de aplicación no acreditados en este corte. Aceptación NT01–NT04 y Android/iPhone siguen pendientes; no se fabrica evidencia modificando Alex/Creed.
+- MP03-D solicitado por Javier: previews nacionales de solicitudes/comunidades para invitados, clic → login con next seguro. Implementación y pruebas en checkout REGISTRO separado; no cambia el alcance de este PR. [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+
+## 2026-10-03 — PLAN-20261003-NOMBRE-TIENDA: implementación local
+
+- **Codex, familia GPT-6.** Inicio autorizado: 2026-10-03 15:13:47 CDMX. Rama `fix/nombre-tienda-global-20261003`, base remota verificada `b70fe9196fbaf8c2e49031fd0f25d300748c62fd`. Checkout original preservado.
+- Tienda activa (`es_vendedor=true`, `seller_type=business`) muestra el nombre comercial en publicaciones, perfil, búsqueda, chats, comunidades, reseñas, solicitudes, citas, historial, ventas y paneles. Nombre vacío legado usa “Tienda”; modo individual/desactivado conserva el nombre personal. Validación al guardar/activar y revalidación global tras guardar perfil.
+- 25/25 pruebas locales PASS, TypeScript web/shared exit0, lint completo exit0/61 warnings y build configurado exit0 (57/57 páginas estáticas). La prueba SQL verifica las 16 definiciones del repositorio, preserva filtros/firmas/ACL/RLS y ejecuta un aviso de reseña con nombre renombrado; no sustituye producción/PostGIS/dispositivos.
+- Entrega técnica local: 2026-10-03 16:48:38 CDMX, commit de aplicación `515632ba323e2a4f615bdd99d8ce00b5bfedd1a9`, [PR #51 en borrador](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/51). CI de ese commit aprobó tipos/lint/secretos y Vercel Preview. Auditoría falló por `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm), presente en el lock de la base y sin cambios de dependencias en este PR; el aviso no ofrece versión corregida. No se rebaja el umbral de auditoría.
+- Migración `20261003213000_identidad_publica_modo_tienda.sql` preparada, **sin aplicar**. Lectura administrativa de Supabase fuera del sandbox: HTTP401; falta restablecer `VICINO_SUPABASE_PAT` y contrastar las funciones instaladas antes de aplicar. Sin integración ni despliegue de producción. Resolver auditoría/revisión y NT01–NT04 antes de cerrar; fin de corrección pendiente.
+- [Plan y evidencia en Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests pendientes](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26). Notion conserva el detalle y las fechas de entrega/cierre; los cortes siguientes son historial.
+
 # Estado — S02 validado localmente; entrega y pruebas físicas pendientes
 
 ## 2026-10-03 — «Únete a VICINO» y revisión previa a push

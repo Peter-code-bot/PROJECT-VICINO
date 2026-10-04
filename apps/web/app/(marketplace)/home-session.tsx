@@ -1,4 +1,6 @@
 "use client";
+
+import { publicProfileName } from "@vicino/shared";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomeCategoryOrder } from "@/components/home/home-category-order";
@@ -418,14 +420,14 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                       <div key={store.id} className="flex items-center gap-3 p-4">
                         <div className="w-12 h-12 rounded-xl bg-[color:var(--bg-elev-2)] flex items-center justify-center overflow-hidden shrink-0">
                           {store.foto ? (
-                            <img src={store.foto} alt={store.nombre} className="w-full h-full object-cover" />
+                            <img src={store.foto} alt={publicProfileName(store)} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="font-bold text-[color:var(--fg-muted)]">{store.nombre.charAt(0)}</span>
+                            <span className="font-bold text-[color:var(--fg-muted)]">{publicProfileName(store).charAt(0)}</span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <Link href={`/vendedor/${store.id}`} className="font-medium text-[color:var(--fg)] truncate block">
-                            {store.nombre}
+                            {publicProfileName(store)}
                           </Link>
                           <div className="text-[13px] text-[color:var(--fg-muted)] mt-0.5">A 2 km de ti</div>
                         </div>
@@ -468,9 +470,9 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
                           : null
                       }
                       storeId={post.creador_id}
-                      store={post.profiles.nombre}
+                      store={publicProfileName(post.profiles)}
                       storeAvatar={post.profiles.foto}
-                      letter={post.profiles.nombre.charAt(0).toUpperCase()}
+                      letter={publicProfileName(post.profiles).charAt(0).toUpperCase()}
                       tier={(post.profiles.trust_level as TrustLevel) ?? "nuevo"}
                       cat={
                         // MP#08 #4 Fase 1A: nombre de la primary del pivote.

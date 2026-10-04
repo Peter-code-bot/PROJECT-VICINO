@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { isTabRoute } from "@/lib/navigation/tab-routes";
 import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
 import { marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
@@ -189,8 +191,8 @@ export function Sidebar({ user, profile, isAdmin }: SidebarProps) {
                   : "text-[color:var(--fg)] hover:bg-[color:var(--bg-elev-2)]"
               )}
             >
-              <UserAvatar src={profile?.foto} name={profile?.nombre ?? "?"} size="xs" />
-              <span className="truncate">{profile?.nombre || "Mi Perfil"}</span>
+              <UserAvatar src={profile?.foto} name={publicProfileName(profile, "?")} size="xs" />
+              <span className="truncate">{publicProfileName(profile, "Mi Perfil")}</span>
             </Link>
 
             {profile?.es_vendedor && (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/components/auth/auth-link";
+import { publicProfileName } from "@vicino/shared";
 
 import { Bell, Trophy, Sparkles, Menu } from "lucide-react";
 import { AccountMenuDrawer } from "@/components/profile/account-menu-drawer";
@@ -92,7 +93,7 @@ export function Header({ isAdmin, user, profile }: HeaderProps) {
           {/* Menu Drawer */}
           {user && (
             <AccountMenuDrawer
-              userName={profile?.nombre ?? undefined}
+              userName={publicProfileName(profile)}
               userAvatar={profile?.foto}
               username={profile?.username}
               userIsVendedor={profile?.es_vendedor ?? false}

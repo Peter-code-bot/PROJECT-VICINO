@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +38,7 @@ export default async function MessagesModerationPage() {
         .from("messages")
         .select(`
           id, texto, chat_id, autor_id, is_hidden, created_at, attachments,
-          autor:profiles!autor_id(nombre, user_id)
+          autor:profiles!autor_id(nombre, user_id, es_vendedor, seller_type, nombre_negocio)
         `)
         .in("id", targetIds)
     : { data: [] };
@@ -90,7 +91,7 @@ export default async function MessagesModerationPage() {
               <div key={rep.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
+                    Reportado por {publicProfileName(reporter, "?")} · {formatDate(rep.created_at)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
@@ -107,7 +108,7 @@ export default async function MessagesModerationPage() {
                         asi que la fecha puede faltar: guion en vez de "Invalid
                         Date", igual que el "?" del autor desconocido. */}
                     <div className="text-xs text-muted-foreground">
-                      De: {autor?.nombre ?? "?"} ·{" "}
+                      De: {publicProfileName(autor, "?")} ·{" "}
                       {message.created_at ? formatDate(message.created_at) : "—"}
                     </div>
                     {message.texto.trim() !== "" && (

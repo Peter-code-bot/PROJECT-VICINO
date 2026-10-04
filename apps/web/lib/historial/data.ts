@@ -8,8 +8,8 @@ async function loadPage(client: Client, userId: string, role: "seller_id" | "buy
     id, precio_acordado, cantidad, status, created_at, completed_at,
     buyer_id, seller_id,
     products_services(id, titulo, imagen_principal),
-    buyer:profiles!buyer_id(nombre, trust_level),
-    seller:profiles!seller_id(nombre, trust_level)
+    buyer:profiles!buyer_id(nombre, trust_level, es_vendedor, seller_type, nombre_negocio),
+    seller:profiles!seller_id(nombre, trust_level, es_vendedor, seller_type, nombre_negocio)
   `, { count: "exact" }).eq(role, userId)
     .order("created_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })

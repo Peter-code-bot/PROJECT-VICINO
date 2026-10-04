@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -46,7 +47,7 @@ export default async function CommunityPostsModerationPage() {
         .from("community_posts")
         .select(`
           id, cuerpo, community_id, author_id, parent_post_id, is_hidden, created_at,
-          autor:profiles!author_id(nombre, user_id),
+          autor:profiles!author_id(nombre, user_id, es_vendedor, seller_type, nombre_negocio),
           comunidad:communities!community_id(nombre)
         `)
         .in("id", targetIds)
@@ -91,7 +92,7 @@ export default async function CommunityPostsModerationPage() {
               <div key={rep.id} className="rounded-lg border p-4 space-y-2 w-full">
                 <div className="flex items-start justify-between gap-4">
                   <span className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
-                    Reportado por {reporter?.nombre ?? "?"} · {formatDate(rep.created_at)}
+                    Reportado por {publicProfileName(reporter, "?")} · {formatDate(rep.created_at)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/10 text-warning shrink-0 text-center">
                     {REPORT_REASON_LABELS[rep.reason as ReportReason] ?? rep.reason}
@@ -118,7 +119,7 @@ export default async function CommunityPostsModerationPage() {
                         </Link>
                       </span>
                       <span className="hidden sm:inline">·</span>
-                      <span className="truncate min-w-0">Autor: {autor?.nombre ?? "?"}</span>
+                      <span className="truncate min-w-0">Autor: {publicProfileName(autor, "?")}</span>
                       <span className="hidden sm:inline">·</span>
                       <span>{formatDate(post.created_at)}</span>
                     </div>

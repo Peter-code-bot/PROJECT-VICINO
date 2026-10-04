@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -87,7 +89,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                    <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{reviewer?.nombre ?? "Usuario"}</span>
+                    <span className="font-medium text-sm truncate min-w-0 flex-1 basis-[8rem]">{publicProfileName(reviewer, "Usuario")}</span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}) : null}</span>
                   </div>
@@ -123,7 +125,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
               return (
                 <div key={r.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 space-y-2 overflow-hidden min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                    <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{reviewed?.nombre ?? "Usuario"}</strong></span>
+                    <span className="text-sm truncate min-w-0 flex-1 basis-[8rem]">Para: <strong>{publicProfileName(reviewed, "Usuario")}</strong></span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="text-xs text-[color:var(--fg-muted)] ml-auto shrink-0 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}) : null}</span>
                   </div>
@@ -150,7 +152,7 @@ export function ReviewTabs({ received, given, pending }: ReviewTabsProps) {
                 <div key={s.id} className="rounded-[var(--r-xl)] bg-[color:var(--sidebar-bg)] p-4 flex items-center justify-between gap-3 overflow-hidden min-w-0">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{product?.titulo ?? "Producto"}</p>
-                    <p className="text-xs text-[color:var(--fg-muted)] truncate">Comprador: {buyer?.nombre ?? "Usuario"}</p>
+                    <p className="text-xs text-[color:var(--fg-muted)] truncate">Comprador: {publicProfileName(buyer, "Usuario")}</p>
                   </div>
                   <Link
                     href={`/historial/review?sale=${s.id}&type=seller_to_buyer&product=${product?.id ?? ""}`}

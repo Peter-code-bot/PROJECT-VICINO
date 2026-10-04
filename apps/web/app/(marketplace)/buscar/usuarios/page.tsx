@@ -1,3 +1,4 @@
+import { publicProfileName, publicProfileSearchFilter } from "@vicino/shared";
 import * as Sentry from "@sentry/nextjs";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -27,12 +28,12 @@ export default async function UserSearchPage({ searchParams }: Props) {
 
   let query = supabase
     .from("profiles")
-    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count", { count: "exact" });
+    .select("id, nombre, avatar_url:foto, trust_level, average_rating, reviews_count, es_vendedor, seller_type, nombre_negocio", { count: "exact" });
 
   if (params.q) {
     // Reemplaza vocales con '_' para hacer coincidencia ignore-case e ignore-accents en Postgres
     const unaccentedLike = params.q.replace(/[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]/g, "_");
-    query = query.ilike("nombre", `%${unaccentedLike}%`);
+    query = query.or(publicProfileSearchFilter(`%${unaccentedLike}%`));
   }
 
   const { data: users, count: totalCount, error: usersError } = await query
@@ -102,11 +103,11 @@ export default async function UserSearchPage({ searchParams }: Props) {
                   imagen falla. 3 de los 11 perfiles tienen avatar de Google, y
                   esas URL caducan — hoy hay una muerta en produccion. Con <img>
                   el usuario veia el icono de imagen rota. */}
-              <UserAvatar src={user.avatar_url} name={user.nombre ?? "Usuario"} size="lg" />
+              <UserAvatar src={user.avatar_url} name={publicProfileName(user, "Usuario")} size="lg" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-base text-[color:var(--fg)] group-hover:text-[color:var(--brand-hi)] transition-colors truncate">
-                    {user.nombre}
+                    {publicProfileName(user)}
                   </h2>
                   {user.trust_level === "verificado" && (
                     <ShieldCheck className="w-4 h-4 text-[color:var(--brand)] flex-shrink-0" />

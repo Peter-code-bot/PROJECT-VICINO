@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { createClient } from "@/lib/supabase/client";
@@ -624,12 +626,12 @@ export function ChatWindow({
         <Link
           href={`/vendedor/${otherUser?.id ?? ""}`}
           className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-[color:var(--bg-elev-2)]/60"
-          aria-label={otherUser?.nombre ? `Ver perfil de ${cleanDisplayName(otherUser.nombre)}` : "Perfil de usuario"}
+          aria-label={publicProfileName(otherUser) ? `Ver perfil de ${cleanDisplayName(publicProfileName(otherUser))}` : "Perfil de usuario"}
         >
-          <UserAvatar src={otherUser?.foto} name={cleanDisplayName(otherUser?.nombre)} size="sm" />
+          <UserAvatar src={otherUser?.foto} name={cleanDisplayName(publicProfileName(otherUser))} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[color:var(--fg)]">
-              {cleanDisplayName(otherUser?.nombre)}
+              {cleanDisplayName(publicProfileName(otherUser))}
             </p>
             {product && (
               <p className="truncate text-xs text-[color:var(--fg-muted)]">
@@ -785,7 +787,7 @@ export function ChatWindow({
                     confirmation={sc} 
                     currentUserId={currentUserId}
                     counterpart={{ 
-                      name: otherUser?.nombre ?? "Usuario", 
+                      name: publicProfileName(otherUser, "Usuario"),
                       avatarUrl: otherUser?.foto, 
                       role: currentUserId === sc.buyer_id ? "vendedor" : "comprador"
                     }}

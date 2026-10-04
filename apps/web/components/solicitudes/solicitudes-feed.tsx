@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
@@ -57,7 +59,7 @@ function aSolicitud(fila: FilaCruda): RequestCardData | null {
   return {
     ...fila,
     buyer_profile: {
-      nombre: p.nombre,
+      nombre: publicProfileName(p),
       avatar_url: typeof p.avatar_url === "string" ? p.avatar_url : null,
     },
     categories,

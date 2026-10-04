@@ -7,9 +7,13 @@ export const updateProfileSchema = z.object({
   ubicacion: z.string().max(200).optional().nullable(),
   es_vendedor: z.boolean().default(false),
   seller_type: z.enum(["casual", "business"]).default("casual"),
-  nombre_negocio: z.string().max(100).optional().nullable(),
+  nombre_negocio: z.string().trim().max(100).optional().nullable(),
   descripcion_negocio: z.string().max(1000).optional().nullable(),
   metodos_pago_aceptados: z.string().max(500).optional().nullable(),
+}).superRefine((profile, ctx) => {
+  if (profile.es_vendedor && profile.seller_type === "business" && !profile.nombre_negocio) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nombre_negocio"], message: "Escribe el nombre de la tienda" });
+  }
 });
 
 /**
@@ -33,7 +37,7 @@ export const usernameSchema = z
   );
 
 export const sellerOnboardingSchema = z.object({
-  nombre_negocio: z.string().min(2, "Mínimo 2 caracteres").max(100),
+  nombre_negocio: z.string().trim().min(2, "Mínimo 2 caracteres").max(100),
   descripcion_negocio: z.string().min(10).max(1000),
   categoria_negocio: z.string().min(1, "Selecciona una categoría"),
   telefono: z.string().min(10, "Teléfono inválido").max(15),

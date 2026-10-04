@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -72,7 +73,7 @@ export default async function ReviewPage({ searchParams }: Props) {
 
   const { data: reviewedProfile } = await supabase
     .from("profiles")
-    .select("nombre")
+    .select("nombre, es_vendedor, seller_type, nombre_negocio")
     .eq("id", reviewedId)
     .single();
 
@@ -91,7 +92,7 @@ export default async function ReviewPage({ searchParams }: Props) {
       </Link>
       <h1 className="text-xl font-bold mb-2">Dejar reseña</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Evalúa a <strong>{reviewedProfile?.nombre ?? "Usuario"}</strong> por{" "}
+        Evalúa a <strong>{publicProfileName(reviewedProfile, "Usuario")}</strong> por{" "}
         <strong>{product?.titulo ?? "Producto"}</strong>
       </p>
       <ReviewForm
