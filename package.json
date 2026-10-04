@@ -35,7 +35,26 @@
       "nanoid": "^3.3.18",
       "js-yaml": "^4.3.1",
       "sharp": "^0.35.0",
-      "uuid": "^11.1.1"
+      "uuid": "^11.1.1",
+      "@humanfs/node": "^0.16.8",
+      "@ducanh2912/next-pwa@10.2.9>fast-glob": "-",
+      "@next/eslint-plugin-next@16.3.6>fast-glob": "-"
+    },
+    "packageExtensions": {
+      "@ducanh2912/next-pwa@10.2.9": {
+        "dependencies": {
+          "tinyglobby": "0.2.16"
+        }
+      },
+      "@next/eslint-plugin-next@16.3.6": {
+        "dependencies": {
+          "tinyglobby": "0.2.16"
+        }
+      }
+    },
+    "patchedDependencies": {
+      "@ducanh2912/next-pwa@10.2.9": "patches/@ducanh2912__next-pwa@10.2.9.patch",
+      "@next/eslint-plugin-next@16.3.6": "patches/@next__eslint-plugin-next@16.3.6.patch"
     }
   }
 }

@@ -1,0 +1,35 @@
+diff --git a/dist/utils/get-root-dirs.js b/dist/utils/get-root-dirs.js
+index 47108c943514a1d7e686c5eb18aad00a59963c83..61493b9a6004c177cfb15ef69af2e69ba35cb773 100644
+--- a/dist/utils/get-root-dirs.js
++++ b/dist/utils/get-root-dirs.js	
+@@ -8,12 +8,27 @@ Object.defineProperty(exports, "getRootDirs", {
+         return getRootDirs;
+     }
+ });
+-var _fastglob = require("fast-glob");
++var _tinyglobby = require("tinyglobby");
++var _path = require("node:path");
+ /**
+  * Process a Next.js root directory glob.
+  */ var processRootDir = function(rootDir) {
+-    return (0, _fastglob.globSync)(rootDir.replace(/\\/g, '/'), {
+-        onlyDirectories: true
++    var normalized = rootDir.replace(/\\/g, '/');
++    return (0, _tinyglobby.globSync)(normalized, {
++        cwd: process.cwd(),
++        onlyDirectories: true,
++        expandDirectories: false,
++        absolute: (0, _path.isAbsolute)(rootDir)
++    }).map(function(entry) {
++        return /\/$/.test(entry) && !/^(?:\/|[A-Za-z]:\/)$/u.test(entry)
++            ? entry.slice(0, -1)
++            : entry;
++    }).filter(function(entry) {
++        if (normalized.endsWith('/**') || normalized.endsWith('/*')) {
++            var prefix = normalized.replace(/\/\*\*?$/, '');
++            if (entry === prefix) return false;
++        }
++        return true;
+     });
+ };
+ var getRootDirs = function(context) {
