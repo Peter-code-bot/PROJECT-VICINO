@@ -75,7 +75,7 @@ export function Footer({ isVendedor = false }: FooterProps) {
             <ul className="flex flex-col gap-2">
               <li>
                 <Link
-                  href="/chat"
+                  href="/centro-de-ayuda"
                   className="text-xs hover:text-primary transition-colors"
                 >
                   Centro de Ayuda
