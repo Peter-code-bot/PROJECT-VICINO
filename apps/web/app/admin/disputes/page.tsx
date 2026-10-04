@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@vicino/shared";
 import { DisputeActions } from "./dispute-actions";
@@ -12,8 +13,8 @@ export default async function DisputesPage() {
     .select(
       `
       id, motivo, descripcion, status, created_at,
-      reporter:profiles!reporter_id(nombre),
-      reported:profiles!reported_id(nombre),
+      reporter:profiles!reporter_id(nombre, es_vendedor, seller_type, nombre_negocio),
+      reported:profiles!reported_id(nombre, es_vendedor, seller_type, nombre_negocio),
       sale_confirmations(precio_acordado, products_services(titulo))
     `
     )
@@ -45,8 +46,8 @@ export default async function DisputesPage() {
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p>Reporta: <strong>{reporter?.nombre ?? "Usuario"}</strong></p>
-                  <p>Reportado: <strong>{reported?.nombre ?? "Usuario"}</strong></p>
+                  <p>Reporta: <strong>{publicProfileName(reporter, "Usuario")}</strong></p>
+                  <p>Reportado: <strong>{publicProfileName(reported, "Usuario")}</strong></p>
                   {product && <p>Producto: {product.titulo}</p>}
                 </div>
                 {d.descripcion && (

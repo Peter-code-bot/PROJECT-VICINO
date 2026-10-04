@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useRef, useState } from "react";
 import { Send, Loader2, ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -234,7 +236,7 @@ export function PostComposer({
     <div className={cn("space-y-2", className)}>
       <div className="rounded-2xl bg-[color:var(--card)] p-3 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow focus-within:shadow-[inset_0_0_0_1px_var(--brand-hi)]">
         <div className={cn("flex gap-3", compacto ? "items-end" : "items-start")}>
-          {autor && !compacto && <UserAvatar src={autor.foto} name={autor.nombre} size="sm" />}
+          {autor && !compacto && <UserAvatar src={autor.foto} name={publicProfileName(autor)} size="sm" />}
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value.slice(0, COMMUNITY_POST_MAX))}

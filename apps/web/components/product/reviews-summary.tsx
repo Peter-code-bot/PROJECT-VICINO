@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import Image from "next/image";
 import { Star } from "lucide-react";
 import { RatingStars } from "@/components/shared/rating-stars";
@@ -122,19 +124,19 @@ export function ReviewsSummary({
               {bestReviewer?.foto ? (
                 <Image
                   src={bestReviewer.foto}
-                  alt={bestReviewer.nombre ?? "Reseñador"}
+                  alt={publicProfileName(bestReviewer, "Reseñador")}
                   fill
                   sizes="32px"
                   className="object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-fg-muted">
-                  {(bestReviewer?.nombre ?? "?").charAt(0).toUpperCase()}
+                  {(publicProfileName(bestReviewer)).charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
             <span className="truncate text-xs font-semibold text-fg">
-              {bestReviewer?.nombre ?? "Comprador verificado"}
+              {publicProfileName(bestReviewer, "Comprador verificado")}
             </span>
             <RatingStars
               rating={best.rating}

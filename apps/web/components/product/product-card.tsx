@@ -9,6 +9,7 @@ import { PriceDisplay } from "@/components/shared/price-display";
 import { NegociablePill } from "@/components/product/negociable-pill";
 import { CategoryBadge } from "@/components/product/category-badge";
 import type { ProductCardCategory, TrustLevel } from "@vicino/shared";
+import { publicProfileName } from "@vicino/shared";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { priceFallbackLabel } from "@/lib/price-mode";
@@ -25,6 +26,9 @@ interface ProductCardProps {
   vendedor: {
     nombre: string;
     trust_level: TrustLevel;
+    es_vendedor?: boolean | null;
+    seller_type?: string | null;
+    nombre_negocio?: string | null;
   };
   rating: number;
   reviewsCount: number;
@@ -270,7 +274,7 @@ export function ProductCard({
         {/* Seller row */}
         <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium product-card-semi">
           <span className="truncate">
-            {vendedor.nombre}
+            {publicProfileName(vendedor, "Vendedor")}
           </span>
           <SellerBadge level={vendedor.trust_level} showLabel={false} size="sm" />
         </div>

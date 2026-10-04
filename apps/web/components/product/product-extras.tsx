@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { Suspense, use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CouponBlock } from "./coupon-block";
@@ -41,7 +43,7 @@ function ReviewsContent({ extras, reviews, seller, currentUserId, productId, sid
   return <>
     <ReviewsSummary reviews={result.reviews} averageRating={rating} reviewsCount={count} onOpenReviews={() => setOpen(true)} />
     <ProductReviewsTrigger reviews={result.reviews as unknown as DrawerReview[]} averageRating={rating} reviewsCount={count}
-      sellerName={seller.nombre ?? "Vendedor"} sellerAvatar={seller.foto ?? null} currentUserId={currentUserId}
+      sellerName={publicProfileName(seller, "Vendedor")} sellerAvatar={seller.foto ?? null} currentUserId={currentUserId}
       currentProductId={productId} externalOpen={open} onExternalClose={() => setOpen(false)} side={side} />
   </>;
 }

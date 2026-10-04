@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import type { createClient } from "@/lib/supabase/server";
 
 type Cliente = Awaited<ReturnType<typeof createClient>>;
@@ -24,6 +25,6 @@ export async function reporterosPorId(
 ): Promise<Map<string, Reportero>> {
   const unicos = [...new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0))];
   if (unicos.length === 0) return new Map();
-  const { data } = await supabase.from("profiles").select("id, nombre, user_id").in("id", unicos);
-  return new Map((data ?? []).map((p) => [p.id, { id: p.id, nombre: p.nombre, user_id: p.user_id }]));
+  const { data } = await supabase.from("profiles").select("id, nombre, user_id, es_vendedor, seller_type, nombre_negocio").in("id", unicos);
+  return new Map((data ?? []).map((p) => [p.id, { id: p.id, nombre: publicProfileName(p), user_id: p.user_id }]));
 }

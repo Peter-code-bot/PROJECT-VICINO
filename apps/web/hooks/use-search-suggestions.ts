@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName, publicProfileSearchFilter } from "@vicino/shared";
+
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -32,11 +34,11 @@ export function useSearchSuggestions(query: string) {
         .ilike("titulo", unaccentedLike)
         .limit(4);
 
-      // Search profiles for user names
+      // Search the visible identity: stores by their store name, people by their name.
       const usersPromise = supabase
         .from("profiles")
-        .select("nombre")
-        .ilike("nombre", unaccentedLike)
+        .select("nombre, es_vendedor, seller_type, nombre_negocio")
+        .or(publicProfileSearchFilter(unaccentedLike))
         .limit(2);
 
       const [productsRes, usersRes] = await Promise.all([productsPromise, usersPromise]);
@@ -50,7 +52,7 @@ export function useSearchSuggestions(query: string) {
       }
       if (usersRes.data) {
         usersRes.data.forEach((item) => {
-          if (item.nombre) titles.push(item.nombre.toLowerCase());
+          titles.push(publicProfileName(item).toLowerCase());
         });
       }
 

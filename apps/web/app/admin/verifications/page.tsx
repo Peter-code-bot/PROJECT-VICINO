@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import * as Sentry from "@sentry/nextjs";
@@ -173,7 +174,7 @@ export default async function VerificationsPage() {
   // de admin del layout, que lee user_roles.
   const { data: verifications, error: verificationsError } = await adminSupabase
     .from("seller_verification")
-    .select("*, profiles!user_id(nombre, email, trust_level)")
+    .select("*, profiles!user_id(nombre, email, trust_level, es_vendedor, seller_type, nombre_negocio)")
     // NULL cuenta como pendiente, igual que en verifyDocument y en la policy:
     // si no, poner la fila en NULL la sacaba de la cola con su nota negativa.
     .or("status.is.null,status.eq.pending")
@@ -285,7 +286,7 @@ export default async function VerificationsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-sm truncate">{profile?.nombre ?? "Usuario"}</p>
+                      <p className="font-medium text-sm truncate">{publicProfileName(profile, "Usuario")}</p>
                       <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium shrink-0">
                         {v.document_type || "INE"}
                       </span>

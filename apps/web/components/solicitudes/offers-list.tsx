@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -89,8 +91,7 @@ export function OffersList({
           nombre,
           avatar_url:foto,
           average_rating,
-          reviews_count
-        )
+          reviews_count, es_vendedor, seller_type, nombre_negocio)
       `
       )
       .single();
@@ -144,7 +145,7 @@ export function OffersList({
                   {offer.profiles.avatar_url ? (
                     <Image
                       src={offer.profiles.avatar_url}
-                      alt={offer.profiles.nombre}
+                      alt={publicProfileName(offer.profiles)}
                       width={40}
                       height={40}
                       className="h-full w-full object-cover"
@@ -161,7 +162,7 @@ export function OffersList({
                       href={`/vendedor/${offer.seller_id}`}
                       className="font-medium text-foreground text-sm hover:underline"
                     >
-                      {offer.profiles.nombre}
+                      {publicProfileName(offer.profiles)}
                     </Link>
                     {offer.profiles.average_rating != null &&
                       offer.profiles.average_rating > 0 && (

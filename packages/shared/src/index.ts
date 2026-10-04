@@ -22,6 +22,7 @@ export * from "./validators/publications-map";
 export * from "./utils/format";
 export * from "./utils/slugify";
 export * from "./utils/category";
+export * from "./utils/profile-name";
 
 // Types
 export * from "./types/media";

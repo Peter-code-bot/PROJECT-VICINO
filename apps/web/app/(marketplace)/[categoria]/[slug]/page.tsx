@@ -118,8 +118,7 @@ export default async function ProductDetailPage({ params }: Props) {
       color, modo_precio, sort_order,
       profiles!inner(
         id, nombre, foto, trust_level, metodos_pago_aceptados,
-        average_rating, reviews_count, total_sales
-      ),
+        average_rating, reviews_count, total_sales, es_vendedor, seller_type, nombre_negocio),
       product_categories(is_primary, categories(slug, nombre))
     `
     )
@@ -145,7 +144,7 @@ export default async function ProductDetailPage({ params }: Props) {
     .select(
       `
       id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha, reviewer_id,
-      profiles!reviewer_id(nombre, foto, trust_level),
+      profiles!reviewer_id(nombre, foto, trust_level, es_vendedor, seller_type, nombre_negocio),
       products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))
     `
     )

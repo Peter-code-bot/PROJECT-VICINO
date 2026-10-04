@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { HistorialData } from "@/lib/historial/data";
@@ -184,13 +186,13 @@ export function HistorialTabs({ data }: { data: HistorialData }) {
 
                 <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <span className="w-7 h-7 rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)] text-xs font-bold flex items-center justify-center shrink-0">
-                    {otherUser?.nombre?.charAt(0).toUpperCase() ?? "U"}
+                    {publicProfileName(otherUser)?.charAt(0).toUpperCase() ?? "U"}
                   </span>
                   <span className="text-xs text-[color:var(--fg-dim)]">
                     {tab === "ventas" ? "Comprador" : "Vendedor"}
                   </span>
                   <span className="min-w-0 flex-1 basis-28 text-sm text-[color:var(--fg)]">
-                    {otherUser?.nombre ?? "Usuario"}
+                    {publicProfileName(otherUser, "Usuario")}
                   </span>
                   {trustBadgeClass && (
                     <span

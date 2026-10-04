@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -48,7 +49,7 @@ export default async function ComunidadPage({ params }: Props) {
 
   const [detalleR, perfilR] = await Promise.all([
     supabase.rpc("detalle_comunidad", { p_community_id: id }),
-    supabase.from("profiles").select("nombre, foto").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("nombre, foto, es_vendedor, seller_type, nombre_negocio").eq("id", user.id).maybeSingle(),
   ]);
 
   if (detalleR.error) {
@@ -60,7 +61,7 @@ export default async function ComunidadPage({ params }: Props) {
 
   const currentUser = {
     id: user.id,
-    nombre: perfilR.data?.nombre ?? "Tú",
+    nombre: publicProfileName(perfilR.data, "Tú"),
     foto: perfilR.data?.foto ?? null,
   };
 

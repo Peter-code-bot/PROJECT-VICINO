@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +19,7 @@ export default async function VentasPage() {
       `
       id, product_id, precio_acordado, cantidad, status, created_at, completed_at,
       products_services(titulo),
-      buyer:profiles!buyer_id(nombre)
+      buyer:profiles!buyer_id(nombre, es_vendedor, seller_type, nombre_negocio)
     `
     )
     .eq("seller_id", user.id)
@@ -74,7 +75,7 @@ export default async function VentasPage() {
                 <div className="flex flex-col min-w-0 space-y-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-medium text-sm truncate">
-                      {buyer?.nombre ?? "Usuario"}
+                      {publicProfileName(buyer, "Usuario")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-[color:var(--fg-muted)] flex-wrap">

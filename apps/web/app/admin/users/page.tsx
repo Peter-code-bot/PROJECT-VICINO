@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cleanDisplayName } from "@vicino/shared";
@@ -28,7 +29,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   let query = supabase
     .from("profiles")
-    .select("id, nombre, user_id, username, es_vendedor, trust_level, average_rating, total_sales, created_at")
+    .select("id, nombre, user_id, username, es_vendedor, trust_level, average_rating, total_sales, created_at, seller_type, nombre_negocio")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -113,7 +114,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       corrupto tambien se arregla en la base
                       (20260916150000), pero esta defensa se queda: quien
                       revisa cuentas no puede ser el unico que vea basura. */}
-                  <span className="font-medium text-sm">{u.nombre ? cleanDisplayName(u.nombre) : "Sin nombre"}</span>
+                  <span className="font-medium text-sm">{cleanDisplayName(publicProfileName(u, "Sin nombre"))}</span>
                   <SellerBadge level={u.trust_level ?? "nuevo"} size="sm" />
                   {u.es_vendedor && (
                     <span className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">

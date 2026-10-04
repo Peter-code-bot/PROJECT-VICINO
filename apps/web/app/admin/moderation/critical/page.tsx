@@ -1,3 +1,4 @@
+import { publicProfileName } from "@vicino/shared";
 import Link from "next/link";
 import { ArrowLeft, AlertOctagon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -107,7 +108,7 @@ export default async function CriticalReportsPage() {
                     <strong>Target:</strong> {r.target_type} / <code className="text-xs">{r.target_id}</code>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Reportado por: {reporter?.nombre ?? "?"}
+                    Reportado por: {publicProfileName(reporter, "?")}
                     {reporter?.user_id ? ` (@${reporter.user_id})` : ""}
                   </p>
                   {r.description && (

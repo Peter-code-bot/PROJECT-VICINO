@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getChatProducts, selectChatProduct } from "../actions";
@@ -36,7 +38,7 @@ export function ChatProductSelector({ chatId, currentUserId, active, onSelected,
 
   const products = catalog?.data.filter(p => p.creador_id === catalog.sellerId && p.estatus === "disponible" && !p.is_hidden) ?? [];
   const choice = loading ? undefined : products.find(p => p.id === selected);
-  const sellerName = (seller: NonNullable<typeof catalog>["sellers"][number]) => `${seller.nombre}${seller.id === currentUserId ? " · Tú" : ""}`;
+  const sellerName = (seller: NonNullable<typeof catalog>["sellers"][number]) => `${publicProfileName(seller)}${seller.id === currentUserId ? " · Tú" : ""}`;
   async function apply() {
     if (!choice || submitting.current) return;
     submitting.current = true;

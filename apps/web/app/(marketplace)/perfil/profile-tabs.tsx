@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -346,18 +348,18 @@ export function ProfileReviews({ reviewsAsSeller, reviewsAsBuyer, currentUserId 
                         <Image src={reviewer.foto} alt="" width={28} height={28} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs font-bold text-[color:var(--fg-muted)]">
-                          {reviewer?.nombre?.charAt(0) ?? "?"}
+                          {publicProfileName(reviewer)?.charAt(0) ?? "?"}
                         </div>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-[color:var(--fg)]">{reviewer?.nombre ?? "Usuario"}</span>
+                    <span className="text-sm font-semibold text-[color:var(--fg)]">{publicProfileName(reviewer, "Usuario")}</span>
                     <RatingStars rating={r.rating} size="sm" />
                     <span className="ml-auto text-xs text-[color:var(--fg-dim)]">{r.created_at ? formatDate(r.created_at) : null}</span>
                     {currentUserId && !isOwnReview && (
                       <ReportMenuButton
                         targetType="review"
                         targetId={r.id}
-                        targetLabel={r.comentario ? r.comentario.slice(0, 60) : `Reseña de ${reviewer?.nombre ?? "usuario"}`}
+                        targetLabel={r.comentario ? r.comentario.slice(0, 60) : `Reseña de ${publicProfileName(reviewer, "usuario")}`}
                         iconSize={14}
                         ariaLabel="Reportar reseña"
                       />

@@ -1,0 +1,547 @@
+{
+  "baseline": "fast-glob@3.3.2 PWA / fast-glob@3.3.1 Next; captured before replacement",
+  "files": {
+    "public/asset.svg": "<svg/>",
+    "public/favicon.ico": "fixture",
+    "public/manifest.json": "{}",
+    "public/.root.txt": "hidden",
+    "public/.well-known/assetlinks.json": "{}",
+    "public/icons/icon-192.png": "fixture",
+    "public/icons/icon-512.png": "fixture",
+    "public/fonts/font.woff2": "fixture",
+    "public/nested/document.txt": "fixture",
+    "public/nested/file.js": "fixture",
+    "public/nested/file.js.map": "{}",
+    "public/nested/.hidden.txt": "hidden",
+    "public/noprecache/private.js": "fixture",
+    "public/noprecache/deep/file.txt": "fixture",
+    "public/sw.js": "fixture",
+    "public/sw.js.map": "{}",
+    "public/workbox-example.js": "fixture",
+    "public/workbox-example.js.map": "{}",
+    "public/fallback-example.js": "fixture",
+    "public/swe-worker-example.js": "fixture",
+    "public/worker-example.js": "fixture",
+    "public/worker-example.js.map": "{}",
+    "worker/index.ts": "fixture",
+    "worker/index.js": "fixture",
+    "worker/src/index.ts": "fixture",
+    "worker/src/index.js": "fixture",
+    "apps/web/index.ts": "fixture",
+    "apps/admin/index.ts": "fixture",
+    "apps/web/nested/child.ts": "fixture",
+    "ranges/01.txt": "fixture",
+    "ranges/02.txt": "fixture",
+    "ranges/03.txt": "fixture",
+    "ranges/1.txt": "fixture",
+    "ranges/2.txt": "fixture",
+    "ranges/3.txt": "fixture",
+    "ranges/4.txt": "fixture",
+    "ranges/5.txt": "fixture"
+  },
+  "pwa": [
+    {
+      "label": "pwa_precache_exact",
+      "patterns": [
+        "**/*",
+        "!{workbox,fallback,swe-worker,worker}-*.js",
+        "!{workbox,fallback,swe-worker,worker}-*.js.map",
+        "!sw.js",
+        "!sw.js.map",
+        "!noprecache/**/*"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "nested/document.txt",
+        "nested/file.js",
+        "nested/file.js.map"
+      ]
+    },
+    {
+      "label": "pwa_cleanup_absolute",
+      "patterns": [
+        "{workbox,fallback,swe-worker,worker}-*.js",
+        "{workbox,fallback,swe-worker,worker}-*.js.map",
+        "sw.js",
+        "sw.js.map"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "absolute": true
+      },
+      "relativeCwd": false,
+      "expected": [
+        "$FIXTURE/public/fallback-example.js",
+        "$FIXTURE/public/sw.js",
+        "$FIXTURE/public/sw.js.map",
+        "$FIXTURE/public/swe-worker-example.js",
+        "$FIXTURE/public/workbox-example.js",
+        "$FIXTURE/public/workbox-example.js.map",
+        "$FIXTURE/public/worker-example.js",
+        "$FIXTURE/public/worker-example.js.map"
+      ]
+    },
+    {
+      "label": "pwa_custom_cleanup_absolute",
+      "patterns": [
+        "worker-*.js",
+        "worker-*.js.map"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "absolute": true
+      },
+      "relativeCwd": false,
+      "expected": [
+        "$FIXTURE/public/worker-example.js",
+        "$FIXTURE/public/worker-example.js.map"
+      ]
+    },
+    {
+      "label": "pwa_worker_lookup",
+      "patterns": "{src/,}index.{ts,js}",
+      "options": {
+        "cwd": "$FIXTURE/worker"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "index.js",
+        "index.ts",
+        "src/index.js",
+        "src/index.ts"
+      ]
+    },
+    {
+      "label": "dot_default_false",
+      "patterns": "**/*",
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "nested/document.txt",
+        "nested/file.js",
+        "nested/file.js.map",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "sw.js.map",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "workbox-example.js.map",
+        "worker-example.js",
+        "worker-example.js.map"
+      ]
+    },
+    {
+      "label": "dot_true",
+      "patterns": "**/*",
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "dot": true
+      },
+      "relativeCwd": false,
+      "expected": [
+        ".root.txt",
+        ".well-known/assetlinks.json",
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "nested/.hidden.txt",
+        "nested/document.txt",
+        "nested/file.js",
+        "nested/file.js.map",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "sw.js.map",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "workbox-example.js.map",
+        "worker-example.js",
+        "worker-example.js.map"
+      ]
+    },
+    {
+      "label": "ignore_array",
+      "patterns": "**/*",
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "ignore": [
+          "nested/**",
+          "**/*.map"
+        ]
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "worker-example.js"
+      ]
+    },
+    {
+      "label": "negated_globs",
+      "patterns": [
+        "**/*",
+        "!nested/**",
+        "!**/*.map"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "worker-example.js"
+      ]
+    },
+    {
+      "label": "negated_first",
+      "patterns": [
+        "!nested/**",
+        "**/*",
+        "!**/*.map"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "worker-example.js"
+      ]
+    },
+    {
+      "label": "negated_brace_glob",
+      "patterns": [
+        "**/*",
+        "!{nested,noprecache}/**"
+      ],
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "sw.js",
+        "sw.js.map",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "workbox-example.js.map",
+        "worker-example.js",
+        "worker-example.js.map"
+      ]
+    },
+    {
+      "label": "literal_directory_no_expansion",
+      "patterns": "nested",
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": []
+    },
+    {
+      "label": "cwd_relative",
+      "patterns": "**/*.png",
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": true,
+      "expected": [
+        "icons/icon-192.png",
+        "icons/icon-512.png"
+      ]
+    },
+    {
+      "label": "cwd_windows_separator",
+      "patterns": "**/*.png",
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "icons/icon-192.png",
+        "icons/icon-512.png"
+      ]
+    },
+    {
+      "label": "brace_alternatives",
+      "patterns": "{favicon.ico,manifest.json}",
+      "options": {
+        "cwd": "$FIXTURE/public"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "favicon.ico",
+        "manifest.json"
+      ]
+    },
+    {
+      "label": "simple_numeric_range",
+      "patterns": "{1..3}.txt",
+      "options": {
+        "cwd": "$FIXTURE/ranges"
+      },
+      "relativeCwd": false,
+      "expected": [
+        "1.txt",
+        "2.txt",
+        "3.txt"
+      ]
+    },
+    {
+      "label": "only_files",
+      "patterns": "**/*",
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "onlyFiles": true
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts/font.woff2",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "nested/document.txt",
+        "nested/file.js",
+        "nested/file.js.map",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "sw.js.map",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "workbox-example.js.map",
+        "worker-example.js",
+        "worker-example.js.map"
+      ]
+    },
+    {
+      "label": "only_files_false",
+      "patterns": "**/*",
+      "options": {
+        "cwd": "$FIXTURE/public",
+        "onlyFiles": false
+      },
+      "relativeCwd": false,
+      "expected": [
+        "asset.svg",
+        "fallback-example.js",
+        "favicon.ico",
+        "fonts",
+        "fonts/font.woff2",
+        "icons",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "manifest.json",
+        "nested",
+        "nested/document.txt",
+        "nested/file.js",
+        "nested/file.js.map",
+        "noprecache",
+        "noprecache/deep",
+        "noprecache/deep/file.txt",
+        "noprecache/private.js",
+        "sw.js",
+        "sw.js.map",
+        "swe-worker-example.js",
+        "workbox-example.js",
+        "workbox-example.js.map",
+        "worker-example.js",
+        "worker-example.js.map"
+      ]
+    }
+  ],
+  "next": [
+    {
+      "label": "only_directories_relative",
+      "pattern": "apps/*",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_literal",
+      "pattern": "apps/web",
+      "backslash": false,
+      "expected": [
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_absolute",
+      "pattern": "$FIXTURE/apps/*",
+      "backslash": false,
+      "expected": [
+        "$FIXTURE/apps/admin",
+        "$FIXTURE/apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_backslash",
+      "pattern": "$FIXTURE/apps/*",
+      "backslash": true,
+      "expected": [
+        "$FIXTURE/apps/admin",
+        "$FIXTURE/apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_braces",
+      "pattern": "apps/{web,admin}",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_nested",
+      "pattern": "apps/**",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web",
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_nested_literal",
+      "pattern": "apps/web/nested",
+      "backslash": false,
+      "expected": [
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_nested_dot_slash",
+      "pattern": "./apps/**",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web",
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_nested_trailing_slash",
+      "pattern": "apps/**/",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web",
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_relative_trailing_slash",
+      "pattern": "apps/*/",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_dot_slash_relative",
+      "pattern": "./apps/*",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_backslash_nested",
+      "pattern": "$FIXTURE/apps/**",
+      "backslash": true,
+      "expected": [
+        "$FIXTURE/apps/admin",
+        "$FIXTURE/apps/web",
+        "$FIXTURE/apps/web/nested"
+      ]
+    }
+  ],
+  "ranges": [
+    {
+      "pattern": "{01..03}.txt",
+      "expected": [
+        "01.txt",
+        "02.txt",
+        "03.txt"
+      ]
+    },
+    {
+      "pattern": "{1..5..2}.txt",
+      "expected": [
+        "1.txt",
+        "3.txt",
+        "5.txt"
+      ]
+    }
+  ]
+}

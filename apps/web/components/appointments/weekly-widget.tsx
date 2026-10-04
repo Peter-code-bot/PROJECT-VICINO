@@ -1,5 +1,7 @@
 "use client";
 
+import { publicProfileName } from "@vicino/shared";
+
 import { useEffect, useState } from "react";
 import { Calendar, Clock, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +34,7 @@ export function WeeklyAppointmentsWidget() {
 
       const { data } = await supabase
         .from("appointments")
-        .select("id, appointment_date, appointment_start, buyer_id, seller_id, products_services(titulo), buyer:profiles!buyer_id(nombre), seller:profiles!seller_id(nombre)")
+        .select("id, appointment_date, appointment_start, buyer_id, seller_id, products_services(titulo), buyer:profiles!buyer_id(nombre, es_vendedor, seller_type, nombre_negocio), seller:profiles!seller_id(nombre, es_vendedor, seller_type, nombre_negocio)")
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
         .gte("appointment_date", todayStr)
         .lte("appointment_date", weekLater)
@@ -53,7 +55,7 @@ export function WeeklyAppointmentsWidget() {
             id: a.id as string,
             appointment_date: a.appointment_date as string,
             appointment_start: a.appointment_start as string,
-            otherName: (other as { nombre?: string })?.nombre ?? "Usuario",
+            otherName: publicProfileName(other),
             productTitle: (prod as { titulo?: string })?.titulo ?? "Servicio",
             isPast: dateTime.getTime() < now.getTime(),
           };
