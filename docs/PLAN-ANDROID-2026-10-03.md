@@ -2,7 +2,9 @@
 
 **Fecha:** 3-oct-2026 · **Pedido por:** Pedro (captura del home en Android a las 15:18)
 **Estado:** Fase 1 implementada y probada en la rama `fix/preview-mapa-caducidad`
-(sin push; falta el OK de Pedro para llevarla a master = producción). El resto es propuesta.
+(sin push; falta el OK de Pedro para llevarla a master = producción). Fase 2 con el código hecho
+en `feat/android-renderer-y-sin-red` (sale de la Fase 1); falta probarla en un teléfono y armar el
+AAB 10. El resto es propuesta.
 Todo está medido o verificado el 3-oct, salvo donde dice "decisión" o "sin verificar".
 
 ---
@@ -181,20 +183,56 @@ Pendiente: probarlo en un teléfono Android y en un iPhone (abrir la app, salir 
 Coste: a lo más una petición a Apple más por cada vuelta a la app después de 5 min. Es lo mismo
 que hoy cuesta que el usuario pulse "Reintentar".
 
-### Fase 2: robustez del contenedor nativo (S-M, ~1 día)
+### Fase 2: robustez del contenedor nativo — CÓDIGO HECHO (rama `feat/android-renderer-y-sin-red`); falta probarla en un teléfono
 
-1. **Muerte del renderer.** En `MainActivity.java`, registrar con `bridge.addWebViewListener` un
-   listener cuyo `onRenderProcessGone` devuelva `true` y recree la actividad (`recreate()`), que
-   vuelve a cargar la URL remota. Sin esto, cuando Android reclama memoria del WebView en
-   segundo plano, la app se cierra; Google avisa de que en versiones nuevas esto se ve más como
-   un cierre en primer plano al volver. Mandar un evento a Sentry con `didCrash()`. Prueba: cargar
-   `chrome://crash` y `chrome://kill` en el build de depuración.
-2. **Sin red al abrir.** Crear `apps/web/dist/offline.html` (página propia, con botón que recarga
-   `https://vicinomarket.com`) y apuntar `server.errorPath` a ella. Hoy `dist/index.html` pesa 27
-   bytes y no hay `errorPath`, así que sin red se ve la página de error genérica del WebView. Ojo:
-   en Android esa página no tiene acceso a los plugins de Capacitor (lo dice la documentación).
-   Texto y diseño, Javier.
-3. Prueba manual: modo avión → abrir → página propia → quitar modo avión → Reintentar → home.
+Lo que se implementó:
+
+1. **Muerte del renderer** (`android/app/src/main/java/com/vicino/mx/MainActivity.java`): un
+   `WebViewListener` cuyo `onRenderProcessGone` devuelve `true` y hace `recreate()`. La actividad
+   nueva trae un WebView nuevo que vuelve a cargar `server.url`. El WebView muerto lo destruye
+   Capacitor al desmontar (`BridgeActivity.onDetachedFromWindow` → `bridge.onDetachedFromWindow`
+   → `webView.destroy()`). Freno de bucle: si vuelve a morir antes de 30 s, cierra la actividad
+   en lugar de recrearla. Cada caso se reporta a Sentry (proyecto Android) sin PII, con las
+   etiquetas `renderer.crash`, `renderer.prioridad` y `renderer.accion`. Los métodos llevan
+   `@RequiresApi(O)` porque el callback solo existe desde API 26 y el `minSdk` es 24.
+2. `app/build.gradle`: `io.sentry:sentry-android:8.35.0`, el mismo artefacto y versión que ya
+   trae `@sentry/capacitor` (lo declara como `implementation` y por eso no se veía desde el módulo
+   de la app). **Si se actualiza `@sentry/capacitor`, igualar esta versión.**
+3. **Sin red al abrir:** `server.errorPath: 'offline.html'` y `apps/web/dist/offline.html`: página
+   autocontenida, con los colores del tema claro y un botón de 48 px que se reintenta sola con el
+   evento `online` y se reactiva a los 10 s si la navegación se cuelga. Capacitor la sirve desde
+   `https://localhost/offline.html`; comprobado en `Bridge.getErrorUrl` y en el servidor local, que
+   atiende `localhost` desde los assets. **Texto y diseño provisionales: los revisa Javier.**
+4. `.gitignore`: `dist/` estaba ignorado también desde el `.gitignore` raíz. Ahora se versionan
+   solo `dist/index.html` (lo exige `cap sync`) y `dist/offline.html`; un clon limpio ya puede
+   hacer `cap sync`.
+
+Verificado aquí: `gradlew :app:compileDebugJavaWithJavac` OK, Android lint 0 errores (20 avisos
+previos, ninguno en `MainActivity`), `tsc` OK, `cap sync`/`cap copy` dejan `offline.html` en
+`assets/public`, la página se ve bien a 375 px (sin desbordamiento) y no hay descargas por
+navegación en la web que `errorPath` pudiera tapar. **No probado en dispositivo:** esta máquina
+tiene 7.4 GB de RAM con 1.2 GB libres, y un emulador la habría trabado.
+
+**Protocolo de prueba en teléfono (Pedro, con USB debugging):**
+
+1. Build de depuración con inspección del WebView. En PowerShell:
+   `cd apps/web; $env:NODE_ENV='development'; npx cap sync android; cd android; ./gradlew assembleDebug`.
+   Luego `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Ojo: tiene el mismo
+   `applicationId` que la de Play con otra firma, así que hay que desinstalar la de Play antes
+   (se pierde la sesión).
+2. **Sin red:** modo avión → abrir la app → debe salir "Sin conexión" (no la página genérica de
+   Android). "Reintentar" con modo avión → "Conectando…" y vuelve la misma página. Quitar el modo
+   avión → entra sola al inicio.
+3. **Renderer:** con la app abierta, `chrome://inspect` en la PC → inspeccionar el WebView → en
+   la consola: `let a=[]; while(true) a.push(new Array(1e7).fill(1))`. Se acaba la memoria del
+   renderer. Con `adb logcat -s VicinoWebView` debe verse
+   `Renderer del WebView terminado: crash=true ... bucle=false` y la app **sigue abierta** y vuelve
+   a cargar el inicio. Repetirlo antes de 30 s → `bucle=true` y la actividad se cierra sin
+   crash. Revisar el evento en Sentry (proyecto Android).
+4. Antes del AAB de release: volver a `npx cap sync android` **sin** `NODE_ENV=development` (si
+   no, el WebView de producción queda inspeccionable) y subir `versionCode` a 10. El AAB 9 está
+   en revisión desde el 3-oct.
+5. iOS: `errorPath` también aplica en el siguiente build de iOS. Hay que probar ahí el modo avión.
 
 ### Fase 3: bajar el peso de la web (M-L, por partes; es la de más impacto)
 

@@ -53,6 +53,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // MainActivity reporta a Sentry cuando el renderer del WebView muere. Es el
+    // MISMO artefacto y version que ya trae @sentry/capacitor (lo declara como
+    // implementation y por eso no es visible desde aqui): no entra codigo nuevo
+    // al APK. Si se actualiza @sentry/capacitor, igualar esta version.
+    implementation "io.sentry:sentry-android:8.35.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  Pagina local que la app nativa muestra cuando no puede abrir https://vicinomarket.com
+  (sin red al arrancar, o cualquier fallo de red de una navegacion completa).
+  La sirve Capacitor desde los assets via server.errorPath (capacitor.config.ts).
+
+  - Autocontenida: sin fuentes, scripts ni imagenes externas, porque se muestra
+    justo cuando no hay red.
+  - En Android no tiene acceso a los plugins de Capacitor (documentado por Capacitor).
+  - Texto y diseno PROVISIONALES: pendientes de revision de Javier. Colores = tokens
+    del tema claro de app/globals.css (--bg, --fg, --fg-muted, --brand-base).
+  - dist/ esta en .gitignore salvo este archivo e index.html: `npx cap sync` la copia
+    a android/app/src/main/assets/public y a ios/App/App/public.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#FFF8F0">
+  <title>VICINO sin conexión</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #FFF8F0; color: #1A1A2E;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    main { max-width: 360px; }
+    .marca { color: #1A1A2E; font-weight: 800; font-size: 28px; letter-spacing: .02em; margin: 0 0 32px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p { color: #5C6360; font-size: 15px; line-height: 1.5; margin: 0 0 28px; }
+    button {
+      min-height: 48px; min-width: 160px; padding: 0 24px; border: 0; border-radius: 999px;
+      background: #1F5A4E; color: #FFFFFF; font: inherit; font-weight: 600; font-size: 16px;
+    }
+    button:focus-visible { outline: 3px solid #1A1A2E; outline-offset: 3px; }
+    button[disabled] { opacity: .6; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="marca" aria-hidden="true">VICINO</p>
+    <h1>Sin conexión</h1>
+    <p id="mensaje" role="status">No pudimos abrir VICINO. Revisa tu conexión a internet e inténtalo de nuevo.</p>
+    <button id="reintentar" type="button">Reintentar</button>
+  </main>
+  <script>
+    (function () {
+      var DESTINO = "https://vicinomarket.com/";
+      var boton = document.getElementById("reintentar");
+      var mensaje = document.getElementById("mensaje");
+      var TEXTO = mensaje.textContent;
+      var restaurar = null;
+      function reintentar() {
+        if (boton.disabled) return;
+        boton.disabled = true;
+        mensaje.textContent = "Conectando…";
+        // Si la navegacion se cuelga (portal cautivo, red que no responde) y nunca
+        // llega a fallar ni a cargar, el boton no puede quedarse muerto.
+        clearTimeout(restaurar);
+        restaurar = setTimeout(function () {
+          boton.disabled = false;
+          mensaje.textContent = TEXTO;
+        }, 10000);
+        // replace: que "atras" no vuelva a esta pagina.
+        window.location.replace(DESTINO);
+      }
+      boton.addEventListener("click", reintentar);
+      // Al volver la red se reintenta solo. Si la red "vuelve" pero no funciona, la
+      // navegacion falla, Capacitor trae de nuevo esta pagina y no hay bucle: el
+      // evento online no se repite hasta el siguiente cambio real de red.
+      window.addEventListener("online", reintentar);
+    })();
+  </script>
+</body>
+</html>
