@@ -12,6 +12,19 @@ const isCapacitor =
   (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
     ?.isNativePlatform?.() === true;
 
+/**
+ * Lo unico que @supabase/sentry-js-integration lee del SDK (v8.js:156-232 en
+ * 0.3.0). Si una version nueva de la integracion usa algo mas, hay que anadirlo
+ * aqui: su tipo (index.d.ts) exige las tres funciones.
+ */
+const sentryParaSupabase = {
+  startInactiveSpan: Sentry.startInactiveSpan,
+  captureException: Sentry.captureException,
+  addBreadcrumb: Sentry.addBreadcrumb,
+  SEMANTIC_ATTRIBUTE_SENTRY_OP: Sentry.SEMANTIC_ATTRIBUTE_SENTRY_OP,
+  SEMANTIC_ATTRIBUTE_SENTRY_ORIGIN: Sentry.SEMANTIC_ATTRIBUTE_SENTRY_ORIGIN,
+};
+
 if (!isCapacitor) {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -27,13 +40,11 @@ if (!isCapacitor) {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
     integrations: [
-      Sentry.replayIntegration({
-        // Marketplace data is PII-heavy (names, addresses, prices, messages).
-        // Keep aggressive defaults — D4 in the integration plan.
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
-      supabaseIntegration(SupabaseClient, Sentry, {
+      // Replay NO va aqui: se carga despues del arranque (cargarReplay, abajo).
+      // NO pasar el namespace `Sentry` entero: un `import * as` usado como VALOR
+      // obliga a webpack a dar por usadas todas sus exportaciones y metia el SDK
+      // completo (Replay, Feedback, profiling...) en el chunk de arranque.
+      supabaseIntegration(SupabaseClient, sentryParaSupabase, {
         tracing: true,
         breadcrumbs: false,
         errors: true,
@@ -52,6 +63,7 @@ if (!isCapacitor) {
       return event;
     },
   });
+  void cargarReplay();
 } else {
   // Arranca imports del SDK antes de hidratar; el componente es fallback.
   void iniciarSentryNativo().catch(() => {});
@@ -62,5 +74,29 @@ export function onRouterTransitionStart(url: string, navigationType: "push" | "r
     empezarRutaNativa(url, window.location.pathname);
   } else {
     Sentry.captureRouterTransitionStart(url, navigationType);
+  }
+}
+
+/**
+ * Session Replay (rrweb) es de lo mas pesado del SDK y no hace falta para
+ * arrancar. Antes iba en `integrations` de Sentry.init, o sea dentro del chunk
+ * principal que TODOS descargan y evaluan antes de hidratar, incluida la app
+ * Android, que ni siquiera usa Replay (alli Sentry lo inicia @sentry/capacitor).
+ * Patron de la guia de Replay de Sentry para Next.js: import dinamico +
+ * addIntegration. Plan Android 3-oct-2026, Fase 3.1.
+ */
+async function cargarReplay(): Promise<void> {
+  try {
+    const { replayIntegration } = await import("@sentry/nextjs");
+    Sentry.addIntegration(
+      replayIntegration({
+        // Marketplace data is PII-heavy (names, addresses, prices, messages).
+        // Keep aggressive defaults — D4 in the integration plan.
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    );
+  } catch {
+    // Sin Replay los errores se siguen reportando; no vale la pena tirar nada.
   }
 }

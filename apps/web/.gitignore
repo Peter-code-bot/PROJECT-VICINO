@@ -38,7 +38,16 @@ yarn-error.log*
 .vercel
 
 # capacitor
-/dist/
+# webDir de Capacitor. La app carga https://vicinomarket.com (server.url), asi que
+# aqui solo viven el index.html minimo que exige `cap sync` y la pagina local sin
+# red (server.errorPath). Esos dos SI se versionan: sin ellos un clon limpio no
+# puede hacer `cap sync`, o sincroniza un errorPath que apunta a un archivo inexistente.
+# El .gitignore raiz ignora todo `dist/`: hay que reincluir la carpeta antes de
+# poder reincluir archivos sueltos (git no reincluye dentro de un directorio excluido).
+!/dist/
+/dist/*
+!/dist/index.html
+!/dist/offline.html
 android/app/build/
 android/.gradle/
 android/.idea/

@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { ZoneCard } from "@/components/home/zone-card";
 import { mapPreviewCache, emptyMapPreview, clearMapPreviews, type MapPreviewInput } from "@/lib/geo/map-preview-cache";
+import { resolverRecarga, previewNoDisponible, presupuestoRecargas, type EventoRecarga } from "@/lib/geo/map-preview-recarga";
 import type { GeoPosition } from "@/lib/geo/location-storage";
 
 interface Props {
@@ -47,7 +48,47 @@ export function LocationMapPreview({ initialPosition = null, href = "/mapa", vie
     void mapPreviewCache.load(key, body, force).catch(() => {});
   }, [key, body, attempt, resolvedTheme, viewerScope, theme]);
 
-  const unavailable = image.status === "error" || image.status === "expired";
+  // La caducidad de 5 min de la cache NO es un fallo: se vuelve a pedir sola con
+  // la pagina a la vista, y un fallo real se reintenta una vez al volver. Reglas
+  // y presupuesto en map-preview-recarga.ts.
+  const status = image.status;
+  const reintentoUsadoEn = useRef<string | null>(null);
+  useEffect(() => {
+    // Mismo guard que la carga: sin tema resuelto la clave aun no es la definitiva.
+    if (!resolvedTheme) return;
+    if (status === "ready") reintentoUsadoEn.current = null;
+    const evaluar = (evento: EventoRecarga) => {
+      const motivo = resolverRecarga({
+        // El estado VIVO de la cache, no el del render: al volver al inicio con
+        // la imagen caducada, el efecto de carga ya la esta pidiendo otra vez.
+        status: mapPreviewCache.snapshot(key).status, evento,
+        visible: document.visibilityState === "visible",
+        online: navigator.onLine,
+        reintentoUsado: reintentoUsadoEn.current === key,
+      }, presupuestoRecargas);
+      if (!motivo) return;
+      if (motivo === "reintento") reintentoUsadoEn.current = key;
+      // Caducada: sin forzar, asi otra instancia con la misma clave comparte la
+      // peticion. Reintento: forzado, porque la cache recuerda el fallo.
+      void mapPreviewCache.load(key, body, motivo === "reintento").catch(() => {});
+    };
+    evaluar("estado");
+    const volver = () => evaluar("volver"), red = () => evaluar("red");
+    // "resume" lo dispara Capacitor en document al volver a la app; en Android el
+    // WebView no se pausa (KeepRunning) y el TTL puede vencer en segundo plano.
+    document.addEventListener("visibilitychange", volver);
+    document.addEventListener("resume", volver);
+    window.addEventListener("focus", volver);
+    window.addEventListener("online", red);
+    return () => {
+      document.removeEventListener("visibilitychange", volver);
+      document.removeEventListener("resume", volver);
+      window.removeEventListener("focus", volver);
+      window.removeEventListener("online", red);
+    };
+  }, [status, key, body, resolvedTheme]);
+
+  const unavailable = previewNoDisponible(status, presupuestoRecargas.restantes());
   return (
     <section aria-label={center ? "Vista previa de tu zona" : "Vista previa de México"} className="relative">
       <Link href={href} prefetch={false} aria-label="Ver publicaciones en el mapa"
@@ -63,7 +104,7 @@ export function LocationMapPreview({ initialPosition = null, href = "/mapa", vie
         )}
       </Link>
       <div className="absolute left-3 top-3"><ZoneCard hayUbicacionEnServidor={!!center} positionOverride={center ?? null} resolveName={false} /></div>
-      {unavailable && <button type="button" onClick={() => setAttempt(value => value + 1)} className="discovery-control absolute right-3 bottom-3 px-4 text-sm">Reintentar</button>}
+      {unavailable && <button type="button" onClick={() => { presupuestoRecargas.reponer(); setAttempt(value => value + 1); }} className="discovery-control absolute right-3 bottom-3 px-4 text-sm">Reintentar</button>}
     </section>
   );
 }
