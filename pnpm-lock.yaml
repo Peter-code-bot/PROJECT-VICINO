@@ -31,10 +31,10 @@ packageExtensionsChecksum: df4b83182fbd8698646ca031516e35ba
 
 patchedDependencies:
   '@ducanh2912/next-pwa@10.2.9':
-    hash: wft4n6hjh5dqvxq7a2tmotqwpe
+    hash: cxumc2u2xe44hzvxxhxsqmvho4
     path: patches/@ducanh2912__next-pwa@10.2.9.patch
   '@next/eslint-plugin-next@16.3.6':
-    hash: oaykb6ewvhkaj2dzhy7gbn5wxu
+    hash: z5bfs3z73yt6u6ayovcoyhgs7y
     path: patches/@next__eslint-plugin-next@16.3.6.patch
 
 importers:
@@ -115,7 +115,7 @@ importers:
         version: 3.2.2(react@19.2.4)
       '@ducanh2912/next-pwa':
         specifier: ^10.2.9
-        version: 10.2.9(patch_hash=wft4n6hjh5dqvxq7a2tmotqwpe)(next@16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(@types/node@20.19.37)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(webpack@5.105.4)
+        version: 10.2.9(patch_hash=cxumc2u2xe44hzvxxhxsqmvho4)(next@16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(@types/node@20.19.37)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(webpack@5.105.4)
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
@@ -6738,7 +6738,7 @@ snapshots:
       react: 19.2.4
       tslib: 2.8.1
 
-  '@ducanh2912/next-pwa@10.2.9(patch_hash=wft4n6hjh5dqvxq7a2tmotqwpe)(next@16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(@types/node@20.19.37)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(webpack@5.105.4)':
+  '@ducanh2912/next-pwa@10.2.9(patch_hash=cxumc2u2xe44hzvxxhxsqmvho4)(next@16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(@types/node@20.19.37)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(webpack@5.105.4)':
     dependencies:
       next: 16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(@types/node@20.19.37)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       semver: 7.6.3
@@ -7214,7 +7214,7 @@ snapshots:
 
   '@next/env@16.3.6': {}
 
-  '@next/eslint-plugin-next@16.3.6(patch_hash=oaykb6ewvhkaj2dzhy7gbn5wxu)(eslint@9.39.4(jiti@2.6.1))':
+  '@next/eslint-plugin-next@16.3.6(patch_hash=z5bfs3z73yt6u6ayovcoyhgs7y)(eslint@9.39.4(jiti@2.6.1))':
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@9.39.4(jiti@2.6.1))
       tinyglobby: 0.2.16
@@ -9451,7 +9451,7 @@ snapshots:
 
   eslint-config-next@16.3.6(@typescript-eslint/parser@8.59.4(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3):
     dependencies:
-      '@next/eslint-plugin-next': 16.3.6(patch_hash=oaykb6ewvhkaj2dzhy7gbn5wxu)(eslint@9.39.4(jiti@2.6.1))
+      '@next/eslint-plugin-next': 16.3.6(patch_hash=z5bfs3z73yt6u6ayovcoyhgs7y)(eslint@9.39.4(jiti@2.6.1))
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.10
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.6.1))

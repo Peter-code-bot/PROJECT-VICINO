@@ -476,6 +476,54 @@
       "expected": [
         "apps/web/nested"
       ]
+    },
+    {
+      "label": "only_directories_nested_dot_slash",
+      "pattern": "./apps/**",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web",
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_nested_trailing_slash",
+      "pattern": "apps/**/",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web",
+        "apps/web/nested"
+      ]
+    },
+    {
+      "label": "only_directories_relative_trailing_slash",
+      "pattern": "apps/*/",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_dot_slash_relative",
+      "pattern": "./apps/*",
+      "backslash": false,
+      "expected": [
+        "apps/admin",
+        "apps/web"
+      ]
+    },
+    {
+      "label": "only_directories_backslash_nested",
+      "pattern": "$FIXTURE/apps/**",
+      "backslash": true,
+      "expected": [
+        "$FIXTURE/apps/admin",
+        "$FIXTURE/apps/web",
+        "$FIXTURE/apps/web/nested"
+      ]
     }
   ],
   "ranges": [

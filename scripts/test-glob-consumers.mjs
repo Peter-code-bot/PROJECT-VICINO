@@ -67,6 +67,13 @@ for (const [format, consumer] of [['CJS', cjsCompat], ['ESM', esmCompat.default]
     comparisons++;
     console.log(`PASS ${format} ${test.label}: ${actual.length} entries`);
   }
+  const backslashPattern = path.join(resolveFixture('$FIXTURE'), 'public', 'nested', '*.js').replace(/\//g, '\\');
+  const actualBackslash = consumer.sync([backslashPattern], { absolute: true }).sort();
+  const expectedForward = consumer.sync([backslashPattern.replace(/\\/g, '/')], { absolute: true }).sort();
+  assert(actualBackslash.length > 0, `${format}: backslash pattern must match entries`);
+  assert.deepEqual(actualBackslash, expectedForward, `${format}: backslash parity`);
+  comparisons++;
+  console.log(`PASS ${format} backslash pattern normalizer: ${actualBackslash.length} entries`);
 }
 
 // The real Next consumer resolves configured rootDir patterns from process.cwd,

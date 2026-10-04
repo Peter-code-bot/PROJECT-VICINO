@@ -1,9 +1,9 @@
 diff --git a/dist/glob-compat.cjs b/dist/glob-compat.cjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..31a9c1d2d72d053f37849462b544251d8fd36bca
+index 0000000000000000000000000000000000000000..1b178239ea9afaecb250190b5a86a52b2be6517b
 --- /dev/null
-+++ b/dist/glob-compat.cjs
-@@ -0,0 +1,16 @@
++++ b/dist/glob-compat.cjs	
+@@ -0,0 +1,28 @@
 +'use strict';
 +
 +const { globSync } = require('tinyglobby');
@@ -15,15 +15,27 @@ index 0000000000000000000000000000000000000000..31a9c1d2d72d053f37849462b544251d
 +    ? entry.slice(0, -1)
 +    : entry;
 +
-+const sync = (patterns, options = {}) =>
-+  globSync(patterns, { cwd: process.cwd(), ...options, expandDirectories: false })
-+    .map(trimDirectorySuffix);
++const toPosix = (pattern) =>
++  typeof pattern === 'string' ? pattern.replace(/\\/g, '/') : pattern;
++
++const sync = (patterns, options = {}) => {
++  const normalizedPatterns = Array.isArray(patterns)
++    ? patterns.map(toPosix)
++    : toPosix(patterns);
++  const opts = { cwd: process.cwd(), ...options, expandDirectories: false };
++  if (opts.ignore) {
++    opts.ignore = Array.isArray(opts.ignore)
++      ? opts.ignore.map(toPosix)
++      : toPosix(opts.ignore);
++  }
++  return globSync(normalizedPatterns, opts).map(trimDirectorySuffix);
++};
 +
 +module.exports = { sync };
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 0ca8620c43b327675290ce7c0b5223628a87cd6f..2f25274dab1e4a4b21211956231a70ce75c247dd 100644
+index 0ca8620c43b327675290ce7c0b5223628a87cd6f..61909ce83057843177ce776ed9de2c04eb6e6476 100644
 --- a/dist/index.cjs
-+++ b/dist/index.cjs
++++ b/dist/index.cjs	
 @@ -1,4 +1,4 @@
 -'use strict';Object.defineProperty(exports,'__esModule',{value:true});var e$3=require('fs'),e$2=require('path'),r$5=require('fast-glob'),module$1=require('module'),t$2=require('process'),e$4=require('os'),o$1=require('tty'),semver=require('semver'),url=require('url'),e$5=require('crypto'),o$2=require('workbox-webpack-plugin');const findFirstTruthy = (t, r)=>{
 +'use strict';Object.defineProperty(exports,'__esModule',{value:true});var e$3=require('fs'),e$2=require('path'),r$5=require('./glob-compat.cjs'),module$1=require('module'),t$2=require('process'),e$4=require('os'),o$1=require('tty'),semver=require('semver'),url=require('url'),e$5=require('crypto'),o$2=require('workbox-webpack-plugin');const findFirstTruthy = (t, r)=>{
@@ -31,9 +43,9 @@ index 0ca8620c43b327675290ce7c0b5223628a87cd6f..2f25274dab1e4a4b21211956231a70ce
          let t = r(e);
          if (t) return t;
 diff --git a/dist/index.js b/dist/index.js
-index 52b0260558cc9b0bc089bf4a2f55c222d7408354..76b903978a24aebd9c4a2c6db900bacb76f9da80 100644
+index 52b0260558cc9b0bc089bf4a2f55c222d7408354..c2e4903535764a2d1a695846eba31862b1f92bb7 100644
 --- a/dist/index.js
-+++ b/dist/index.js
++++ b/dist/index.js	
 @@ -1,4 +1,4 @@
 -import e$3 from'fs';import e$2 from'path';import r$5 from'fast-glob';import {createRequire}from'module';import t$2 from'process';import e$4 from'os';import o$1 from'tty';import {coerce,lt}from'semver';import {fileURLToPath}from'url';import e$5 from'crypto';import o$2 from'workbox-webpack-plugin';const findFirstTruthy = (t, r)=>{
 +import e$3 from'fs';import e$2 from'path';import r$5 from'./glob-compat.cjs';import {createRequire}from'module';import t$2 from'process';import e$4 from'os';import o$1 from'tty';import {coerce,lt}from'semver';import {fileURLToPath}from'url';import e$5 from'crypto';import o$2 from'workbox-webpack-plugin';const findFirstTruthy = (t, r)=>{
