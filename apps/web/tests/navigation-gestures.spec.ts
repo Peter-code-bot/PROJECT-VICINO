@@ -68,12 +68,17 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId("ready")).toHaveText("/:initial");
 });
 
-async function gesture(page: Page, from: [number, number], to: [number, number], cancel = false) {
+async function press(page: Page, from: [number, number], to: [number, number]) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from[0], y: from[1] }] });
   for (let i = 1; i <= 8; i++) {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from[0] + (to[0] - from[0]) * i / 8, y: from[1] + (to[1] - from[1]) * i / 8 }] });
   }
+  return cdp;
+}
+
+async function gesture(page: Page, from: [number, number], to: [number, number], cancel = false) {
+  const cdp = await press(page, from, to);
   await cdp.send("Input.dispatchTouchEvent", { type: cancel ? "touchCancel" : "touchEnd", touchPoints: [] });
   await cdp.detach();
   // Measure from the browser event clock; a timestamp before sending the CDP
@@ -143,6 +148,47 @@ test("reduced motion keeps feedback and navigation functional", async ({ page })
   await expect(page.getByTestId("ready")).toBeVisible();
   await page.evaluate(() => (window as FixtureWindow).fixture.finish());
   await expect(page.getByTestId("ready")).toHaveText("/buscar:ready");
+});
+
+// Painted transforms of the swipe surface and the pull indicator, after framer-motion's frame.
+async function motionState(page: Page) {
+  return page.evaluate(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const indicator = getComputedStyle(document.querySelector("div[aria-hidden]")!);
+    return { swipe: getComputedStyle(document.querySelector("#surface")!.parentElement!).transform, pull: indicator.transform, pullOpacity: Number(indicator.opacity) };
+  });
+}
+
+// Reads while the finger is still down, then lifts with touchcancel: no navigation, no refresh.
+async function held(page: Page, from: [number, number], to: [number, number]) {
+  const cdp = await press(page, from, to);
+  const state = await motionState(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+  await cdp.detach();
+  return state;
+}
+
+test("reduced motion switched while mounted stops and restores the swipe and pull motion", async ({ page }) => {
+  test.skip(process.env.VICINO_GESTURE_BASELINE === "1");
+  // Both wrappers live as long as the app (days in the Android WebView): the setting has to be followed
+  // while mounted. framer-motion's useReducedMotion read it once at mount and kept moving.
+  const swipe: [[number, number], [number, number]] = [[310, 260], [210, 260]];
+  const pull: [[number, number], [number, number]] = [[180, 70], [180, 350]];
+  expect((await motionState(page)).pull).not.toBe("none");
+  expect((await held(page, ...swipe)).swipe).not.toBe("none");
+  expect((await held(page, ...pull)).pull).not.toBe("none");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect((await motionState(page)).pull).toBe("none");
+  expect((await held(page, ...swipe)).swipe).toBe("none");
+  const pulling = await held(page, ...pull);
+  expect(pulling.pull).toBe("none");
+  expect(pulling.pullOpacity).toBeGreaterThan(0);
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect((await motionState(page)).pull).not.toBe("none");
+  expect((await held(page, ...swipe)).swipe).not.toBe("none");
+  expect(await page.evaluate(() => (window as FixtureWindow).fixture.calls)).toEqual([]);
 });
 
 test("cancelled horizontal swipe never navigates", async ({ page }) => {
