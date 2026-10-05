@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, useMotionValue, animate, useReducedMotion } from "framer-motion";
+import { motion, useMotionValue, animate } from "framer-motion";
 import { hapticLight } from "@/lib/haptics";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { beginNavigation, navigationFeedback } from "@/lib/observability/navigation-metrics";
 import { gestureAxis, pageGestureBlocked } from "@/lib/navigation/gestures";
 import { consumirRestauracion, marcarRestauracionPendiente } from "@/lib/navigation/restauracion-ui";
@@ -29,7 +30,8 @@ export function PageSwipeWrapper({ children }: PageSwipeWrapperProps) {
   const measurement = useRef(0);
   const suppressClick = useRef(false);
   const [isPending, startTransition] = useTransition();
-  const reducedMotion = useReducedMotion();
+  // Not framer-motion's useReducedMotion: it reads the setting once and this wrapper lives as long as the app.
+  const reducedMotion = usePrefersReducedMotion();
   const x = useMotionValue(0);
 
   useEffect(() => {

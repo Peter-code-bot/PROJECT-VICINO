@@ -3,9 +3,10 @@
 import { useEffect, useRef, useTransition } from "react";
 import { invalidateSessionData } from "@/lib/session-events";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, useMotionValue, useTransform, animate, useReducedMotion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { hapticLight } from "@/lib/haptics";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { beginNavigation, navigationFeedback } from "@/lib/observability/navigation-metrics";
 import { gestureAxis, pageGestureBlocked } from "@/lib/navigation/gestures";
 
@@ -20,7 +21,8 @@ export function PullToRefreshWrapper({ children }: { children: React.ReactNode }
   const inFlight = useRef(false);
   const measurement = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = useReducedMotion();
+  // Not framer-motion's useReducedMotion: it reads the setting once and this wrapper lives as long as the app.
+  const reducedMotion = usePrefersReducedMotion();
   const distance = useMotionValue(0);
   const opacity = useTransform(distance, [0, PULL_THRESHOLD], [0, 1]);
   const y = useTransform(distance, [0, MAX_PULL], [-60, 60]);
