@@ -147,10 +147,13 @@ async function main() {
         const surface=getComputedStyle(dialog).backgroundColor,card=dialog.querySelector("article")!,cardStyle=getComputedStyle(card),title=card.querySelector("h3")!;
         const description=document.getElementById(dialog.getAttribute("aria-describedby")!)!;
         const scroll=card.parentElement!.parentElement!,handle=dialog.querySelector("button")!;
-        return {surface,expectedSurface:normalized("--bg"),card:cardStyle.backgroundColor,expectedCard:normalized("--sidebar-bg"),titleContrast:contrast(getComputedStyle(title).color,cardStyle.backgroundColor),descriptionContrast:contrast(getComputedStyle(description).color,surface),padding:parseFloat(getComputedStyle(scroll).paddingBottom),scroll:getComputedStyle(scroll).overflowY,handle:handle.getBoundingClientRect().height};
+        return {transform:getComputedStyle(dialog).transform,surface,expectedSurface:normalized("--bg"),card:cardStyle.backgroundColor,expectedCard:normalized("--sidebar-bg"),titleContrast:contrast(getComputedStyle(title).color,cardStyle.backgroundColor),descriptionContrast:contrast(getComputedStyle(description).color,surface),padding:parseFloat(getComputedStyle(scroll).paddingBottom),scroll:getComputedStyle(scroll).overflowY,handle:handle.getBoundingClientRect().height};
       });
       assert.equal(styles.surface,styles.expectedSurface); assert.equal(styles.card,styles.expectedCard); assert.notEqual(styles.surface,styles.card);
       assert.ok(styles.titleContrast>=4.5); assert.ok(styles.descriptionContrast>=4.5);
+      // Con movimiento reducido el cajon no se desliza. Antes leia la preferencia solo al montar y seguia entrando
+      // al medir: el translateY fraccional daba un alto de 47.99997 al asa y el >=48 fallaba a ratos (3-oct-2026).
+      assert.equal(styles.transform,"none","reduced motion: the drawer must not slide in");
       assert.equal(styles.scroll,"auto"); assert.ok(styles.padding>=24); assert.ok(styles.handle>=48);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       await page.screenshot({path:path.join(out,"drawer-"+theme+"-390.png")});

@@ -188,9 +188,13 @@ Pruebas (todas en verde el 3-oct):
   `pnpm build`.
 - Arreglo del arnés de S12: el PNG falso se genera una sola vez. Un `toBlob` dentro de cada fetch
   falso se colgaba en Chromium tras algunos clics y la suite fallaba de forma intermitente, también
-  sin este cambio. Queda otra intermitencia **previa y ajena**: la comprobación de desbordamiento
-  horizontal del cajón en tema oscuro (`test-s12-preview-browser.ts:154`), que falla de vez en
-  cuando con y sin el arreglo.
+  sin este cambio. Quedaba otra intermitencia **previa y ajena** en el cajón en tema oscuro
+  (`test-s12-preview-browser.ts:154`). Se atribuyó al desbordamiento horizontal, pero la columna 81
+  es `assert.ok(styles.handle>=48)`: el alto del asa. Corregido el 4-oct: el cajón leía "reducir
+  movimiento" solo al montar (`useReducedMotion` de framer-motion), así que seguía deslizándose
+  y la prueba medía el asa a media entrada; con un `translateY` fraccional el alto salía 47.99997.
+  Ahora usa `hooks/use-prefers-reduced-motion.ts`, que sigue los cambios del sistema, y la prueba
+  exige que con movimiento reducido el cajón no se deslice.
 
 Pendiente: probarlo en un teléfono Android y en un iPhone (abrir la app, salir 6 minutos, volver).
 

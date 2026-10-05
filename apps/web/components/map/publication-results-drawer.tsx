@@ -4,11 +4,12 @@ import { useRef, type RefObject } from "react";
 import Link from "@/components/auth/auth-link";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { ArrowRight, Loader2, Store, X } from "lucide-react";
 import type { MapCoverageResult, MapFeature } from "@vicino/shared";
 import { PriceDisplay } from "@/components/shared/price-display";
 import { priceFallbackLabel } from "@/lib/price-mode";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 interface PublicationResultsDrawerProps {
   feature: MapFeature | null;
@@ -25,7 +26,8 @@ interface PublicationResultsDrawerProps {
 /** A single modal owns focus and scrolling; only the handle starts the drag. */
 export function PublicationResultsDrawer({ feature, data, pending, error, onClose, onRetry, onLoadMore, returnFocus, fallbackFocus }: PublicationResultsDrawerProps) {
   const controls = useDragControls();
-  const reducedMotion = useReducedMotion();
+  // Not framer-motion's useReducedMotion: it reads the setting once and this drawer stays mounted.
+  const reducedMotion = usePrefersReducedMotion();
   const close = useRef<HTMLButtonElement>(null);
   const title = feature && feature.count > 1 ? "Publicaciones en este grupo" : "Publicaciones en este punto";
 
