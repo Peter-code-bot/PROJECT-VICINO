@@ -1,3 +1,14 @@
+## 06-oct-2026 — Errores del reporte semanal de Sentry (25-sep a 2-oct) arreglados en código
+
+- Pedido de Pedro: «el tema de Sentry, si lo puedes hacer aquí, hazlo». Cuatro errores, un commit cada uno, con prueba que falló antes en el sitio de llamada real y pasa después. Sin migraciones y sin tocar la base.
+- `efff5e3` FK `legal_acceptances_user_id_fkey` (7758342326): sesión de Auth viva sin fila en profiles (cuenta borrada a medias). El layout ya no monta el registro legal sin perfil; la acción reconoce esa FK por nombre y manda un aviso agrupado `sesion-sin-perfil` (warning) en vez de una excepción. La FK de legal_documents sigue siendo error.
+- `af60e1b` «Cannot coerce the result to a single JSON object» (7758342436, 7758342372): cargarCore usaba throwOnError + single y lanzaba con 0 filas. Pasa a maybeSingle + `PerfilInexistenteError`; /perfil y /api/session/profile avisan sin excepción y la ruta sigue en 503.
+- `805c3f0` (fuera del reporte): requireAdminOrModerator negaba la moderación a quien tenía admin y moderator a la vez (`.single()` sobre dos filas).
+- `daac627` «Error: Rejected» (7522543334) y AbortError de SW: next-pwa registraba sin `.catch` y el stub de GoogleOther rechazaba. `register: false` + `RegistroServiceWorker` en el layout raíz. Comprobado en build de producción local: el SW se registra en /terminos y /forgot-password y un register que rechaza ya no deja unhandledrejection.
+- `9934cf8` Volumen (756 con ~41 de nivel error): el aviso de rate-limit iba a Sentry una vez por isolate y el nivel warning no lo saca del total ni de la cuota. Queda solo en logs; el guard de build ya rompe producción sin Upstash. Hipótesis a cerrar en Discover (`!level:error`, agrupado por título).
+- Arnés nuevo `apps/web/lib/pruebas/` para probar el archivo real dentro de la suite de apps/web. Suite 96/96, tsc, eslint de lo tocado y `pnpm build` (58/58) con exit 0.
+- Pendiente de Pedro: terminar de borrar la cuenta 0186140a (Auth + 11 archivos); opcional, Inbound Filter de web crawlers en Sentry.
+
 ## 04-oct-2026 — S02 publicado a master; Redis y permisos de mapa verificados
 
 - Javier confirma revocación/acceso Preview y ordena publicar; confirmación humana registrada sin inventar fecha histórica de rotación. Inicio de sesión14:16:42CDMX; fin real en Bitácora de Notion.
