@@ -19,7 +19,15 @@ type VentanaConWorkbox = Window & { workbox?: { register: () => Promise<unknown>
  *   - «AbortError: Failed to register a ServiceWorker» (VICINO-WEB-17, 1-oct):
  *     un movil que no pudo bajar /sw.js.
  * Ninguno se arregla desde el codigo y ninguno rompe nada: sin service worker
- * la pagina funciona igual, solo sin los estaticos en cache.
+ * la pagina funciona igual, solo sin los estaticos en cache. Evidencia del
+ * primero: el correo de alta del issue (2-jun) trae browser=GoogleOther,
+ * mechanism=onunhandledrejection y el frame
+ * wrsParams.serviceWorkers.navigator.serviceWorker.register.
+ *
+ * Solo esos dos se quedan en consola (esRuidoConocido). Cualquier otro rechazo
+ * se relanza y sigue llegando a Sentry como antes: un fallo sistematico del
+ * registro (/sw.js con 404, una redireccion, un MIME malo) deja la PWA sin
+ * cache para todos y tiene que verse.
  *
  * Con `register: false` sw-entry.js sigue creando window.workbox y todo lo
  * demas; aqui solo se hace el register() que el paquete hacia, con su catch.
@@ -35,11 +43,34 @@ export function RegistroServiceWorker() {
     const workbox = (window as VentanaConWorkbox).workbox;
     if (typeof workbox?.register !== "function") return;
     workbox.register().catch((error: unknown) => {
-      // A consola y no a Sentry: no es accionable, y la consola ya deja un
-      // breadcrumb por si otro error de la misma sesion necesita contexto.
-      console.warn("[pwa] no se pudo registrar el service worker:", error);
+      if (esRuidoConocido(error)) {
+        // A consola y no a Sentry: no es accionable, y la consola ya deja un
+        // breadcrumb por si otro error de la misma sesion necesita contexto.
+        console.warn("[pwa] no se pudo registrar el service worker:", error);
+        return;
+      }
+      // Todo lo demas se relanza tal cual. Asi llega a onunhandledrejection
+      // como antes, y de ahi a Sentry por sus global handlers, que estan en la
+      // web y en la app de Android. Un captureException de @sentry/nextjs no
+      // valdria para la app: alli ese SDK no tiene cliente y el evento se
+      // perderia (ver capacitor-init.tsx).
+      throw error;
     });
   }, []);
 
   return null;
+}
+
+/**
+ * Los dos rechazos que se sabe que no son nuestros, y SOLO esos:
+ *   - el stub de GoogleOther, que rechaza con exactamente Error("Rejected");
+ *   - AbortError: el navegador no pudo bajar /sw.js (red).
+ * Lo que NO entra aqui y tiene que seguir viendose en Sentry es justo lo que
+ * romperia el registro para todos: /sw.js con 404 (TypeError), detras de una
+ * redireccion o con un MIME que no es JavaScript (SecurityError).
+ */
+function esRuidoConocido(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { name, message } = error as { name?: unknown; message?: unknown };
+  return name === "AbortError" || message === "Rejected";
 }
