@@ -101,7 +101,11 @@ const VERSION_MOVIL = leerVersionAndroid();
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
-  register: true,
+  // false: el sw-entry.js del paquete registra SIN .catch y cada rechazo
+  // (el stub de GoogleOther, un /sw.js que no baja) llegaba a Sentry como
+  // unhandledrejection. Lo registra components/registro-service-worker.tsx,
+  // montado en app/layout.tsx, con el mismo window.workbox y su catch.
+  register: false,
   cacheStartUrl: false,
   dynamicStartUrl: false,
   // Su default es true, y significa un location.reload() DURO en cada evento

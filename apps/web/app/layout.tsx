@@ -8,6 +8,7 @@ import { CapacitorSentryInit } from "@/components/capacitor-sentry-init";
 import { PushNotificationInit } from "@/components/push-notification-init";
 import { OAuthUrlListener } from "@/components/auth/oauth-url-listener";
 import { OfflineDetector } from "@/components/offline-detector";
+import { RegistroServiceWorker } from "@/components/registro-service-worker";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -130,6 +131,7 @@ export default function RootLayout({
           <PushNotificationInit />
           <OAuthUrlListener />
           <OfflineDetector />
+          <RegistroServiceWorker />
           {children}
           <Toaster richColors position="bottom-center" />
         </ThemeProvider>
