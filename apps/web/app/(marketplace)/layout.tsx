@@ -193,7 +193,12 @@ export default async function MarketplaceLayout({
                 }
               />
             </div>
-            {user && <RegistroAceptacionLegal />}
+            {/* Con perfil, no solo con sesion: legal_acceptances.user_id apunta
+                a profiles(id), y una sesion sin perfil (cuenta borrada a medias)
+                hacia que el RPC fallara por la FK en cada carga (Sentry
+                7758342326). Si la consulta del perfil fallo por algo pasajero,
+                esta carga no registra y la siguiente si: el RPC es idempotente. */}
+            {user && profile && <RegistroAceptacionLegal />}
             <BannerCambioLegal avisos={(avisosLegales ?? []) as AvisoLegal[]} />
             <MainWrapper>
               <PullToRefreshWrapper>

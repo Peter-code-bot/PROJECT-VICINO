@@ -4,6 +4,18 @@ import { headers } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { avisarSesionSinPerfil } from "@/lib/sesion-sin-perfil";
+
+/**
+ * La FK de user_id -> profiles(id). Se reconoce por el NOMBRE de la constraint
+ * y no por el codigo 23503 a secas: la FK compuesta (documento, version) ->
+ * legal_documents tambien da 23503, y esa si seria un bug nuestro.
+ */
+const FK_SIN_PERFIL = "legal_acceptances_user_id_fkey";
+
+function esSesionSinPerfil(error: { code?: string; message?: string; details?: string }): boolean {
+  return error.code === "23503" && `${error.message ?? ""} ${error.details ?? ""}`.includes(FK_SIN_PERFIL);
+}
 
 /**
  * Deja constancia de la aceptacion tacita de los documentos legales vigentes.
@@ -66,6 +78,14 @@ export async function registrarAceptacionLegal() {
   });
 
   if (error) {
+    // Sesion sin perfil (cuenta borrada a medias): no hay a quien acreditar y
+    // no es un fallo del codigo. Ver lib/sesion-sin-perfil.ts. El layout ya no
+    // monta el registro sin perfil; esto cubre la carrera de un perfil que
+    // desaparece entre el render y la llamada.
+    if (esSesionSinPerfil(error)) {
+      avisarSesionSinPerfil("registrarAceptacionLegal");
+      return { error: "No se pudo registrar la aceptación" };
+    }
     // No se le enseña al usuario: esto es contabilidad interna y bloquear la
     // navegacion por ello seria peor que el problema. Pero tampoco puede
     // perderse: un registro legal que falla en silencio es exactamente el modo
