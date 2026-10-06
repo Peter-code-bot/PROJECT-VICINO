@@ -44,9 +44,11 @@ const redis = hasUpstash ? Redis.fromEnv() : null;
 // las 48 un 200. O sea que hoy esto es exactamente lo que describe el parrafo
 // anterior.
 //
-// Se avisa desde dentro de enforce/check, no aqui arriba, a proposito: en el
-// arranque de un modulo de Edge puede no haber Sentry inicializado todavia, y
-// un aviso que se emite donde nadie lo recoge es el mismo problema otra vez.
+// Hoy la senal que cuenta es el guard de build (scripts/check-rate-limit-env.mjs):
+// desde 6eb060c ROMPE el despliegue de produccion si faltan las credenciales, y
+// el build es lo unico que ocurre exactamente una vez por despliegue. Con ese
+// guard este aviso en caliente ya no puede salir en produccion; se queda en los
+// logs de Vercel como red por si alguien lo quita.
 let yaAvisado = false;
 
 function avisarSiNoHayFreno(): void {
@@ -60,28 +62,20 @@ function avisarSiNoHayFreno(): void {
     "UPSTASH_REDIS_REST_URL y/o UPSTASH_REDIS_REST_TOKEN. Todos los limitadores " +
     "de lib/rate-limit.ts estan inactivos: login, escrituras, busqueda y reportes " +
     "aceptan peticiones sin freno.";
+  // Solo a los logs, ya NO a Sentry (6-oct-2026). `yaAvisado` es una variable
+  // de modulo, o sea POR ISOLATE: en Vercel eso no es una vez por despliegue
+  // sino una vez por arranque en frio, en los dos runtimes (Node y Edge) y en
+  // cada region. Asi salieron 77 eventos en una semana, el 62 % del volumen,
+  // para decir 77 veces lo mismo.
+  //
+  // 074dde5 lo habia bajado a "warning" creyendo que asi salia del recuento de
+  // errores. No sale: el nivel lo saca de la lista de issues de nivel error y de
+  // la regla de alerta, pero el total de errores del reporte semanal suma los
+  // eventos aceptados de TODOS los niveles, y la cuota mensual tambien. Es el
+  // sospechoso principal de los 756 «errores» del reporte del 25-sep al 2-oct,
+  // en el que los issues de nivel error suman unos 41 (hipotesis: se cierra en
+  // Discover, dataset errors, filtrando !level:error y agrupando por titulo).
   console.error(mensaje);
-  // Sentry se carga de forma perezosa para no atarlo al grafo del modulo, que
-  // tambien se importa desde proxy.ts (runtime Edge).
-  // Nivel "warning" y no "error" a proposito. `yaAvisado` es una variable de
-  // modulo, o sea POR ISOLATE: en Vercel eso no es una vez por despliegue sino
-  // una vez por arranque en frio, en los dos runtimes (Node y Edge) y en cada
-  // region. Asi salieron 77 eventos en una semana, el 62% de todo el volumen de
-  // errores del proyecto, para decir 77 veces lo mismo. Y no es un error de
-  // ejecucion: es un hecho de configuracion del despliegue, que ademas ya queda
-  // dicho una sola vez y de forma determinista en el guard de build
-  // (scripts/check-rate-limit-env.mjs). Aqui se conserva la senal, pero fuera
-  // del recuento de errores y de la regla de alerta.
-  void import("@sentry/nextjs")
-    .then((Sentry) => {
-      Sentry.captureMessage(mensaje, {
-        level: "warning",
-        tags: { runtime: process.env.NEXT_RUNTIME ?? "desconocido" },
-      });
-    })
-    .catch(() => {
-      // Si Sentry no esta disponible el console.error de arriba ya salio.
-    });
 }
 
 function makeLimiter(window: Parameters<typeof Ratelimit.slidingWindow>[1], count: number, prefix: string) {
