@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buscarElementos, cargarReal, sentryEspia } from "../../lib/pruebas/cargar-real";
-import { crearSupabaseFalso, type Fila } from "../../lib/pruebas/supabase-falso";
+import { crearSupabaseFalso, type Fila, type RespuestaFalsa } from "../../lib/pruebas/supabase-falso";
 
 type Legal = typeof import("./legal");
 type Layout = { default: (props: { children: unknown }) => Promise<unknown> };
@@ -73,16 +73,23 @@ test("accion: la FK de (documento, version) SIGUE siendo un error de Sentry", as
   assert.equal(sentry.captureMessage.llamadas.length, 0);
 });
 
-/** Carga el layout de (marketplace) con el arbol de componentes vaciado. */
-async function cargarLayout(perfiles: Fila[]) {
+/**
+ * Carga el layout de (marketplace) con el arbol de componentes vaciado.
+ * `errorPerfil` hace que la consulta de profiles conteste con ese error de
+ * PostgREST en vez de con filas.
+ */
+async function cargarLayout(perfiles: Fila[], errorPerfil?: RespuestaFalsa) {
+  const sentry = sentryEspia();
   const { cliente } = crearSupabaseFalso({
     usuario: USUARIO,
     tablas: { profiles: perfiles },
+    errores: errorPerfil ? { profiles: errorPerfil } : undefined,
     rpc: { avisos_legales_pendientes: () => ({ status: 200, body: [] }) },
   });
   const Registro = () => null;
   const layout = await cargarReal<Layout>("app/(marketplace)/layout.tsx", {
     stubs: {
+      "@sentry/nextjs": sentry,
       "next/headers": {
         cookies: async () => ({ get: () => undefined }),
         headers: async () => new Headers({ "x-vicino-ruta": "/" }),
@@ -98,14 +105,48 @@ async function cargarLayout(perfiles: Fila[]) {
     aislarEntrada: { reales: ["react", "@vicino/shared", "@/lib/navigation/rutas-legales"] },
   });
   const arbol = await layout.default({ children: null });
-  return buscarElementos(arbol, Registro);
+  return { registros: buscarElementos(arbol, Registro), sentry };
 }
 
+const PERFIL = { nombre: "Ana", foto: null, es_vendedor: false, has_seen_onboarding: true, username: "ana", seller_type: null, nombre_negocio: null };
+
 test("layout: sin fila en profiles NO se monta el registro de aceptacion", async () => {
-  assert.equal((await cargarLayout([])).length, 0);
+  const { registros, sentry } = await cargarLayout([]);
+  assert.equal(registros.length, 0);
+  assert.equal(sentry.captureException.llamadas.length, 0, "0 filas es un dato, no un fallo de la consulta");
 });
 
 test("layout: con perfil se sigue montando (una sola vez)", async () => {
-  const perfil = { nombre: "Ana", foto: null, es_vendedor: false, has_seen_onboarding: true, username: "ana", seller_type: null, nombre_negocio: null };
-  assert.equal((await cargarLayout([perfil])).length, 1);
+  const { registros, sentry } = await cargarLayout([PERFIL]);
+  assert.equal(registros.length, 1);
+  assert.equal(sentry.captureException.llamadas.length, 0);
 });
+
+// Que la consulta del perfil FALLE no dice nada de si hay perfil. Saltarse el
+// registro en ese caso lo dejaba en silencio para todos los usuarios mientras
+// durara el fallo: una columna nueva del SELECT sin su GRANT (la saga de
+// has_seen_onboarding, 20260704000002) o un timeout. Y el layout no se vuelve a
+// ejecutar al navegar en el cliente, asi que un fallo pasajero en la primera
+// carga dejaba sin registro toda la pestaña.
+const FALLOS_DE_LA_CONSULTA: Array<[string, RespuestaFalsa]> = [
+  [
+    "42501 por una columna sin GRANT",
+    { status: 401, body: { code: "42501", details: null, hint: null, message: "permission denied for column has_seen_onboarding" } },
+  ],
+  [
+    "timeout de la sentencia",
+    { status: 500, body: { code: "57014", details: null, hint: null, message: "canceling statement due to statement timeout" } },
+  ],
+];
+
+for (const [caso, fallo] of FALLOS_DE_LA_CONSULTA) {
+  test(`layout: si la consulta del perfil falla (${caso}) se monta el registro y el fallo va a Sentry`, async () => {
+    const { registros, sentry } = await cargarLayout([PERFIL], fallo);
+
+    assert.equal(registros.length, 1, "no se sabe si hay perfil: registra y que la accion clasifique la FK");
+    assert.equal(sentry.captureException.llamadas.length, 1, "un fallo de la consulta no puede quedar en silencio");
+    const [error, contexto] = sentry.captureException.llamadas[0]!;
+    assert.equal((error as { code?: string }).code, (fallo.body as { code: string }).code);
+    assert.deepEqual(contexto?.tags, { layout: "marketplace", query: "profiles" });
+  });
+}

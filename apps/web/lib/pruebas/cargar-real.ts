@@ -71,8 +71,12 @@ export interface OpcionesCarga {
   globales?: Record<string, unknown>;
 }
 
-/** Imports de valor del archivo: especificador -> nombres importados. */
-function importsDeValor(archivo: string): Map<string, string[]> {
+/**
+ * Imports de valor del archivo que hay que vaciar: especificador -> nombres
+ * importados. Los de `omitir` (los que ya tienen stub o se cargan de verdad) no
+ * se vacian, asi que un `import * as` de uno de ellos esta permitido.
+ */
+function importsDeValor(archivo: string, omitir: (especificador: string) => boolean): Map<string, string[]> {
   const ts = requireWeb("typescript") as typeof TS;
   const fuente = readFileSync(archivo, "utf8");
   const arbol = ts.createSourceFile(archivo, fuente, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -82,6 +86,7 @@ function importsDeValor(archivo: string): Map<string, string[]> {
     const clausula = sentencia.importClause;
     if (clausula?.isTypeOnly) continue;
     const especificador = sentencia.moduleSpecifier.text;
+    if (omitir(especificador)) continue;
     const nombres = imports.get(especificador) ?? [];
     if (clausula?.name) nombres.push("default");
     const enlaces = clausula?.namedBindings;
@@ -118,8 +123,8 @@ export async function cargarReal<T>(relativo: string, opciones: OpcionesCarga = 
 
   if (opciones.aislarEntrada) {
     const reales = new Set(opciones.aislarEntrada.reales);
-    for (const [especificador, nombres] of importsDeValor(entrada)) {
-      if (Object.hasOwn(stubs, especificador) || reales.has(especificador)) continue;
+    const omitir = (especificador: string) => Object.hasOwn(stubs, especificador) || reales.has(especificador);
+    for (const [especificador, nombres] of importsDeValor(entrada, omitir)) {
       stubsEntrada[especificador] = Object.fromEntries(nombres.map((n) => [n, componenteVacio(n)]));
     }
   }

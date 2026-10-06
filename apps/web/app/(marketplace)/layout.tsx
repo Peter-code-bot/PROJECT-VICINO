@@ -21,6 +21,20 @@ import { MainWrapper } from "@/components/layout/main-wrapper";
 import { RegistroAceptacionLegal } from "@/components/legal/registro-aceptacion";
 import { BannerCambioLegal, type AvisoLegal } from "@/components/legal/banner-cambio-legal";
 import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
+
+/**
+ * Un fallo de la consulta del perfil (no un perfil inexistente: eso llega como
+ * data null sin error). Con `extra` para no perder el `details` de Postgres,
+ * que es donde nombra la columna o la policy que rechazo.
+ */
+function reportarFalloPerfil(error: unknown): void {
+  const { code, details, hint } = (error ?? {}) as { code?: unknown; details?: unknown; hint?: unknown };
+  Sentry.captureException(error, {
+    tags: { layout: "marketplace", query: "profiles" },
+    extra: { code, details, hint },
+  });
+}
 
 export default async function MarketplaceLayout({
   children,
@@ -39,6 +53,8 @@ export default async function MarketplaceLayout({
     .then(({ data }) => data, () => null);
 
   let profile = null;
+  /** true solo si la consulta del perfil SALIO BIEN y devolvio 0 filas. */
+  let sinFilaEnProfiles = false;
   let isAdmin = false;
   let unreadNotifications = 0;
   let unreadChatMessages = 0;
@@ -59,11 +75,13 @@ export default async function MarketplaceLayout({
       sellerChatsResult,
       favoritesResult,
     ] = await Promise.allSettled([
+      // maybeSingle y no single: con single, 0 filas llega como error PGRST116
+      // y no se distingue de un fallo real de la consulta.
       supabase
         .from("profiles")
         .select("nombre, foto, es_vendedor, has_seen_onboarding, username, seller_type, nombre_negocio")
         .eq("id", user.id)
-        .single(),
+        .maybeSingle(),
       supabase
         .from("user_roles")
         .select("role")
@@ -88,8 +106,20 @@ export default async function MarketplaceLayout({
       supabase.from("favorites").select("producto_id").eq("usuario_id", user.id),
     ]);
 
-    profile =
-      profileResult.status === "fulfilled" ? profileResult.value.data : null;
+    // profile === null junta dos cosas que el registro legal (abajo) no puede
+    // confundir: que NO haya fila y que la consulta haya FALLADO. Solo lo
+    // primero se sabe aqui con certeza: la consulta salio bien y no trajo nada.
+    // El fallo, en cambio, se manda a Sentry: un GRANT de columna que falte en
+    // este SELECT (la saga de has_seen_onboarding, 20260704000002) dejaba el
+    // layout entero sin perfil para todos sin un solo evento.
+    if (profileResult.status === "fulfilled") {
+      const { data, error } = profileResult.value;
+      profile = data;
+      if (error) reportarFalloPerfil(error);
+      else sinFilaEnProfiles = data === null;
+    } else {
+      reportarFalloPerfil(profileResult.reason);
+    }
     isAdmin =
       rolesResult.status === "fulfilled" &&
       (rolesResult.value.data?.length ?? 0) > 0;
@@ -193,12 +223,18 @@ export default async function MarketplaceLayout({
                 }
               />
             </div>
-            {/* Con perfil, no solo con sesion: legal_acceptances.user_id apunta
-                a profiles(id), y una sesion sin perfil (cuenta borrada a medias)
-                hacia que el RPC fallara por la FK en cada carga (Sentry
-                7758342326). Si la consulta del perfil fallo por algo pasajero,
-                esta carga no registra y la siguiente si: el RPC es idempotente. */}
-            {user && profile && <RegistroAceptacionLegal />}
+            {/* Se salta SOLO cuando se sabe que no hay perfil (la consulta salio
+                bien con 0 filas): legal_acceptances.user_id apunta a
+                profiles(id), y una sesion sin perfil (cuenta borrada a medias)
+                hacia fallar el RPC por la FK en cada carga (Sentry 7758342326).
+                Si la consulta FALLO no se sabe nada, y saltarse el registro lo
+                perderia en silencio mientras dure el fallo; ademas el layout no
+                se vuelve a ejecutar al navegar en el cliente, asi que "la
+                siguiente carga" puede no llegar en toda la pestaña. En ese caso
+                se registra igual: si de verdad no hay perfil, la accion
+                reconoce la FK por su nombre y la manda como aviso, no como
+                error. */}
+            {user && !sinFilaEnProfiles && <RegistroAceptacionLegal />}
             <BannerCambioLegal avisos={(avisosLegales ?? []) as AvisoLegal[]} />
             <MainWrapper>
               <PullToRefreshWrapper>

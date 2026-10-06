@@ -79,9 +79,11 @@ export async function registrarAceptacionLegal() {
 
   if (error) {
     // Sesion sin perfil (cuenta borrada a medias): no hay a quien acreditar y
-    // no es un fallo del codigo. Ver lib/sesion-sin-perfil.ts. El layout ya no
-    // monta el registro sin perfil; esto cubre la carrera de un perfil que
-    // desaparece entre el render y la llamada.
+    // no es un fallo del codigo. Ver lib/sesion-sin-perfil.ts. El layout no
+    // monta el registro cuando SABE que no hay perfil; esto cubre cuando la
+    // consulta del perfil del layout fallo (lo monta igual, para no perder el
+    // registro de quien si lo tiene) y la carrera de un perfil que desaparece
+    // entre el render y la llamada.
     if (esSesionSinPerfil(error)) {
       avisarSesionSinPerfil("registrarAceptacionLegal");
       return { error: "No se pudo registrar la aceptación" };
