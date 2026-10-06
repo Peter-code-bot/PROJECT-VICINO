@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { usuarioOInvitado } from "@/lib/session-auth";
+import { PerfilInexistenteError } from "@/lib/sesion-sin-perfil";
 
 export type ProfileSessionPart = "core" | "products" | "reviews" | "counts";
 
@@ -28,8 +29,16 @@ async function cargarCore(supabase: Client, user: Usuario) {
       "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at, alta_vendedor_paso"
     ).throwOnError()
     .eq("id", user.id)
-    .single();
-  if (!profileData) throw new Error("No se pudo cargar el perfil. Intenta de nuevo.");
+    .maybeSingle();
+  // maybeSingle y no single. Con single, 0 filas no llega aqui como null:
+  // PostgREST contesta 406 PGRST116 y throwOnError lo convierte en un
+  // PostgrestError («Cannot coerce the result to a single JSON object») que
+  // /perfil y /api/session/profile mandaban a Sentry como excepcion (7758342372
+  // y 7758342436, 27-sep). Una sesion sin perfil no es un fallo de la
+  // consulta: es una cuenta borrada a medias, y se lanza con su propio tipo
+  // para que esas dos superficies la avisen como tal. Los errores reales de la
+  // consulta siguen lanzando por throwOnError.
+  if (!profileData) throw new PerfilInexistenteError();
 
   // Con el Database generico puesto, `profiles` confiesa lo que ya era verdad
   // en la base: casi todas sus columnas de estado son NULLABLE. Tienen DEFAULT,

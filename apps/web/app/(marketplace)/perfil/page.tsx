@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { avisarSesionSinPerfil, esPerfilInexistente } from "@/lib/sesion-sin-perfil";
 import {
   getProfileSession,
   type ProfileSessionContext,
@@ -55,7 +56,10 @@ function semilla<P extends ProfileSessionPart>(
   renderId: string,
 ): SessionSeed<ProfileSessionResult<P>["value"]> | undefined {
   if (resultado.status === "rejected") {
-    Sentry.captureException(resultado.reason, { tags: { surface: "perfil", query: `profile_seed_${part}` } });
+    // Sin fila en profiles no hay consulta rota que diagnosticar: es una
+    // cuenta borrada a medias y va como aviso agrupado (lib/sesion-sin-perfil.ts).
+    if (esPerfilInexistente(resultado.reason)) avisarSesionSinPerfil("perfil");
+    else Sentry.captureException(resultado.reason, { tags: { surface: "perfil", query: `profile_seed_${part}` } });
     return undefined;
   }
   if (!resultado.value) return undefined;

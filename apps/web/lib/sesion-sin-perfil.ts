@@ -30,6 +30,23 @@ import * as Sentry from "@sentry/nextjs";
  * El id del usuario NO viaja a Sentry: el proyecto no manda identificadores de
  * usuario (sendDefaultPii: false) y esto no es motivo para empezar.
  */
+/**
+ * Lo lanza la carga del perfil (cargarCore) cuando la sesion no tiene fila en
+ * profiles, para que quien la llama pueda distinguir este estado de un fallo
+ * real de la consulta, que sigue yendo a Sentry como excepcion.
+ */
+export class PerfilInexistenteError extends Error {
+  constructor() {
+    super("No hay fila en profiles para esta sesion.");
+    this.name = "PerfilInexistenteError";
+  }
+}
+
+/** Por nombre y no por instanceof: sobrevive a que el modulo se cargue dos veces. */
+export function esPerfilInexistente(error: unknown): boolean {
+  return error instanceof Error && error.name === "PerfilInexistenteError";
+}
+
 export function avisarSesionSinPerfil(superficie: string): void {
   Sentry.captureMessage("Sesion de Auth viva sin fila en profiles", {
     level: "warning",

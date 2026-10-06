@@ -8,6 +8,7 @@ import { esAuthNoDisponible, usuarioOInvitado } from "@/lib/session-auth";
 import { createClient } from "@/lib/supabase/server";
 import { requiereSesion } from "@/lib/auth/acceso-invitado";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
+import { avisarSesionSinPerfil, esPerfilInexistente } from "@/lib/sesion-sin-perfil";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ reso
     }
     return new Response(null, { status: 404, headers });
   } catch (error) {
+    // Sesion viva sin fila en profiles (cuenta borrada a medias): un aviso
+    // agrupado, no una excepcion (ver lib/sesion-sin-perfil.ts). Sigue siendo
+    // 503 y no 401: con 401 el cliente vacia la memoria y manda a /login, y con
+    // la sesion viva /login lo devolveria aqui.
+    if (esPerfilInexistente(error)) {
+      avisarSesionSinPerfil(`api/session/${resource}`);
+      return NextResponse.json({ error: "No se pudieron cargar los datos." }, { status: 503, headers });
+    }
     // Un 503 mudo era el peor modo de fallo: una columna nueva sin GRANT
     // (42501, la causa raiz de la saga del onboarding) dejaba /perfil en
     // "No se pudo actualizar" para todos y en Sentry no aparecia nada. Auth

@@ -29,6 +29,8 @@ export interface OpcionesSupabaseFalso {
   /** null = invitado (auth.getUser devuelve AuthSessionMissingError). */
   usuario: { id: string; email?: string } | null;
   tablas?: Record<string, Fila[]>;
+  /** Tabla -> respuesta de error de PostgREST (p. ej. un 42501 sin GRANT). */
+  errores?: Record<string, RespuestaFalsa>;
   rpc?: Record<string, (cuerpo: unknown) => RespuestaFalsa>;
 }
 
@@ -74,6 +76,9 @@ export function crearSupabaseFalso(opciones: OpcionesSupabaseFalso) {
       const r = manejador(cuerpo);
       return respuesta(r.status, r.body);
     }
+
+    const fallo = opciones.errores?.[recurso];
+    if (fallo) return respuesta(fallo.status, fallo.body);
 
     const todas = opciones.tablas?.[recurso] ?? [];
     const limite = Number(url.searchParams.get("limit") ?? Number.NaN);
