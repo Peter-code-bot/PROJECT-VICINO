@@ -1,3 +1,11 @@
+## 10-oct-2026 — Onboarding: migración aplicada y candidato PR54
+
+- Publicación a master autorizada por Javier. [PR54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54), código base b042354; este corte prepara el candidato corregido y espera comprobaciones remotas antes de integrarlo.
+- Migración20261010120000 aplicada a VICINO/main con DDL y ledger en transacción única después de dos ensayos ROLLBACK, uno con rol authenticated y RPC reales. Seis hashes de función, permisos, RLS, índice único y RPC anterior comprobados. Sin DML de perfiles persistido ni cuentas/correos nuevos.
+- Conciliados tipos completos del artefacto de producción. Corregidas las13 vulnerabilidades del baseline con Next16.3.8, Capacitor8.4.3 y suelos de sharp/source-map-js/handlebars. Patches de Antigravity/PWA/ESLint preservados; instalación congelada y audit completo exit0, sin vulnerabilidades conocidas.
+- UI102/102, SQL20/20, vendedor14/14, flujo9/9, glob62/62, Auth/perfil/SW24/24, Sentry sintético5/5, tipos y build59/59 aprobados. Lint local después de generar SW:0errores148avisos. [Acta](docs/ONBOARDING-2026-10-10.md) y Notion conservan evidencia y límites.
+- La aceptación física y concurrencia multisesión siguen pendientes. El parche nativo sólo llegará a apps instaladas después de sync/rebuild y distribución; no se genera una versión nativa en este corte. No cambia otros planes de Home/Auth, NT o Google Play.
+
 ## 10-oct-2026 — Onboarding por dato, implementación local
 
 - Pedido y autorización de Javier: contenido arriba, una página por dato, Omitir y elección del ID público con sugerencias del correo más números. Equipo Workflow Advisor: diseño, flujo y usuario/SQL.
