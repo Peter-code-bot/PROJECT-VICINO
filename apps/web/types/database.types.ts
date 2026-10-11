@@ -3118,6 +3118,23 @@ export type Database = {
         }
         Returns: Json
       }
+      guardar_paso_onboarding_v2: {
+        Args: {
+          p_bio?: string
+          p_camino?: string
+          p_categoria_negocio?: string
+          p_descripcion_negocio?: string
+          p_foto?: string
+          p_intereses?: string[]
+          p_metodos_pago_aceptados?: string
+          p_nombre?: string
+          p_nombre_negocio?: string
+          p_paso?: string
+          p_seller_type?: string
+          p_username?: string
+        }
+        Returns: Json
+      }
       guardar_preferencias_notificaciones: {
         Args: { p_preferencias: Json }
         Returns: Json
@@ -3451,6 +3468,10 @@ export type Database = {
         Returns: Json
       }
       set_username: { Args: { p_username: string }; Returns: string }
+      consultar_usuarios_onboarding: {
+        Args: { p_username?: string; p_sugerencias?: string[] }
+        Returns: Json
+      }
       solicitar_union_comunidad: {
         Args: { p_community_id: string; p_mensaje?: string }
         Returns: Json

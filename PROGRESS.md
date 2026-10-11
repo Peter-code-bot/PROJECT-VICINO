@@ -1,3 +1,11 @@
+## 10-oct-2026 — Onboarding por dato, implementación local
+
+- Pedido y autorización de Javier: contenido arriba, una página por dato, Omitir y elección del ID público con sugerencias del correo más números. Equipo Workflow Advisor: diseño, flujo y usuario/SQL.
+- Rama aislada `feat/onboarding-20261010` en `PROJECT-VICINO-ONBOARDING`, base `d2d54cd`. Guarda dato y próximo paso juntos; omitir conserva valores; activación vendedor explícita; ID ocupado vuelve a comprobarse. Verde/crema y Outfit/Inter preservados.
+- Evidencia técnica y alcance: [acta local](docs/ONBOARDING-2026-10-10.md). Migración preparada y pruebas locales; aplicación remota, concurrencia real y Android/iPhone físicos siguen pendientes. Este corte no publica ni sustituye otros planes.
+- Validación local final: UI 102/102, SQL/ID 18/18, vendedor 14/14 y flujo 9/9; tipos web/shared, rutas y build 59/59 aprobados. Lint completo: 0 errores, 60 avisos. Revisión independiente sin P0/P1; corregidos navegación, colisiones de ID y scroll del campo con teclado.
+- Fuente operativa: [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Diseño](https://app.notion.com/p/c8098e8a0cfa83c2b32d01df5ec49663), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+
 ## 06-oct-2026 — Errores del reporte semanal de Sentry (25-sep a 2-oct) arreglados en código
 
 - Pedido de Pedro: «el tema de Sentry, si lo puedes hacer aquí, hazlo». Cuatro errores, un commit cada uno, con prueba que falló antes en el sitio de llamada real y pasa después. Sin migraciones y sin tocar la base.

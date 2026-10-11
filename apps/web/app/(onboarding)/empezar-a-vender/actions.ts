@@ -4,6 +4,28 @@ import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { CATEGORIES, sellerOnboardingSchema, updateProfileSchema } from "@vicino/shared";
+import { z } from "zod";
+
+const profileFields = updateProfileSchema.innerType().shape;
+const activationSchema = z.object({
+  categoria: sellerOnboardingSchema.shape.categoria_negocio.nullable(),
+  tipo: profileFields.seller_type.removeDefault(),
+  nombreNegocio: profileFields.nombre_negocio,
+  descripcionNegocio: profileFields.descripcion_negocio,
+  metodosPago: profileFields.metodos_pago_aceptados,
+  foto: profileFields.foto.or(z.literal("")),
+}).superRefine((input, context) => {
+  if (input.categoria && !CATEGORIES.some((category) => category.slug === input.categoria)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["categoria"], message: "Elige una categoría válida." });
+  }
+  if (input.tipo === "business" && input.nombreNegocio?.trim() && input.nombreNegocio.trim().length < 2) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["nombreNegocio"], message: "Escribe al menos 2 caracteres para el nombre del negocio." });
+  }
+  if (input.foto && !/^https?:\/\//i.test(input.foto)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["foto"], message: "La foto debe tener una URL válida." });
+  }
+});
 
 /**
  * Activa el Modo Vendedor. Es el único gesto que convierte.
@@ -35,18 +57,33 @@ export async function activarModoVendedor(params: {
 
   if (!user) return { error: "No autenticado" };
 
+  const parsed = activationSchema.safeParse(params);
+  if (!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0];
+    const messages: Record<string, string> = {
+      categoria: "Elige una categoría válida.",
+      tipo: "Elige Casual o Negocio para continuar.",
+      nombreNegocio: "El nombre del negocio debe tener entre 2 y 100 caracteres.",
+      descripcionNegocio: "La descripción admite hasta 1000 caracteres.",
+      metodosPago: "Revisa los métodos de pago que seleccionaste.",
+      foto: "No pudimos validar la foto. Intenta subirla de nuevo.",
+    };
+    return { error: typeof field === "string" ? messages[field] ?? "Revisa los datos del Modo Vendedor." : "Revisa los datos del Modo Vendedor." };
+  }
+  const input = parsed.data;
+
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
   const { error } = await supabase.rpc("activar_modo_vendedor", {
     // Omitir la categoria significa "no la cambies": el cuerpo del RPC lo
     // resuelve con COALESCE(p_categoria_negocio, categoria_negocio).
-    p_categoria_negocio: params.categoria ?? undefined,
-    p_seller_type: params.tipo,
-    p_nombre_negocio: params.nombreNegocio || undefined,
-    p_descripcion_negocio: params.descripcionNegocio || undefined,
-    p_metodos_pago_aceptados: params.metodosPago || undefined,
-    p_foto: params.foto || undefined,
+    p_categoria_negocio: input.categoria ?? undefined,
+    p_seller_type: input.tipo,
+    p_nombre_negocio: input.nombreNegocio?.trim() || undefined,
+    p_descripcion_negocio: input.descripcionNegocio?.trim() || undefined,
+    p_metodos_pago_aceptados: input.metodosPago?.trim() || undefined,
+    p_foto: input.foto || undefined,
   });
 
   if (error) {
@@ -55,7 +92,10 @@ export async function activarModoVendedor(params: {
     if (error.code !== "22023") {
       Sentry.captureException(error, { tags: { action: "activarModoVendedor" } });
     }
-    return { error: error.message };
+    if (error.code === "22023") return { error: "Revisa la categoría y el tipo de vendedor." };
+    if (error.code === "23514" && input.tipo === "business") return { error: "Escribe el nombre de tu negocio antes de activar el Modo Vendedor." };
+    if (error.code === "P0002") return { error: "No pudimos cargar tu perfil. Intenta de nuevo en un momento." };
+    return { error: "No pudimos activar el Modo Vendedor. Intenta de nuevo." };
   }
 
   await revalidatePath("/perfil");
@@ -81,6 +121,9 @@ export async function avanzarAltaVendedor(paso: "ubicacion" | "publicacion" | nu
 
   if (!user) return { error: "No autenticado" };
 
+  const parsed = z.enum(["ubicacion", "publicacion"]).nullable().safeParse(paso);
+  if (!parsed.success) return { error: "No pudimos avanzar. Intenta de nuevo." };
+
   // Misma cubeta `write:` que el resto de escrituras, NO un identificador
   // propio: en Upstash la clave es prefijo + identificador, asi que inventar
   // uno nuevo aqui no compartiria cuota, abriria una paralela y subiria el
@@ -92,12 +135,12 @@ export async function avanzarAltaVendedor(paso: "ubicacion" | "publicacion" | nu
   // paso null = el alta termino. Se omite el parametro y el DEFAULT NULL de
   // la funcion dice lo mismo.
   const { error } = await supabase.rpc("avanzar_alta_vendedor", {
-    p_paso: paso ?? undefined,
+    p_paso: parsed.data ?? undefined,
   });
 
   if (error) {
     Sentry.captureException(error, { tags: { action: "avanzarAltaVendedor" } });
-    return { error: error.message };
+    return { error: "No pudimos avanzar. Intenta de nuevo." };
   }
 
   await revalidatePath("/perfil");

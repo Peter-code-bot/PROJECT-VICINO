@@ -34,7 +34,7 @@ interface Props {
  * /activar-notificaciones?siguiente=... para sacar a alguien de VICINO con la
  * apariencia de haberse quedado dentro.
  */
-const DESTINOS = ["/completar-perfil", "/empezar-a-vender"] as const;
+const DESTINOS = ["/completar-perfil", "/empezar-a-vender", "/completar-perfil/listo"] as const;
 
 function destinoSeguro(valor: string | undefined): string {
   return valor !== undefined && (DESTINOS as readonly string[]).includes(valor)
