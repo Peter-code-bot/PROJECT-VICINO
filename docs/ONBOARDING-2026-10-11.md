@@ -2,7 +2,7 @@
 
 Fuente: capturas e instrucciones de Javier en esta conversación. Autorizó ejecutar el plan y registrar todo en Notion. La autorización previa de publicación segura a master sigue vigente. Equipo Workflow Advisor: diseño, flujo/QA y contratos de usuario/SQL.
 
-Estado de este corte: implementación, build y validación local completados; Home/registro HTTP con Next y Supabase reales también aprobados. Publicación coordinada todavía en curso. No acredita aceptación Auth real ni Android/iPhone físico. Rama `feat/onboarding-fluidez-20261011`, checkout aislado `PROJECT-VICINO-ONBOARDING`, base `e3900fd66bd3f72bd452e0fd3a393b6699dc145c`. El checkout principal y sus cambios ajenos se conservaron.
+Estado de este corte: UI01–UI12 implementados, migración aplicada y código publicado en master `ed45dc1` por [PR55](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/55), con CI estricto, Vercel Production y smoke público9/9 aprobados. La aceptación Auth real y Android/iPhone físico sigue pendiente. Desarrollo en rama `feat/onboarding-fluidez-20261011`, checkout aislado `PROJECT-VICINO-ONBOARDING`, base `e3900fd66bd3f72bd452e0fd3a393b6699dc145c`; cierre documental sobre ese master. El checkout principal y sus cambios ajenos se conservaron.
 
 Notion es la fuente operativa: [plan único](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26), [Diseño](https://app.notion.com/p/c8098e8a0cfa83c2b32d01df5ec49663), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9) y [pendientes nativos por plataforma](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c). Este acta conserva evidencia del código; no crea otro backlog.
 
@@ -208,7 +208,7 @@ Exit code: 0
 - El PAT de Management API no permitió preflight (`HTTP 401: Invalid access token`). Se retomó la sesión existente del dashboard de Supabase para comprobaciones del esquema; no se imprimieron tokens ni se redujeron controles.
 - El ensayo de permisos encontró EXECUTE heredado de PUBLIC en guardar_paso_onboarding legacy. Aunque el nuevo cuerpo exigía identidad/confirmación, se revocó explícitamente PUBLIC/anon y se concedió authenticated; regresión SQL y ensayo de metadata/rollback volvieron a pasar, exit0. Revisión independiente de journal/cambio de cuenta/ACK/conflicto/cierre sin P1 concreto.
 
-## Publicación coordinada — migración aplicada; web en curso
+## Publicación coordinada — migración y web publicadas
 
 Preflight de sólo lectura en VICINO/main: baseline `20261010120000` presente una vez, candidata `20261011120000` ausente, siete columnas nuevas ausentes y documentos vigentes Aviso 2.2/Términos 1.1. Firmas legacy guardar_paso/v2, complete_user_onboarding, activar_modo_vendedor y update_profile_and_pause_products coinciden con lo esperado.
 
@@ -242,7 +242,131 @@ private_receipt_rls true
 
 Generación exacta de tipos de producción: run38173046326, intento2, pasos generar/subir aprobados; comparación final falla porque todavía compara los tipos manuales del commit anterior. Artefacto completo incorporado sin quitar helpers internos ni la protección de columna generada: SHA256 `e51cf4c22946968f85de57bb44b9a785f19325da6a6b010e2988b9da15292ef1`. Se conserva el check y se vuelve a comprobar tras el commit de tipos.
 
-CI final, master, Vercel Production y smoke se anotarán aquí cuando sean verificables. No se afirma que la web de este corte ya esté publicada.
+### Cierre remoto verificado — código en master y producción
+
+[PR55](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/55) integrada el 11-oct a las 14:51:53 America/Mexico_City (20:51:53UTC). Master de código `ed45dc1ad0bf2897eb1c27381681117a8bc099eb`, árbol idéntico al candidato `7751048f2c088cb8dd0ab7cde7942ec77e5a376f`: `git diff --quiet HEAD origin/master` devolvió exit0 antes del cierre documental. No se incluyó trabajo del checkout principal.
+
+[CI de candidato38173623868](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/38173623868) confirmó los tipos completos exactos de producción. [Security Audit38173985491 de master](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/38173985491) SUCCESS en secretos, audit, TypeScript/lint y deriva estricta: comparación de tipos y versiones legales de producción aprobadas; no se desactivó ninguna comprobación.
+
+[Vercel Production7Gtv14jv1ThmKEMSY6tfaxYcSy6z](https://vercel.com/peters-projects-b65496a9/vicinomarket/7Gtv14jv1ThmKEMSY6tfaxYcSy6z) SUCCESS para el mismo master, deployment GitHub7001649688. Terminó a las 20:54:56UTC/14:54:56CDMX. El nuevo gate ya está servido en el corte coordinado; no se deja la aplicación anterior con el contrato nuevo.
+
+Comprobación adicional de los catorce cuerpos SQL frente al archivo exacto, normalizando sólo CRLF→LF. La primera consulta comparó sin normalizar y marcó14 diferencias de saltos de línea; la consulta corregida acredita14 coincidencias y0 diferencias, sin cambiar funciones ni datos. Resultado literal:
+
+```text
+source_function_bodies_matched 14
+source_function_body_mismatches 0
+applied_ledger 1
+contract_columns 7
+private_receipt_client_select false
+legacy_anon_execute false
+private_receipt_rls true
+```
+
+Comandos y salidas literales de publicación:
+
+```text
+gh pr merge 55 --repo Peter-code-bot/PROJECT-VICINO --merge --match-head-commit 7751048f2c088cb8dd0ab7cde7942ec77e5a376f
+(sin salida)
+Exit code: 0
+
+gh pr view 55 --repo Peter-code-bot/PROJECT-VICINO --json state,mergedAt,mergeCommit,headRefOid,url
+{"headRefOid":"7751048f2c088cb8dd0ab7cde7942ec77e5a376f","mergeCommit":{"oid":"ed45dc1ad0bf2897eb1c27381681117a8bc099eb"},"mergedAt":"2026-10-11T20:51:53Z","state":"MERGED","url":"https://github.com/Peter-code-bot/PROJECT-VICINO/pull/55"}
+Exit code: 0
+
+gh api repos/Peter-code-bot/PROJECT-VICINO/deployments/7001649688/statuses --jq '[.[]|{state,environment,environment_url,log_url,created_at,description}]'
+[{"created_at":"2026-10-11T20:54:56Z","description":"Deployment has completed","environment":"Production","environment_url":"https://vicinomarket-eqjqb8gpu-peters-projects-b65496a9.vercel.app","log_url":"https://vicinomarket-eqjqb8gpu-peters-projects-b65496a9.vercel.app","state":"success"}]
+Exit code: 0
+```
+
+Smoke remoto de sólo lectura sobre https://vicinomarket.com, finalizado20:55:56UTC, nueve comprobaciones aprobadas. Login muestra el nuevo h1VICINO; registro/documentos cargan; confirmación/onboarding exigen sesión y ambas APIs mantienen private,no-store sin entregar datos. No se enviaron formularios, aceptaron documentos, crearon cuentas ni emitieron OTP.
+
+El primer smoke incluyó /api/session/profile sin su parámetro obligatorio y falló exit1 con `AssertionError [ERR_ASSERTION]: /api/session/profile exige sesión; 400 !== 401`. El contrato existente valida part antes de sesión y devuelve401 vacío para part=core sin cuenta. Se corrigió únicamente el arnés a esa consulta y respuesta; se mantuvieron las aserciones de identidad/caché. No hubo cambio de código de aplicación.
+
+```text
+node apps/web/test-results/release/remote-smoke-20261011.mjs https://vicinomarket.com
+{
+  "base": "https://vicinomarket.com",
+  "checkedAt": "2026-10-11T20:55:56.833Z",
+  "checks": [
+    {
+      "route": "/login",
+      "status": 200,
+      "ms": 1372,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/register",
+      "status": 200,
+      "ms": 1315,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/terminos",
+      "status": 200,
+      "ms": 1631,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/privacidad",
+      "status": 200,
+      "ms": 1527,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/confirmar-cuenta",
+      "status": 307,
+      "ms": 1026,
+      "contentType": "text/plain",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "destination": "/login"
+    },
+    {
+      "route": "/bienvenida",
+      "status": 307,
+      "ms": 1057,
+      "contentType": "text/plain",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "destination": "/login"
+    },
+    {
+      "route": "/completar-perfil/usuario",
+      "status": 307,
+      "ms": 545,
+      "contentType": "text/plain",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "destination": "/login"
+    },
+    {
+      "route": "/api/onboarding/usuario?username=onboarding_qa",
+      "status": 401,
+      "ms": 1179,
+      "contentType": "application/json",
+      "cacheControl": "private, no-store",
+      "destination": null
+    },
+    {
+      "route": "/api/session/profile?part=core",
+      "status": 401,
+      "ms": 688,
+      "contentType": "",
+      "cacheControl": "private, no-store",
+      "destination": null
+    }
+  ]
+}
+PASS 9/9 smoke anónimo de producción. Nuevo título login, legales, gate autenticado y API privadas. Sin POST, cuentas ni aceptación de documentos.
+Exit code: 0
+```
+
+Capturas locales del resultado: `apps/web/test-results/release/production-login-20261011.jpg` y `supabase-contract-20261011.jpg`. La página pública /login se comprobó también en el navegador sin envío del formulario. Se registra en Notion la publicación de código y el SHA del cierre documental por separado; el cierre documental no cambia runtime ni contrato.
 
 ## Aceptación pendiente
 
