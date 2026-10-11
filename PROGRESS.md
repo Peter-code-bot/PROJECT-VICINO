@@ -1,3 +1,10 @@
+## 11-oct-2026 — Seguridad de cambios de roles: candidato validado
+
+- Javier autorizó terminar ADM-PASS-01/02 y confirmar la contraseña. Rama aislada fix/admin-role-security-20261011, base e5522f0; trabajo ajeno conservado.
+- Server Actions autentican/verifican clave/límites/datos antes de cliente service_role; nuevo RPC liga actor a getUser y revalida admin en SQL. Migración revoca el RPC histórico a clientes y escrituras directas de tabla/columna; sin cambios a roles reales.
+- Pruebas28/28, tipos/lint y build60/60 exit0. Preflight real confirmó EXECUTE histórico a authenticated; ensayo de fuente exacta con rollback PASS y candidato ausente después. [Acta literal](docs/ADMIN-ROLE-SECURITY-2026-10-11.md).
+- Publicación coordinada SQL/web y confirmación de tipos por completar. ADMIN_SECURITY_PASSWORD requiere acceso a Vercel, que pide login; acceso solicitado a Javier. Valor/presencia vigente aún no confirmados, sin contraseñas en repo/SQL/documentos.
+
 ## 11-oct-2026 — UI01–UI12 publicados en master y producción
 
 - Autorización de Javier: ejecutar el plan acumulativo y registrar los resultados en Notion. Equipo Workflow Advisor; checkout aislado `PROJECT-VICINO-ONBOARDING`, rama `feat/onboarding-fluidez-20261011`, base `e3900fd`. Trabajo ajeno del checkout principal conservado.
