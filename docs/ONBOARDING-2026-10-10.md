@@ -1,8 +1,8 @@
 # Onboarding por dato — implementación y publicación
 
-## Corte de publicación — Supabase aplicado, candidato para PR54
+## Corte de publicación — onboarding web publicado en master
 
-Javier autorizó publicar a master tras completar requisitos y comprobaciones. La migración `20261010120000_onboarding_por_dato_y_usuario.sql` está aplicada a VICINO/main y registrada en el ledger dentro de la misma transacción. Se verificaron seis cuerpos de función contra el código local, permisos autenticados, bloqueo anónimo, RLS, índice único de username y presencia del RPC anterior. La PR [54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54) contiene el candidato; la integración y el despliegue final se registran en el corte de cierre y en Notion.
+Javier autorizó publicar a master tras completar requisitos y comprobaciones. La PR [54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54) está integrada en `9ef8b8a`, con CI y Vercel Production aprobados y seis comprobaciones públicas de producción correctas. La migración `20261010120000_onboarding_por_dato_y_usuario.sql` está aplicada a VICINO/main y registrada en el ledger dentro de la misma transacción. Se verificaron seis cuerpos de función contra el código local, permisos autenticados, bloqueo anónimo, RLS, índice único de username y presencia del RPC anterior. El cierre literal y los límites de aceptación se detallan al final y en Notion.
 
 Antes de confirmar el cambio remoto, el ensayo del DDL y ledger terminó con `ROLLBACK`. Un segundo ensayo usó el rol `authenticated` y claims locales a la transacción, sin exportar identificadores de cuentas: comprobó el usuario propio, reservados, otro usuario ocupado sin distinguir mayúsculas, guardado atómico, Omitir sin cambiar datos/activar vendedor, llamada al RPC anterior y finalización conjunta. También terminó con `ROLLBACK`. La aplicación persistente ejecutó únicamente el DDL, sus verificaciones y ledger; no persistió las operaciones de prueba sobre perfiles ni creó cuentas.
 
@@ -257,3 +257,108 @@ Severity: 1 low | 5 moderate | 3 high | 4 critical
 El CI38114074868/job114395360506 generó el esquema y publicó el artefacto correctamente, pero Require committed types to match production terminó en `##[error]Process completed with exit code 1.`. Las diferencias eran la colocación de consultar_usuarios_onboarding y la función username_validation_status. Se incorporó el artefacto completo y se verificó SHA256 idéntico antes de repetir CI.
 
 Incidencias de lectura corregidas: se intentó leer `.github/workflows/ci.yml` (`Cannot find path ... because it does not exist.`); se listaron los workflows existentes database-types.yml/security.yml. Un rg con patrones docs/*.md y scripts/test-onboarding* en Windows devolvió `El nombre de archivo, el nombre de directorio o la sintaxis de la etiqueta del volumen no son correctos. (os error 123)`; se sustituyó por búsqueda en directorios con -g. No ocasionaron cambios en código.
+
+## Cierre de publicación web — PR54 integrada y producción comprobada
+
+PR54 se integró el 10-oct-2026 a las 23:38:29 America/Mexico_City (2026-10-11T05:38:29Z). Commit de código en master: `9ef8b8aa123e16492864809f7b29e7cffeefe282`. El árbol coincide exactamente con el candidato `2549a69`; `git diff --exit-code 2549a69f350c6dccfda5b254c8ed132df75ed7a7 origin/master` terminó sin salida, exit0. El checkout principal no se modificó.
+
+[Security Audit38115438218](https://github.com/Peter-code-bot/PROJECT-VICINO/actions/runs/38115438218) terminó SUCCESS: secretos, audit, TypeScript/lint y deriva de tipos/legales. Los tipos coinciden con producción y las versiones legales son aviso2.2/terminos1.1. Lint remoto desde checkout limpio:0errores60avisos. El [despliegue Vercel Production](https://vercel.com/peters-projects-b65496a9/vicinomarket/ErvAJN7BjSRNxtQm8sTmmowpuJcH) terminó SUCCESS para el mismo SHA; deployment GitHub6991507581, entorno Production.
+
+Comprobación remota anónima sobre https://vicinomarket.com:6/6, exit0. Login, registro y términos cargan; bienvenida/usuario exigen sesión; la API devuelve401 con private,no-store y no entrega username ni sugerencias. No se enviaron formularios, crearon cuentas ni persistieron efectos de onboarding. Esta comprobación no acredita el recorrido autenticado completo.
+
+El preview del candidato terminó SUCCESS, pero su navegación anónima fue interceptada por el SSO de Vercel. La prueba terminó exit1 con `AssertionError [ERR_ASSERTION]`, actual `'/sso-api'`, expected `'/login'`. La navegación normal en el navegador mostró «Log in to Vercel». Se conservó esa protección; no se acredita smoke anónimo del preview. La comprobación pública de producción anterior sí aprobó.
+
+Este cierre se versiona como documentación posterior al commit de código, sin modificar la aplicación. El SHA final del cierre y sus comprobaciones se registran en Notion al confirmar ese push. El estado de implementación y migración está publicado; aceptación autenticada completa, concurrencia real y dispositivos/distribución nativos permanecen como pendientes separados.
+
+### Evidencia literal del cierre
+
+```text
+gh pr merge 54 --repo Peter-code-bot/PROJECT-VICINO --merge --match-head-commit 2549a69f350c6dccfda5b254c8ed132df75ed7a7
+sin salida
+exit code:0
+
+gh pr view 54 --repo Peter-code-bot/PROJECT-VICINO --json url,state,mergedAt,mergeCommit,headRefOid
+{"headRefOid":"2549a69f350c6dccfda5b254c8ed132df75ed7a7","mergeCommit":{"oid":"9ef8b8aa123e16492864809f7b29e7cffeefe282"},"mergedAt":"2026-10-11T05:38:29Z","state":"MERGED","url":"https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54"}
+exit code:0
+
+gh api repos/Peter-code-bot/PROJECT-VICINO/commits/9ef8b8aa123e16492864809f7b29e7cffeefe282/status --jq '{state,statuses:[.statuses[]|{context,state,description,target_url}]}'
+{"state":"success","statuses":[{"context":"Vercel","description":"Deployment has completed","state":"success","target_url":"https://vercel.com/peters-projects-b65496a9/vicinomarket/ErvAJN7BjSRNxtQm8sTmmowpuJcH"}]}
+exit code:0
+
+Fragmentos literales del job114399300069, comparación de producción:
+Deriva de tipos vs produccion	Comparar tipos con el esquema de produccion	2026-10-11T05:38:58.2459870Z Los tipos del repo coinciden con produccion.
+Deriva de tipos vs produccion	Comprobar versiones legales contra produccion	2026-10-11T05:38:58.8388424Z OK     aviso: 2.2
+Deriva de tipos vs produccion	Comprobar versiones legales contra produccion	2026-10-11T05:38:58.8396380Z OK     terminos: 1.1
+Deriva de tipos vs produccion	Comprobar versiones legales contra produccion	2026-10-11T05:38:58.8396729Z Codigo y base coinciden.
+lectura gh exit code:0
+
+Fragmento literal del job114399300078, auditoría:
+npm audit	Run security audit	2026-10-11T05:38:49.7025358Z No known vulnerabilities found
+lectura gh exit code:0
+
+node apps/web/test-results/onboarding/remote-smoke.mjs https://vicinomarket.com
+{
+  "base": "https://vicinomarket.com",
+  "checks": [
+    {
+      "route": "/login",
+      "status": 200,
+      "ms": 1986,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/register",
+      "status": 200,
+      "ms": 2702,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/terminos",
+      "status": 200,
+      "ms": 2988,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "destination": null
+    },
+    {
+      "route": "/bienvenida",
+      "status": 307,
+      "ms": 1556,
+      "contentType": "text/plain",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "destination": "/login"
+    },
+    {
+      "route": "/completar-perfil/usuario",
+      "status": 307,
+      "ms": 1612,
+      "contentType": "text/plain",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "destination": "/login"
+    },
+    {
+      "route": "/api/onboarding/usuario?username=onboarding_qa",
+      "status": 401,
+      "ms": 1358,
+      "contentType": "application/json",
+      "cacheControl": "private, no-store",
+      "destination": null
+    }
+  ]
+}
+PASS 6/6 smoke anónimo remoto. Sin POST, cuentas ni efectos de onboarding.
+exit code:0
+```
+
+### CODEX REVIEW COMPLETADO — cierre de publicación
+
+Iteraciones:2/3 para este cierre. Primera pasada: transacción del aplicador, compatibilidad legacy y gates de CI; segunda: correcciones, SQL real, permisos, árbol integrado y resultados remotos.
+Issues críticos resueltos:5 en el candidato (COMMIT anidado y4 alertas critical del audit de dependencias).
+Issues importantes pendientes:3 para aceptación posterior: concurrencia multisesión, recorrido autenticado completo y aceptación/distribución nativa.
+Sugerencias:1 opcional — persistir también el borrador de conversión de una cuenta completa después de recargar antes de Activar.
+Estado:✅ LISTO PARA PUSH del candidato web; integración y despliegue realizados. ⚠️ REQUIERE REVISIÓN MANUAL de los3 puntos de aceptación citados.
+Próximo paso: verificar el push del cierre documental y conservar los pendientes reales en Notion. El parche nativo requiere sync/rebuild y redistribución para llegar a instalaciones existentes.

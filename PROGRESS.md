@@ -1,4 +1,12 @@
-## 10-oct-2026 — Onboarding: migración aplicada y candidato PR54
+## 10-oct-2026 — Onboarding publicado en master y producción
+
+- Publicación autorizada por Javier: [PR54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54) integrada el10-oct23:38:29CDMX; master de código `9ef8b8aa123e16492864809f7b29e7cffeefe282`, árbol idéntico al candidato `2549a69`. Contenido arriba, una página por dato, Omitir e ID público editable con sugerencias del correo más números publicados.
+- SecurityAudit38115438218 SUCCESS en secretos, audit, tipos/lint y deriva. Sin vulnerabilidades conocidas, tipos completos de producción y versiones legales coincidentes. Vercel ProductionErvAJN7BjSRNxtQm8sTmmowpuJcH SUCCESS para ese SHA. Prueba pública6/6/exit0: login/registro/términos200, onboarding→login307 y API de usuario401/private,no-store, sin datos de usuario.
+- Supabase VICINO/main tiene migración20261010120000 y ledger aplicados y verificados, con seis hashes/permisos/RLS/índice único/RPC legacy. No se persistió DML de prueba ni se crearon cuentas/correos. Plan, Diseño, Bitácora y Tests de Notion conservan publicación técnica y aceptación pendiente.
+- El preview compiló, pero exigió SSO de Vercel: no se acredita navegación anónima del preview. Producción pública sí comprobada. UI102/102 y demás suites del candidato se mantienen; [acta literal](docs/ONBOARDING-2026-10-10.md).
+- Pendientes de aceptación: concurrencia real, recorrido autenticado completo y Android/iPhone físicos. El parche de Capacitor necesita sync/rebuild y redistribución para llegar a apps instaladas. No cambia otros planes de Home/Auth, NT o Google Play. Este cierre documental se publica después del código y su SHA final se registra en Notion.
+
+## 10-oct-2026 — Onboarding: migración aplicada y candidato PR54 — histórico
 
 - Publicación a master autorizada por Javier. [PR54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54), código base b042354; este corte prepara el candidato corregido y espera comprobaciones remotas antes de integrarlo.
 - Migración20261010120000 aplicada a VICINO/main con DDL y ledger en transacción única después de dos ensayos ROLLBACK, uno con rol authenticated y RPC reales. Seis hashes de función, permisos, RLS, índice único y RPC anterior comprobados. Sin DML de perfiles persistido ni cuentas/correos nuevos.
