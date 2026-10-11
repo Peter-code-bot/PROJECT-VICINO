@@ -208,7 +208,7 @@ Exit code: 0
 - El PAT de Management API no permitió preflight (`HTTP 401: Invalid access token`). Se retomó la sesión existente del dashboard de Supabase para comprobaciones del esquema; no se imprimieron tokens ni se redujeron controles.
 - El ensayo de permisos encontró EXECUTE heredado de PUBLIC en guardar_paso_onboarding legacy. Aunque el nuevo cuerpo exigía identidad/confirmación, se revocó explícitamente PUBLIC/anon y se concedió authenticated; regresión SQL y ensayo de metadata/rollback volvieron a pasar, exit0. Revisión independiente de journal/cambio de cuenta/ACK/conflicto/cierre sin P1 concreto.
 
-## Publicación coordinada — pendiente en este corte
+## Publicación coordinada — migración aplicada; web en curso
 
 Preflight de sólo lectura en VICINO/main: baseline `20261010120000` presente una vez, candidata `20261011120000` ausente, siete columnas nuevas ausentes y documentos vigentes Aviso 2.2/Términos 1.1. Firmas legacy guardar_paso/v2, complete_user_onboarding, activar_modo_vendedor y update_profile_and_pause_products coinciden con lo esperado.
 
@@ -220,7 +220,29 @@ Primer candidato: commit `7244c5f183c604cc795608eb075979eac5dfb890`, [PR55](http
 
 Fuente SQL tras cierre del ACL legacy: 24.757bytes; SHA256 `0678cd9c3c5cdac37b1ec44940061ba65dd852df1bba4b4625ed43515eef03ae`. Ensayo local de metadata/rollback: exit0, sin cuentas, ledger INSERT ni llamadas remotas. Su fuente exacta está entre BEGIN/assertions/ROLLBACK; no sustituye ensayo remoto.
 
-Ensayo remoto, ledger, tipos exactos, CI final, master, Vercel Production y smoke se anotarán aquí cuando sean verificables. No se afirma que este corte ya esté publicado.
+Ensayo remoto en VICINO/main aprobado con archivo exacto del commit `6deb60367d47547263a2918c5c7c2bbbad1b0030`, assertion de columnas/firmas/ACL/RLS/triggers y ROLLBACK. Copia del editor comprobada por round-trip íntegro. Resultado literal del dashboard:
+
+```text
+rehearsal_contract_and_rollback PASS
+candidate_ledger_after_rollback 0
+candidate_columns_after_rollback 0
+```
+
+Aplicación única posterior: BEGIN, límites de bloqueo/statement, guard de ledger/baseline/cinco hashes legacy, bytes exactos de esa migración, assertions de contrato, INSERT del ledger y COMMIT. Sin cuentas, seeds ni DML de perfiles de prueba. Confirmación literal del dashboard antes del corte 2026-10-11T20:44:20UTC:
+
+```text
+applied_ledger 1
+contract_columns 7
+authenticated_checkpoint_execute true
+anon_checkpoint_execute false
+authenticated_final_execute true
+anon_final_execute false
+private_receipt_rls true
+```
+
+Generación exacta de tipos de producción: run38173046326, intento2, pasos generar/subir aprobados; comparación final falla porque todavía compara los tipos manuales del commit anterior. Artefacto completo incorporado sin quitar helpers internos ni la protección de columna generada: SHA256 `e51cf4c22946968f85de57bb44b9a785f19325da6a6b010e2988b9da15292ef1`. Se conserva el check y se vuelve a comprobar tras el commit de tipos.
+
+CI final, master, Vercel Production y smoke se anotarán aquí cuando sean verificables. No se afirma que la web de este corte ya esté publicada.
 
 ## Aceptación pendiente
 
