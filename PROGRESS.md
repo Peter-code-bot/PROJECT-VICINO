@@ -1,3 +1,19 @@
+## 10-oct-2026 — Onboarding: migración aplicada y candidato PR54
+
+- Publicación a master autorizada por Javier. [PR54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54), código base b042354; este corte prepara el candidato corregido y espera comprobaciones remotas antes de integrarlo.
+- Migración20261010120000 aplicada a VICINO/main con DDL y ledger en transacción única después de dos ensayos ROLLBACK, uno con rol authenticated y RPC reales. Seis hashes de función, permisos, RLS, índice único y RPC anterior comprobados. Sin DML de perfiles persistido ni cuentas/correos nuevos.
+- Conciliados tipos completos del artefacto de producción. Corregidas las13 vulnerabilidades del baseline con Next16.3.8, Capacitor8.4.3 y suelos de sharp/source-map-js/handlebars. Patches de Antigravity/PWA/ESLint preservados; instalación congelada y audit completo exit0, sin vulnerabilidades conocidas.
+- UI102/102, SQL20/20, vendedor14/14, flujo9/9, glob62/62, Auth/perfil/SW24/24, Sentry sintético5/5, tipos y build59/59 aprobados. Lint local después de generar SW:0errores148avisos. [Acta](docs/ONBOARDING-2026-10-10.md) y Notion conservan evidencia y límites.
+- La aceptación física y concurrencia multisesión siguen pendientes. El parche nativo sólo llegará a apps instaladas después de sync/rebuild y distribución; no se genera una versión nativa en este corte. No cambia otros planes de Home/Auth, NT o Google Play.
+
+## 10-oct-2026 — Onboarding por dato, implementación local
+
+- Pedido y autorización de Javier: contenido arriba, una página por dato, Omitir y elección del ID público con sugerencias del correo más números. Equipo Workflow Advisor: diseño, flujo y usuario/SQL.
+- Rama aislada `feat/onboarding-20261010` en `PROJECT-VICINO-ONBOARDING`, base `d2d54cd`. Guarda dato y próximo paso juntos; omitir conserva valores; activación vendedor explícita; ID ocupado vuelve a comprobarse. Verde/crema y Outfit/Inter preservados.
+- Evidencia técnica y alcance: [acta local](docs/ONBOARDING-2026-10-10.md). Migración preparada y pruebas locales; aplicación remota, concurrencia real y Android/iPhone físicos siguen pendientes. Este corte no publica ni sustituye otros planes.
+- Validación local final: UI 102/102, SQL/ID 18/18, vendedor 14/14 y flujo 9/9; tipos web/shared, rutas y build 59/59 aprobados. Lint completo: 0 errores, 60 avisos. Revisión independiente sin P0/P1; corregidos navegación, colisiones de ID y scroll del campo con teclado.
+- Fuente operativa: [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Diseño](https://app.notion.com/p/c8098e8a0cfa83c2b32d01df5ec49663), [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+
 ## 06-oct-2026 — Errores del reporte semanal de Sentry (25-sep a 2-oct) arreglados en código
 
 - Pedido de Pedro: «el tema de Sentry, si lo puedes hacer aquí, hazlo». Cuatro errores, un commit cada uno, con prueba que falló antes en el sitio de llamada real y pasa después. Sin migraciones y sin tocar la base.

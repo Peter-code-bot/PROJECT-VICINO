@@ -1,400 +1,280 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { startTransition as restoreTransition, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@vicino/shared";
+import { Check } from "lucide-react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
-import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
-import { ChangeLocationSheet } from "@/components/home/change-location-sheet";
-import { useGeolocation, STORAGE_KEY } from "@/hooks/useGeolocation";
-import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
-import { guardarPasoOnboarding, type PasoOnboarding } from "./actions";
 import OnboardingLocationMap from "@/components/map/onboarding-location-map";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { OnboardingActions, OnboardingShell, onboardingInputClassName } from "@/components/onboarding/onboarding-shell";
+import { UsernameStep } from "@/components/onboarding/username-step";
+import { Activar, Categoria, Pagos, Tipo } from "@/components/onboarding/seller-steps";
+import { pasosDelCamino, rutaDePaso, siguientePaso, type CaminoOnboarding, type PasoOnboardingActual } from "@/lib/onboarding/steps";
+import { completeOnboarding } from "@/app/(marketplace)/perfil/actions";
+import { activarModoVendedor } from "../empezar-a-vender/actions";
+import { PedirPermiso } from "../activar-notificaciones/pedir-permiso";
+import { guardarPasoOnboarding, type GuardarPasoInput } from "./actions";
+import type { OnboardingProfile } from "./load-profile";
 
-/**
- * Los tres pasos que comparten los tres caminos del onboarding.
- *
- * UNA sola ruta con estado interno y no tres rutas, por dos razones. La
- * primera es que es el patron que ya sigue el alta de vendedor en este mismo
- * grupo, y no conviene tener dos formas de hacer lo mismo a dos carpetas de
- * distancia. La segunda es que `(onboarding)/perfil` chocaria con
- * `(marketplace)/perfil`: los grupos entre parentesis no entran en la URL, asi
- * que las dos rutas serian /perfil.
- *
- * REGLAS DEL PLAN, que gobiernan todo lo de abajo:
- *   · Es obligatorio. No hay «saltar», ni «completar despues», ni «x».
- *   · Solo se navega hacia atras, y volver NO pierde lo ya escrito — por eso
- *     el estado vive aqui arriba y no dentro de cada paso.
- *   · Se puede abandonar a mitad y volver: cada paso se guarda al avanzar, y
- *     /bienvenida reenvia aqui leyendo onboarding_paso.
- */
-
-const PASOS: PasoOnboarding[] = ["perfil", "intereses", "ubicacion"];
-
-/** Mismo criterio que el alta de vendedor: las que se ofrecen al publicar. */
-const CATEGORIAS_VISIBLES = CATEGORIES.filter((c) => !c.hidden_in_form);
-
-const MAX_INTERESES = 5;
-const MAX_BIO = 160;
-
-interface CompletarPerfilProps {
-  pasoInicial: PasoOnboarding;
-  sellerType?: string;
-  nombreInicial: string;
-  bioInicial: string;
-  fotoInicial: string;
-  interesesIniciales: string[];
+interface Draft {
+  username: string;
+  nombre: string;
+  foto: string;
+  bio: string;
+  categoria: string | null;
+  tipo: "casual" | "business";
+  nombreNegocio: string;
+  descripcionNegocio: string;
+  pagos: string[];
+  intereses: string[];
 }
 
-export function CompletarPerfil({
-  pasoInicial,
-  sellerType,
-  nombreInicial,
-  bioInicial,
-  fotoInicial,
-  interesesIniciales,
-}: CompletarPerfilProps) {
+const VISIBLE_CATEGORIES = CATEGORIES.filter((category) => !category.hidden_in_form);
+
+function initialDraft(profile: OnboardingProfile): Draft {
+  return {
+    username: profile.username, nombre: profile.nombre ?? "", foto: profile.foto ?? "", bio: profile.bio ?? "",
+    categoria: profile.categoria_negocio, tipo: profile.seller_type === "business" ? "business" : "casual",
+    nombreNegocio: profile.nombre_negocio ?? "", descripcionNegocio: profile.descripcion_negocio ?? "",
+    pagos: profile.metodos_pago_aceptados?.split(",").map((value) => value.trim()).filter(Boolean) ?? [],
+    intereses: profile.intereses ?? [],
+  };
+}
+
+export function CompletarPerfil({ profile, paso, camino }: {
+  profile: OnboardingProfile;
+  paso: PasoOnboardingActual;
+  camino: CaminoOnboarding;
+}) {
   const router = useRouter();
-  const [paso, setPaso] = useState<PasoOnboarding>(pasoInicial);
-  const [nombre, setNombre] = useState(nombreInicial);
-  const [bio, setBio] = useState(bioInicial);
-  const [foto, setFoto] = useState(fotoInicial);
-  const [intereses, setIntereses] = useState<string[]>(interesesIniciales);
+  const [draft, setDraft] = useState(() => initialDraft(profile));
   const [error, setError] = useState("");
+  const [usuarioDisponible, setUsuarioDisponible] = useState(false);
+  const [usernameLookupRevision, setUsernameLookupRevision] = useState(0);
+  const [fotoBusy, setFotoBusy] = useState(false);
+  const [sellerActive, setSellerActive] = useState(!!profile.es_vendedor);
   const [enviando, startTransition] = useTransition();
-  const [hojaZonaAbierta, setHojaZonaAbierta] = useState(false);
-
-  const { state, setManualPosition } = useGeolocation();
+  const running = useRef(false);
+  const { state: locationState, setManualPosition } = useGeolocation();
   const [locationDraft, setLocationDraft] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const draftKey = `vicino_onboarding_draft:${profile.id}`;
+  const context = { camino, tipo: profile.seller_type === "business" ? "business" as const : "casual" as const };
+  const steps = pasosDelCamino(context);
+  const index = steps.indexOf(paso);
+  const backHref = index > 0 ? rutaDePaso(steps[index - 1]!, camino) : "/bienvenida?elegir=1";
+  const negocio = camino === "vender" && context.tipo === "business";
 
-  /**
-   * Si la persona eligio su zona a mano en la hoja.
-   *
-   * HACE FALTA, y no es defensivo de mas: useGeolocation NO comparte estado
-   * entre instancias — cada llamada tiene su propio useState y no hay ningun
-   * contexto. La hoja usa su PROPIA instancia, asi que cuando alguien elige su
-   * colonia alli, el `state` de aqui no se entera nunca.
-   *
-   * Sin esto, quien niega el permiso del sistema elige su zona a mano, ve que
-   * se guarda... y el boton de continuar sigue apagado. O sea justo el callejon
-   * sin salida que esta pantalla venia a evitar, reintroducido por la puerta de
-   * atras.
-   *
-   * Lo unico que comparten las dos instancias es el cache, y la hoja lo escribe
-   * ANTES de cerrarse (commit: setManualPosition -> onClose), asi que releerlo
-   * al cerrar es fiable.
-   */
-  const [zonaAMano, setZonaAMano] = useState(false);
-
-  function alCerrarHojaZona() {
-    setHojaZonaAbierta(false);
+  // Session-only drafts preserve unsaved edits when returning to another page.
+  // Persisted values stay on the server; blocked storage never blocks the flow.
+  useEffect(() => {
     try {
-      if (localStorage.getItem(STORAGE_KEY)) setZonaAMano(true);
-    } catch {
-      // Modo privado o almacenamiento bloqueado. No se puede confirmar, asi
-      // que no se desbloquea nada: mejor que se quede el boton apagado con la
-      // hoja a un toque, que dejarle continuar sin ubicacion a un feed vacio.
-    }
-  }
+      const saved = JSON.parse(sessionStorage.getItem(draftKey) ?? "null") as Record<string, unknown> | null;
+      if (!saved || typeof saved !== "object") return;
+      const clean = initialDraft(profile);
+      for (const key of ["username", "nombre", "foto", "bio", "nombreNegocio", "descripcionNegocio"] as const) {
+        if (typeof saved[key] === "string") clean[key] = saved[key];
+      }
+      if (typeof saved.categoria === "string" || saved.categoria === null) clean.categoria = saved.categoria;
+      if (saved.tipo === "business" || saved.tipo === "casual") clean.tipo = saved.tipo;
+      for (const key of ["pagos", "intereses"] as const) {
+        if (Array.isArray(saved[key]) && saved[key].every((value) => typeof value === "string")) clean[key] = saved[key];
+      }
+      restoreTransition(() => setDraft(clean));
+    } catch { /* Private mode: previously saved server values still work. */ }
+  }, [draftKey, profile]);
 
-  const hayUbicacion = !!locationDraft || state.status === "success" || zonaAMano;
-
-  /**
-   * El banner de error se pinta fuera de los pasos, asi que hay que limpiarlo
-   * al cambiar de paso o persigue a la persona por todo el flujo. Se hace aqui
-   * y no en un efecto sobre `paso`: cambiar de paso es siempre una decision
-   * explicita, y reaccionar a ella con un efecto cuesta un render en cascada
-   * (react-hooks/set-state-in-effect). Misma correccion que se hizo en el alta.
-   */
-  function irAPaso(siguiente: PasoOnboarding) {
+  function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setError("");
-    setPaso(siguiente);
+    setDraft((current) => {
+      const next = { ...current, [key]: value };
+      try { sessionStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Optional cache. */ }
+      return next;
+    });
   }
 
-  function atras() {
-    if (sellerType === "business" && paso === "intereses") return;
-    const i = PASOS.indexOf(paso);
-    if (i > 0) irAPaso(PASOS[i - 1]!);
+  async function saveProgress(next: PasoOnboardingActual, input: GuardarPasoInput = {}, nextCamino = camino, navigate = true) {
+    const result = await guardarPasoOnboarding({ ...input, camino: nextCamino, paso: next });
+    if (result.error) throw new Error(result.error);
+    if (navigate) router.push(rutaDePaso(next, nextCamino));
   }
 
-  /** Guarda lo del paso actual y avanza. Si la escritura falla, NO avanza. */
-  function avanzar(
-    datos: Parameters<typeof guardarPasoOnboarding>[0],
-    siguiente: PasoOnboarding | null,
-  ) {
+  function run(operation: () => Promise<void>) {
+    if (running.current || fotoBusy) return;
+    running.current = true;
     setError("");
     startTransition(async () => {
-      if (siguiente) {
-        const r = await guardarPasoOnboarding({
-          ...datos,
-          // El paso que se guarda es el SIGUIENTE: es donde hay que reanudar si
-          // la persona cierra la app justo ahora.
-          paso: siguiente,
-        });
-        if (r.error) {
-          setError(r.error);
-          return;
+      try { await operation(); }
+      catch (failure) {
+        if (paso === "usuario") {
+          setUsuarioDisponible(false);
+          setUsernameLookupRevision((revision) => revision + 1);
         }
-        irAPaso(siguiente);
-        return;
+        setError(failure instanceof Error ? failure.message : "No se pudo guardar. Intenta de nuevo.");
       }
-
-      // En el ultimo paso NO se llama al RPC. La ubicacion no vive en la base
-      // —el feed la lee de la cookie vicino_location, que ya escribio el
-      // selector—, asi que la llamada iria con todos los argumentos nulos y el
-      // COALESCE la convertiria en un UPDATE que no cambia nada: una ida de red
-      // para no hacer nada, justo antes de la que si importa.
-      // Ultimo paso. La bandera de onboarding se consume AQUI y no en
-      // /bienvenida como antes: es de un solo uso, y gastarla al principio era
-      // justo lo que dejaba a la gente entrar con el perfil vacio y sin poder
-      // volver a elegir.
-      const fin = await completeOnboarding();
-      if (fin.error) {
-        setError(fin.error);
-        return;
-      }
-      router.push(fin.destino ?? "/");
+      finally { running.current = false; }
     });
   }
 
-  const nombreOk = nombre.trim().length >= 2;
-  const bioOk = bio.trim().length > 0;
-  const fotoOk = foto.trim().length > 0;
-  const perfilOk = nombreOk && bioOk && fotoOk;
+  const nombreValue = negocio ? draft.nombreNegocio : draft.nombre;
+  const bioValue = negocio ? draft.descripcionNegocio : draft.bio;
+  const maxBio = negocio ? 1000 : 160;
+  const hayUbicacion = !!locationDraft || locationState.status === "success";
+  const puedeActivar = !!profile.categoria_negocio && (!negocio || (profile.nombre_negocio?.trim().length ?? 0) >= 2);
+  const canContinue: Record<PasoOnboardingActual, boolean> = {
+    categoria: !!draft.categoria, tipo: true, usuario: usuarioDisponible,
+    nombre: nombreValue.trim().length >= 2, foto: !!draft.foto,
+    descripcion: bioValue.trim().length > 0 && bioValue.length <= maxBio,
+    pagos: draft.pagos.length > 0, intereses: draft.intereses.length > 0 && draft.intereses.length <= 5,
+    ubicacion: hayUbicacion, activar: sellerActive || puedeActivar,
+    notificaciones: true, listo: true,
+  };
 
-  function alternarInteres(slug: string) {
-    setIntereses((previos) => {
-      if (previos.includes(slug)) return previos.filter((s) => s !== slug);
-      if (previos.length >= MAX_INTERESES) return previos;
-      return [...previos, slug];
+  function omit() {
+    if (paso === "activar" && !sellerActive) {
+      run(() => saveProgress("notificaciones", {}, "explorar"));
+      return;
+    }
+    const next = siguientePaso(paso, context);
+    if (next) run(() => saveProgress(next));
+  }
+
+  function continueStep() {
+    if (!canContinue[paso]) return;
+    run(async () => {
+      if (paso === "listo") {
+        const result = await completeOnboarding();
+        if (result.error) throw new Error(result.error);
+        try { sessionStorage.removeItem(draftKey); } catch { /* Optional cache. */ }
+        router.push(result.destino ?? "/");
+        return;
+      }
+      const data: GuardarPasoInput = {};
+      let next = siguientePaso(paso, context)!;
+      switch (paso) {
+        case "categoria": data.categoria_negocio = draft.categoria!; break;
+        case "tipo":
+          data.seller_type = draft.tipo;
+          next = siguientePaso(paso, { camino, tipo: draft.tipo })!;
+          break;
+        case "usuario": data.username = draft.username.trim(); break;
+        case "nombre":
+          if (negocio) data.nombre_negocio = draft.nombreNegocio.trim();
+          else data.nombre = draft.nombre.trim();
+          break;
+        case "foto": data.foto = draft.foto; break;
+        case "descripcion":
+          if (negocio) data.descripcion_negocio = draft.descripcionNegocio.trim();
+          else data.bio = draft.bio.trim();
+          break;
+        case "pagos": data.metodos_pago_aceptados = draft.pagos.join(", "); break;
+        case "intereses": data.intereses = draft.intereses; break;
+        case "ubicacion":
+          if (locationDraft) setManualPosition({ lat: locationDraft.lat, lng: locationDraft.lng, name: locationDraft.address });
+          break;
+        case "activar":
+          if (!sellerActive) {
+            // Only this explicit CTA activates. Skipped/session-only edits are not sent.
+            const result = await activarModoVendedor({ categoria: profile.categoria_negocio, tipo: context.tipo,
+              nombreNegocio: profile.nombre_negocio ?? undefined, descripcionNegocio: profile.descripcion_negocio ?? undefined,
+              metodosPago: profile.metodos_pago_aceptados ?? undefined, foto: profile.foto ?? undefined });
+            if (result.error) throw new Error(result.error);
+            setSellerActive(true);
+          }
+          break;
+      }
+      await saveProgress(next, data);
     });
   }
+
+  if (paso === "notificaciones") {
+    return <PedirPermiso siguiente={rutaDePaso("listo", camino)} backHref={backHref} step={index + 1} totalSteps={steps.length}
+      onContinue={() => saveProgress("listo", {}, camino, false)} />;
+  }
+
+  const titles: Record<PasoOnboardingActual, string> = {
+    categoria: "¿Qué vendes?", tipo: "¿Cómo quieres vender?", usuario: "Elige tu ID de usuario",
+    nombre: negocio ? "¿Cómo se llama tu negocio?" : "¿Cómo te llamas?",
+    foto: negocio ? "Agrega la foto de tu negocio" : "Agrega tu foto",
+    descripcion: negocio ? "Cuéntanos de tu negocio" : "Cuéntanos de ti",
+    pagos: "¿Cómo aceptas pagos?", intereses: "¿Qué te interesa?", ubicacion: "¿Dónde estás?",
+    activar: sellerActive ? "Tu Modo Vendedor está activo" : "Activa tu Modo Vendedor",
+    notificaciones: "Activa tus notificaciones", listo: "Todo listo para empezar",
+  };
+  const descriptions: Partial<Record<PasoOnboardingActual, string>> = {
+    categoria: "Elige la categoría que mejor describa lo que ofreces.",
+    tipo: "Elige la opción que se adapte a ti.", usuario: "Así podrán encontrarte tus vecinos en VICINO.",
+    nombre: "Este será el nombre que se verá en tu perfil. Puedes cambiarlo después.",
+    foto: "Ayuda a tus vecinos a reconocerte. Puedes agregarla después.",
+    descripcion: negocio ? "Escribe una descripción breve de lo que ofreces." : "Qué te gusta, qué buscas o qué vendes.",
+    pagos: "Selecciona las opciones que ofreces a tus compradores.",
+    intereses: "Elige hasta 5 categorías que te gusten.",
+    ubicacion: "Elige tu zona para ver lo que se ofrece cerca de ti.",
+    listo: profile.es_vendedor ? "Ya puedes explorar tu zona y publicar lo que vendes." : "Ya puedes explorar y conectar con tus vecinos.",
+  };
 
   return (
-    <div className="w-full max-w-md px-6 py-10">
-      {/* Solo la flecha de regresar. Sin «x» y sin «saltar»: el onboarding es
-          obligatorio, y una salida aqui devuelve a la app con el perfil vacio,
-          que es exactamente el estado que este flujo viene a evitar. */}
-      <div className="mb-8 flex items-center">
-        {(sellerType === "business" ? paso !== "intereses" && paso !== PASOS[0] : paso !== PASOS[0]) ? (
-          <button
-            type="button"
-            onClick={atras}
-            disabled={enviando}
-            className="text-muted-foreground hover:text-foreground disabled:opacity-40"
-            aria-label="Regresar"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        ) : (
-          <span />
-        )}
-      </div>
-
-      {error && (
-        <div
-          role="alert"
-          className="mb-5 rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)]"
-        >
-          {error}
-        </div>
-      )}
-
-      {/* ---------------------------------------------------------------- */}
-      {/* P1 — Perfil                                                      */}
-      {/* ---------------------------------------------------------------- */}
-      {paso === "perfil" && (
-        <div className="space-y-5 animate-fade-in">
-          <div>
-            <h1 className="font-heading text-2xl font-bold">Completa tu perfil</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Así te reconocen tus vecinos cuando compras o vendes.
-            </p>
-          </div>
-
-          <AvatarInlineUpload
-            initial={(nombre.trim()[0] ?? "?").toUpperCase()}
-            avatarUrl={foto}
-            conRecorte
-            onUploadSuccess={(url) => {
-              setError("");
-              setFoto(url);
-            }}
-            onError={setError}
-          />
-
-          <div className="space-y-1.5">
-            <label htmlFor="nombre" className="text-sm font-medium text-foreground/80">
-              Tu nombre
-            </label>
-            <input
-              id="nombre"
-              type="text"
-              value={nombre}
-              maxLength={60}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Tu nombre"
-              className="w-full rounded-xl bg-[color:var(--bg-elev-2)] px-3.5 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-[color:var(--brand)]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="bio" className="text-sm font-medium text-foreground/80">
-              Cuéntanos de ti
-            </label>
-            <textarea
-              id="bio"
-              value={bio}
-              rows={3}
-              maxLength={MAX_BIO}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Qué te gusta, qué buscas, o qué vendes."
-              className="w-full resize-none rounded-xl bg-[color:var(--bg-elev-2)] px-3.5 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-[color:var(--brand)]"
-            />
-            <p className="text-right text-[11px] text-muted-foreground">
-              {bio.length}/{MAX_BIO}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              avanzar(
-                { nombre: nombre.trim(), bio: bio.trim(), foto: foto.trim() },
-                "intereses",
-              )
-            }
-            disabled={!perfilOk || enviando}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
-          >
-            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            Continuar
-          </button>
-          {!perfilOk && (
-            <p className="text-center text-xs text-muted-foreground">
-              Necesitamos tu foto, tu nombre y una descripción corta.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ---------------------------------------------------------------- */}
-      {/* P2 — Intereses                                                   */}
-      {/* ---------------------------------------------------------------- */}
-      {paso === "intereses" && (
-        <div className="space-y-5 animate-fade-in">
-          <div>
-            <h1 className="font-heading text-2xl font-bold">¿Qué te interesa?</h1>
-            {/* El texto NO promete que esto reordene el inicio. Los intereses
-                se guardan pero todavia no los lee nadie: el feed ordena por
-                cercania y por fecha. Prometer un efecto que no ocurre es una
-                mentira que la persona detecta en su primer minuto en la app, y
-                el precio de eso es mayor que el de una frase mas modesta.
-                Cuando el feed los use de verdad, esta frase se cambia. */}
-            <p className="mt-1 text-sm text-muted-foreground">
-              Elige hasta {MAX_INTERESES}. Nos sirven para saber qué te falta cerca.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
-              {intereses.length} de {MAX_INTERESES}
-            </span>
-            {intereses.length >= MAX_INTERESES && (
-              <span className="text-[color:var(--brand-hi)]">
-                Ya elegiste el máximo
-              </span>
-            )}
-          </div>
-
-          <div className="grid max-h-[46vh] grid-cols-3 gap-2 overflow-y-auto pr-1">
-            {CATEGORIAS_VISIBLES.map((c) => {
-              const Icono = iconoDeCategoria(c.slug);
-              const elegida = intereses.includes(c.slug);
-              // Al llegar al tope, las demas dejan de poder seleccionarse. Es
-              // deliberado que se apaguen ANTES del toque, en vez de dejar
-              // tocar y responder con un error: un error despues del gesto
-              // culpa a la persona de una regla que no podia ver.
-              const bloqueada = !elegida && intereses.length >= MAX_INTERESES;
-              return (
-                <button
-                  key={c.slug}
-                  type="button"
-                  onClick={() => alternarInteres(c.slug)}
-                  disabled={bloqueada}
-                  aria-pressed={elegida}
-                  className={`relative flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center transition-colors ${
-                    elegida
-                      ? "bg-[color:var(--brand)]/10 shadow-[inset_0_0_0_1px_var(--brand)]"
-                      : "bg-[color:var(--bg-elev-2)] hover:opacity-90"
-                  } ${bloqueada ? "opacity-35" : ""}`}
-                >
-                  {elegida && (
-                    <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-[color:var(--brand)]" />
-                  )}
-                  <Icono className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-[11px] leading-tight">{c.name}</span>
-                </button>
-              );
+    <OnboardingShell title={titles[paso]} description={descriptions[paso]} onBack={() => { if (!enviando && !fotoBusy) router.push(backHref); }}
+      step={index + 1} totalSteps={steps.length} error={error} busy={enviando || fotoBusy}
+      footer={<OnboardingActions type="submit" form="onboarding-question" busy={enviando || fotoBusy} disabled={!canContinue[paso]}
+        continueLabel={paso === "activar" && !sellerActive ? "Activar Modo Vendedor" : paso === "listo" ? "Entrar a VICINO" : "Continuar"}
+        onSkip={paso === "listo" ? undefined : omit} skipLabel={paso === "activar" && !sellerActive ? "Ahora no" : "Omitir"} />}>
+      <form id="onboarding-question" onSubmit={(event) => { event.preventDefault(); continueStep(); }}>
+        <fieldset disabled={enviando} className="min-w-0 space-y-5">
+          {paso === "categoria" && <Categoria value={draft.categoria} onChange={(value) => update("categoria", value)} />}
+          {paso === "tipo" && <Tipo value={draft.tipo} onChange={(value) => update("tipo", value)} />}
+          {paso === "usuario" && <UsernameStep value={draft.username} onChange={(value) => update("username", value)}
+            onValidityChange={setUsuarioDisponible} refreshToken={usernameLookupRevision} />}
+          {paso === "nombre" && <div>
+            <label htmlFor="onboarding-name" className="mb-2 block text-sm font-medium">{negocio ? "Nombre del negocio" : "Tu nombre"}</label>
+            <input id="onboarding-name" name={negocio ? "nombre_negocio" : "nombre"} autoComplete={negocio ? "organization" : "name"}
+              value={nombreValue} maxLength={negocio ? 100 : 60} className={onboardingInputClassName}
+              onChange={(event) => update(negocio ? "nombreNegocio" : "nombre", event.target.value)} />
+          </div>}
+          {paso === "foto" && <AvatarInlineUpload initial={(nombreValue.trim()[0] ?? "?").toUpperCase()}
+            avatarUrl={draft.foto} conRecorte onUploadSuccess={(url) => update("foto", url)} onError={setError} onBusyChange={setFotoBusy} />}
+          {paso === "descripcion" && <div>
+            <label htmlFor="onboarding-bio" className="mb-2 block text-sm font-medium">{negocio ? "Descripción del negocio" : "Tu descripción"}</label>
+            <textarea id="onboarding-bio" name={negocio ? "descripcion_negocio" : "bio"} rows={5} value={bioValue} maxLength={maxBio}
+              aria-describedby="description-count" className={`${onboardingInputClassName} resize-y`}
+              onChange={(event) => update(negocio ? "descripcionNegocio" : "bio", event.target.value)} />
+            <p id="description-count" className="mt-2 text-right text-sm text-fg-muted">{bioValue.length}/{maxBio}</p>
+          </div>}
+          {paso === "pagos" && <Pagos value={draft.pagos} onChange={(value) => update("pagos", value)} />}
+          {paso === "intereses" && <div className="space-y-3">
+            {VISIBLE_CATEGORIES.map((category) => {
+              const Icon = iconoDeCategoria(category.slug);
+              const selected = draft.intereses.includes(category.slug);
+              return <button key={category.slug} type="button" aria-pressed={selected}
+                disabled={!selected && draft.intereses.length >= 5}
+                onClick={() => update("intereses", selected ? draft.intereses.filter((value) => value !== category.slug) : [...draft.intereses, category.slug])}
+                className={`flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left disabled:opacity-50 ${selected ? "border-brand bg-brand-tint dark:border-brand-hi" : "border-border"}`}>
+                <Icon className="h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" /><span className="min-w-0 flex-1">{category.name}</span>
+                {selected && <Check className="h-5 w-5 text-brand dark:text-brand-hi" aria-hidden="true" />}
+              </button>;
             })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => avanzar({ intereses }, "ubicacion")}
-            disabled={intereses.length === 0 || enviando}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
-          >
-            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            Continuar
-          </button>
-        </div>
-      )}
-
-      {/* ---------------------------------------------------------------- */}
-      {/* P3 — Ubicacion                                                   */}
-      {/* ---------------------------------------------------------------- */}
-      {paso === "ubicacion" && (
-        <div className="space-y-5 animate-fade-in">
-          <div>
-            <h1 className="font-heading text-2xl font-bold">¿Dónde estás?</h1>
-            {/* El POR QUE va ANTES del dialogo del sistema, no despues. Un
-                permiso que aparece sin explicacion se niega, y en iOS negarlo
-                puede ser definitivo: la app ya no puede volver a preguntar. */}
-            <p className="mt-1 text-sm text-muted-foreground">
-              VICINO solo te muestra lo que está cerca. Sin tu zona, tu inicio
-              sale vacío.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Se publica la colonia, nunca tu dirección exacta.
-            </p>
-          </div>
-
-          <OnboardingLocationMap
-            initialSelection={locationDraft}
-            onSelectionChange={(lat, lng, address) => setLocationDraft({ lat, lng, address })}
-          />
-
-          <button
-            type="button"
-            onClick={() => {
-              if (locationDraft) setManualPosition({ ...locationDraft, name: locationDraft.address, fullName: locationDraft.address });
-              avanzar({}, null);
-            }}
-            disabled={!hayUbicacion || enviando}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] py-3 font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
-          >
-            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            Entrar a VICINO
-          </button>
-        </div>
-      )}
-
-      <ChangeLocationSheet
-        open={hojaZonaAbierta}
-        onClose={alCerrarHojaZona}
-      />
-    </div>
+            <p role="status" className="text-sm text-fg-muted">{draft.intereses.length} de 5 seleccionados</p>
+          </div>}
+          {paso === "ubicacion" && <div className="space-y-4">
+            <p className="text-sm text-fg-muted">Tu zona no publica tu dirección exacta. La ubicación de cada publicación la eliges al publicar.</p>
+            <OnboardingLocationMap initialSelection={locationDraft} onSelectionChange={(lat, lng, address) => setLocationDraft({ lat, lng, address })} />
+            <p className="text-sm text-fg-muted">Si omites este paso, podrás elegir tu zona desde el inicio.</p>
+          </div>}
+          {paso === "activar" && <div className="space-y-5">
+            <Activar nombre={negocio ? profile.nombre_negocio ?? "" : profile.nombre} categoria={profile.categoria_negocio} tipo={context.tipo} />
+            {!puedeActivar && !sellerActive && <p className="text-sm text-fg-muted">
+              Para activar, elige <Link href={rutaDePaso("categoria", camino)} className="font-medium text-brand underline dark:text-fg">tu categoría</Link>
+              {negocio && <> y agrega <Link href={rutaDePaso("nombre", camino)} className="font-medium text-brand underline dark:text-fg">el nombre de tu negocio</Link></>}. También puedes elegir Ahora no y seguir explorando.
+            </p>}
+          </div>}
+          {paso === "listo" && <div className="space-y-4">
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-tint text-brand dark:text-brand-hi"><Check className="h-8 w-8" aria-hidden="true" /></div>
+            <p className="text-base text-fg-muted">Puedes completar o cambiar tus datos cuando quieras desde tu perfil.</p>
+          </div>}
+        </fieldset>
+      </form>
+    </OnboardingShell>
   );
 }

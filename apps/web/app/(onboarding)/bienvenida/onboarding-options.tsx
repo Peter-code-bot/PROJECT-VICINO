@@ -1,106 +1,87 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import { guardarPasoOnboarding } from "@/app/(onboarding)/completar-perfil/actions";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { Search, ShoppingBag } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { guardarPasoOnboarding, type CaminoOnboarding } from "@/app/(onboarding)/completar-perfil/actions";
+import { OnboardingActions, OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { conTope, esTope } from "@/lib/auth/con-tope";
 
-/**
- * Los dos botones ya NO dan el onboarding por terminado.
- *
- * Antes los dos llamaban a completeOnboarding, que consume una bandera de UN
- * SOLO USO. O sea que quien tocaba «Quiero explorar» entraba a la app sin
- * nombre, sin foto, sin descripcion y sin intereses, y no podia volver a
- * elegir nunca. Ahora solo registran QUE CAMINO se eligio; la bandera se gasta
- * al final del ultimo paso.
- */
-/**
- * El paso de notificaciones va INTERCALADO, no anadido al final.
- *
- * Los tres pasos de /completar-perfil los gobierna profiles.onboarding_paso,
- * cuyo CHECK solo admite perfil, intereses y ubicacion: meter un cuarto exige
- * migracion y toca el guard de /bienvenida. Y ponerlo al final, despues de
- * completeOnboarding, es ponerlo donde nadie lo ve: esa funcion ya manda a "/".
- *
- * Aqui no cuesta nada: el destino viaja en la URL y la pantalla de permiso no
- * escribe una sola fila, asi que la reanudacion sigue siendo exactamente la de
- * antes. Quien abandone en la pantalla de permiso vuelve por donde volvia —
- * «vender» a los dos botones (no guardo nada, igual que hoy) y «explorar» a
- * /completar-perfil por su onboarding_paso. Lo unico que se pierde al abandonar
- * ahi es ver el permiso, que es opcional por diseno.
- */
-function conPermisoAntes(destino: string): string {
-  return `/activar-notificaciones?siguiente=${encodeURIComponent(destino)}`;
-}
+const OPCIONES = [
+  { camino: "explorar", titulo: "Quiero explorar", texto: "Encuentra lo que ofrecen tus vecinos.", Icono: Search },
+  { camino: "vender", titulo: "Quiero vender", texto: "Prepara tu perfil para publicar lo que ofreces.", Icono: ShoppingBag },
+] as const;
 
 export function OnboardingOptions() {
-  const [isPending, startTransition] = useTransition();
-  // Cual de los dos se toco, para que solo ese muestre el spinner. `isPending`
-  // es uno solo para los dos botones: sin esto, tocar uno pone a girar los dos
-  // y parece que la app hace dos cosas a la vez.
-  const [tocado, setTocado] = useState<"vender" | "explorar" | null>(null);
   const router = useRouter();
+  const [camino, setCamino] = useState<CaminoOnboarding | null>(null);
+  const [error, setError] = useState<string>();
+  const [isPending, startTransition] = useTransition();
 
-  function elegir(camino: "vender" | "explorar") {
-    setTocado(camino);
-
-    // VENDER NO ESCRIBE NADA AQUI, y esto es una correccion de un fallo real.
-    //
-    // La primera version guardaba camino='vender' antes de navegar, y eso
-    // encerraba a la persona en la app: /bienvenida veia ese camino y reenviaba
-    // a /empezar-a-vender en cada visita, el alta ya no tiene «x» de salida, y
-    // su unico control que avanza es «Activar Modo Vendedor». Quien tocaba
-    // «Quiero vender» por curiosidad y se arrepentia no podia volver a elegir,
-    // ni llegar al home, ni a /buscar, ni a su perfil: la unica salida era
-    // hacerse vendedor.
-    //
-    // Y no hace falta guardarlo: los dos pasos del alta que van antes de la
-    // activacion (categoria y tipo) viven en el cliente a proposito —lo dice la
-    // migracion 20260826320000— porque perderlos al cerrar la app cuesta menos
-    // que mantener estado de servidor para ellos. El camino se registra al
-    // ACTIVAR, junto con el paso, que es cuando ya hay algo que reanudar.
-    if (camino === "vender") {
-      router.push(conPermisoAntes("/empezar-a-vender"));
-      return;
-    }
-
+  function elegir(destino: CaminoOnboarding) {
+    if (isPending) return;
+    setError(undefined);
     startTransition(async () => {
-      // Explorar si entra directo a los pasos compartidos, asi que guarda las
-      // dos cosas: el camino y donde reanudar.
-      const result = await guardarPasoOnboarding({ camino, paso: "perfil" });
-      if (result.error) {
-        setTocado(null);
-        toast.error(result.error);
-        return;
+      const paso = destino === "vender" ? "categoria" : "usuario";
+      try {
+        const result = await conTope(guardarPasoOnboarding({ camino: destino, paso }));
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        router.push(`/completar-perfil/${paso}`);
+      } catch (err) {
+        if (!esTope(err)) {
+          Sentry.captureException(err, { tags: { action: "bienvenida_elegir_camino" } });
+        }
+        setError("No pudimos guardar tu elección. Revisa tu conexión e inténtalo de nuevo.");
       }
-      router.push(conPermisoAntes("/completar-perfil"));
     });
   }
 
   return (
-    <div className="flex flex-col gap-3 w-full">
-      <Button
-        onClick={() => elegir("vender")}
-        loading={isPending && tocado === "vender"}
-        disabled={isPending}
-        variant="primary"
-        size="lg"
-        className="w-full py-4 text-lg h-auto font-medium rounded-xl !bg-[#121212] !text-white !shadow-none dark:!bg-[#F4F1EB] dark:!text-[#121212]"
-      >
-        Quiero vender
-      </Button>
-
-      <Button
-        onClick={() => elegir("explorar")}
-        loading={isPending && tocado === "explorar"}
-        disabled={isPending}
-        variant="primary"
-        size="lg"
-        className="w-full py-4 text-lg h-auto font-medium rounded-xl !bg-brand-hi !text-white !shadow-none"
-      >
-        Quiero explorar
-      </Button>
-    </div>
+    <OnboardingShell
+      title="Bienvenido a VICINO"
+      description="Compra y vende cerca de ti. Elige cómo quieres empezar."
+      error={error}
+      busy={isPending}
+      footer={
+        <OnboardingActions
+          onContinue={() => { if (camino) elegir(camino); }}
+          onSkip={() => elegir("explorar")}
+          disabled={!camino}
+          busy={isPending}
+        />
+      }
+    >
+      <div className="mb-6 flex justify-center">
+        <Image src="/vicino-logo-light-v2.png" alt="" width={88} height={88} className="object-contain show-in-light" priority />
+        <Image src="/vicino-logo-dark.png" alt="" width={88} height={88} className="object-contain show-in-dark" priority />
+      </div>
+      <fieldset disabled={isPending} className="space-y-3">
+        <legend className="sr-only">Elige tu recorrido</legend>
+        {OPCIONES.map(({ camino: opcion, titulo, texto, Icono }) => (
+          <label key={opcion} className="block cursor-pointer">
+            <input
+              type="radio"
+              name="camino"
+              value={opcion}
+              checked={camino === opcion}
+              onChange={() => setCamino(opcion)}
+              className="peer sr-only"
+            />
+            <span className={`flex min-h-20 items-start gap-4 rounded-xl border p-4 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-hi ${camino === opcion ? "border-brand bg-brand-tint dark:border-brand-hi" : "border-fg-muted bg-card-2"}`}>
+              <Icono className="mt-1 h-6 w-6 shrink-0 text-brand dark:text-brand-hi" aria-hidden="true" />
+              <span>
+                <span className="block font-semibold text-fg">{titulo}</span>
+                <span className="mt-1 block text-sm leading-relaxed text-fg-muted">{texto}</span>
+              </span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+    </OnboardingShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
@@ -23,6 +23,7 @@ interface AvatarInlineUploadProps {
   avatarUrl: string;
   onUploadSuccess: (url: string) => void;
   onError: (msg: string) => void;
+  onBusyChange?: (busy: boolean) => void;
   /**
    * Deja encuadrar la foto antes de subirla, con el MISMO recortador que ya
    * usan las fotos de publicacion.
@@ -45,12 +46,18 @@ export function AvatarInlineUpload({
   avatarUrl,
   onUploadSuccess,
   onError,
+  onBusyChange,
   conRecorte = false,
 }: AvatarInlineUploadProps) {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const busy = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [recorteSrc, setRecorteSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    onBusyChange?.(avatarUploading || preparing || !!recorteSrc);
+  }, [avatarUploading, preparing, recorteSrc, onBusyChange]);
 
   /**
    * Comprime y sube. Se extrajo del onChange para que el camino con recorte y
@@ -184,8 +191,9 @@ export function AvatarInlineUpload({
           </div>
         )}
       </div>
-      <label className="cursor-pointer mt-3">
+      <div className="mt-3">
         <input
+          ref={fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
@@ -223,10 +231,12 @@ export function AvatarInlineUpload({
             await procesarYSubir(file);
           }}
         />
-        <span className="text-[13px] font-medium text-primary hover:underline">
+        <button type="button" disabled={avatarUploading || preparing || !!recorteSrc}
+          onClick={() => fileInput.current?.click()}
+          className="min-h-12 rounded-xl px-4 py-3 text-sm font-medium text-primary hover:underline disabled:opacity-50 dark:text-fg">
           {avatarUrl ? "Cambiar foto" : "Subir foto"}
-        </span>
-      </label>
+        </button>
+      </div>
 
       {(preparing || avatarUploading) && (
         <p role="status" className="mt-2 text-sm text-muted-foreground">

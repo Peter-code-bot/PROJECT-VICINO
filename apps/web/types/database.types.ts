@@ -2707,6 +2707,10 @@ export type Database = {
       comunidades_publicas_ids: { Args: never; Returns: string[] }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
       confirmar_venta: { Args: { p_confirmacion_id: string }; Returns: Json }
+      consultar_usuarios_onboarding: {
+        Args: { p_sugerencias?: string[]; p_username?: string }
+        Returns: Json
+      }
       consumir_cuota_verificacion_ia: { Args: never; Returns: Json }
       count_nearby_vendors: {
         Args: { radius_meters?: number; user_lat: number; user_lng: number }
@@ -3115,6 +3119,23 @@ export type Database = {
           p_intereses?: string[]
           p_nombre?: string
           p_paso?: string
+        }
+        Returns: Json
+      }
+      guardar_paso_onboarding_v2: {
+        Args: {
+          p_bio?: string
+          p_camino?: string
+          p_categoria_negocio?: string
+          p_descripcion_negocio?: string
+          p_foto?: string
+          p_intereses?: string[]
+          p_metodos_pago_aceptados?: string
+          p_nombre?: string
+          p_nombre_negocio?: string
+          p_paso?: string
+          p_seller_type?: string
+          p_username?: string
         }
         Returns: Json
       }
@@ -4085,6 +4106,10 @@ export type Database = {
           schema_name: string
           table_name: string
         }
+        Returns: string
+      }
+      username_validation_status: {
+        Args: { p_username: string }
         Returns: string
       }
     }

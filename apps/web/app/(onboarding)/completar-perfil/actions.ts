@@ -2,20 +2,48 @@
 
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
+import { z } from "zod";
+import { usernameSchema } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
+import { PASOS_ONBOARDING, type PasoOnboarding } from "@/lib/onboarding/steps";
 
+export type { PasoOnboarding } from "@/lib/onboarding/steps";
 export type CaminoOnboarding = "explorar" | "vender";
-export type PasoOnboarding = "perfil" | "intereses" | "ubicacion";
 
-interface GuardarPasoInput {
+export interface GuardarPasoInput {
   camino?: CaminoOnboarding;
+  /** El siguiente paso pendiente, persistido junto con el dato actual. */
   paso?: PasoOnboarding;
+  username?: string;
   nombre?: string;
   bio?: string;
   foto?: string;
   intereses?: string[];
+  categoria_negocio?: string;
+  seller_type?: "casual" | "business";
+  nombre_negocio?: string;
+  descripcion_negocio?: string;
+  metodos_pago_aceptados?: string;
 }
+
+const guardarPasoSchema = z.object({
+  camino: z.enum(["explorar", "vender"]).optional(),
+  paso: z.string().refine(
+    (paso) => paso === "perfil" || PASOS_ONBOARDING.some((actual) => actual === paso),
+    "Paso de onboarding inválido.",
+  ).optional(),
+  username: usernameSchema.optional(),
+  nombre: z.string().trim().min(2, "Escribe al menos 2 caracteres.").max(60, "Máximo 60 caracteres.").optional(),
+  bio: z.string().trim().min(1, "Escribe una descripción o elige Omitir.").max(160, "Máximo 160 caracteres.").optional(),
+  foto: z.string().url("Esa foto no es válida.").regex(/^https?:\/\/\S+$/, "Esa foto no es válida.").max(500).optional(),
+  intereses: z.array(z.string().min(1).max(80)).min(1, "Elige entre 1 y 5 intereses.").max(5, "Elige entre 1 y 5 intereses.").optional(),
+  categoria_negocio: z.string().min(1, "Elige una categoría.").max(80).optional(),
+  seller_type: z.enum(["casual", "business"]).optional(),
+  nombre_negocio: z.string().trim().min(2, "Escribe al menos 2 caracteres.").max(100, "Máximo 100 caracteres.").optional(),
+  descripcion_negocio: z.string().trim().min(1, "Escribe una descripción o elige Omitir.").max(1000, "Máximo 1000 caracteres.").optional(),
+  metodos_pago_aceptados: z.string().trim().min(1, "Elige cómo aceptas pagos o elige Omitir.").max(500).optional(),
+}).strict();
 
 /**
  * Guarda UN paso del onboarding sin tocar lo que guardaron los anteriores.
@@ -25,7 +53,7 @@ interface GuardarPasoInput {
  * dan columna por columna. Nombre, bio e intereses son inalcanzables desde el
  * cliente por cualquier otra via.
  *
- * El COALESCE vive dentro de la funcion (20260905100000): omitir un campo
+ * El COALESCE vive dentro del RPC v2: omitir un campo
  * significa «no lo toques», nunca «borralo». Es lo que permite que el paso 3
  * llame sin mandar lo del paso 2.
  */
@@ -44,69 +72,40 @@ export async function guardarPasoOnboarding(input: GuardarPasoInput) {
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
-  // Los topes se comprueban AQUI y no solo con el maxLength de los inputs. Un
-  // `maxLength` es una comodidad del navegador, no una defensa: esto es un
-  // endpoint HTTP y se puede llamar sin pasar por la pantalla. Sin esto, `bio`
-  // es una columna de texto sin limite y cualquiera con sesion puede escribir
-  // megabytes en su perfil.
-  //
-  // Y se comprueba el TIPO antes que la longitud. Nacieron como
-  // `input.nombre.length > 60`, que da por hecho que llega una cadena solo
-  // porque lo dice el tipo de TypeScript. El tipo no viaja por la red: un null
-  // o un numero enviados a mano hacian que `.length` reventara con un
-  // TypeError, o sea un 500 en vez del mensaje que toca.
-  //
-  // El resto (camino, paso, 1-5 intereses, que el slug exista) vive dentro del
-  // RPC, que es el sitio correcto porque no se puede rodear.
-  const texto = (v: unknown, max: number) =>
-    v === undefined || (typeof v === "string" && v.length <= max);
-
-  if (!texto(input.nombre, 60)) return { error: "Ese nombre no es válido." };
-  if (!texto(input.bio, 160)) return { error: "Esa descripción no es válida." };
-  if (input.foto !== undefined && typeof input.foto !== "string") {
-    return { error: "Esa foto no es válida." };
+  // La entrada es un endpoint: TypeScript y maxLength no validan una petición.
+  const parsed = guardarPasoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisa la información de este paso." };
   }
+  const datos = parsed.data;
 
-  // Los intereses se validan aqui ADEMAS de en el RPC. La funcion comprueba que
-  // cada slug exista en el catalogo con un NOT EXISTS, y un elemento NULL pasa
-  // ese filtro —NULL nunca casa, asi que el NOT EXISTS no lo atrapa— y muere
-  // mas abajo contra el CHECK de la columna. El mensaje que llegaba entonces
-  // era el generico de «revisa tu conexion», que culpa a la red de un dato
-  // malformado.
-  if (input.intereses !== undefined) {
-    const lista = input.intereses;
-    if (
-      !Array.isArray(lista) ||
-      lista.length < 1 ||
-      lista.length > 5 ||
-      lista.some((s) => typeof s !== "string" || s.length === 0 || s.length > 80)
-    ) {
-      return { error: "Elige entre 1 y 5 intereses." };
-    }
-  }
-
-  const { error } = await supabase.rpc("guardar_paso_onboarding", {
-    p_camino: input.camino,
-    p_paso: input.paso,
-    p_nombre: input.nombre,
-    p_bio: input.bio,
-    p_foto: input.foto,
-    p_intereses: input.intereses,
+  // El username, los borradores de vendedor y el avance se guardan en una
+  // transacción. Este RPC no activa es_vendedor ni cambia el ID interno.
+  const { data, error } = await supabase.rpc("guardar_paso_onboarding_v2", {
+    p_camino: datos.camino,
+    p_paso: datos.paso,
+    p_username: datos.username,
+    p_nombre: datos.nombre,
+    p_bio: datos.bio,
+    p_foto: datos.foto,
+    p_intereses: datos.intereses,
+    p_categoria_negocio: datos.categoria_negocio,
+    p_seller_type: datos.seller_type,
+    p_nombre_negocio: datos.nombre_negocio,
+    p_descripcion_negocio: datos.descripcion_negocio,
+    p_metodos_pago_aceptados: datos.metodos_pago_aceptados,
   });
 
   if (error) {
+    if (error.code === "22023" || error.code === "23505") return { error: error.message };
     // El detalle tecnico se queda en el servidor. Postgres nombra la columna o
     // la policy que rechazo en `details`, y perderlo obliga a diagnosticar a
     // ciegas — ya paso con el 42501 de modo_precio.
     Sentry.captureException(error, {
-      tags: { action: "guardar_paso_onboarding" },
+      tags: { action: "guardar_paso_onboarding_v2" },
       contexts: { supabase: { code: error.code, details: error.details } },
     });
 
-    // 22023 son las validaciones de la propia funcion (camino o paso
-    // invalidos, mas de 5 intereses, slug inexistente). Ese mensaje SI es para
-    // la persona: lo escribimos nosotros y dice algo accionable.
-    if (error.code === "22023") return { error: error.message };
     if (error.code === "P0002") {
       return {
         error:
@@ -116,6 +115,7 @@ export async function guardarPasoOnboarding(input: GuardarPasoInput) {
     return { error: "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo." };
   }
 
-  await revalidatePath("/completar-perfil");
-  return { success: true };
+  await revalidatePath("/completar-perfil", "layout");
+  await revalidatePath("/perfil");
+  return { success: true, data };
 }
