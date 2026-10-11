@@ -99,6 +99,57 @@ new_rpc_after_rollback false
 
 ## Publicación y recuperación
 
-Pendiente de aplicar archivo+ledger en transacción y publicar web/tipos exactos en el mismo corte después de validar preview/CI. La app anterior usa el RPC revocado: durante el corte las escrituras de roles quedan bloqueadas hasta que sirva la web nueva, conservando lectura y datos. No reabrir EXECUTE de clientes como recuperación; corregir hacia adelante el canal validado del servidor. Una vuelta de web sola a e5522f0 no recupera cambios de roles después de esta migración.
+Migración aplicada con archivo exacto+assertions+ledger en una transacción después del ensayo y preview/CI aprobados. [PR56](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/56) integrada en master de código7c16ce210faaa8edfd85ce270951bbae052332ce a16:24:14CDMX (22:24:14UTC), árbol idéntico al candidato7171d98208c69ce3001bda02f51fb1cd4230f19c. La web anterior usa el RPC revocado: durante el corte las escrituras de roles quedaron bloqueadas hasta servir la web nueva, conservando lectura y datos. No reabrir EXECUTE de clientes como recuperación; corregir hacia adelante el canal validado del servidor. Una vuelta de web sola a e5522f0 no recupera cambios de roles después de esta migración.
 
-Los SHA, CI, ACL final y despliegue se registrarán al comprobarse. La configuración de la clave y la prueba con cuenta admin real permanecen abiertas mientras falte el acceso a Vercel; las pruebas locales no las sustituyen. No se concedieron o retiraron roles reales.
+Production GF8nYehYpbwmSGUALSERwr4mSHEM SUCCESS, deployment GitHub7002705204, mismo7c16ce2, a16:26:35CDMX. SecurityAudit38180284684 SUCCESS en secretos, audit, tipos/lint y deriva estricta de esquema/legales. Schema artifact38179862952 falló antes de SQL sólo por las9 líneas del RPC aún ausente; intento2 SUCCESS después de SQL, tipos completos exactos, sin desactivar la comparación.
+
+Verificación final SQL de sólo lectura, normalizando CRLF→LF; cuerpo nuevo MD5 38a7db63fa87220d6dc3f84b0992fc1e:
+
+```text
+secure_body_matches_source true
+legacy_authenticated_execute false
+secure_authenticated_execute false
+secure_anon_execute false
+secure_service_execute true
+applied_ledger 1
+```
+
+Prueba del canal PostgREST real con service_role: se envían cuatro parámetros NULL y se exige22023 antes de cualquier lectura/escritura de roles. Sin cuentas ni cambios de rol. Entorno local sólo en memoria, tokens sin imprimir:
+
+```text
+node --env-file='[ruta al entorno local del checkout principal]' apps/web/test-results/release/admin-role-service-probe.mjs
+PASS canal PostgREST service_role real; entrada nula rechazada con 22023 antes de leer/escribir roles. Sin cuentas ni cambio de roles.
+Clave de panel presente en entorno local: false
+Exit code: 0
+```
+
+El resultado local false NO prueba ausencia en Vercel. Allí el login por GitHub pide autorizar identidad/correos de la cuenta; aprobación solicitada a Javier. No se concedió ese permiso ni se introdujo/cambió una contraseña. Sigue pendiente comprobar/configurar ADMIN_SECURITY_PASSWORD en Production y probar con cuenta admin real; los resultados locales no los sustituyen. No se concedieron o retiraron roles reales.
+
+Smoke público GET tras desplegar,3/3 exit0: login200 con h1VICINO; /admin/users307→login sin sesión; /api/session/profile?part=core401,private,no-store y cuerpo vacío. Salida literal:
+
+```text
+[
+  {
+    "route": "/login",
+    "status": 200,
+    "location": null,
+    "cache": "private, no-cache, no-store, max-age=0, must-revalidate"
+  },
+  {
+    "route": "/admin/users",
+    "status": 307,
+    "location": "/login",
+    "cache": "public, max-age=0, must-revalidate"
+  },
+  {
+    "route": "/api/session/profile?part=core",
+    "status": 401,
+    "location": null,
+    "cache": "private, no-store"
+  }
+]
+PASS 3/3 producción pública; panel exige sesión y API privada. Sin POST de roles.
+Exit code: 0
+```
+
+Cierre documental posterior sin cambios de runtime: su SHA final y comprobaciones se registran en Notion. Capturas locales del contrato aplicado y la solicitud de autorización en apps/web/test-results/release, sin valores secretos. ADM-PASS-02 cierra la entrega técnica; ADM-PASS-01 conserva la configuración/aceptación pendiente por acceso.

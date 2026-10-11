@@ -1,9 +1,10 @@
-## 11-oct-2026 — Seguridad de cambios de roles: candidato validado
+## 11-oct-2026 — RPC de roles cerrado y publicado; clave pendiente de acceso
 
 - Javier autorizó terminar ADM-PASS-01/02 y confirmar la contraseña. Rama aislada fix/admin-role-security-20261011, base e5522f0; trabajo ajeno conservado.
 - Server Actions autentican/verifican clave/límites/datos antes de cliente service_role; nuevo RPC liga actor a getUser y revalida admin en SQL. Migración revoca el RPC histórico a clientes y escrituras directas de tabla/columna; sin cambios a roles reales.
 - Pruebas28/28, tipos/lint y build60/60 exit0. Preflight real confirmó EXECUTE histórico a authenticated; ensayo de fuente exacta con rollback PASS y candidato ausente después. [Acta literal](docs/ADMIN-ROLE-SECURITY-2026-10-11.md).
-- Publicación coordinada SQL/web y confirmación de tipos por completar. ADMIN_SECURITY_PASSWORD requiere acceso a Vercel, que pide login; acceso solicitado a Javier. Valor/presencia vigente aún no confirmados, sin contraseñas en repo/SQL/documentos.
+- [PR56](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/56) integrada16:24:14CDMX: master de código7c16ce210faaa8edfd85ce270951bbae052332ce, árbol igual al candidato7171d98. SQL+ledger aplicado en transacción; hash/permisos verificados, autenticados/anon sin EXECUTE, sólo service_role. Tipos completos exactos: schema38179862952 intento2 SUCCESS. CI38180284684 SUCCESS incluidas deriva/legales; ProductionGF8nYehYpbwmSGUALSERwr4mSHEM SUCCESS16:26:35CDMX. PostgREST real rechaza entrada nula22023 sin tocar roles; smoke público3/3 exit0. Cierre documental se identifica en Notion por separado.
+- ADM-PASS-01 sigue pendiente: comprobar/configurar ADMIN_SECURITY_PASSWORD y aceptación admin real. Vercel requiere autorizar identidad/correos de GitHub; aprobación solicitada a Javier, sin conceder permisos ni cambiar credenciales. Clave local ausente no acredita estado de Production; valor vigente no confirmado. Sin contraseñas en repo/SQL/documentos. ADM-PASS-02 tiene cierre técnico publicado; roles reales sin cambios.
 
 ## 11-oct-2026 — UI01–UI12 publicados en master y producción
 
