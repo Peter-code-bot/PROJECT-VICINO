@@ -2670,6 +2670,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_user_role_secure: {
+        Args: {
+          p_actor_id: string
+          p_grant: boolean
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       alternar_like_publicacion: { Args: { p_post_id: string }; Returns: Json }
       alternar_membresia_comunidad: {
         Args: { p_community_id: string }

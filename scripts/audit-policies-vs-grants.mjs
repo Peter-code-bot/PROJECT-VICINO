@@ -61,10 +61,10 @@ const token = (() => {
 const EXCEPCIONES = new Map([
   [
     'user_roles',
-    'Las escrituras pasan por admin_set_user_role (SECURITY DEFINER, valida admin ' +
-      'dentro de la funcion). Es deliberado no dar el GRANT: user_roles reparte ' +
+    'Las escrituras pasan por admin_set_user_role_secure (solo service_role, después de ' +
+      'sesión admin y segunda clave; valida actor otra vez en la funcion). Es deliberado no dar el GRANT: user_roles reparte ' +
       'admin, y un privilegio suelto ahi seria catastrofico el dia que la policy ' +
-      'se caiga. Ver 20260826200000.',
+      'se caiga. Ver 20261011213000; el RPC histórico ya no acepta authenticated.',
   ],
 ]);
 
