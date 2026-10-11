@@ -1,105 +1,46 @@
 "use server";
 
-import { headers } from "next/headers";
+import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
+import { AVISO_PRIVACIDAD_VERSION, TERMINOS_VERSION } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
-import { avisarSesionSinPerfil } from "@/lib/sesion-sin-perfil";
+import { legalStateSchema } from "@/lib/auth/confirmacion-legal";
 
-/**
- * La FK de user_id -> profiles(id). Se reconoce por el NOMBRE de la constraint
- * y no por el codigo 23503 a secas: la FK compuesta (documento, version) ->
- * legal_documents tambien da 23503, y esa si seria un bug nuestro.
- */
-const FK_SIN_PERFIL = "legal_acceptances_user_id_fkey";
+const confirmationSchema = z.object({
+  expectedUserId: z.string().uuid(), terminosVersion: z.literal(TERMINOS_VERSION), avisoVersion: z.literal(AVISO_PRIVACIDAD_VERSION),
+  aceptaTerminos: z.literal(true), acusaAviso: z.literal(true),
+}).strict();
 
-function esSesionSinPerfil(error: { code?: string; message?: string; details?: string }): boolean {
-  return error.code === "23503" && `${error.message ?? ""} ${error.details ?? ""}`.includes(FK_SIN_PERFIL);
+/** Compatibility with an older client. Visiting a page is not a confirmation. */
+export async function registrarAceptacionLegal() {
+  return { success: true as const, registradas: 0 };
 }
 
-/**
- * Deja constancia de la aceptacion tacita de los documentos legales vigentes.
- *
- * POR QUE ES TACITA Y NO UNA CASILLA. No es una comodidad que nos tomemos: el
- * Aviso publicado dice en su seccion 19 que "la utilizacion de la Plataforma
- * con posterioridad a la publicacion... constituye ACEPTACION TACITA de su
- * contenido". Lo que faltaba no era el consentimiento, era la CONSTANCIA. Sin
- * fila, la afirmacion "el usuario acepto la version 2.2" no se puede sostener
- * ante nadie.
- *
- * La casilla expresa se reserva para lo que de verdad la exige: los datos
- * biometricos de la verificacion, donde el articulo 8 de la LFPDPPP pide
- * consentimiento expreso y por escrito. Eso ya vive aparte, en
- * registrarConsentimientoBiometrico.
- *
- * Ni la fecha, ni la version, ni el usuario llegan del cliente: los tres los
- * pone el RPC desde el servidor. Un registro cuya fecha elige quien consiente
- * no acredita gran cosa.
- *
- * Es idempotente por construccion (ON CONFLICT DO NOTHING sobre user+documento+
- * version), asi que llamarla de mas no ensucia nada: lo que se acredita es la
- * PRIMERA vez que la persona uso la plataforma bajo esa version.
- */
-export async function registrarAceptacionLegal() {
+export async function confirmarDocumentosCuenta(input: unknown) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  // Misma cubeta `write:` que el resto de escrituras, NO un identificador
-  // propio: en Upstash la clave es prefijo + identificador, asi que inventar
-  // uno nuevo aqui no compartiria cuota, abriria una paralela y subiria el
-  // techo real por usuario sin que nadie lo decidiera. Es el fallo que ya
-  // tiene `follow:`.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Inicia sesión para confirmar tu cuenta." };
+  const parsed = confirmationSchema.safeParse(input);
+  if (!parsed.success) return { error: "Marca las dos casillas y revisa los documentos actuales." };
+  if (parsed.data.expectedUserId !== user.id) return { error: "La cuenta cambió. Recarga antes de continuar." };
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
-
-  const h = await headers();
-  // x-forwarded-for puede traer varias IP separadas por coma; la primera es la
-  // del cliente. Es un dato de apoyo, no la prueba: si viene inservible, el RPC
-  // la descarta y registra igual.
-  //
-  // Cuando no hay nada utilizable va `undefined`, no `null`. El RPC declara
-  // p_user_agent y p_ip con DEFAULT NULL, asi que omitir el parametro es la
-  // forma que la propia funcion ofrece para decir "no hay dato": la clave no
-  // viaja en el cuerpo y es Postgres quien pone el NULL. La fila queda igual
-  // que antes; lo que cambia es que ahora se llama al RPC por su firma real.
-  const ip =
-    (h.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
-    h.get("x-real-ip") ||
-    undefined;
-
-  const { data, error } = await supabase.rpc("registrar_aceptacion_legal", {
-    p_modo: "uso_continuado",
-    p_user_agent: h.get("user-agent") ?? undefined,
-    p_ip: ip,
+  const { data, error } = await supabase.rpc("confirmar_documentos_cuenta", {
+    p_terminos_version: parsed.data.terminosVersion, p_aviso_version: parsed.data.avisoVersion,
+    p_acepta_terminos: true, p_acusa_aviso: true,
   });
-
   if (error) {
-    // Sesion sin perfil (cuenta borrada a medias): no hay a quien acreditar y
-    // no es un fallo del codigo. Ver lib/sesion-sin-perfil.ts. El layout no
-    // monta el registro cuando SABE que no hay perfil; esto cubre cuando la
-    // consulta del perfil del layout fallo (lo monta igual, para no perder el
-    // registro de quien si lo tiene) y la carrera de un perfil que desaparece
-    // entre el render y la llamada.
-    if (esSesionSinPerfil(error)) {
-      avisarSesionSinPerfil("registrarAceptacionLegal");
-      return { error: "No se pudo registrar la aceptación" };
-    }
-    // No se le enseña al usuario: esto es contabilidad interna y bloquear la
-    // navegacion por ello seria peor que el problema. Pero tampoco puede
-    // perderse: un registro legal que falla en silencio es exactamente el modo
-    // de fallo que este mecanismo viene a cerrar.
-    Sentry.captureException(error, {
-      tags: { action: "registrarAceptacionLegal" },
-      extra: { code: error.code, details: error.details, hint: error.hint },
-    });
-    return { error: "No se pudo registrar la aceptación" };
+    if (error.code === "22023" && error.message === "Marca las dos casillas para continuar.")
+      return { error: "Marca las dos casillas para continuar." };
+    if (error.code === "22023" && error.message === "Los documentos cambiaron. Recarga y revisa las versiones actuales.")
+      return { error: "Los documentos cambiaron. Recarga y revisa las versiones actuales." };
+    if (error.code === "P0002")
+      return { error: "Tu perfil aún no está listo. Espera unos segundos e intenta de nuevo." };
+    Sentry.captureException(error, { tags: { action: "confirmar_documentos_cuenta" } });
+    return { error: "No pudimos guardar tu confirmación. Intenta de nuevo." };
   }
-
-  // Filas devueltas = versiones que se registraron AHORA. Vacio significa que
-  // ya estaban, que es el caso normal a partir de la segunda visita.
-  return { success: true as const, registradas: (data ?? []).length };
+  const state = legalStateSchema.safeParse(data);
+  if (!state.success || !state.data.confirmed) return { error: "No pudimos comprobar tu confirmación. Intenta de nuevo." };
+  return { success: true as const };
 }

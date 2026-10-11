@@ -1,3 +1,12 @@
+## 11-oct-2026 — UI01–UI12 implementados; cierre de publicación en curso
+
+- Autorización de Javier: ejecutar el plan acumulativo y registrar los resultados en Notion. Equipo Workflow Advisor; checkout aislado `PROJECT-VICINO-ONBOARDING`, rama `feat/onboarding-fluidez-20261011`, base `e3900fd`. Trabajo ajeno del checkout principal conservado.
+- Quiero comprar/vender obligatorio; eliminado Activar como pregunta independiente, resumen y decisión vendedor en el cierre transaccional; alias/progreso/reanudación y Volver desde notificaciones resueltas corregidos. Pulido Home/login UI01–UI06 aplicado. Se conservan contenido arriba, un dato por pantalla, ID público y sugerencias del correo más números.
+- Confirmación de cuenta después de OTP/OAuth y antes de Bienvenida, dos controles sin preselección, versiones e identidad/hora del servidor; historia previa preservada. Contexto persistente y journal serial con idempotencia/revisión/cuenta, errores recuperables y barreras de ID/foto/cierre; omitir no envía borradores descartados.
+- UI117/117, vendedor17/17, legal12/12, SQL14 y acciones/helpers18/18 aprobados; tipos/lint y build60/60 exit0. Home18/18 y registro20/20 HTTP Chromium con Next/Supabase reales aprobados, sin cuentas/OTP. Medición local300muestras con ACK controlado: p95 siguiente utilizable 82,6→16,0ms; conACK600ms 632,7→16,1ms; CPU×4 82,5→22,4ms. No equivale a cuentas reales, red Next completa ni dispositivos. [Acta y evidencia literal](docs/ONBOARDING-2026-10-11.md).
+- Publicación coordinada pendiente en este corte: la migración20261011120000 preparada cambia el requisito legal de RPC; preparar web/ensayo, aplicar sólo archivo+ledger, regenerar tipos exactos y publicar sin dejar la app anterior con el contrato nuevo. No hay commit/PR/master/deploy nuevos acreditados todavía.
+- Notion conserva el plan único y la aceptación pendiente. Android/iOS build, integración, dispositivos y distribución se actualizan en sus apartados de Bugs por ID; Auth/concurrencia real conservan pruebas pendientes. Este lote no cierra el backlog general.
+
 ## 10-oct-2026 — Onboarding publicado en master y producción
 
 - Publicación autorizada por Javier: [PR54](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/54) integrada el10-oct23:38:29CDMX; master de código `9ef8b8aa123e16492864809f7b29e7cffeefe282`, árbol idéntico al candidato `2549a69`. Contenido arriba, una página por dato, Omitir e ID público editable con sugerencias del correo más números publicados.

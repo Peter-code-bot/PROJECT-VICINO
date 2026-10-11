@@ -102,7 +102,8 @@ export function OAuthUrlListener() {
           // Volver a donde se queria ir, no a la portada. Sin esto, entrar con
           // Google desde "Quiero comprarlo" dejaba a la persona en el home y sin
           // el producto, justo en el momento de mayor intencion de compra.
-          router.replace(destinoEnProceso);
+          router.replace(destinoEnProceso.startsWith("/reset-password?") ? destinoEnProceso
+            : `/confirmar-cuenta?next=${encodeURIComponent(destinoEnProceso)}`);
           // En Next.js, la navegación cliente no desmonta el Root Layout.
           // Debemos limpiar explícitamente el estado de carga después
           // de un breve periodo para permitir que la navegación termine.

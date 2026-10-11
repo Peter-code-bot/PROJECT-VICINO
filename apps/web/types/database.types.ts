@@ -807,6 +807,10 @@ export type Database = {
       }
       legal_acceptances: {
         Row: {
+          confirmacion_en: string | null
+          confirmacion_tipo: string | null
+          confirmacion_origen: string | null
+          confirmacion_evidencia: string | null
           aceptado_en: string
           documento: string
           id: string
@@ -818,6 +822,10 @@ export type Database = {
         }
         Insert: {
           aceptado_en?: string
+          confirmacion_en?: string | null
+          confirmacion_tipo?: string | null
+          confirmacion_origen?: string | null
+          confirmacion_evidencia?: string | null
           documento: string
           id?: string
           ip?: unknown
@@ -828,6 +836,10 @@ export type Database = {
         }
         Update: {
           aceptado_en?: string
+          confirmacion_en?: string | null
+          confirmacion_tipo?: string | null
+          confirmacion_origen?: string | null
+          confirmacion_evidencia?: string | null
           documento?: string
           id?: string
           ip?: unknown
@@ -1279,6 +1291,38 @@ export type Database = {
           },
         ]
       }
+      onboarding_operation_receipts: {
+        Row: {
+          user_id: string
+          operation_id: string
+          payload: Json
+          response: Json
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          operation_id: string
+          payload: Json
+          response: Json
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          operation_id?: string
+          payload?: Json
+          response?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_operation_receipts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           alta_vendedor_paso: string | null
@@ -1306,6 +1350,9 @@ export type Database = {
           notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
+          onboarding_revision: number
+          seller_visibility_confirmed_at: string | null
+          seller_visibility_version: string | null
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
@@ -1349,6 +1396,9 @@ export type Database = {
           notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
+          onboarding_revision?: number
+          seller_visibility_confirmed_at?: string | null
+          seller_visibility_version?: string | null
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
@@ -1392,6 +1442,9 @@ export type Database = {
           notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
+          onboarding_revision?: number
+          seller_visibility_confirmed_at?: string | null
+          seller_visibility_version?: string | null
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
@@ -2684,6 +2737,19 @@ export type Database = {
         Returns: boolean
       }
       complete_user_onboarding: { Args: never; Returns: undefined }
+      estado_confirmacion_legal: { Args: never; Returns: Json }
+      confirmar_documentos_cuenta: {
+        Args: { p_terminos_version: string; p_aviso_version: string; p_acepta_terminos: boolean; p_acusa_aviso: boolean }
+        Returns: Json
+      }
+      guardar_checkpoint_onboarding_v3: {
+        Args: { p_operation_id: string; p_expected_revision: number; p_from_step: string; p_next_step: string; p_camino: string; p_fields?: Json }
+        Returns: Json
+      }
+      finalizar_onboarding_v3: {
+        Args: { p_operation_id: string; p_expected_revision: number; p_decision: string }
+        Returns: Json
+      }
       comunidad_bloqueo_con_mando: {
         Args: { p_community_id: string; p_user: string }
         Returns: boolean

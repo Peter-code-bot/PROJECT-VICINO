@@ -142,7 +142,7 @@ export function VerificarCodigo({
         onVerificado();
 
         router.refresh();
-        router.push(safeDestino);
+        router.push(`/confirmar-cuenta?next=${encodeURIComponent(safeDestino)}`);
       } catch (err) {
         if (esTope(err)) {
           // El tope no cancela nada: la petición puede cuajar en el servidor

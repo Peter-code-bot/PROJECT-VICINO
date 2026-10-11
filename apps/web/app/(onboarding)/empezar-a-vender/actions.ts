@@ -87,6 +87,10 @@ export async function activarModoVendedor(params: {
   });
 
   if (error) {
+    if (error.code === "42501" && error.message === "Confirma los Términos y el Aviso de Privacidad para continuar.")
+      return { error: "Confirma los Términos y el Aviso de Privacidad para continuar." };
+    if (error.code === "42501" && error.message === "Confirma la visibilidad de tu perfil antes de comenzar a vender.")
+      return { error: "Confirma la visibilidad de tu perfil antes de comenzar a vender." };
     // 22023 es entrada inválida del usuario (categoría o tipo), no un fallo:
     // no ensucia Sentry. Cualquier otro código sí lo es.
     if (error.code !== "22023") {

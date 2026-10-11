@@ -16,7 +16,6 @@ import { GuestAuthCta } from "./guest-auth-cta";
 function NationalPreviewIntro({ title }: { title: string }) {
   return <div className="px-4 pb-3">
     <h2 className="font-heading text-lg font-bold text-fg">{title}</h2>
-    <p className="mt-1 text-sm text-fg-muted">Vista previa pública. Inicia sesión para ver lo que hay cerca de ti y participar.</p>
   </div>;
 }
 

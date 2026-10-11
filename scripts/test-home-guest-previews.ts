@@ -234,7 +234,7 @@ test("guest SSR tabs are public previews; following remains login", async () => 
   const html = (await rendering())("solicitudes", { kind: "solicitudes", requests: [request], failure: null });
   assert.match(html, /href="\/\?feed=solicitudes"/); assert.match(html, /href="\/\?feed=comunidades"/);
   assert.match(html, /href="\/login\?next=%2F%3Ffeed%3Dfollowing"/);
-  assert.match(html, /Vista previa pública/); assert.match(html, /Busco quien repare una silla/);
+  assert.doesNotMatch(html, /Vista previa pública/); assert.match(html, /Busco quien repare una silla/);
   assert.match(html, new RegExp(`href="/login\\?next=%2Fsolicitudes%2F${requestId}"`));
   assert.doesNotMatch(html, /Activa tu ubicación|A 0 m|buyer_profile|private/);
 });

@@ -18,7 +18,7 @@ import { MuroSesionProvider } from "@/components/auth/muro-sesion";
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
-import { RegistroAceptacionLegal } from "@/components/legal/registro-aceptacion";
+import { exentaDeConfirmacionLegal, legalStateSchema, rutaConfirmacionCuenta } from "@/lib/auth/confirmacion-legal";
 import { BannerCambioLegal, type AvisoLegal } from "@/components/legal/banner-cambio-legal";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
@@ -54,7 +54,6 @@ export default async function MarketplaceLayout({
 
   let profile = null;
   /** true solo si la consulta del perfil SALIO BIEN y devolvio 0 filas. */
-  let sinFilaEnProfiles = false;
   let isAdmin = false;
   let unreadNotifications = 0;
   let unreadChatMessages = 0;
@@ -116,7 +115,6 @@ export default async function MarketplaceLayout({
       const { data, error } = profileResult.value;
       profile = data;
       if (error) reportarFalloPerfil(error);
-      else sinFilaEnProfiles = data === null;
     } else {
       reportarFalloPerfil(profileResult.reason);
     }
@@ -163,6 +161,11 @@ export default async function MarketplaceLayout({
   // es la pagina publica de baja; con el onboarding a medias las tres rebotaban
   // a /bienvenida. La ruta la pone el proxy (updateSession), no el cliente.
   const ruta = (await headers()).get(CABECERA_RUTA) ?? "";
+  if (user && !exentaDeConfirmacionLegal(ruta) && (await headers()).get("x-vicino-legal-confirmed") !== user.id) {
+    const { data: legalData, error: legalError } = await supabase.rpc("estado_confirmacion_legal");
+    const legal = legalStateSchema.safeParse(legalData);
+    if (legalError || !legal.success || !legal.data.confirmed) redirect(rutaConfirmacionCuenta(ruta || "/"));
+  }
   if (user && profile && profile.has_seen_onboarding === false && !esRutaLegal(ruta)) {
     redirect(`/bienvenida?next=${encodeURIComponent(ruta || "/")}`);
   }
@@ -223,18 +226,6 @@ export default async function MarketplaceLayout({
                 }
               />
             </div>
-            {/* Se salta SOLO cuando se sabe que no hay perfil (la consulta salio
-                bien con 0 filas): legal_acceptances.user_id apunta a
-                profiles(id), y una sesion sin perfil (cuenta borrada a medias)
-                hacia fallar el RPC por la FK en cada carga (Sentry 7758342326).
-                Si la consulta FALLO no se sabe nada, y saltarse el registro lo
-                perderia en silencio mientras dure el fallo; ademas el layout no
-                se vuelve a ejecutar al navegar en el cliente, asi que "la
-                siguiente carga" puede no llegar en toda la pestaña. En ese caso
-                se registra igual: si de verdad no hay perfil, la accion
-                reconoce la FK por su nombre y la manda como aviso, no como
-                error. */}
-            {user && !sinFilaEnProfiles && <RegistroAceptacionLegal />}
             <BannerCambioLegal avisos={(avisosLegales ?? []) as AvisoLegal[]} />
             <MainWrapper>
               <PullToRefreshWrapper>
