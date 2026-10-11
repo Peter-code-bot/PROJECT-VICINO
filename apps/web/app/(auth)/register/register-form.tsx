@@ -320,15 +320,15 @@ export function RegisterForm() {
       </div>
 
       <p className="text-xs text-muted-foreground/80 mt-4 leading-relaxed">
-        Al hacer clic en “Crear cuenta” o continuar con Google o Apple, aceptas nuestros{" "}
+        Antes de registrarte, revisa nuestros{" "}
         <Link href="/terminos" className="text-primary hover:underline" target="_blank">
           Términos y Condiciones
         </Link>{" "}
         y nuestra{" "}
         <Link href="/privacidad" className="text-primary hover:underline" target="_blank">
-          Política de Privacidad
+          Aviso de Privacidad
         </Link>
-        .
+        . Al verificar tu cuenta te pediremos que los confirmes.
       </p>
 
       <button

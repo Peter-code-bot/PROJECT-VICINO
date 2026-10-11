@@ -21,8 +21,8 @@ const out = resolve(web, 'test-results/onboarding');
 await mkdir(out, { recursive: true });
 
 const navigation = `
-const route=(href,replace=false)=>{window.__fixture.trace.push({action:replace?'replace':'push',href});history[replace?'replaceState':'pushState']({},'',href);window.__render();};
-const router={push:href=>route(href),replace:href=>route(href,true),refresh:()=>window.__render()};
+const route=(href,replace=false)=>{window.__fixture.trace.push({action:replace?'replace':'push',href});history[replace?'replaceState':'pushState']({},'',href);};
+const router={push:href=>route(href),replace:href=>route(href,true),refresh:()=>window.__render(),prefetch:href=>window.__fixture.trace.push({action:'prefetch',href})};
 export function useRouter(){return router;}
 export function usePathname(){return location.pathname;}
 export function useSearchParams(){return new URLSearchParams(location.search);}
@@ -35,7 +35,33 @@ export async function guardarPasoOnboarding(input){
  if(input.username==='racing_user'){f.collided=true;return {error:'Ese ID acaba de ser elegido por otra persona.'};}
  const keys={paso:'onboarding_paso',camino:'onboarding_camino'};
  for(const [key,value]of Object.entries(input))if(value!==undefined)f.profile[keys[key]||key]=value;
- return {success:true};
+ f.profile.onboarding_revision++;return {success:true};
+}
+export async function guardarCheckpointOnboarding(input){
+ const f=window.__fixture;f.trace.push({action:'save',input});
+ await new Promise(done=>setTimeout(done,f.ackDelay));
+ if(f.hangingSave)return new Promise(()=>{});
+ if(f.userId!==input.expectedUserId)return {error:'Tu sesión cambió. Vuelve a entrar para continuar.'};
+ if(f.receipts[input.operationId]){const saved=f.receipts[input.operationId];if(JSON.stringify(input)!==saved.payload)return {error:'Operación reutilizada con otros datos.'};f.trace.push({action:'ack',at:performance.now()});return saved.result;}
+ if(f.saveFailures>0){f.saveFailures--;return {error:'Fallo de guardado simulado.'};}
+ if(input.fields.username==='racing_user'){f.collided=true;return {error:'Ese ID acaba de ser elegido por otra persona.'};}
+ if(input.expectedRevision!==f.profile.onboarding_revision)return {error:'Tu perfil cambió en otra sesión.',conflict:true,data:{status:'conflict',revision:f.profile.onboarding_revision,snapshot:structuredClone(f.profile)}};
+ Object.assign(f.profile,input.fields,{onboarding_camino:input.camino,onboarding_paso:input.nextStep,onboarding_revision:f.profile.onboarding_revision+1});
+ const result={success:true,data:{status:'saved',revision:f.profile.onboarding_revision,paso:input.nextStep,camino:input.camino,snapshot:structuredClone(f.profile)}};
+ f.receipts[input.operationId]={payload:JSON.stringify(input),result};window.__persistFixture();f.trace.push({action:'ack',at:performance.now()});
+ if(f.lostAck>0){f.lostAck--;throw new Error('Respuesta de guardado perdida.');}return result;
+}
+export async function finalizarOnboarding(input){
+ const f=window.__fixture;f.trace.push({action:'finish',input});await new Promise(done=>setTimeout(done,f.ackDelay));
+ if(f.userId!==input.expectedUserId)return {error:'Tu sesión cambió.'};
+ if(f.receipts[input.operationId]){const saved=f.receipts[input.operationId];if(JSON.stringify(input)!==saved.payload)return {error:'Operación final reutilizada con otros datos.'};return saved.result;}
+ if(f.finalFailures>0){f.finalFailures--;return {error:'Fallo final simulado.'};}
+ if(input.expectedRevision!==f.profile.onboarding_revision)return {error:'Tu perfil cambió en otra sesión.',conflict:true,data:{status:'conflict',snapshot:structuredClone(f.profile)}};
+ if(input.decision==='activar')f.profile.es_vendedor=true;
+ Object.assign(f.profile,{has_seen_onboarding:true,onboarding_paso:null,onboarding_revision:f.profile.onboarding_revision+1});
+ const result={success:true,destino:'/fixture-finished',data:{status:'saved',snapshot:structuredClone(f.profile)}};
+ f.receipts[input.operationId]={payload:JSON.stringify(input),result};window.__persistFixture();f.trace.push({action:'ack',at:performance.now()});
+ if(f.finalLostAck>0){f.finalLostAck--;throw new Error('Respuesta final perdida.');}return result;
 }
 export async function activarModoVendedor(input){window.__fixture.trace.push({action:'activate',input});window.__fixture.profile.es_vendedor=true;return {success:true};}
 export async function completeOnboarding(){window.__fixture.trace.push({action:'complete'});return {success:true,destino:'/fixture-finished'};}
@@ -55,14 +81,28 @@ const bundle = await build({
  stdin:{contents:`
  import {createRoot} from 'react-dom/client';
  import {CompletarPerfil} from './app/(onboarding)/completar-perfil/completar-perfil';
+ import {OnboardingSessionProvider} from './app/(onboarding)/completar-perfil/onboarding-session';
  import {OnboardingOptions} from './app/(onboarding)/bienvenida/onboarding-options';
  import {OnboardingViewport} from './components/onboarding/onboarding-shell';
  import {CATEGORIES} from '@vicino/shared';
  const params=new URLSearchParams(location.search);
- window.__fixture={trace:[],pushMode:params.get('push')||'prompt',saveFailures:Number(params.get('saveFail')||0),profile:{id:'fixture-user',username:'javier_actual',nombre:'Javier',foto:null,bio:null,intereses:[],has_seen_onboarding:false,onboarding_camino:params.get('camino')||'explorar',onboarding_paso:null,es_vendedor:false,categoria_negocio:CATEGORIES[0].slug,seller_type:params.get('tipo')==='business'?'business':'casual',nombre_negocio:'Tienda de prueba',descripcion_negocio:null,metodos_pago_aceptados:null}};
+ const savedConfig=sessionStorage.getItem('test-only-onboarding-config');
+ if(savedConfig)for(const [key,value] of new URLSearchParams(savedConfig))if(!params.has(key))params.set(key,value);
+ if(params.get('resumeFixture')==='1')sessionStorage.setItem('test-only-onboarding-config',params.toString());
+ window.__fixture={trace:[],metricAware:true,receipts:{},userId:'fixture-user',ackDelay:Number(params.get('ackDelay')||0),lostAck:Number(params.get('lostAck')||0),finalFailures:Number(params.get('finalFail')||0),pushMode:params.get('push')||'prompt',saveFailures:Number(params.get('saveFail')||0),profile:{id:'fixture-user',username:'javier_actual',nombre:'Javier',foto:null,bio:null,intereses:[],has_seen_onboarding:false,onboarding_revision:0,onboarding_camino:params.get('camino')||'explorar',onboarding_paso:null,es_vendedor:params.get('active')==='1',categoria_negocio:params.get('noCategory')==='1'?null:CATEGORIES[0].slug,seller_type:params.get('tipo')==='business'?'business':'casual',nombre_negocio:'Tienda de prueba',descripcion_negocio:null,metodos_pago_aceptados:null}};
+ window.__fixture.finalLostAck=Number(params.get('finalLostAck')||0);
+ window.__fixture.hangingSave=params.get('hangingSave')==='1';
+ const fixtureKey='test-only-onboarding-server';
+ if(params.get('resumeFixture')==='1'){const saved=sessionStorage.getItem(fixtureKey);if(saved){const state=JSON.parse(saved);window.__fixture.profile=state.profile;window.__fixture.receipts=state.receipts;}}
+ window.__persistFixture=()=>{if(params.get('resumeFixture')==='1')try{sessionStorage.setItem(fixtureKey,JSON.stringify({profile:window.__fixture.profile,receipts:window.__fixture.receipts}));}catch{}};
+ if(params.get('blockedStorage')==='1')Object.defineProperty(sessionStorage,'setItem',{value:()=>{throw new Error('Simulated blocked storage');}});
+ const initialProfile=structuredClone(window.__fixture.profile);
  const originalFetch=window.fetch.bind(window);window.fetch=(resource,init={})=>{if(String(resource).startsWith('/api/onboarding/usuario')){const headers=new Headers(init.headers);headers.set('X-Fixture-Race',window.__fixture.collided?'1':'0');return originalFetch(resource,{...init,headers});}return originalFetch(resource,init);};
  const app=createRoot(document.getElementById('fixture-root'));
- window.__render=()=>{const step=location.pathname.split('/').pop();const content=location.pathname==='/bienvenida'?<OnboardingOptions/>:location.pathname==='/fixture-finished'?<h1>Finalizado</h1>:<CompletarPerfil key={step} profile={{...window.__fixture.profile}} paso={step} camino={window.__fixture.profile.onboarding_camino}/>;app.render(<OnboardingViewport>{content}</OnboardingViewport>);};
+ window.__render=()=>{const content=location.pathname==='/bienvenida'?<OnboardingOptions/>:location.pathname==='/fixture-finished'?<h1>Finalizado</h1>:location.pathname==='/login'?<h1>Inicia sesión</h1>:<OnboardingSessionProvider profile={initialProfile}><CompletarPerfil/></OnboardingSessionProvider>;app.render(<OnboardingViewport>{content}</OnboardingViewport>);};
+ const pushState=history.pushState.bind(history),replaceState=history.replaceState.bind(history);
+ history.pushState=(...args)=>{pushState(...args);window.__render();};history.replaceState=(...args)=>{replaceState(...args);window.__render();};
+ window.addEventListener('vicino:onboarding-metric',event=>window.__fixture.trace.push({...event.detail,interaction:event.detail.action,action:'metric'}));
  window.addEventListener('popstate',window.__render);window.__render();
  `,resolveDir:web,loader:'tsx'},
  bundle:true,write:false,format:'iife',platform:'browser',jsx:'automatic',
@@ -70,11 +110,13 @@ const bundle = await build({
  alias:{'@':web,'@vicino/shared':resolve(root,'packages/shared/src/index.ts')},
  plugins:[{name:'local-boundaries',setup(b){
   b.onLoad({filter:/[\\/]app[\\/]\((?:onboarding|marketplace)\)[\\/](?:completar-perfil|empezar-a-vender|perfil)[\\/]actions\.ts$/},()=>({loader:'tsx',resolveDir:web,contents:serverActions}));
-  b.onResolve({filter:/^(next\/link|next\/navigation|next\/image|@sentry\/nextjs|@\/hooks\/useGeolocation|@\/components\/map\/onboarding-location-map|@\/components\/profile\/avatar-inline-upload|@capacitor\/(?:core|app|push-notifications))$/},a=>({path:a.path,namespace:'fixture'}));
+  b.onResolve({filter:/^(next\/link|next\/navigation|next\/image|next\/dynamic|@sentry\/nextjs|@\/lib\/supabase\/client|@\/hooks\/useGeolocation|@\/components\/map\/onboarding-location-map|@\/components\/profile\/avatar-inline-upload|@capacitor\/(?:core|app|push-notifications))$/},a=>({path:a.path,namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'tsx',resolveDir:web,contents:
    a.path==='next/navigation'?navigation:
    a.path==='next/link'?`export default function Link({href,onClick,children,...props}){return <a href={href} {...props} onClick={event=>{onClick?.(event);if(!event.defaultPrevented&&!props.target){event.preventDefault();history.pushState({},'',href);window.__render();}}}>{children}</a>;}`:
    a.path==='next/image'?`export default function Image({fill,priority,...props}){return <img {...props}/>;}`:
+   a.path==='next/dynamic'?`import {lazy,Suspense} from 'react';export default function dynamic(loader,options={}){const Component=lazy(()=>loader().then(value=>typeof value==='function'?{default:value}:value));return props=><Suspense fallback={options.loading?<options.loading/>:null}><Component {...props}/></Suspense>;}`:
+   a.path==='@/lib/supabase/client'?`export function createClient(){return {auth:{onAuthStateChange:callback=>{window.__fixture.authChange=callback;return {data:{subscription:{unsubscribe:()=>{}}}}}}};}`:
    a.path==='@/hooks/useGeolocation'?geo:
    a.path==='@/components/map/onboarding-location-map'?map:
    a.path==='@/components/profile/avatar-inline-upload'?avatar:
@@ -115,7 +157,7 @@ const server=createServer(async(r,s)=>{
  }
  s.setHeader('Content-Type','text/html; charset=utf-8');s.end(html);
 });
-await new Promise(done=>server.listen(process.argv[2]==='serve'?4179:0,'127.0.0.1',done));
+await new Promise(done=>server.listen(process.argv[2]==='serve'?Number(process.env.ONBOARDING_FIXTURE_PORT||4179):0,'127.0.0.1',done));
 const url=`http://127.0.0.1:${server.address().port}`;
 console.log(`Onboarding simulated local preview: ${url}`);
 if(process.argv[2]==='serve')await new Promise(()=>{});
@@ -161,7 +203,8 @@ async function runCase(name,viewport,path,fn,{theme='light',scale=1,clock=false}
 const mobile={width:375,height:812};
 const onlyKeyboardFocus=process.argv[2]==='keyboard-focus';
 const onlyCanonicalCaptures=process.argv[2]==='canonical-captures';
-const resultFile=onlyKeyboardFocus?'results-keyboard-focus.json':onlyCanonicalCaptures?'results-captures.json':'results.json';
+const onlyJourneys=process.argv[2]==='journeys';
+const resultFile=onlyKeyboardFocus?'results-keyboard-focus.json':onlyCanonicalCaptures?'results-captures.json':onlyJourneys?'results-journeys.json':'results.json';
 async function availableUsername(page){
  await page.getByText('Este ID está disponible.',{exact:true}).waitFor();
  await page.waitForFunction(()=>{const button=document.querySelector('footer button');return button?.disabled===false&&getComputedStyle(button).opacity==='1';});
@@ -169,7 +212,7 @@ async function availableUsername(page){
 }
 try{
  browser=await chromium.launch(launchOptions);
- if(!onlyCanonicalCaptures)for(const [step,label]of [['usuario','ID de usuario'],['nombre','Tu nombre'],['descripcion','Tu descripción']])await runCase(`keyboard-focus-${step}`,mobile,`/completar-perfil/${step}?camino=explorar`,async page=>{
+ if(!onlyCanonicalCaptures&&!onlyJourneys)for(const [step,label]of [['usuario','ID de usuario'],['nombre','Tu nombre'],['descripcion','Tu descripción']])await runCase(`keyboard-focus-${step}`,mobile,`/completar-perfil/${step}?camino=explorar`,async page=>{
   if(step==='usuario')await availableUsername(page);
   const field=page.getByLabel(label,{exact:true});await field.focus();
   await page.setViewportSize({width:375,height:400});
@@ -182,11 +225,16 @@ try{
   await runCase(`mobile-${theme}-usuario`,mobile,'/completar-perfil/usuario?camino=vender&tipo=business',availableUsername,{theme});
   for(const step of ['nombre','descripcion'])await runCase(`mobile-${theme}-explore-${step}`,mobile,`/completar-perfil/${step}?camino=explorar`,async()=>{},{theme});
  }
- if(!onlyKeyboardFocus&&!onlyCanonicalCaptures){
+ if(!onlyKeyboardFocus&&!onlyCanonicalCaptures&&!onlyJourneys){
  const steps=['usuario','nombre','foto','descripcion','intereses','ubicacion','categoria','tipo','pagos','activar','notificaciones','listo'];
  for(const [device,viewport]of [['mobile',mobile],['desktop',{width:1280,height:800}],['keyboard',{width:375,height:400}]]){
   for(const theme of ['light','dark']){
-   await runCase(`${device}-${theme}-welcome`,viewport,'/bienvenida',async page=>{assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);},{theme});
+   await runCase(`${device}-${theme}-welcome`,viewport,'/bienvenida',async page=>{
+    assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+    assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).count(),0);
+    assert.equal(await page.getByText('Quiero comprar',{exact:true}).isVisible(),true);
+    assert.equal(await page.locator('[aria-pressed="true"]').count(),0);
+   },{theme});
    for(const step of steps)await runCase(`${device}-${theme}-${step}`,viewport,`/completar-perfil/${step}?camino=vender&tipo=business&push=prompt`,async page=>{if(step==='usuario')await availableUsername(page);},{theme});
   }
  }
@@ -216,36 +264,168 @@ try{
   await page.getByLabel('Tu nombre',{exact:true}).fill('Nombre sin guardar');await page.getByRole('button',{name:'Regresar',exact:true}).click();await page.getByLabel('ID de usuario',{exact:true}).waitFor();await availableUsername(page);
   await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByLabel('Tu nombre',{exact:true}).waitFor();assert.equal(await page.getByLabel('Tu nombre',{exact:true}).inputValue(),'Nombre sin guardar');
  });
- await runCase('activation-omit-stays-buyer',mobile,'/completar-perfil/activar?camino=vender&push=prompt',async page=>{
-  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='activate').length),0);await page.getByRole('button',{name:'Ahora no',exact:true}).click();await page.getByRole('heading',{name:'Activa las notificaciones',exact:true}).waitFor();
-  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);assert.equal(await page.evaluate(()=>window.__fixture.profile.onboarding_camino),'explorar');
+ await runCase('seller-final-enter-for-now-stays-buyer',mobile,'/completar-perfil/listo?camino=vender&push=prompt',async page=>{
+  assert.equal(await page.getByRole('heading',{name:'Tu perfil para vender',exact:true}).isVisible(),true);
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').length),0);
+  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish')[0].input.decision),'explorar');
  });
- await runCase('activation-only-explicit-cta',mobile,'/completar-perfil/activar?camino=vender&push=prompt',async page=>{
-  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='activate').length),0);await page.getByRole('button',{name:'Activar Modo Vendedor',exact:true}).click();await page.getByRole('heading',{name:'Activa las notificaciones',exact:true}).waitFor();
-  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='activate').length),1);assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),true);
+ await runCase('seller-activates-only-in-atomic-final',mobile,'/completar-perfil/listo?camino=vender&push=prompt',async page=>{
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
+  await page.getByRole('button',{name:'Activar y entrar',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').length),1);
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='activate').length),0);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),true);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.has_seen_onboarding),true);
  });
  await runCase('photo-busy-blocks-actions',mobile,'/completar-perfil/foto',async page=>{
   await page.getByRole('button',{name:'Elegir foto de prueba',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isDisabled(),true);
   await page.waitForFunction(()=>document.querySelector('footer button')?.disabled===false);assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
  });
  for(const mode of ['granted','denied','no-nativo'])await runCase(`permission-auto-${mode}`,mobile,`/completar-perfil/notificaciones?push=${mode}`,async page=>{
-  await page.getByRole('heading',{name:'Todo listo para empezar',exact:true}).waitFor();await page.waitForTimeout(400);
+  await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();await page.waitForTimeout(400);
   assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').length),1);assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='push-request').length),0);
  });
  await runCase('permission-unknown-can-omit',mobile,'/completar-perfil/notificaciones?push=unknown',async page=>{
-  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('heading',{name:'Todo listo para empezar',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();
  });
  for(const mode of ['request-error','read-error','request-denied'])await runCase(`permission-continues-${mode}`,mobile,`/completar-perfil/notificaciones?push=${mode}`,async page=>{
-  await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('heading',{name:'Todo listo para empezar',exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='push-request').length),1);
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='push-request').length),1);
  });
  await runCase('permission-save-failure-retry',mobile,'/completar-perfil/notificaciones?push=granted&saveFail=1',async page=>{
   await page.getByRole('alert').waitFor();await page.waitForTimeout(400);assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').length),1);
-  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('heading',{name:'Todo listo para empezar',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Reintentar guardado',exact:true}).isEnabled();await page.getByRole('button',{name:'Reintentar guardado',exact:true}).click();await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();
  });
  await runCase('permission-hanging-request-timeout',mobile,'/completar-perfil/notificaciones?push=hanging',async page=>{
   await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.waitForFunction(()=>window.__fixture.trace.some(x=>x.action==='push-request'));
-  await page.clock.fastForward(60_001);await page.getByRole('heading',{name:'Todo listo para empezar',exact:true}).waitFor();
+  await page.clock.fastForward(60_001);await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();
  },{clock:true});
+ }
+ if(!onlyKeyboardFocus&&!onlyCanonicalCaptures){
+ await runCase('optional-steps-advance-before-ack-and-save-serially',mobile,'/completar-perfil/nombre?ackDelay=600',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Nombre confirmado');
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.nombre),'Javier');
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();
+  await page.getByLabel('Tu descripción',{exact:true}).waitFor();
+  await page.getByLabel('Tu descripción',{exact:true}).fill('Descripción confirmada');
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.getByRole('heading',{name:'¿Qué te interesa?',exact:true}).waitFor();
+  await page.waitForFunction(()=>window.__fixture.trace.filter(x=>x.action==='ack').length===3);
+  const saves=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').map(x=>x.input));
+  assert.deepEqual(saves.map(x=>x.expectedRevision),[0,1,2]);
+  assert.deepEqual(saves.map(x=>x.fields),[{nombre:'Nombre confirmado'},{},{bio:'Descripción confirmada'}]);
+ });
+ await runCase('omit-discards-current-draft-without-submitting-it',mobile,'/completar-perfil/nombre',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('No guardar este nombre');
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  await page.waitForFunction(()=>window.__fixture.profile.onboarding_revision===1);
+  await page.getByRole('button',{name:'Regresar',exact:true}).click();
+  await page.getByLabel('Tu nombre',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Tu nombre',{exact:true}).inputValue(),'Javier');
+  assert.deepEqual(await page.evaluate(()=>window.__fixture.trace.find(x=>x.action==='save').input.fields),{});
+ });
+ await runCase('failed-head-stops-descendants-and-retry-preserves-ids',mobile,'/completar-perfil/nombre?ackDelay=150&saveFail=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Nombre pendiente');
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();
+  await page.getByLabel('Tu descripción',{exact:true}).waitFor();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').length),1);
+  await page.getByRole('button',{name:'Reintentar guardado',exact:true}).click();
+  await page.waitForFunction(()=>window.__fixture.profile.onboarding_revision===2);
+  const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').map(x=>x.input));
+  assert.equal(inputs.length,3);assert.deepEqual(inputs[0],inputs[1]);
+  assert.notEqual(inputs[1].operationId,inputs[2].operationId);
+ });
+ await runCase('lost-ack-retries-one-immutable-operation',mobile,'/completar-perfil/nombre?lostAck=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Respuesta perdida');
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('button',{name:'Volver al avance guardado',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Recargar y recuperar',exact:true}).isVisible(),true);
+  await page.getByRole('button',{name:'Reintentar guardado',exact:true}).click();
+  await page.waitForFunction(()=>window.__fixture.trace.filter(x=>x.action==='save').length===2&&!document.querySelector('[role=alert]'));
+  const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').map(x=>x.input));
+  assert.deepEqual(inputs[0],inputs[1]);assert.equal(await page.evaluate(()=>window.__fixture.profile.onboarding_revision),1);
+ });
+ await runCase('reload-recovers-prepared-operation-after-lost-ack',mobile,'/completar-perfil/nombre?lostAck=1&resumeFixture=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Nombre recuperado');
+  await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('alert').waitFor();
+  const original=await page.evaluate(()=>window.__fixture.trace.find(x=>x.action==='save').input);
+  await page.reload();await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  await page.waitForFunction(()=>window.__fixture.trace.some(x=>x.action==='ack'));
+  assert.deepEqual(await page.evaluate(()=>window.__fixture.trace.find(x=>x.action==='save').input),original);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.onboarding_revision),1);
+ });
+ await runCase('stale-receipt-cannot-rebase-descendants-over-another-session',mobile,'/completar-perfil/nombre?ackDelay=150&lostAck=1&resumeFixture=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Primer nombre');await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();await page.getByRole('button',{name:'Omitir',exact:true}).click();
+  await page.getByRole('alert').waitFor();
+  await page.evaluate(()=>{Object.assign(window.__fixture.profile,{onboarding_revision:2,nombre:'Otra sesión',onboarding_paso:'ubicacion'});window.__persistFixture();});
+  await page.reload();await page.getByRole('alert').waitFor();
+  const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').map(x=>x.input));
+  assert.deepEqual(inputs.map(x=>x.expectedRevision),[0,1]);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.nombre),'Otra sesión');
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.onboarding_revision),2);
+  assert.equal(await page.getByRole('button',{name:'Reintentar guardado',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Volver al avance guardado',exact:true}).click();
+  await page.getByRole('heading',{name:'¿Dónde estás?',exact:true}).waitFor();
+ });
+ await runCase('account-change-removes-own-pending-state-and-ignores-late-response',mobile,'/completar-perfil/nombre?ackDelay=400',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Cuenta anterior');await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.waitForFunction(()=>typeof window.__fixture.authChange==='function');
+  await page.evaluate(()=>{sessionStorage.setItem('vicino_onboarding_draft:other-user','keep');window.__fixture.authChange('SIGNED_IN',{user:{id:'other-user'}});});
+  await page.waitForTimeout(500);
+  assert.equal(new URL(page.url()).pathname,'/login');
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('vicino_onboarding_journal_v1:fixture-user')),null);
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('vicino_onboarding_draft:other-user')),'keep');
+ });
+ await runCase('blocked-storage-waits-for-server-before-advancing',mobile,'/completar-perfil/nombre?ackDelay=400&blockedStorage=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Guardado sin storage');await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  assert.equal(new URL(page.url()).pathname,'/completar-perfil/nombre');
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.nombre),'Guardado sin storage');
+ });
+ await runCase('hanging-checkpoint-times-out-without-discarding-operation',mobile,'/completar-perfil/nombre?hangingSave=1&blockedStorage=1',async page=>{
+  await page.getByLabel('Tu nombre',{exact:true}).fill('Pendiente de confirmar');await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  await page.waitForFunction(()=>window.__fixture.trace.some(x=>x.action==='save'));
+  await page.clock.fastForward(20_001);await page.getByText('Aún no sabemos si este paso se guardó. Conservaremos la misma operación para comprobarlo.',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Reintentar guardado',exact:true}).isEnabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Volver al avance guardado',exact:true}).count(),0);
+ },{clock:true});
+ await runCase('business-branch-and-counter-wait-for-confirmed-type',mobile,'/completar-perfil/tipo?camino=vender&ackDelay=300',async page=>{
+  await page.getByText('Negocio',{exact:true}).click();await page.getByRole('button',{name:'Continuar',exact:true}).click();
+  assert.equal(new URL(page.url()).pathname,'/completar-perfil/tipo');
+  assert.equal(await page.getByText('Paso 2 de 10',{exact:true}).isVisible(),true);
+  await page.getByLabel('ID de usuario',{exact:true}).waitFor();
+  assert.equal(await page.getByText('Paso 3 de 11',{exact:true}).isVisible(),true);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.seller_type),'business');
+ });
+ await runCase('definitive-final-failure-allows-changing-the-decision',mobile,'/completar-perfil/listo?camino=vender&finalFail=1',async page=>{
+  await page.getByRole('button',{name:'Activar y entrar',exact:true}).click();await page.getByRole('alert').waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
+  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').map(x=>x.input));
+  assert.deepEqual(inputs.map(x=>x.decision),['activar','explorar']);assert.notEqual(inputs[0].operationId,inputs[1].operationId);
+ });
+ await runCase('uncertain-final-retains-the-original-decision-and-id',mobile,'/completar-perfil/listo?camino=vender&finalLostAck=1',async page=>{
+  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('button',{name:'Entrar por ahora',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Reintentar entrada',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').map(x=>x.input));
+  assert.deepEqual(inputs[0],inputs[1]);assert.equal(inputs[1].decision,'explorar');
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.onboarding_revision),1);
+ });
+ for(const mode of ['granted','denied','no-nativo'])await runCase('final-back-stays-editable-'+mode,mobile,'/completar-perfil/listo?push='+mode,async page=>{
+  await page.getByRole('button',{name:'Regresar',exact:true}).click();await page.getByRole('heading',{name:'¿Dónde estás?',exact:true}).waitFor();
+  await page.waitForTimeout(100);assert.equal(new URL(page.url()).pathname,'/completar-perfil/ubicacion');
+ });
  }
 }finally{
  await browser?.close();server.close();await writeFile(resolve(out,resultFile),JSON.stringify(results,null,2));

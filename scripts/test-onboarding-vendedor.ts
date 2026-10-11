@@ -139,17 +139,24 @@ test("seller UI: skip remains available with missing category and never activate
     const continueButton = page.getByRole("button", { name: "Continuar", exact: true });
     await continueButton.waitFor();
     assert.equal(await continueButton.isDisabled(), true);
-    await page.getByRole("button", { name: "Ahora no", exact: true }).click();
+    await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    await page.getByRole("heading", { name: "¿Cómo vas a vender?", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    await page.getByRole("heading", { name: "Tu perfil para vender", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Activar y entrar", exact: true }).isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
+    assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
+    await page.getByRole("button", { name: "Entrar por ahora", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/"]);
     assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
   } finally { await browser.close(); }
 });
 
-test("seller UI: one business datum per page, back retains input, only explicit activation converts", async () => {
+test("seller UI: one datum per page, skipped edits stay out of review and final activation runs once", async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await mountSeller(page, { categoriaInicial: "comida", tipoInicial: "business", nombreNegocioInicial: "Tienda Ana", descripcionNegocioInicial: "Descripción guardada", metodosPagoIniciales: ["Efectivo"], fotoInicial: "https://fixture.invalid/avatar.jpg" });
+    await mountSeller(page, { categoriaInicial: "comida", tipoInicial: "business", nombreNegocioInicial: "Tienda Ana", descripcionNegocioInicial: "Descripción guardada", metodosPagoIniciales: ["Efectivo"], fotoInicial: "https://fixture.invalid/avatar.jpg" }, { holdActivation: true });
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
     const name = page.getByLabel("Nombre del negocio", { exact: true });
@@ -169,26 +176,96 @@ test("seller UI: one business datum per page, back retains input, only explicit 
     await page.getByRole("button", { name: "Omitir", exact: true }).click();
     await page.getByLabel("Descripción del negocio", { exact: true }).fill("Borrador que se omite");
     await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    await page.getByRole("button", { name: "Efectivo", exact: true }).click();
+    await page.getByLabel("Efectivo", { exact: true }).uncheck();
+    await page.getByLabel("PayPal", { exact: true }).check();
     await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    await page.getByRole("heading", { name: "Tu perfil para vender", exact: true }).waitFor();
+    assert.equal(await page.getByText("Tienda nueva", { exact: true }).count(), 1);
+    assert.equal(await page.getByText("Descripción guardada", { exact: true }).count(), 1);
+    assert.equal(await page.getByText("Borrador que se omite", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Efectivo", { exact: true }).count(), 1);
+    assert.equal(await page.getByText("PayPal", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("img", { name: "Tu foto de perfil", exact: true }).getAttribute("src"), "https://fixture.invalid/avatar.jpg");
     assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
-    await page.getByRole("button", { name: "Activar Modo Vendedor", exact: true }).click();
-    await page.getByRole("heading", { name: "Tu Modo Vendedor está listo", exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
+    await page.getByRole("button", { name: "Activar y entrar", exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+    await page.waitForFunction(() => (window as any).fixture.calls.length === 1);
+    assert.equal(await page.getByRole("button", { name: "Entrar por ahora", exact: true }).isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
+    await page.evaluate(() => (window as any).fixture.resolveActivation());
+    await page.waitForFunction(() => (window as any).fixture.routes.length === 1);
     const calls = await page.evaluate(() => (window as any).fixture.calls);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].nombreNegocio, "Tienda nueva");
     assert.equal(calls[0].descripcionNegocio, "Descripción guardada");
     assert.equal(calls[0].metodosPago, "Efectivo");
     assert.equal(calls[0].foto, "https://fixture.invalid/avatar.jpg");
-    await page.getByRole("button", { name: "Entrar a VICINO", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/"]);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/vender"]);
   } finally { await browser.close(); }
 });
 
-async function mountSeller(page: any, props: Record<string, unknown>) {
+test("seller UI: skipping an edited business name preserves the accepted name", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await mountSeller(page, { categoriaInicial: "comida", tipoInicial: "business", nombreNegocioInicial: "Tienda Ana" });
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await page.getByLabel("Nombre del negocio", { exact: true }).fill("Nombre que se omite");
+    for (let step = 0; step < 4; step++) await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    await page.getByRole("heading", { name: "Tu perfil para vender", exact: true }).waitFor();
+    assert.equal(await page.getByText("Tienda Ana", { exact: true }).count(), 1);
+    assert.equal(await page.getByText("Nombre que se omite", { exact: true }).count(), 0);
+    assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
+    await page.getByRole("button", { name: "Activar y entrar", exact: true }).click();
+    await page.waitForFunction(() => (window as any).fixture.routes.length === 1);
+    const calls = await page.evaluate(() => (window as any).fixture.calls);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].nombreNegocio, "Tienda Ana");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/vender"]);
+  } finally { await browser.close(); }
+});
+
+test("seller UI: missing business name can still finish exploring without activation", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await mountSeller(page, { categoriaInicial: "comida", tipoInicial: "business" });
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await page.getByLabel("Nombre del negocio", { exact: true }).fill("Nombre que se omite");
+    for (let step = 0; step < 4; step++) await page.getByRole("button", { name: "Omitir", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "Activar y entrar", exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole("button", { name: "Entrar por ahora", exact: true }).isDisabled(), false);
+    await page.getByRole("button", { name: "Entrar por ahora", exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/"]);
+    assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
+  } finally { await browser.close(); }
+});
+
+test("seller UI: an active seller enters publishing or home without reactivation", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const [button, destination] of [["Crear publicación", "/vender"], ["Entrar a VICINO", "/"]]) {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      await mountSeller(page, { yaEsVendedor: true, categoriaInicial: "comida" });
+      await page.getByRole("heading", { name: "Tu perfil para vender", exact: true }).waitFor();
+      assert.equal(await page.getByRole("button", { name: "Activar y entrar", exact: true }).count(), 0);
+      await page.getByRole("button", { name: button, exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), [destination]);
+      assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
+      await page.close();
+    }
+  } finally { await browser.close(); }
+});
+
+async function mountSeller(page: any, props: Record<string, unknown>, options: { holdActivation?: boolean } = {}) {
   const mocks: Record<string, string> = {
     "next/navigation": "export const useRouter=()=>({replace:path=>window.fixture.routes.push(path)});",
     "next/link": "import React from 'react'; export default function Link(props){return React.createElement('a',props,props.children);}",
-    "./actions": "export const activarModoVendedor=async input=>{window.fixture.calls.push(input);return {success:true};};",
+    "next/image": "import React from 'react'; export default function Image({unoptimized,priority,fill,...props}){return React.createElement('img',props);}",
+    "./actions": "export const activarModoVendedor=async input=>{window.fixture.calls.push(input);if(window.fixture.holdActivation)await new Promise(resolve=>window.fixture.resolveActivation=resolve);return {success:true};};",
     "@/components/profile/avatar-inline-upload": "import React from 'react';export function AvatarInlineUpload(props){return React.createElement('div',null,React.createElement('button',{type:'button',onClick:()=>props.onBusyChange?.(true)},'Preparar foto'),React.createElement('button',{type:'button',onClick:()=>props.onBusyChange?.(false)},'Cancelar recorte'),React.createElement('button',{type:'button',onClick:()=>props.onUploadSuccess('https://fixture.invalid/nueva.jpg')},'Usar foto nueva'));}",
   };
   const result = await esbuild.build({
@@ -201,6 +278,6 @@ async function mountSeller(page: any, props: Record<string, unknown>) {
   });
   await page.route("**/*", (route: any) => route.abort());
   await page.setContent('<div id="root"></div>');
-  await page.evaluate((props: Record<string, unknown>) => { (window as any).fixture = { props, calls: [], routes: [] }; }, props);
+  await page.evaluate(({ props, options }: { props: Record<string, unknown>; options: { holdActivation?: boolean } }) => { (window as any).fixture = { props, ...options, calls: [], routes: [] }; }, { props, options });
   await page.addScriptTag({ content: result.outputFiles[0].text });
 }

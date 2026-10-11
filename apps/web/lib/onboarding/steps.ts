@@ -1,26 +1,28 @@
 /** One URL and one saved marker per question. `perfil` is a legacy marker. */
 export const PASOS_ONBOARDING = [
   "categoria", "tipo", "usuario", "nombre", "foto", "descripcion", "pagos",
-  "intereses", "ubicacion", "activar", "notificaciones", "listo",
+  "intereses", "ubicacion", "notificaciones", "listo",
 ] as const;
 
 export type PasoOnboardingActual = (typeof PASOS_ONBOARDING)[number];
-export type PasoOnboarding = PasoOnboardingActual | "perfil";
+export type PasoOnboarding = PasoOnboardingActual | "perfil" | "activar";
 export type CaminoOnboarding = "explorar" | "vender";
 
 export interface OnboardingContext {
   camino: CaminoOnboarding;
   tipo: "casual" | "business";
+  notificacionesResueltas?: boolean;
 }
 
 export function esPasoOnboarding(value: string): value is PasoOnboardingActual {
   return PASOS_ONBOARDING.some((step) => step === value);
 }
 
-export function pasosDelCamino({ camino, tipo }: OnboardingContext): PasoOnboardingActual[] {
+export function pasosDelCamino({ camino, tipo, notificacionesResueltas }: OnboardingContext): PasoOnboardingActual[] {
   return PASOS_ONBOARDING.filter((step) => {
-    if (["categoria", "tipo", "activar"].includes(step)) return camino === "vender";
+    if (["categoria", "tipo"].includes(step)) return camino === "vender";
     if (step === "pagos") return camino === "vender" && tipo === "business";
+    if (step === "notificaciones") return !notificacionesResueltas;
     return true;
   });
 }
@@ -28,6 +30,8 @@ export function pasosDelCamino({ camino, tipo }: OnboardingContext): PasoOnboard
 export function pasoParaReanudar(value: string | null, context: OnboardingContext): PasoOnboardingActual {
   const steps = pasosDelCamino(context);
   if (value === "perfil") return "usuario";
+  if (value === "activar") return "listo";
+  if (value === "notificaciones" && context.notificacionesResueltas) return "listo";
   return value && esPasoOnboarding(value) && steps.includes(value) ? value : steps[0]!;
 }
 

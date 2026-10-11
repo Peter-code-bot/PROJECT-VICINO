@@ -216,10 +216,7 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
               {/* Recientes */}
               <section>
                 <div className="mb-3">
-                  <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--brand-hi)]">
-                    Publicados hoy
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between">
+                  <div className="flex items-center justify-between">
                     <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
                       Recientes
                     </h2>

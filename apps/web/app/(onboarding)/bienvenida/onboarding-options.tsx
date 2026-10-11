@@ -10,7 +10,7 @@ import { OnboardingActions, OnboardingShell } from "@/components/onboarding/onbo
 import { conTope, esTope } from "@/lib/auth/con-tope";
 
 const OPCIONES = [
-  { camino: "explorar", titulo: "Quiero explorar", texto: "Encuentra lo que ofrecen tus vecinos.", Icono: Search },
+  { camino: "explorar", titulo: "Quiero comprar", texto: "Encuentra lo que ofrecen tus vecinos.", Icono: Search },
   { camino: "vender", titulo: "Quiero vender", texto: "Prepara tu perfil para publicar lo que ofreces.", Icono: ShoppingBag },
 ] as const;
 
@@ -50,7 +50,6 @@ export function OnboardingOptions() {
       footer={
         <OnboardingActions
           onContinue={() => { if (camino) elegir(camino); }}
-          onSkip={() => elegir("explorar")}
           disabled={!camino}
           busy={isPending}
         />

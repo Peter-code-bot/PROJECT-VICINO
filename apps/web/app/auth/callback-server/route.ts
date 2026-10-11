@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { destinoCallbackSeguro, destinoTrasErrorAuth } from "@/lib/auth/destino-seguro";
+import { legalStateSchema, rutaConfirmacionCuenta } from "@/lib/auth/confirmacion-legal";
 
 // F4 (optimize-auth-session-hydration): all redirects use status 303 (See Other,
 // RFC 6749 recommendation for OAuth PRG) and Cache-Control: private, no-store.
@@ -23,7 +24,11 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`, NO_CACHE_REDIRECT_INIT);
+      if (next.startsWith("/reset-password?")) return NextResponse.redirect(`${origin}${next}`, NO_CACHE_REDIRECT_INIT);
+      const { data: legalData, error: legalError } = await supabase.rpc("estado_confirmacion_legal");
+      const legal = legalStateSchema.safeParse(legalData);
+      const destino = !legalError && legal.success && legal.data.confirmed ? next : rutaConfirmacionCuenta(next);
+      return NextResponse.redirect(`${origin}${destino}`, NO_CACHE_REDIRECT_INIT);
     }
     
     errorMessage = error.message;

@@ -15,7 +15,7 @@ export function GuestAuthCta({ destino = "/" }: { destino?: string }) {
   const next = encodeURIComponent(destinoAutenticadoSeguro(destino));
   return (
     <section id="home-guest-auth" aria-label="Accede a VICINO" className="px-4 pb-4">
-      <div className="mx-auto flex max-w-7xl flex-col gap-1 rounded-2xl bg-card p-3 shadow-[inset_0_0_0_1px_var(--border)] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="mx-auto flex max-w-7xl flex-col gap-1 rounded-2xl bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <AuthLink
           id="home-create-account"
           href={`/register?next=${next}`}

@@ -113,7 +113,7 @@ async function main() {
     const search = page.locator('a[href="/login?next=%2Fbuscar"]:visible');
     await expect(search.first()).toBeVisible();
     await search.first().click(); await expect(page).toHaveURL(/\/login\?next=%2Fbuscar/, { timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "¡Hola de nuevo!" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "VICINO", exact: true })).toBeVisible();
     await page.screenshot({ path: `apps/web/test-results/registro-http/login-${process.env.TEST_BROWSER ?? "chromium"}.png` });
     console.log(`PASA navegador Next real ${process.env.TEST_BROWSER ?? "chromium"}: Home → Buscar → login, destino conservado.`);
     await page.goto(base.href);

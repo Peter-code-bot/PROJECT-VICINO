@@ -6,10 +6,12 @@ import { destinoAutenticadoSeguro } from "../auth/destino-seguro";
 import { usuarioOInvitado } from "../session-auth";
 import { CABECERA_RUTA } from "../navigation/rutas-legales";
 import { requiereSesion, loginPara, COOKIE_DESTINO_ONBOARDING } from "../auth/acceso-invitado";
+import { exentaDeConfirmacionLegal, legalStateSchema, rutaConfirmacionCuenta } from "../auth/confirmacion-legal";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
   const forwardHeaders = new Headers(request.headers);
+  forwardHeaders.delete("x-vicino-legal-confirmed");
   if (nonce) forwardHeaders.set("x-nonce", nonce);
   // La ruta real para los layouts, que no la reciben. SIEMPRE se sobrescribe:
   // un valor que mandara el cliente no llega nunca a los Server Components.
@@ -62,6 +64,24 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   }
 
   const pathname = request.nextUrl.pathname;
+
+  if (user && !exentaDeConfirmacionLegal(pathname)) {
+    const { data: legalData, error: legalError } = await supabase.rpc("estado_confirmacion_legal");
+    const legal = legalStateSchema.safeParse(legalData);
+    if (legalError || !legal.success || !legal.data.confirmed) {
+      const destino = destinoAutenticadoSeguro(pathname + request.nextUrl.search);
+      const response = NextResponse.redirect(new URL(rutaConfirmacionCuenta(destino), request.url));
+      for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+      return response;
+    }
+    // Trusted request-only signal. Always overwrite an incoming client header.
+    forwardHeaders.set("x-vicino-legal-confirmed", user.id);
+    const renewedCookies = supabaseResponse.cookies.getAll();
+    supabaseResponse = NextResponse.next({ request: { headers: forwardHeaders } });
+    for (const cookie of renewedCookies) supabaseResponse.cookies.set(cookie);
+  } else {
+    forwardHeaders.delete("x-vicino-legal-confirmed");
+  }
 
   if (!user && requiereSesion(pathname + request.nextUrl.search)) {
     const response = NextResponse.redirect(new URL(loginPara(pathname + request.nextUrl.search), request.url));

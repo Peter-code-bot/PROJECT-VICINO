@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CalendarDays, MessageCircle } from "lucide-react";
 import {
@@ -18,6 +18,10 @@ interface PedirPermisoProps {
   /** Persist the next step before navigation. A rejection leaves a retry here. */
   onContinue?: () => Promise<void>;
   backHref?: string;
+  onBack?: () => void;
+  disabled?: boolean;
+  status?: ReactNode;
+  onPermissionChange?: (permission: EstadoPermisoPush, source: "read" | "request") => void;
   step?: number;
   totalSteps?: number;
 }
@@ -42,6 +46,10 @@ export function PedirPermiso({
   siguiente = "/completar-perfil/listo",
   onContinue,
   backHref,
+  onBack,
+  disabled = false,
+  status,
+  onPermissionChange,
   step,
   totalSteps,
 }: PedirPermisoProps) {
@@ -52,17 +60,18 @@ export function PedirPermiso({
   const [error, setError] = useState<string>();
   const [, startTransition] = useTransition();
   const callbackRef = useRef(onContinue);
+  const permissionCallbackRef = useRef(onPermissionChange);
   const destinoRef = useRef(siguiente);
   const montadoRef = useRef(true);
   const salidaEnCursoRef = useRef(false);
   const peticionEnCursoRef = useRef(false);
   const intentoManualRef = useRef(false);
-  const autoIntentadoRef = useRef(false);
 
   useEffect(() => {
     callbackRef.current = onContinue;
+    permissionCallbackRef.current = onPermissionChange;
     destinoRef.current = siguiente;
-  }, [onContinue, siguiente]);
+  }, [onContinue, siguiente, onPermissionChange]);
 
   const continuar = useCallback(() => {
     if (salidaEnCursoRef.current) return;
@@ -72,7 +81,8 @@ export function PedirPermiso({
     startTransition(async () => {
       try {
         await callbackRef.current?.();
-        if (montadoRef.current) router.replace(destinoRef.current);
+        // The shared controller handles local navigation; legacy pages use the router.
+        if (montadoRef.current && !callbackRef.current) router.replace(destinoRef.current);
       } catch (err) {
         salidaEnCursoRef.current = false;
         if (!montadoRef.current) return;
@@ -95,10 +105,8 @@ export function PedirPermiso({
     void conTope(leerPermisoPush()).then((estado) => {
       if (!vivo) return;
       setPermiso(estado);
-      if (permisoResuelto(estado) && !autoIntentadoRef.current && !intentoManualRef.current) {
-        autoIntentadoRef.current = true;
-        continuar();
-      }
+      permissionCallbackRef.current?.(estado, "read");
+      // A resolved permission shows a manual Continue. Returning here must never bounce forward.
     }).catch((err: unknown) => {
       if (!vivo) return;
       setPermiso("error");
@@ -112,7 +120,7 @@ export function PedirPermiso({
       vivo = false;
       montadoRef.current = false;
     };
-  }, [continuar]);
+  }, []);
 
   async function activar() {
     if (peticionEnCursoRef.current || salidaEnCursoRef.current) return;
@@ -135,6 +143,7 @@ export function PedirPermiso({
     if (!montadoRef.current) return;
     setPidiendo(false);
     setPermiso(estado);
+    permissionCallbackRef.current?.(estado, "request");
     // Permission refusal, errors and expiry do not prevent using VICINO.
     // Saving the next step must still succeed before replacing the route.
     continuar();
@@ -149,16 +158,17 @@ export function PedirPermiso({
 
   return (
     <OnboardingShell
-      title="Activa las notificaciones"
-      description="Recibe los avisos importantes de tus mensajes, citas y ventas."
+      title={permiso === "concedido" ? "Tus notificaciones están activadas" : "Activa las notificaciones"}
+      description={permiso === "concedido" ? "Ya puedes recibir avisos de tus mensajes, citas y ventas." : "Recibe los avisos importantes de tus mensajes, citas y ventas."}
       backHref={backHref}
+      onBack={onBack}
       step={step}
       totalSteps={totalSteps}
       busy={ocupado}
       error={error}
       footer={
         <OnboardingActions
-          busy={ocupado}
+          busy={ocupado || disabled}
           onContinue={() => {
             if (permisoResuelto(permiso) || (intentoManualRef.current && permiso === "error")) {
               continuar();
@@ -184,6 +194,8 @@ export function PedirPermiso({
       <p className="mt-6 text-sm leading-relaxed text-fg-muted">
         Puedes elegir qué recibir en Configuración cuando quieras.
       </p>
+      {permiso === "denegado" && <p className="mt-4 text-sm text-fg-muted">Puedes activar los avisos desde los ajustes del teléfono cuando quieras.</p>}
+      <div className="mt-5">{status}</div>
     </OnboardingShell>
   );
 }

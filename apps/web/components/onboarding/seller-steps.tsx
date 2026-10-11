@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Store, User } from "lucide-react";
+import Image from "next/image";
 import { CATEGORIES } from "@vicino/shared";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
@@ -101,16 +102,28 @@ export function Activar({
   nombre,
   categoria,
   tipo,
+  username,
+  foto,
+  descripcion,
+  pagos,
+  activo = false,
 }: {
   nombre: string;
   categoria: string | null;
   tipo: SellerType;
+  username?: string;
+  foto?: string | null;
+  descripcion?: string | null;
+  pagos?: string | null;
+  activo?: boolean;
 }) {
   const categoryName = CATEGORIES.find((item) => item.slug === categoria)?.name;
   return (
     <div className="space-y-5 text-sm">
-      <p>Al activar el Modo Vendedor, esto se mostrará en tu perfil público:</p>
+      <p>{activo ? "Esto se muestra en tu perfil público:" : "Al activar el Modo Vendedor, esto se mostrará en tu perfil público:"}</p>
+      {foto && <Image src={foto} alt="Tu foto de perfil" width={80} height={80} unoptimized className="h-20 w-20 rounded-full object-cover" />}
       <dl className="space-y-4 rounded-2xl border border-border bg-card p-4">
+        {username && <div><dt className="text-muted-foreground">ID de usuario</dt><dd className="mt-1 break-words font-medium">@{username}</dd></div>}
         <div>
           <dt className="text-muted-foreground">{tipo === "business" ? "Nombre del negocio" : "Nombre"}</dt>
           <dd className="mt-1 break-words font-medium">{nombre.trim() || "Tu nombre público"}</dd>
@@ -119,6 +132,9 @@ export function Activar({
           <dt className="text-muted-foreground">Categoría</dt>
           <dd className="mt-1 font-medium">{categoryName || "Por elegir"}</dd>
         </div>
+        <div><dt className="text-muted-foreground">Tipo de vendedor</dt><dd className="mt-1 font-medium">{tipo === "business" ? "Negocio" : "Casual"}</dd></div>
+        {descripcion && <div><dt className="text-muted-foreground">Descripción</dt><dd className="mt-1 whitespace-pre-wrap break-words">{descripcion}</dd></div>}
+        {tipo === "business" && pagos && <div><dt className="text-muted-foreground">Métodos de pago</dt><dd className="mt-1 break-words">{pagos}</dd></div>}
         <div>
           <dt className="text-muted-foreground">Zona</dt>
           <dd className="mt-1">La colonia que registres, sin tu dirección exacta.</dd>
@@ -128,7 +144,7 @@ export function Activar({
         Puedes desactivarlo desde Configuración. Tus publicaciones se pausarán y dejarán de verse; se conservarán.
       </p>
       <p className="text-xs text-muted-foreground">
-        Al activarlo aceptas los <a href="/terminos" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Términos</a> y el <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Aviso de Privacidad</a>.
+        Consulta los <a href="/terminos" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Términos</a> y el <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Aviso de Privacidad</a>.
       </p>
     </div>
   );

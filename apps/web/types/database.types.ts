@@ -808,6 +808,10 @@ export type Database = {
       legal_acceptances: {
         Row: {
           aceptado_en: string
+          confirmacion_en: string | null
+          confirmacion_evidencia: string | null
+          confirmacion_origen: string | null
+          confirmacion_tipo: string | null
           documento: string
           id: string
           ip: unknown
@@ -818,6 +822,10 @@ export type Database = {
         }
         Insert: {
           aceptado_en?: string
+          confirmacion_en?: string | null
+          confirmacion_evidencia?: string | null
+          confirmacion_origen?: string | null
+          confirmacion_tipo?: string | null
           documento: string
           id?: string
           ip?: unknown
@@ -828,6 +836,10 @@ export type Database = {
         }
         Update: {
           aceptado_en?: string
+          confirmacion_en?: string | null
+          confirmacion_evidencia?: string | null
+          confirmacion_origen?: string | null
+          confirmacion_tipo?: string | null
           documento?: string
           id?: string
           ip?: unknown
@@ -1045,6 +1057,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_operation_receipts: {
+        Row: {
+          created_at: string
+          operation_id: string
+          payload: Json
+          response: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          operation_id: string
+          payload: Json
+          response: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          operation_id?: string
+          payload?: Json
+          response?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_operation_receipts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1306,11 +1350,14 @@ export type Database = {
           notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
+          onboarding_revision: number
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
           rfc: string | null
           seller_type: string | null
+          seller_visibility_confirmed_at: string | null
+          seller_visibility_version: string | null
           telefono: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
@@ -1349,11 +1396,14 @@ export type Database = {
           notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
+          onboarding_revision?: number
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
           rfc?: string | null
           seller_type?: string | null
+          seller_visibility_confirmed_at?: string | null
+          seller_visibility_version?: string | null
           telefono?: string | null
           total_sales?: number | null
           trust_level?: Database["public"]["Enums"]["trust_level"] | null
@@ -1392,11 +1442,14 @@ export type Database = {
           notification_preferences?: Json
           onboarding_camino?: string | null
           onboarding_paso?: string | null
+          onboarding_revision?: number
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
           rfc?: string | null
           seller_type?: string | null
+          seller_visibility_confirmed_at?: string | null
+          seller_visibility_version?: string | null
           telefono?: string | null
           total_sales?: number | null
           trust_level?: Database["public"]["Enums"]["trust_level"] | null
@@ -2527,11 +2580,14 @@ export type Database = {
           notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
+          onboarding_revision: number
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
           rfc: string | null
           seller_type: string | null
+          seller_visibility_confirmed_at: string | null
+          seller_visibility_version: string | null
           telefono: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
@@ -2579,11 +2635,14 @@ export type Database = {
           notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
+          onboarding_revision: number
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
           rfc: string | null
           seller_type: string | null
+          seller_visibility_confirmed_at: string | null
+          seller_visibility_version: string | null
           telefono: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
@@ -2706,6 +2765,15 @@ export type Database = {
       comunidades_limite: { Args: { p_clave: string }; Returns: number }
       comunidades_publicas_ids: { Args: never; Returns: string[] }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
+      confirmar_documentos_cuenta: {
+        Args: {
+          p_acepta_terminos: boolean
+          p_acusa_aviso: boolean
+          p_aviso_version: string
+          p_terminos_version: string
+        }
+        Returns: Json
+      }
       confirmar_venta: { Args: { p_confirmacion_id: string }; Returns: Json }
       consultar_usuarios_onboarding: {
         Args: { p_sugerencias?: string[]; p_username?: string }
@@ -2829,7 +2897,9 @@ export type Database = {
         Args: { p_community_id: string }
         Returns: boolean
       }
+      estado_confirmacion_legal: { Args: never; Returns: Json }
       estado_cuota_fundacion: { Args: never; Returns: Json }
+      exigir_confirmacion_legal: { Args: never; Returns: undefined }
       expire_stale_confirmations: { Args: never; Returns: number }
       feed_comunidades_explorar: {
         Args: {
@@ -2902,6 +2972,14 @@ export type Database = {
           status: Database["public"]["Enums"]["request_status"]
           title: string
         }[]
+      }
+      finalizar_onboarding_v3: {
+        Args: {
+          p_decision: string
+          p_expected_revision: number
+          p_operation_id: string
+        }
+        Returns: Json
       }
       fundar_comunidad: {
         Args: {
@@ -3051,11 +3129,14 @@ export type Database = {
           notification_preferences: Json
           onboarding_camino: string | null
           onboarding_paso: string | null
+          onboarding_revision: number
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
           rfc: string | null
           seller_type: string | null
+          seller_visibility_confirmed_at: string | null
+          seller_visibility_version: string | null
           telefono: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
@@ -3111,6 +3192,17 @@ export type Database = {
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
+      guardar_checkpoint_onboarding_v3: {
+        Args: {
+          p_camino: string
+          p_expected_revision: number
+          p_fields?: Json
+          p_from_step: string
+          p_next_step: string
+          p_operation_id: string
+        }
+        Returns: Json
+      }
       guardar_paso_onboarding: {
         Args: {
           p_bio?: string
@@ -3123,6 +3215,23 @@ export type Database = {
         Returns: Json
       }
       guardar_paso_onboarding_v2: {
+        Args: {
+          p_bio?: string
+          p_camino?: string
+          p_categoria_negocio?: string
+          p_descripcion_negocio?: string
+          p_foto?: string
+          p_intereses?: string[]
+          p_metodos_pago_aceptados?: string
+          p_nombre?: string
+          p_nombre_negocio?: string
+          p_paso?: string
+          p_seller_type?: string
+          p_username?: string
+        }
+        Returns: Json
+      }
+      guardar_paso_onboarding_v2_internal: {
         Args: {
           p_bio?: string
           p_camino?: string
@@ -3303,6 +3412,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      onboarding_canonical_snapshot: {
+        Args: { p_profile: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: Json
       }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -4084,6 +4197,21 @@ export type Database = {
       }
       unlockrows: { Args: { "": string }; Returns: number }
       update_profile_and_pause_products: {
+        Args: {
+          p_bio?: string
+          p_descripcion_negocio?: string
+          p_es_vendedor?: boolean
+          p_foto?: string
+          p_metodos_pago_aceptados?: string
+          p_nombre: string
+          p_nombre_negocio?: string
+          p_seller_type?: string
+          p_ubicacion?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      update_profile_and_pause_products_internal: {
         Args: {
           p_bio?: string
           p_descripcion_negocio?: string

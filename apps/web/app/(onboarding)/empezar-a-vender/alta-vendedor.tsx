@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { conTope } from "@/lib/auth/con-tope";
 import { activarModoVendedor } from "./actions";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 import { Activar, Categoria, Pagos, Tipo, type SellerType } from "@/components/onboarding/seller-steps";
 import { OnboardingActions, OnboardingShell, onboardingInputClassName } from "@/components/onboarding/onboarding-shell";
 
-type Paso = "categoria" | "tipo" | "nombre" | "foto" | "descripcion" | "pagos" | "activar" | "listo";
+type Paso = "categoria" | "tipo" | "nombre" | "foto" | "descripcion" | "pagos" | "listo";
 
 const TITULOS: Record<Paso, { title: string; description: string }> = {
   categoria: { title: "¿Qué vendes?", description: "Elige la categoría que mejor describa lo que ofreces." },
@@ -17,8 +17,7 @@ const TITULOS: Record<Paso, { title: string; description: string }> = {
   foto: { title: "Agrega una foto", description: "Puedes usar el logo o una imagen de tu negocio. Es opcional." },
   descripcion: { title: "Describe tu negocio", description: "Cuenta qué ofreces. Puedes completar esto después." },
   pagos: { title: "¿Cómo aceptas pagos?", description: "Tus compradores podrán ver las opciones que elijas. Es opcional." },
-  activar: { title: "Activa tu Modo Vendedor", description: "Revisa cómo se verá tu perfil antes de activarlo." },
-  listo: { title: "Tu Modo Vendedor está listo", description: "Ya puedes crear tu primera publicación." },
+  listo: { title: "Tu perfil para vender", description: "Revisa lo que se mostrará antes de entrar." },
 };
 
 /** Existing accounts convert here; new accounts use the shared onboarding. */
@@ -52,16 +51,21 @@ export function AltaVendedor({
   const [fotoBusy, setFotoBusy] = useState(false);
   const [error, setError] = useState("");
   const [enviando, startTransition] = useTransition();
+  const activating = useRef(false);
+  const [accepted, setAccepted] = useState({ categoria: categoriaInicial, tipo: tipoInicial, nombre: nombreNegocioInicial,
+    descripcion: descripcionNegocioInicial, pagos: metodosPagoIniciales, foto: fotoInicial });
   const ocupado = enviando || fotoBusy;
 
-  const pasos: Paso[] = tipo === "business"
-    ? ["categoria", "tipo", "nombre", "foto", "descripcion", "pagos", "activar"]
-    : ["categoria", "tipo", "activar"];
+  const pasos: Paso[] = accepted.tipo === "business"
+    ? ["categoria", "tipo", "nombre", "foto", "descripcion", "pagos", "listo"]
+    : ["categoria", "tipo", "listo"];
   const indice = pasos.indexOf(paso);
   const nombreValido = nombreNegocio.trim().length >= 2 && nombreNegocio.trim().length <= 100;
   const canContinue = paso === "categoria" ? Boolean(categoria)
     : paso === "nombre" ? nombreValido
-      : paso === "activar" ? Boolean(categoria) && (tipo !== "business" || nombreValido)
+      : paso === "foto" ? !!fotoUrl : paso === "descripcion" ? descripcionNegocio.trim().length > 0
+        : paso === "pagos" ? metodosPago.length > 0
+          : paso === "listo" ? yaEsVendedor || Boolean(accepted.categoria) && (accepted.tipo !== "business" || accepted.nombre.trim().length >= 2)
         : true;
 
   function irAPaso(next: Paso) {
@@ -81,53 +85,67 @@ export function AltaVendedor({
   }
 
   function activar() {
+    if (activating.current) return;
+    activating.current = true;
     setError("");
     startTransition(async () => {
       try {
-        const result = await activarModoVendedor({
-          categoria,
-          tipo,
-          nombreNegocio: tipo === "business" ? nombreNegocio.trim() : undefined,
-          descripcionNegocio: tipo === "business" ? descripcionNegocio.trim() : undefined,
-          metodosPago: tipo === "business" ? metodosPago.join(", ") : undefined,
-          foto: fotoUrl,
-        });
+        const result = await conTope(activarModoVendedor({
+          categoria: accepted.categoria,
+          tipo: accepted.tipo,
+          nombreNegocio: accepted.tipo === "business" ? accepted.nombre : undefined,
+          descripcionNegocio: accepted.tipo === "business" ? accepted.descripcion : undefined,
+          metodosPago: accepted.tipo === "business" ? accepted.pagos.join(", ") : undefined,
+          foto: accepted.foto,
+        }));
         if (result.error) {
           setError(result.error);
           return;
         }
-        irAPaso("listo");
+        router.replace("/vender");
       } catch {
         setError("No pudimos activar el Modo Vendedor. Tus datos siguen aquí; intenta de nuevo.");
-      }
+      } finally { activating.current = false; }
     });
   }
 
   function continuar() {
     if (ocupado || !canContinue) return;
     if (paso === "listo") {
-      router.replace("/vender");
+      if (yaEsVendedor) router.replace("/vender");
+      else activar();
       return;
     }
-    if (paso === "activar") {
-      activar();
-      return;
-    }
-    irAPaso(pasos[indice + 1]!);
+    const nextAccepted = { ...accepted };
+    if (paso === "categoria") nextAccepted.categoria = categoria;
+    if (paso === "tipo") nextAccepted.tipo = tipo;
+    if (paso === "nombre") nextAccepted.nombre = nombreNegocio.trim();
+    if (paso === "foto") nextAccepted.foto = fotoUrl;
+    if (paso === "descripcion") nextAccepted.descripcion = descripcionNegocio.trim();
+    if (paso === "pagos") nextAccepted.pagos = [...metodosPago];
+    setAccepted(nextAccepted);
+    const nextSteps: Paso[] = nextAccepted.tipo === "business" ? ["categoria", "tipo", "nombre", "foto", "descripcion", "pagos", "listo"] : ["categoria", "tipo", "listo"];
+    irAPaso(nextSteps[nextSteps.indexOf(paso) + 1]!);
   }
 
   function omitir() {
     if (ocupado) return;
-    if (paso === "foto") {
+    if (paso === "categoria") {
+      setCategoria(accepted.categoria); irAPaso("tipo");
+    } else if (paso === "tipo") {
+      setTipo(accepted.tipo); irAPaso(accepted.tipo === "business" ? "nombre" : "listo");
+    } else if (paso === "nombre") {
+      setNombreNegocio(accepted.nombre); irAPaso("foto");
+    } else if (paso === "foto") {
       // Uploads only create a storage file. Skip keeps the saved profile photo.
-      setFotoUrl(fotoInicial);
+      setFotoUrl(accepted.foto);
       irAPaso("descripcion");
     } else if (paso === "descripcion") {
-      setDescripcionNegocio(descripcionNegocioInicial);
+      setDescripcionNegocio(accepted.descripcion);
       irAPaso("pagos");
     } else if (paso === "pagos") {
-      setMetodosPago(metodosPagoIniciales);
-      irAPaso("activar");
+      setMetodosPago(accepted.pagos);
+      irAPaso("listo");
     } else {
       salir();
     }
@@ -138,22 +156,21 @@ export function AltaVendedor({
     continuar();
   }
 
-  const opcional = paso === "foto" || paso === "descripcion" || paso === "pagos";
   return (
     <OnboardingShell
       {...TITULOS[paso]}
-      onBack={paso === "listo" ? undefined : atras}
-      step={paso === "listo" ? undefined : indice + 1}
-      totalSteps={paso === "listo" ? undefined : pasos.length}
+      onBack={yaEsVendedor ? undefined : atras}
+      step={yaEsVendedor ? undefined : indice + 1}
+      totalSteps={yaEsVendedor ? undefined : pasos.length}
       error={error}
       busy={ocupado}
       footer={
         <OnboardingActions
-          continueLabel={paso === "activar" ? "Activar Modo Vendedor" : paso === "listo" ? "Crear publicación" : "Continuar"}
+          continueLabel={paso === "listo" ? yaEsVendedor ? "Crear publicación" : "Activar y entrar" : "Continuar"}
           type="submit"
           form="alta-vendedor-paso"
           onSkip={omitir}
-          skipLabel={paso === "listo" ? "Entrar a VICINO" : opcional ? "Omitir" : "Ahora no"}
+          skipLabel={paso === "listo" ? yaEsVendedor ? "Entrar a VICINO" : "Entrar por ahora" : "Omitir"}
           disabled={!canContinue}
           busy={ocupado}
         />
@@ -212,14 +229,12 @@ export function AltaVendedor({
           </div>
         )}
         {paso === "pagos" && <Pagos value={metodosPago} onChange={setMetodosPago} />}
-        {paso === "activar" && <Activar nombre={tipo === "business" ? nombreNegocio : nombre ?? ""} categoria={categoria} tipo={tipo} />}
-        {paso === "listo" && (
-          <div className="space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-primary" aria-hidden="true" />
-            <p className="text-muted-foreground">Los compradores podrán encontrarte cuando publiques algo cerca de ellos.</p>
-            <p className="text-sm text-muted-foreground">Elige la ubicación de cada publicación al crearla.</p>
-          </div>
-        )}
+        {paso === "listo" && <div className="space-y-4">
+          <Activar nombre={accepted.tipo === "business" ? accepted.nombre : nombre ?? ""} categoria={accepted.categoria} tipo={accepted.tipo}
+            foto={accepted.foto} descripcion={accepted.descripcion} pagos={accepted.pagos.join(", ")} activo={yaEsVendedor} />
+          {!canContinue && <p className="text-sm text-fg-muted">Completa tu categoría{accepted.tipo === "business" ? " y el nombre del negocio" : ""} para activar. También puedes entrar por ahora y explorar.</p>}
+          <p className="text-sm text-fg-muted">La ubicación de cada publicación la eliges al publicar.</p>
+        </div>}
       </form>
     </OnboardingShell>
   );
