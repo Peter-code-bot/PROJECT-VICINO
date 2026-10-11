@@ -206,6 +206,7 @@ Exit code: 0
 - La allowlist inicial filtraba por código genérico; se restringió a código+mensaje concretos para impedir que se expongan errores SQL arbitrarios. La suite vendedor descubrió el mensaje de visibilidad perdido, que se añadió como par exacto. TypeScript exigió tuplas `as const`; desviación de implementación acotada, sin cambio de comportamiento.
 - Home/HTTP: después de quitar la introducción, el contenido real cabe en 390×844 y una prueba de scroll no podía generar desplazamiento. Sólo ese caso usa 390×540 y luego restaura el viewport. Un clic real ya hidratado en Descubrir emitió RSC y terminó en ≈5266 ms; la espera de 5 s daba falso fallo. Se usa un plazo de 30 s sin rebajar destino/aria/datos/retorno. Upstash ENOTFOUND/fail-open en el entorno local influye en esas consultas; no se acredita ese diagnóstico para producción.
 - El PAT de Management API no permitió preflight (`HTTP 401: Invalid access token`). Se retomó la sesión existente del dashboard de Supabase para comprobaciones del esquema; no se imprimieron tokens ni se redujeron controles.
+- El ensayo de permisos encontró EXECUTE heredado de PUBLIC en guardar_paso_onboarding legacy. Aunque el nuevo cuerpo exigía identidad/confirmación, se revocó explícitamente PUBLIC/anon y se concedió authenticated; regresión SQL y ensayo de metadata/rollback volvieron a pasar, exit0. Revisión independiente de journal/cambio de cuenta/ACK/conflicto/cierre sin P1 concreto.
 
 ## Publicación coordinada — pendiente en este corte
 
@@ -215,7 +216,11 @@ La migración conserva datos y firmas, pero cambia el requisito legal de los RPC
 
 Recuperación: preservar columnas, historia, recibos y ledger; corregir hacia adelante con el gate mínimo. Volver únicamente a e390 tras aplicar el nuevo requisito legal no recupera el flujo. No borrar evidencia ni fingir aceptación automática. Una reversión de contrato necesita una migración compensatoria revisada y registrada.
 
-Commit/PR, hashes SQL, ensayo remoto, ledger, CI, master, Vercel Production y smoke se anotarán aquí cuando sean verificables. No se afirma que este corte ya esté publicado.
+Primer candidato: commit `7244c5f183c604cc795608eb075979eac5dfb890`, [PR55](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/55). Security Audit38172664113 aprobó secretos, audit, TypeScript/lint. [Preview](https://vercel.com/peters-projects-b65496a9/vicinomarket/7oYSvin1z1HgDrjj3uFuZg5U739p) SUCCESS. Production schema artifact38172663988 generó y subió el artefacto, pero falló la comparación final porque el SQL candidato aún no estaba aplicado. El artefacto anterior coincide exactamente con los tipos de e390; no hay deriva previa oculta. No se desactivó el check.
+
+Fuente SQL tras cierre del ACL legacy: 24.757bytes; SHA256 `0678cd9c3c5cdac37b1ec44940061ba65dd852df1bba4b4625ed43515eef03ae`. Ensayo local de metadata/rollback: exit0, sin cuentas, ledger INSERT ni llamadas remotas. Su fuente exacta está entre BEGIN/assertions/ROLLBACK; no sustituye ensayo remoto.
+
+Ensayo remoto, ledger, tipos exactos, CI final, master, Vercel Production y smoke se anotarán aquí cuando sean verificables. No se afirma que este corte ya esté publicado.
 
 ## Aceptación pendiente
 

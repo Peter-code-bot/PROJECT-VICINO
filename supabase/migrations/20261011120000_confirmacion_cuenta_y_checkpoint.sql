@@ -177,6 +177,8 @@ BEGIN
   RETURN public.guardar_paso_onboarding_v2(p_camino,p_paso,p_nombre,p_bio,p_foto,p_intereses);
 END;
 $$;
+REVOKE ALL ON FUNCTION public.guardar_paso_onboarding(text,text,text,text,text,text[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.guardar_paso_onboarding(text,text,text,text,text,text[]) TO authenticated;
 
 CREATE FUNCTION public.onboarding_canonical_snapshot(p_profile public.profiles) RETURNS jsonb
 LANGUAGE sql IMMUTABLE SET search_path='' AS $$

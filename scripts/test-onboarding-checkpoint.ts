@@ -173,6 +173,8 @@ async function main() {
       assert.equal(await result("SELECT has_column_privilege('authenticated','profiles','onboarding_revision','UPDATE') AS value"), false);
       assert.equal(await result("SELECT has_function_privilege('authenticated','guardar_paso_onboarding_v2_internal(text,text,text,text,text,text[],text,text,text,text,text,text)','EXECUTE') AS value"), false);
       assert.equal(await result("SELECT has_function_privilege('anon','finalizar_onboarding_v3(uuid,integer,text)','EXECUTE') AS value"), false);
+      assert.equal(await result("SELECT has_function_privilege('anon','guardar_paso_onboarding(text,text,text,text,text,text[])','EXECUTE') AS value"), false);
+      assert.equal(await result("SELECT has_function_privilege('authenticated','guardar_paso_onboarding(text,text,text,text,text,text[])','EXECUTE') AS value"), true);
     });
     await check("anónimo no confirma ni finaliza", async () => {
       await asUser(null);
