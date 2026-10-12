@@ -1,3 +1,25 @@
+## 12-oct-2026 — Onboarding: navegación reactiva, recuperación de bloqueo y cabecera negra completadas (local)
+
+- Corrección del bloqueo de navegación reportado por Javier (ONB-FREEZE-01) y nuevo progreso visual (ONB-PROGRESS-01). Rama aislada `fix/onboarding-navegacion-progreso-20261012` sobre base `9aae1ed` de master; checkout `PROJECT-VICINO-ONBOARDING`.
+- Desconexión navegación/pantalla resuelta: retiradas sobrescrituras y monkey-patching global de History en `SessionDataProvider` e `installCommunityNavigation`. Implementado observador reactivo puro `createCommunityNavigationObserver` en `lib/navigation/retorno-comunidad.ts` que conserva la procedencia de ruta y metadatos opacos por entrada sin interferir con el router de Next.js.
+- Serialización Comprar/Vender y recuperación de snapshots: guardados v3 atómicos por revisión y operación (`guardar_checkpoint_onboarding_v3`), eliminación de condiciones de carrera al alternar entre comprador y vendedor, adopción limpia de nuevos snapshots y componente de estado visible `OnboardingSaveStatus` con recuperación ante respuestas inciertas.
+- Diseño ONB-PROGRESS-01: sustituido el texto visible «Paso X de 10» por barra superior horizontal negra (`--onboarding-progress-fill: #000000`, track `#D9D9D9`, borde `#808080`), 0% verde en temas claro y oscuro, con semántica accesible `role="progressbar"`. Flecha de retorno desplazada 8 px a la izquierda manteniendo área táctil de 48×48 px.
+- Validación local 100% aprobada (exit code 0):
+  - UI Component Test Suite (`test-onboarding-ui.mjs`): 126/126 aprobados.
+  - Regresión Next.js 16.3.8 App Router real (`test-onboarding-next-navigation.mjs`): 3/3 aprobados.
+  - Regresión comunidades y filtros (`test-plan-20260929.mjs`): 16/16 aprobados (Chromium y WebKit).
+  - Observador de navegación (`test-community-navigation-observer.ts`): 10/10 aprobados.
+  - Adversarial y concurrencia (`test-adversarial-challenger1.ts`): 15/15 aprobados.
+  - Contratos SQL PGlite (`test-onboarding-checkpoint.ts`): 15/15 aprobados.
+  - Borrador y snapshots (`test-onboarding-draft.ts`): 6/6 aprobados.
+  - Flujo por pregunta (`test-onboarding-flow.ts`): 11/11 aprobados.
+  - Cola serial e idempotencia (`test-onboarding-journal.ts`): 14/14 aprobados.
+  - Server Actions v3 (`actions.test.ts`): 10/10 aprobados.
+  - TypeScript: `pnpm --filter web type-check` exit 0 (0 errores).
+  - ESLint: `pnpm --filter web lint` exit 0 (0 errores).
+  - Next.js Build: `pnpm --filter web build` exit 0 (60/60 páginas compiladas, 77 rutas verificadas).
+- Documentado en Notion como SSOT: Plan Vigente, Bitácora / DevLog, Tests pendientes y Backlog. Aceptación física en hardware pendiente en apartados nativos.
+
 ## 11-oct-2026 — RPC de roles cerrado y publicado; clave pendiente de acceso
 
 - Javier autorizó terminar ADM-PASS-01/02 y confirmar la contraseña. Rama aislada fix/admin-role-security-20261011, base e5522f0; trabajo ajeno conservado.

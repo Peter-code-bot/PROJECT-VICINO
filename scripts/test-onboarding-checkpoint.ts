@@ -7,6 +7,7 @@ import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite();
 const ALICE = "00000000-0000-4000-8000-000000000001";
 const BOB = "00000000-0000-4000-8000-000000000002";
+const CAROL = "00000000-0000-4000-8000-000000000003";
 const operation = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 let count = 0;
 async function check(name: string, fn: () => Promise<void>) { await fn(); count++; console.log(`PASS ${name}`); }
@@ -46,7 +47,7 @@ async function main() {
       "20260714000002_onboarding_rpc_fail_loudly.sql", "20260903240000_registro_manual_activar_modo_vendedor.sql",
       "20260826380000_registro_y_aviso_de_cambios_legales.sql", "20261010120000_onboarding_por_dato_y_usuario.sql"])
       await db.exec(await migration(name));
-    await db.query("INSERT INTO profiles(id,user_id,nombre) VALUES($1,'U0000001','Alice'),($2,'U0000002','Bob')", [ALICE, BOB]);
+    await db.query("INSERT INTO profiles(id,user_id,nombre) VALUES($1,'U0000001','Alice'),($2,'U0000002','Bob'),($3,'U0000003','Carol')", [ALICE, BOB, CAROL]);
     await db.query("INSERT INTO legal_acceptances(user_id,documento,version,modo,aceptado_en) VALUES($1,'terminos','1.1','uso_continuado','2026-09-01T00:00:00Z')", [ALICE]);
     await db.exec(await migration("20261011120000_confirmacion_cuenta_y_checkpoint.sql"));
     const storeGuard = await migration("20261003213000_identidad_publica_modo_tienda.sql");
@@ -73,6 +74,23 @@ async function main() {
       await confirm();
       assert.equal((await result("SELECT to_jsonb(a) AS value FROM legal_acceptances a WHERE documento='terminos'")).confirmacion_en, prior.confirmacion_en);
       assert.equal((await result("SELECT estado_confirmacion_legal() AS value")).confirmed, true);
+    });
+    await check("cambiar de recorrido usa el contrato v3 existente, preserva legales y recupera el mismo recibo", async () => {
+      await asUser(CAROL); await confirm();
+      const legal = await result("SELECT jsonb_agg(a) AS value FROM legal_acceptances a WHERE user_id=auth.uid()");
+      const original = await profile(CAROL);
+      const seller = await checkpoint(201, 0, {}, "categoria", "vender", "usuario");
+      assert.equal(seller.revision, 1); assert.equal(seller.paso, "categoria");
+      const category = await checkpoint(202, 1, { categoria_negocio: "comida" }, "tipo", "vender", "categoria");
+      const buyer = await checkpoint(203, category.revision, {}, "usuario", "explorar", "tipo");
+      assert.equal(buyer.camino, "explorar"); assert.equal(buyer.revision, 3);
+      assert.equal(buyer.snapshot.categoria_negocio, "comida"); assert.equal(buyer.snapshot.username, original.username);
+      assert.deepEqual(await checkpoint(203, 2, {}, "usuario", "explorar", "tipo"), buyer);
+      assert.equal((await profile(CAROL)).onboarding_revision, 3);
+      const stale = await checkpoint(204, 2, {}, "categoria", "vender", "tipo");
+      assert.equal(stale.status, "conflict"); assert.equal(stale.camino, "explorar");
+      assert.deepEqual(await result("SELECT jsonb_agg(a) AS value FROM legal_acceptances a WHERE user_id=auth.uid()"), legal);
+      await asUser(ALICE);
     });
     await check("la pantalla sólo guarda su dato y límites no crean recibos ni cambios", async () => {
       const before = await profile();

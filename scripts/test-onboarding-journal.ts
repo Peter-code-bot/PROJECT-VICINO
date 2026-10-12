@@ -14,6 +14,22 @@ const first = () => appendOnboardingCheckpoint(empty(), {
   operationId: A, revision: 12, fromStep: "nombre", nextStep: "foto", camino: "explorar", fields: { nombre: "Nombre confirmado" },
 });
 
+test("a pending path choice preserves its original operation across restoration and retry", () => {
+  const choice = appendOnboardingCheckpoint(empty(), { operationId: A, revision: 8, fromStep: "tipo",
+    nextStep: "usuario", camino: "explorar", purpose: "path-choice" });
+  const prepared = prepareOnboardingCheckpoint(choice, 8);
+  const restored = parseOnboardingJournal(JSON.stringify(prepared), user)!;
+  assert.deepEqual(restored, prepared);
+  assert.equal(prepareOnboardingCheckpoint(restored, 20).entries[0]!.expectedRevision, 8);
+  assert.equal(restored.entries[0]!.purpose, "path-choice");
+  assert.deepEqual(restored.entries[0]!.fields, {});
+  assert.equal(acknowledgeOnboardingCheckpoint(restored, A, 9).entries.length, 0);
+  const malformed = { ...prepared, entries: [{ ...prepared.entries[0], fields: { username: "not_a_choice" } }] };
+  assert.equal(parseOnboardingJournal(JSON.stringify(malformed), user), null);
+  assert.throws(() => appendOnboardingCheckpoint(empty(), { operationId: A, revision: 8, fromStep: "usuario",
+    nextStep: "nombre", camino: "explorar", purpose: "path-choice" }), /empezar/);
+});
+
 test("empty journal retains owner and current view", () => {
   assert.deepEqual(parseOnboardingJournal(JSON.stringify(empty()), user), empty());
   assert.notEqual(journalStorageKey(user), journalStorageKey("synthetic-user-b"));

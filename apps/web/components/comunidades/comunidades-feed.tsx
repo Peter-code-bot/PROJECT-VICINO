@@ -9,6 +9,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { cargarDescubrir, cancelarSolicitud } from "@/app/(marketplace)/comunidades/actions";
 import { tiempoQueFalta } from "@/lib/comunidades/errores";
 import { esFalloDeRed } from "@/lib/net/fallo-de-red";
+import { notifyCommunityNavigationReplacement } from "@/lib/navigation/retorno-comunidad";
 import type {
   PostComunidad,
   ComunidadMia,
@@ -78,6 +79,7 @@ export function ComunidadesFeed({
     if (siguiente === "muro") url.searchParams.delete("tab");
     else url.searchParams.set("tab", siguiente);
     window.history.replaceState(window.history.state, "", url.toString());
+    notifyCommunityNavigationReplacement();
   }, []);
 
   // Descubrir sin ubicacion en la cookie: se intenta con la del cliente

@@ -3,7 +3,7 @@ import { test, describe } from 'node:test';
 import {
   nextCommunityNavigation,
   communityReturn,
-  installCommunityNavigation,
+  createCommunityNavigationObserver,
   type CommunityNavigation,
 } from '../apps/web/lib/navigation/retorno-comunidad';
 import { loadChatCatalog } from '../apps/web/lib/chat/catalogo-chat';
@@ -217,7 +217,7 @@ describe('R1 (N01) Adversarial Navigation & State Corruption Tests', () => {
     }
   });
 
-  test('installCommunityNavigation wrap/unwrap lifecycle clean restoration', () => {
+  test('community observer lifecycle never replaces framework history methods', () => {
     const originalPush = () => {};
     const originalReplace = () => {};
     const mockState: Record<string, any> = {};
@@ -248,14 +248,22 @@ describe('R1 (N01) Adversarial Navigation & State Corruption Tests', () => {
       },
     };
 
-    // Install and uninstall 10 times in a row
+    // Repeated mounts/disposal must also preserve a later framework observer.
     for (let i = 0; i < 10; i++) {
-      const uninstall = installCommunityNavigation();
-      assert.notEqual(mockHistory.pushState, originalPush);
-      uninstall();
+      const observer = createCommunityNavigationObserver();
       assert.equal(mockHistory.pushState, originalPush);
       assert.equal(mockHistory.replaceState, originalReplace);
+      const laterPush = () => {};
+      const laterReplace = () => {};
+      mockHistory.pushState = laterPush;
+      mockHistory.replaceState = laterReplace;
+      observer.dispose();
+      assert.equal(mockHistory.pushState, laterPush);
+      assert.equal(mockHistory.replaceState, laterReplace);
       assert.equal(mockWindowListeners['popstate']?.length ?? 0, 0);
+      assert.equal(mockWindowListeners['hashchange']?.length ?? 0, 0);
+      mockHistory.pushState = originalPush;
+      mockHistory.replaceState = originalReplace;
     }
   });
 });

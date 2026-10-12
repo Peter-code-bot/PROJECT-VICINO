@@ -32,36 +32,103 @@ export function communityReturn(state: CommunityNavigation | null, path: string,
   return { back: Boolean(safePrevious && previous === href && previous !== path), href };
 }
 
-/** Per-entry provenance survives reload and popstate without guessing from history.length. */
-export function installCommunityNavigation() {
-  const push = history.pushState;
-  const replace = history.replaceState;
-  const path = () => location.pathname + location.search + location.hash;
-  const read = (): CommunityNavigation | null => {
-    const record = history.state?.[KEY] as CommunityNavigation | undefined;
-    return record?.path === path() ? record : null;
-  };
-  let current = read();
-  current ??= nextCommunityNavigation(null, path(), true);
-  replace.call(history, { ...history.state, [KEY]: current }, "");
-  const wrap = (original: History["pushState"], replacing: boolean): History["pushState"] => function (data, unused, url) {
-    const target = new URL(url ?? location.href, location.href);
-    const nextPath = target.pathname + target.search + target.hash;
-    const next = nextPath === current?.path ? current : nextCommunityNavigation(current, nextPath, replacing);
-    original.call(history, { ...data, [KEY]: next }, unused, url);
-    current = next;
-  };
-  history.pushState = wrap(push, false);
-  history.replaceState = wrap(replace, true);
-  const pop = () => { current = read(); };
-  window.addEventListener("popstate", pop);
-  return () => {
-    history.pushState = push;
-    history.replaceState = replace;
-    window.removeEventListener("popstate", pop);
-  };
+interface CommunityHistoryEntry extends CommunityNavigation {
+  version: 1;
+  entryId: string;
+}
+interface RestoredEntry { navigation: CommunityNavigation; entryId: string | null }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const COMMUNITY_NAVIGATION_UPDATED = "vicino:community-navigation-updated";
+const currentPath = () => location.pathname + location.search + location.hash;
+let replacement: { from: string; target: string; expires: number } | null = null;
+
+function safePath(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 4096 && destinoAutenticadoSeguro(value) === value;
+}
+
+/** History state is untrusted. Older entries are accepted without guessing their position. */
+function readEntry(value: unknown): RestoredEntry | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  if (!safePath(item.path) || (item.previous !== null && !safePath(item.previous))) return null;
+  let community: CommunityNavigation["community"] = null;
+  if (item.community !== null) {
+    if (!item.community || typeof item.community !== "object" || Array.isArray(item.community)) return null;
+    const details = item.community as Record<string, unknown>;
+    if (typeof details.id !== "string" || details.id.length > 200 || !safePath(details.origin)
+      || communityRoute(item.path)?.[1] !== details.id) return null;
+    community = { id: details.id, origin: details.origin };
+  }
+  if (item.version !== undefined || item.entryId !== undefined) {
+    if (item.version !== 1 || typeof item.entryId !== "string" || !UUID.test(item.entryId)) return null;
+  }
+  return { navigation: { path: item.path, previous: item.previous as string | null, community },
+    entryId: typeof item.entryId === "string" ? item.entryId : null };
+}
+
+/** Record our own replace intent before a community return; no router internals are read. */
+export function markCommunityNavigationReplace(target: string): void {
+  if (typeof window === "undefined" || !safePath(target)) return;
+  replacement = { from: currentPath(), target, expires: Date.now() + 10_000 };
+}
+
+/** Local filter controls already update their UI; tell route provenance about their URL replacement. */
+export function notifyCommunityNavigationReplacement(): void {
+  window.dispatchEvent(new Event(COMMUNITY_NAVIGATION_UPDATED));
+}
+
+export interface CommunityNavigationObserver {
+  observe: () => void;
+  dispose: () => void;
+}
+
+/**
+ * Observe committed routes and keep our metadata on each entry. Never replace
+ * History methods: restoring a captured method can remove Next's URL observer.
+ */
+export function createCommunityNavigationObserver(): CommunityNavigationObserver {
+  let current: CommunityHistoryEntry | null = null;
+  let disposed = false;
+
+  function observe(traversing = false) {
+    if (disposed) return;
+    const path = currentPath();
+    const restored = readEntry(history.state?.[KEY]);
+    let navigation: CommunityNavigation;
+    let entryId: string;
+    if (restored?.navigation.path === path) {
+      navigation = restored.navigation;
+      entryId = restored.entryId ?? crypto.randomUUID();
+    } else {
+      // Filters may replace the URL while preserving the same entry's metadata.
+      const sameEntry = !!current && restored?.entryId === current.entryId;
+      const requestedReplace = !traversing && !!replacement && replacement.expires > Date.now()
+        && replacement.from === current?.path && replacement.target === path;
+      navigation = nextCommunityNavigation(traversing ? null : current, path, sameEntry || requestedReplace);
+      entryId = sameEntry ? current!.entryId : crypto.randomUUID();
+    }
+    if (replacement && (replacement.target === path || replacement.expires <= Date.now() || traversing)) replacement = null;
+    current = { ...navigation, version: 1, entryId };
+    try {
+      // Preserve the framework's state opaquely; only our key is added. Omitting
+      // the URL updates metadata without another navigation or router dispatch.
+      const existing = history.state;
+      history.replaceState({ ...(existing && typeof existing === "object" ? existing : {}), [KEY]: current }, "");
+    } catch { /* Missing provenance uses the safe explicit return instead of blocking navigation. */ }
+  }
+  const traverse = () => observe(true);
+  const hash = () => observe();
+  window.addEventListener("popstate", traverse);
+  window.addEventListener("hashchange", hash);
+  window.addEventListener(COMMUNITY_NAVIGATION_UPDATED, hash);
+  return { observe: () => observe(), dispose: () => {
+    disposed = true;
+    window.removeEventListener("popstate", traverse);
+    window.removeEventListener("hashchange", hash);
+    window.removeEventListener(COMMUNITY_NAVIGATION_UPDATED, hash);
+  } };
 }
 
 export function currentCommunityReturn(id: string, admin: boolean) {
-  return communityReturn(history.state?.[KEY] ?? null, location.pathname + location.search + location.hash, id, admin);
+  return communityReturn(readEntry(history.state?.[KEY])?.navigation ?? null, currentPath(), id, admin);
 }

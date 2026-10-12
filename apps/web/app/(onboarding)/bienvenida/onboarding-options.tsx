@@ -1,43 +1,41 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Search, ShoppingBag } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
-import { guardarPasoOnboarding, type CaminoOnboarding } from "@/app/(onboarding)/completar-perfil/actions";
 import { OnboardingActions, OnboardingShell } from "@/components/onboarding/onboarding-shell";
-import { conTope, esTope } from "@/lib/auth/con-tope";
+import { OnboardingSaveStatus } from "@/components/onboarding/onboarding-save-status";
+import { OnboardingSessionProvider, useOnboardingSession } from "../completar-perfil/onboarding-session";
+import type { OnboardingProfile } from "../completar-perfil/load-profile";
+import { resolverCaminoOnboarding, rutaDePaso, type CaminoOnboarding } from "@/lib/onboarding/steps";
 
 const OPCIONES = [
   { camino: "explorar", titulo: "Quiero comprar", texto: "Encuentra lo que ofrecen tus vecinos.", Icono: Search },
   { camino: "vender", titulo: "Quiero vender", texto: "Prepara tu perfil para publicar lo que ofreces.", Icono: ShoppingBag },
 ] as const;
 
-export function OnboardingOptions() {
+export function OnboardingOptions({ profile }: { profile: OnboardingProfile }) {
+  return <OnboardingSessionProvider profile={profile} selectingPath><PathChoice /></OnboardingSessionProvider>;
+}
+
+function PathChoice() {
   const router = useRouter();
+  const session = useOnboardingSession();
   const [camino, setCamino] = useState<CaminoOnboarding | null>(null);
   const [error, setError] = useState<string>();
   const [isPending, startTransition] = useTransition();
+  const running = useRef(false);
+  const busy = isPending || session.busy || !session.ready;
 
-  function elegir(destino: CaminoOnboarding) {
-    if (isPending) return;
+  function run(operation: () => Promise<void>) {
+    if (running.current || busy) return;
+    running.current = true;
     setError(undefined);
     startTransition(async () => {
-      const paso = destino === "vender" ? "categoria" : "usuario";
-      try {
-        const result = await conTope(guardarPasoOnboarding({ camino: destino, paso }));
-        if (result.error) {
-          setError(result.error);
-          return;
-        }
-        router.push(`/completar-perfil/${paso}`);
-      } catch (err) {
-        if (!esTope(err)) {
-          Sentry.captureException(err, { tags: { action: "bienvenida_elegir_camino" } });
-        }
-        setError("No pudimos guardar tu elección. Revisa tu conexión e inténtalo de nuevo.");
-      }
+      try { await operation(); }
+      catch (failure) { setError(failure instanceof Error ? failure.message : "No pudimos guardar tu elección. Intenta de nuevo."); }
+      finally { running.current = false; }
     });
   }
 
@@ -45,21 +43,29 @@ export function OnboardingOptions() {
     <OnboardingShell
       title="Bienvenido a VICINO"
       description="Compra y vende cerca de ti. Elige cómo quieres empezar."
-      error={error}
-      busy={isPending}
+      busy={busy}
       footer={
         <OnboardingActions
-          onContinue={() => { if (camino) elegir(camino); }}
-          disabled={!camino}
-          busy={isPending}
+          onContinue={() => {
+            if (session.finalPending) {
+              router.push(rutaDePaso("listo", resolverCaminoOnboarding(null, session.profile.onboarding_camino)));
+            } else if (camino) run(async () => router.push(await session.selectPath(camino)));
+          }}
+          continueLabel={session.finalPending ? "Recuperar mi entrada" : "Continuar"}
+          disabled={session.blocked || (!camino && !session.finalPending)}
+          busy={busy}
         />
       }
     >
+      <OnboardingSaveStatus session={session} busy={busy} error={error} onRetry={() => run(async () => {
+        const target = await session.retry();
+        if (target) router.push(target);
+      })} />
       <div className="mb-6 flex justify-center">
         <Image src="/vicino-logo-light-v2.png" alt="" width={88} height={88} className="object-contain show-in-light" priority />
         <Image src="/vicino-logo-dark.png" alt="" width={88} height={88} className="object-contain show-in-dark" priority />
       </div>
-      <fieldset disabled={isPending} className="space-y-3">
+      <fieldset disabled={busy || session.finalPending} className="space-y-3">
         <legend className="sr-only">Elige tu recorrido</legend>
         {OPCIONES.map(({ camino: opcion, titulo, texto, Icono }) => (
           <label key={opcion} className="block cursor-pointer">

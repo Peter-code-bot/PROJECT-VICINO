@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import vm from "node:vm";
-import { pasosDelCamino, pasoParaReanudar, siguientePaso } from "../apps/web/lib/onboarding/steps.ts";
+import { pasosDelCamino, pasoParaReanudar, resolverCaminoOnboarding, rutaDePaso, siguientePaso } from "../apps/web/lib/onboarding/steps.ts";
 
 const web = fileURLToPath(new URL("../apps/web", import.meta.url));
 const require = createRequire(new URL("../apps/web/package.json", import.meta.url));
@@ -13,6 +13,14 @@ const esbuild = require(require.resolve("esbuild", { paths: [require.resolve("ts
 const comprar = { camino: "explorar" as const, tipo: "casual" as const };
 const negocio = { camino: "vender" as const, tipo: "business" as const };
 const compiled = new Map<string, string>();
+
+test("explicit buying wins over an old seller profile, and the path remains explicit on later URLs", () => {
+  assert.equal(resolverCaminoOnboarding("explorar", "vender"), "explorar");
+  assert.equal(resolverCaminoOnboarding("vender", "explorar"), "vender");
+  assert.equal(resolverCaminoOnboarding("invalid", "vender"), "vender");
+  assert.equal(resolverCaminoOnboarding(null, null), "explorar");
+  assert.equal(rutaDePaso("nombre", "explorar"), "/completar-perfil/nombre?camino=explorar");
+});
 
 test("buying asks one question per page, without a seller-only activation page", () => {
   assert.deepEqual(pasosDelCamino(comprar), ["usuario", "nombre", "foto", "descripcion", "intereses", "ubicacion", "notificaciones", "listo"]);

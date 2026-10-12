@@ -1,11 +1,23 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { discardOnboardingStepDraft, fieldsForOnboardingStep, initialOnboardingDraft, restoreOnboardingDraft } from "../apps/web/lib/onboarding/draft.ts";
+import { discardOnboardingStepDraft, fieldsForOnboardingStep, initialOnboardingDraft, reconcileOnboardingDraft, restoreOnboardingDraft } from "../apps/web/lib/onboarding/draft.ts";
 import type { OnboardingProfile } from "../apps/web/app/(onboarding)/completar-perfil/load-profile";
 const saved: OnboardingProfile = { id: "synthetic-a", username: "ana_1000", nombre: "Ana", bio: "Descripción confirmada",
   foto: "https://example.invalid/avatar.jpg", intereses: ["hogar"], onboarding_camino: "vender", onboarding_paso: "descripcion",
   has_seen_onboarding: false, es_vendedor: false, seller_type: "business", categoria_negocio: "comida",
   nombre_negocio: "Nombre confirmado", descripcion_negocio: "Negocio confirmado", metodos_pago_aceptados: "Efectivo", onboarding_revision: 5 };
+
+test("a newer snapshot refreshes untouched values while preserving personal and business edits", () => {
+  const edited = { ...initialOnboardingDraft(saved), nombre: "Nombre en edición", nombreNegocio: "Negocio en edición", intereses: ["ropa"] };
+  const fresh = { ...saved, onboarding_revision: 6, username: "ana_2000", foto: "https://example.invalid/new.jpg",
+    nombre: "Nombre de otra pestaña", nombre_negocio: "Negocio de otra pestaña", intereses: ["tecnologia"], metodos_pago_aceptados: "Transferencia" };
+  const reconciled = reconcileOnboardingDraft(edited, saved, fresh);
+  assert.equal(reconciled.nombre, edited.nombre); assert.equal(reconciled.nombreNegocio, edited.nombreNegocio);
+  assert.deepEqual(reconciled.intereses, ["ropa"]);
+  assert.equal(reconciled.username, "ana_2000"); assert.equal(reconciled.foto, fresh.foto);
+  assert.deepEqual(reconciled.pagos, ["Transferencia"]);
+  assert.equal(edited.username, saved.username, "neither the draft nor the previous snapshot is mutated");
+});
 
 test("continuing one question cannot submit edits from any other question", () => {
   const draft = { ...initialOnboardingDraft(saved), nombre: "Otra persona", nombreNegocio: "Otro negocio", bio: "Borrador sin confirmar", pagos: ["Transferencia"] };

@@ -8,6 +8,12 @@ export type PasoOnboardingActual = (typeof PASOS_ONBOARDING)[number];
 export type PasoOnboarding = PasoOnboardingActual | "perfil" | "activar";
 export type CaminoOnboarding = "explorar" | "vender";
 
+/** A deliberate choice in the URL wins over a previously saved seller path. */
+export function resolverCaminoOnboarding(explicit: string | null, saved: string | null): CaminoOnboarding {
+  if (explicit === "explorar" || explicit === "vender") return explicit;
+  return saved === "vender" ? "vender" : "explorar";
+}
+
 export interface OnboardingContext {
   camino: CaminoOnboarding;
   tipo: "casual" | "business";
@@ -42,5 +48,5 @@ export function siguientePaso(step: PasoOnboardingActual, context: OnboardingCon
 }
 
 export function rutaDePaso(step: PasoOnboardingActual, camino?: CaminoOnboarding): string {
-  return `/completar-perfil/${step}${camino === "vender" ? "?camino=vender" : ""}`;
+  return `/completar-perfil/${step}${camino ? `?camino=${camino}` : ""}`;
 }

@@ -103,6 +103,12 @@
   --auth-input: var(--muted);
   --auth-text: var(--foreground);
 
+  /* Javier requested a black progress bar in both themes. Its neutral border
+     keeps the filled bar visible against the dark onboarding surface. */
+  --onboarding-progress-fill: #000000;
+  --onboarding-progress-track: #D9D9D9;
+  --onboarding-progress-border: #808080;
+
   /* shadcn-compatible aliases (mapped onto the new tokens) */
   --background:           var(--bg);
   --foreground:           var(--fg);
@@ -208,6 +214,9 @@
   --color-auth-page-bg:       var(--auth-page-bg);
   --color-auth-input:         var(--auth-input);
   --color-auth-text:          var(--auth-text);
+  --color-onboarding-progress-fill: var(--onboarding-progress-fill);
+  --color-onboarding-progress-track: var(--onboarding-progress-track);
+  --color-onboarding-progress-border: var(--onboarding-progress-border);
   --color-ring:               var(--ring);
   --color-destructive:        var(--danger);
   --color-destructive-foreground: #FFFFFF;
