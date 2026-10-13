@@ -334,6 +334,42 @@ try{
  },{clock:true});
  }
  if(!onlyKeyboardFocus&&!onlyCanonicalCaptures){
+ for(const journey of [
+  {name:'buyer',camino:'explorar',tipo:'casual'},
+  {name:'casual-seller',camino:'vender',tipo:'casual'},
+  {name:'business-seller',camino:'vender',tipo:'business'},
+ ])for(const action of ['continue','skip'])await runCase(`all-steps-${journey.name}-${action}`,mobile,`/bienvenida?tipo=${journey.tipo}&push=prompt`,async page=>{
+  await choosePath(page,journey.camino==='vender'?'Quiero vender':'Quiero comprar',journey.camino==='vender'?'¿Qué vendes?':'Elige tu ID de usuario');
+  const expected=[...(journey.camino==='vender'?['categoria','tipo']:[]),'usuario','nombre','foto','descripcion',...(journey.camino==='vender'&&journey.tipo==='business'?['pagos']:[]),'intereses','ubicacion','notificaciones','listo'];
+  for(let index=0;index<expected.length;index++){
+   const step=expected[index];
+   await page.waitForFunction(step=>location.pathname===`/completar-perfil/${step}`,step);
+   assert.equal(await page.getByRole('alert').count(),0,`Unexpected error at ${step}`);
+   if(action==='continue'){
+    if(step==='categoria'||step==='intereses')await page.getByText('Comida y Bebidas',{exact:true}).click();
+    if(step==='tipo')await page.getByText(journey.tipo==='business'?'Negocio':'Casual',{exact:true}).click();
+    if(step==='usuario'){await page.getByLabel('ID de usuario',{exact:true}).fill('journey_user');await availableUsername(page);}
+    if(step==='nombre')await page.getByLabel(journey.tipo==='business'?'Nombre del negocio':'Tu nombre',{exact:true}).fill('Nombre de prueba');
+    if(step==='foto')await page.getByRole('button',{name:'Elegir foto de prueba',exact:true}).click();
+    if(step==='descripcion')await page.getByLabel(journey.tipo==='business'?'Descripción del negocio':'Tu descripción',{exact:true}).fill('Descripción de prueba');
+    if(step==='pagos'){
+     await page.getByRole('button',{name:'Selecciona métodos de pago...',exact:true}).click();
+     await page.getByText('Efectivo',{exact:true}).click();
+    }
+    if(step==='ubicacion')await page.getByRole('button',{name:'Elegir zona de prueba',exact:true}).click();
+   }
+   const label=step==='listo'?(journey.camino==='vender'?(action==='skip'?'Entrar por ahora':'Activar y entrar'):'Entrar a VICINO'):(action==='skip'?'Omitir':'Continuar');
+   await page.getByRole('button',{name:label,exact:true}).click();
+   if(step!=='listo')await page.waitForFunction(next=>location.pathname===`/completar-perfil/${next}`,expected[index+1]);
+  }
+  await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.has_seen_onboarding),true);
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),journey.camino==='vender'&&action==='continue');
+  const saves=await page.evaluate(()=>window.__fixture.trace.filter(entry=>entry.action==='save').map(entry=>entry.input));
+  assert.deepEqual(saves.map(input=>input.nextStep),[expected[0],...expected.slice(1)]);
+  assert.equal(new Set(saves.map(input=>input.operationId)).size,saves.length,'Each question uses one operation');
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(entry=>entry.action==='finish').length),1);
+ });
  await runCase('reported-seller-buyer-id-back-seller-sequence',mobile,'/bienvenida',async page=>{
   await choosePath(page,'Quiero vender','¿Qué vendes?');
   await page.getByText('Comida y Bebidas',{exact:true}).click();

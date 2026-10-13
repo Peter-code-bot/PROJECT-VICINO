@@ -1,3 +1,10 @@
+## 13-oct-2026 — Onboarding publicado; comprobación de todos los pasos
+
+- Revisión solicitada por Javier tras el registro bloqueado de un amigo: Gemini había subido `6d6ee49` a la rama, pero no había creado ni integrado un PR. Production seguía en `9aae1ed`; el enlace `/pull/new/…` era un formulario.
+- [PR57](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/57) integrado a master el 13-oct a las 16:34:43 CDMX, merge `cb9f4448d8222535419714735cf32767f98c284c`, árbol idéntico al candidato. CI del PR `38478570301` y de master `38478724948` SUCCESS; Vercel Production `5LdjeBTJcZxVrNXXKcJpQy7MAnm1`, deployment `7051802998`, SUCCESS a las 16:37:32 CDMX para el mismo SHA.
+- Reejecución de UI: 126/126, exit 0. Matriz ampliada `node scripts/test-onboarding-ui.mjs journeys`: 30/30, exit 0; incluye seis recorridos completos (comprador, vendedor casual y negocio, cada uno con Continuar y con Omitir), comprobando cada URL, operación y finalización. Primer ensayo 29/30: el test intentaba seleccionar Efectivo sin abrir el selector; se corrigió la interacción del test y la matriz completa pasó. Sin cambios adicionales al producto. Resultados y cierre en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+- Smoke público: login y registro con contenido, onboarding protegido, API de ID 401 con `private, no-store`, CSS de progreso negro publicado. Sin cuentas creadas ni datos remotos modificados. Las pruebas de componentes simulan Auth/ACK, foto, mapa y permisos; aceptación autenticada del amigo y física Android/iOS pendiente en NAT-AND-02/08 y NAT-IOS-02/07. La app instalada carga `https://vicinomarket.com`; no se reconstruyó un binario nativo.
+
 ## 12-oct-2026 — Onboarding: navegación reactiva, recuperación de bloqueo y cabecera negra completadas (local)
 
 - Corrección del bloqueo de navegación reportado por Javier (ONB-FREEZE-01) y nuevo progreso visual (ONB-PROGRESS-01). Rama aislada `fix/onboarding-navegacion-progreso-20261012` sobre base `9aae1ed` de master; checkout `PROJECT-VICINO-ONBOARDING`.
