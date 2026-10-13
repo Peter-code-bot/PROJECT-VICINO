@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingOptions } from "./onboarding-options";
+import { OnboardingLoadError } from "../completar-perfil/load-profile";
 
 interface BienvenidaPageProps {
   searchParams: Promise<{ elegir?: string }>;
@@ -15,27 +16,23 @@ export default async function BienvenidaPage({ searchParams }: BienvenidaPagePro
 
   if (!user) redirect("/login");
 
-  // Already-onboarded users have nothing to do here. A missing profile row
-  // still renders the page: completeOnboarding surfaces it as a visible error.
+  // The selector needs the same canonical frontier as the questions before writing a choice.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("has_seen_onboarding, onboarding_camino, onboarding_paso, es_vendedor")
+    .select("id, username, nombre, bio, foto, intereses, onboarding_camino, onboarding_paso, has_seen_onboarding, es_vendedor, seller_type, categoria_negocio, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, onboarding_revision")
     .eq("id", user.id)
     .single();
 
-  // Se reporta el error pero NO se redirige a ningun sitio: las ramas de abajo
-  // usan `profile?.` y con perfil nulo caen solas a los dos botones, que es la
-  // salida segura. Redirigir desde aqui es justo lo que crea bucles — esta
-  // pantalla es el destino al que apuntan los otros guards.
-  //
-  // Sin este reporte, un 42501 por una columna sin GRANT se veia igual que un
-  // usuario nuevo: los dos botones. Silencioso y con la app entera detras.
+  // Report a failed read and retry on this URL. A selector without a canonical
+  // profile could overwrite the frontier; redirecting would create a guard loop.
   if (error) {
     Sentry.captureException(error, {
       tags: { action: "bienvenida_cargar_perfil" },
       contexts: { supabase: { code: error.code, details: error.details } },
     });
   }
+
+  if (error || !profile) return <OnboardingLoadError href="/bienvenida?elegir=1" />;
 
   if (profile?.has_seen_onboarding) redirect("/");
 
@@ -57,5 +54,5 @@ export default async function BienvenidaPage({ searchParams }: BienvenidaPagePro
   // hecho deberia poder redirigir en bucle.
   if (!elegirDeNuevo && profile?.es_vendedor) redirect("/completar-perfil");
 
-  return <OnboardingOptions />;
+  return <OnboardingOptions profile={profile} />;
 }

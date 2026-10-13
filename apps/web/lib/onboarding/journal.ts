@@ -9,6 +9,8 @@ export interface OnboardingCheckpoint {
   nextStep: PasoOnboardingActual;
   camino: CaminoOnboarding;
   fields: GuardarPasoInput;
+  /** Replays also invalidate the cached entry layout after a path-choice ACK. */
+  purpose?: "path-choice";
   /** A dispatched operation may have committed until a canonical response proves otherwise. */
   uncertain?: boolean;
 }
@@ -70,6 +72,8 @@ export function parseOnboardingJournal(raw: string | null, userId: string): Onbo
         || typeof entry.nextStep !== "string" || !esPasoOnboarding(entry.nextStep)
         || (entry.camino !== "explorar" && entry.camino !== "vender") || !validFields(entry.fields)) return null;
       if (entry.uncertain !== undefined && typeof entry.uncertain !== "boolean") return null;
+      if (entry.purpose !== undefined && (entry.purpose !== "path-choice" || Object.keys(entry.fields).length !== 0
+        || entry.nextStep !== (entry.camino === "vender" ? "categoria" : "usuario"))) return null;
       // Only the head can have been dispatched. Its revision survives a lost response.
       if (entry.expectedRevision !== null && (prepared || ids.size > 0)) return null;
       if (entry.expectedRevision !== null) prepared = true;
@@ -81,19 +85,23 @@ export function parseOnboardingJournal(raw: string | null, userId: string): Onbo
 
 export function appendOnboardingCheckpoint(journal: OnboardingJournal, input: {
   operationId: string; revision: number; fromStep: PasoOnboardingActual;
-  nextStep: PasoOnboardingActual; camino: CaminoOnboarding; fields?: GuardarPasoInput;
+  nextStep: PasoOnboardingActual; camino: CaminoOnboarding; fields?: GuardarPasoInput; purpose?: "path-choice";
 }): OnboardingJournal {
   if (journal.entries.length >= MAX_ENTRIES) throw new Error("Espera a que se guarden tus pasos pendientes antes de continuar.");
   if (!UUID.test(input.operationId) || journal.entries.some((entry) => entry.operationId === input.operationId)) {
     throw new Error("No se pudo preparar el guardado. Intenta de nuevo.");
   }
   if (!validFields(input.fields ?? {})) throw new Error("Revisa los datos de este paso antes de continuar.");
+  if (input.purpose && (Object.keys(input.fields ?? {}).length !== 0
+    || input.nextStep !== (input.camino === "vender" ? "categoria" : "usuario")))
+    throw new Error("Revisa cómo quieres empezar antes de continuar.");
   if (!Number.isSafeInteger(input.revision) || input.revision < 0) throw new Error("No pudimos recuperar la versión de tu perfil.");
   const entry: OnboardingCheckpoint = {
     operationId: input.operationId, expectedRevision: null,
     fromStep: input.fromStep, nextStep: input.nextStep, camino: input.camino,
     // Detach arrays and values from subsequent edits to the form.
     fields: JSON.parse(JSON.stringify(input.fields ?? {})) as GuardarPasoInput,
+    ...(input.purpose ? { purpose: input.purpose } : {}),
     uncertain: false,
   };
   return { ...journal, baseRevision: journal.entries.length ? journal.baseRevision : input.revision,

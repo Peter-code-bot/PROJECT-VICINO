@@ -65,6 +65,10 @@ export interface OnboardingShellProps {
   onBack?: () => void;
   step?: number;
   totalSteps?: number;
+  /** The bar describes the local question position, independently of its ACK. */
+  progressPending?: boolean;
+  /** Only set after the server confirms finalization. Never delays navigation. */
+  progressComplete?: boolean;
   footer?: ReactNode;
   error?: string;
   busy?: boolean;
@@ -78,6 +82,8 @@ export function OnboardingShell({
   onBack,
   step,
   totalSteps,
+  progressPending = false,
+  progressComplete = false,
   footer,
   error,
   busy,
@@ -85,9 +91,17 @@ export function OnboardingShell({
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
-  const hasProgress = step !== undefined && totalSteps !== undefined && totalSteps > 0;
+  const questionCount = totalSteps ?? 0;
+  const questionNumber = step ?? 1;
+  const hasProgress = step !== undefined && Number.isInteger(questionNumber)
+    && Number.isInteger(questionCount) && questionCount > 0;
+  const currentStep = hasProgress ? Math.min(questionCount, Math.max(1, questionNumber)) : 1;
+  // The current question is still in progress. 100% requires a final server ACK.
+  const progress = hasProgress ? (progressComplete ? 1 : (currentStep - 1) / questionCount) : 0;
+  const progressText = progressComplete ? "Onboarding confirmado"
+    : `Etapa ${currentStep} de ${questionCount}${progressPending ? ". Guardado pendiente" : ""}`;
   const backClassName =
-    "inline-flex h-12 w-12 items-center justify-center rounded-xl text-fg-muted hover:bg-brand-tint hover:text-fg";
+    "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-fg-muted hover:bg-brand-tint hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
   return (
     <section
@@ -96,7 +110,7 @@ export function OnboardingShell({
       aria-busy={busy || undefined}
       className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col"
     >
-      <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 px-6 py-2">
+      <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 py-2 pl-4 pr-6">
         {onBack ? (
           <button type="button" onClick={onBack} disabled={busy} aria-label="Regresar" className={backClassName}>
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
@@ -113,12 +127,25 @@ export function OnboardingShell({
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </Link>
         ) : (
-          <span aria-hidden="true" className="h-12 w-12" />
+          <span aria-hidden="true" className="h-12 w-12 shrink-0" />
         )}
         {hasProgress && (
-          <span className="text-sm font-medium text-fg-muted">
-            Paso {step} de {totalSteps}
-          </span>
+          <div
+            role="progressbar"
+            aria-label="Progreso del onboarding"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuetext={progressText}
+            className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full border border-onboarding-progress-border bg-onboarding-progress-track"
+          >
+            <span
+              aria-hidden="true"
+              data-onboarding-progress-fill
+              className="block h-full w-full origin-left bg-onboarding-progress-fill transition-transform duration-150 ease-out motion-reduce:transition-none"
+              style={{ transform: `scaleX(${progress})` }}
+            />
+          </div>
         )}
       </header>
 

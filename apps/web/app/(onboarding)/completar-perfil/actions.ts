@@ -220,6 +220,18 @@ export async function guardarCheckpointOnboarding(input: GuardarCheckpointInput)
   return canonicalResult(data, user.id);
 }
 
+/** A choice is an empty-field v3 checkpoint, with the same receipt on every replay. */
+export async function elegirCaminoOnboarding(input: GuardarCheckpointInput): Promise<CheckpointResult> {
+  const parsed = checkpointSchema.safeParse(input);
+  if (!parsed.success || Object.keys(parsed.data.fields).length !== 0
+    || parsed.data.nextStep !== (parsed.data.camino === "vender" ? "categoria" : "usuario"))
+    return { error: "Revisa cómo quieres empezar antes de continuar." };
+  const result = await guardarCheckpointOnboarding(parsed.data);
+  // A prefetched layout can otherwise contain the profile from before the choice.
+  if (result.success) await revalidatePath("/completar-perfil", "layout");
+  return result;
+}
+
 export async function finalizarOnboarding(input: FinalizarOnboardingInput): Promise<CheckpointResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

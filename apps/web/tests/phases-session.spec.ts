@@ -8,7 +8,7 @@ let script: string;
 test.beforeAll(async () => {
   const web=path.resolve(__dirname,'..');
   const mocks:Record<string,string>={
-    'next/navigation':`const router={refresh:()=>{}};export const useRouter=()=>router;export const usePathname=()=>'/';`,
+    'next/navigation':`const router={refresh:()=>{}};export const useRouter=()=>router;export const usePathname=()=>'/';export const useSearchParams=()=>new URLSearchParams(location.search);`,
     '@/lib/supabase/client':`export const createClient=()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>{}}}})}});`,
   };
   const result=await esbuild.build({stdin:{contents:`import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
@@ -51,7 +51,7 @@ let seededScript:string;
 test.beforeAll(async()=>{
   const web=path.resolve(__dirname,'..');
   const mocks:Record<string,string>={
-    'next/navigation':`const router={refresh:()=>{}};export const useRouter=()=>router;export const usePathname=()=>'/';`,
+    'next/navigation':`const router={refresh:()=>{}};export const useRouter=()=>router;export const usePathname=()=>'/';export const useSearchParams=()=>new URLSearchParams(location.search);`,
     '@/lib/supabase/client':`export const createClient=()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>{}}}})}});`,
   };
   const result=await esbuild.build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';

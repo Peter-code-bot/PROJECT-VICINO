@@ -1,13 +1,13 @@
 "use client";
 import { restaurarRetornoHome } from "@/lib/auth/retorno-home";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SessionCache, type Snapshot } from "@/lib/session-cache";
 import { locationScopeFromDocumentCookie } from "@/lib/session-scope";
 import { consumirRestauracion } from "@/lib/navigation/restauracion-ui";
 import { guardarOrigenVender } from "@/lib/navigation/retorno-vender";
-import { installCommunityNavigation } from "@/lib/navigation/retorno-comunidad";
+import { COMMUNITY_NAVIGATION_UPDATED, createCommunityNavigationObserver, type CommunityNavigationObserver } from "@/lib/navigation/retorno-comunidad";
 
 const Context = createContext<SessionCache | null>(null);
 export function SessionDataProvider({ userId, revision, children }: { userId: string; revision: string; children: React.ReactNode }) {
@@ -18,41 +18,29 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
   }, [cache, revision]);
   const lifecycle = useRef(0);
   const pathname = usePathname();
+  const search = useSearchParams().toString();
   const router = useRouter();
+  const navigationObserver = useRef<CommunityNavigationObserver | null>(null);
   useEffect(() => {
-    const stopCommunityNavigation = installCommunityNavigation();
+    const observer = createCommunityNavigationObserver();
+    navigationObserver.current = observer;
     const guardar = () => {
-      if (typeof window === "undefined") return;
-      const path = window.location.pathname;
-      const search = window.location.search;
-      if (path && !path.startsWith("/vender")) {
-        guardarOrigenVender(path + search);
-      }
+      guardarOrigenVender(window.location.pathname + window.location.search);
     };
-
     guardar();
-
-    const origPush = window.history.pushState;
-    const origReplace = window.history.replaceState;
-    window.history.pushState = function (...args) {
-      const res = origPush.apply(this, args);
-      guardar();
-      return res;
-    };
-    window.history.replaceState = function (...args) {
-      const res = origReplace.apply(this, args);
-      guardar();
-      return res;
-    };
     window.addEventListener("popstate", guardar);
-
+    window.addEventListener(COMMUNITY_NAVIGATION_UPDATED, guardar);
     return () => {
-      window.history.pushState = origPush;
-      window.history.replaceState = origReplace;
+      if (navigationObserver.current === observer) navigationObserver.current = null;
       window.removeEventListener("popstate", guardar);
-      stopCommunityNavigation();
+      window.removeEventListener(COMMUNITY_NAVIGATION_UPDATED, guardar);
+      observer.dispose();
     };
-  }, [pathname]);
+  }, []);
+  useEffect(() => {
+    navigationObserver.current?.observe();
+    guardarOrigenVender(pathname + (search ? `?${search}` : ""));
+  }, [pathname, search]);
   useEffect(() => {
     const generation = ++lifecycle.current;
     const supabase = createClient();

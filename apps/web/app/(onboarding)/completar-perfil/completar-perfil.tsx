@@ -8,9 +8,10 @@ import { Check } from "lucide-react";
 import { iconoDeCategoria } from "@/lib/categories/icons";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { OnboardingActions, OnboardingShell, onboardingInputClassName } from "@/components/onboarding/onboarding-shell";
+import { OnboardingSaveStatus } from "@/components/onboarding/onboarding-save-status";
 import { UsernameStep } from "@/components/onboarding/username-step";
 import { Activar, Categoria, Pagos, Tipo } from "@/components/onboarding/seller-steps";
-import { esPasoOnboarding, pasoParaReanudar, pasosDelCamino, rutaDePaso, siguientePaso, type CaminoOnboarding, type PasoOnboardingActual } from "@/lib/onboarding/steps";
+import { esPasoOnboarding, pasoParaReanudar, pasosDelCamino, resolverCaminoOnboarding, rutaDePaso, siguientePaso, type PasoOnboardingActual } from "@/lib/onboarding/steps";
 import { fieldsForOnboardingStep } from "@/lib/onboarding/draft";
 import { finishOnboardingNavigation, startOnboardingNavigation } from "@/lib/onboarding/client-metrics";
 import { useOnboardingSession } from "./onboarding-session";
@@ -29,7 +30,7 @@ export function CompletarPerfil() {
   const query = useSearchParams();
   const session = useOnboardingSession();
   const { profile, draft, update } = session;
-  const camino: CaminoOnboarding = query.get("camino") === "vender" || profile.onboarding_camino === "vender" ? "vender" : "explorar";
+  const camino = resolverCaminoOnboarding(query.get("camino"), profile.onboarding_camino);
   // Branches and totals use the canonical ACK, never an unconfirmed type selection.
   const tipo = profile.seller_type === "business" ? "business" as const : "casual" as const;
   const context = useMemo(() => ({ camino, tipo, notificacionesResueltas: session.notificacionesResueltas }), [camino, tipo, session.notificacionesResueltas]);
@@ -78,7 +79,11 @@ export function CompletarPerfil() {
     return () => window.clearTimeout(timer);
   }, [paso, camino, context, session.ready, session.blocked, router]);
 
-  function navigate(next: PasoOnboardingActual) { window.history.pushState(null, "", rutaDePaso(next, camino)); }
+  function navigate(next: PasoOnboardingActual, expectedLocation?: string) {
+    // Browser Back can change questions while a barrier is waiting for its ACK.
+    if (expectedLocation && window.location.pathname + window.location.search !== expectedLocation) return;
+    window.history.pushState(null, "", rutaDePaso(next, camino));
+  }
 
   function run(operation: () => Promise<void>) {
     if (running.current || ocupado) return;
@@ -112,24 +117,26 @@ export function CompletarPerfil() {
     if (paso === "listo") { run(() => session.finalize("explorar")); return; }
     const next = siguientePaso(paso, context);
     if (!next) return;
+    const expectedLocation = window.location.pathname + window.location.search;
     run(async () => {
       session.discardStep(paso, negocio);
       if (paso === "ubicacion") setLocationDraft(null);
       await session.checkpoint(paso, next, camino);
-      navigate(next);
+      navigate(next, expectedLocation);
     });
   }
 
   function continueStep() {
     if (!canContinue[paso] || session.blocked || ocupado) return;
     startOnboardingNavigation(paso, paso === "listo" ? "finish" : "continue");
+    const expectedLocation = window.location.pathname + window.location.search;
     run(async () => {
       if (paso === "listo") { await session.finalize(finalVendedor ? "activar" : "explorar"); return; }
       const next = siguientePaso(paso, paso === "tipo" ? { ...context, tipo: draft.tipo } : context)!;
       if (paso === "ubicacion" && locationDraft) setManualPosition({ lat: locationDraft.lat, lng: locationDraft.lng, name: locationDraft.address });
       await session.checkpoint(paso, next, camino, fieldsForOnboardingStep(paso, draft, negocio),
         paso === "usuario" || paso === "foto" || paso === "tipo");
-      navigate(next);
+      navigate(next, expectedLocation);
     });
   }
 
@@ -137,27 +144,24 @@ export function CompletarPerfil() {
     if (ocupado || session.finalPending) return;
     startOnboardingNavigation(paso, "back");
     if (index > 0) navigate(steps[index - 1]!);
-    else router.push("/bienvenida?elegir=1");
+    else {
+      const expectedLocation = window.location.pathname + window.location.search;
+      run(async () => {
+        await session.waitForSaved();
+        if (window.location.pathname + window.location.search === expectedLocation) router.push("/bienvenida?elegir=1");
+      });
+    }
   }
 
-  const status = <div className="space-y-3">
-    {session.pending > 0 && <p role="status" className="text-sm text-fg-muted">
-      {session.error ? "Hay pasos pendientes de guardar." : "Guardando tu avance…"}
-    </p>}
-    {session.error && <div className="space-y-3 rounded-xl border border-danger p-3 text-sm">
-      <p role="alert">{session.error}</p>
-      {!session.conflict && <button type="button" disabled={ocupado} className="min-h-12 rounded-xl border border-border px-4 font-medium" onClick={() => run(() => session.retry())}>Reintentar guardado</button>}
-      {session.uncertain ? <><p className="text-fg-muted">Aún no sabemos si este paso se guardó. Conservaremos la misma operación para comprobarlo.</p>
-        <button type="button" disabled={ocupado} className="min-h-12 rounded-xl px-4 font-medium underline" onClick={() => window.location.reload()}>Recargar y recuperar</button></>
-        : <><p className="text-fg-muted">Volver al avance guardado descarta los pasos y ediciones que siguen pendientes en esta sesión.</p>
-          <button type="button" disabled={ocupado || session.finalPending} className="min-h-12 rounded-xl px-4 font-medium underline" onClick={session.recoverConfirmed}>Volver al avance guardado</button></>}
-    </div>}
-    {session.finalPending && <p role="status" className="text-sm text-fg-muted">Falta confirmar tu entrada. Al reintentar conservaremos tu decisión anterior.</p>}
-  </div>;
+  const status = <OnboardingSaveStatus session={session} busy={ocupado} error={error} onRetry={() => run(async () => { await session.retry(); })} />;
 
   if (paso === "notificaciones") return <PedirPermiso siguiente={rutaDePaso("listo", camino)} onBack={back} step={index + 1} totalSteps={steps.length}
+    progressPending={session.pending > 0 || session.busy}
     disabled={session.blocked || !session.ready} status={status} onPermissionChange={session.notifyPermission}
-    onContinue={async () => { startOnboardingNavigation(paso, "continue"); await session.checkpoint(paso, "listo", camino); navigate("listo"); }} />;
+    onContinue={async () => {
+      const expectedLocation = window.location.pathname + window.location.search;
+      startOnboardingNavigation(paso, "continue"); await session.checkpoint(paso, "listo", camino); navigate("listo", expectedLocation);
+    }} />;
 
   const titles: Record<PasoOnboardingActual, string> = {
     categoria: "¿Qué vendes?", tipo: "¿Cómo quieres vender?", usuario: "Elige tu ID de usuario",
@@ -177,12 +181,14 @@ export function CompletarPerfil() {
     listo: finalVendedor ? "Revisa lo que se mostrará antes de activar el Modo Vendedor." : "Ya puedes explorar y conectar con tus vecinos.",
   };
 
-  return <OnboardingShell title={titles[paso]} description={descriptions[paso]} onBack={session.finalPending ? undefined : back}
-    step={index + 1} totalSteps={steps.length} error={error} busy={ocupado}
+  return <OnboardingShell title={titles[paso]} description={descriptions[paso]} onBack={session.finalPending || profile.has_seen_onboarding ? undefined : back}
+    step={index + 1} totalSteps={steps.length} progressComplete={profile.has_seen_onboarding}
+    progressPending={!profile.has_seen_onboarding && (session.pending > 0 || session.busy)} busy={ocupado}
     footer={<OnboardingActions type="submit" form="onboarding-question" busy={ocupado} disabled={!canContinue[paso] || session.blocked}
       continueLabel={paso === "listo" ? session.finalPending ? "Reintentar entrada" : finalVendedor ? "Activar y entrar" : "Entrar a VICINO" : "Continuar"}
       onSkip={session.blocked || session.finalPending || (paso === "listo" && !finalVendedor) ? undefined : omit}
       skipLabel={paso === "listo" ? "Entrar por ahora" : "Omitir"} />}>
+    {status}
     <form id="onboarding-question" onSubmit={(event) => { event.preventDefault(); continueStep(); }}>
       <fieldset disabled={ocupado || session.finalPending} className="min-w-0 space-y-5">
         {paso === "categoria" && <Categoria value={draft.categoria} onChange={(value) => update("categoria", value)} />}
@@ -215,6 +221,5 @@ export function CompletarPerfil() {
           <p className="font-medium">@{profile.username}</p><p className="text-base text-fg-muted">Puedes completar o cambiar tus datos cuando quieras desde tu perfil.</p></div>)}
       </fieldset>
     </form>
-    <div className="mt-5">{status}</div>
   </OnboardingShell>;
 }

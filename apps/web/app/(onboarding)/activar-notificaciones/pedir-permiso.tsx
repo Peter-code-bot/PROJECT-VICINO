@@ -24,6 +24,8 @@ interface PedirPermisoProps {
   onPermissionChange?: (permission: EstadoPermisoPush, source: "read" | "request") => void;
   step?: number;
   totalSteps?: number;
+  progressPending?: boolean;
+  progressComplete?: boolean;
 }
 
 // These are the events currently delivered by the push pipeline. Community
@@ -52,6 +54,8 @@ export function PedirPermiso({
   onPermissionChange,
   step,
   totalSteps,
+  progressPending,
+  progressComplete,
 }: PedirPermisoProps) {
   const router = useRouter();
   const [permiso, setPermiso] = useState<EstadoPermisoPush | null>(null);
@@ -164,6 +168,8 @@ export function PedirPermiso({
       onBack={onBack}
       step={step}
       totalSteps={totalSteps}
+      progressPending={progressPending}
+      progressComplete={progressComplete}
       busy={ocupado}
       error={error}
       footer={
@@ -180,6 +186,7 @@ export function PedirPermiso({
         />
       }
     >
+      {status}
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-tint text-brand dark:text-brand-hi">
         <Bell className="h-8 w-8" aria-hidden="true" />
       </div>
@@ -195,7 +202,6 @@ export function PedirPermiso({
         Puedes elegir qué recibir en Configuración cuando quieras.
       </p>
       {permiso === "denegado" && <p className="mt-4 text-sm text-fg-muted">Puedes activar los avisos desde los ajustes del teléfono cuando quieras.</p>}
-      <div className="mt-5">{status}</div>
     </OnboardingShell>
   );
 }

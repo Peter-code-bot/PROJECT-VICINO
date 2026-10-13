@@ -52,6 +52,30 @@ test("checkpoint confirma snapshot propio, operación inmutable y no invalida ru
     p_from_step: "usuario", p_next_step: "nombre", p_camino: "explorar", p_fields: { username: "alice" } } }]);
   assert.deepEqual(f.paths, []);
 });
+
+test("elección usa el recibo v3 sin campos y actualiza el layout sólo después de un ACK propio", async () => {
+  const choice = { ...CHECKPOINT, nextStep: "usuario", fields: {} };
+  const response = { ...RESPONSE, paso: "usuario", snapshot: { ...snapshot, onboarding_paso: "usuario" } };
+  const f = await load({ data: response });
+  assert.equal((await f.actions.elegirCaminoOnboarding(choice)).success, true);
+  assert.deepEqual(f.calls, [{ name: "guardar_checkpoint_onboarding_v3", args: { p_operation_id: OP,
+    p_expected_revision: 0, p_from_step: "usuario", p_next_step: "usuario", p_camino: "explorar", p_fields: {} } }]);
+  assert.deepEqual(f.paths, ["/completar-perfil"]);
+  for (const data of [{ status: "saved" }, { ...response, status: "conflict" }]) {
+    const rejected = await load({ data });
+    assert.ok((await rejected.actions.elegirCaminoOnboarding(choice)).error);
+    assert.deepEqual(rejected.paths, []);
+  }
+  const other = await load({ userId: OTHER });
+  assert.ok((await other.actions.elegirCaminoOnboarding(choice)).error); assert.equal(other.calls.length, 0);
+});
+
+test("el selector no guarda campos ni permite un destino ajeno al recorrido elegido", async () => {
+  const f = await load();
+  assert.ok((await f.actions.elegirCaminoOnboarding({ ...CHECKPOINT, nextStep: "usuario" })).error);
+  assert.ok((await f.actions.elegirCaminoOnboarding({ ...CHECKPOINT, nextStep: "categoria", fields: {} })).error);
+  assert.equal(f.calls.length, 0); assert.deepEqual(f.paths, []);
+});
 test("ACK de otro usuario o mal formado y error transporte conservan operationId como incierto", async () => {
   for (const data of [{ ...RESPONSE, snapshot: { ...snapshot, id: OTHER } }, { ...RESPONSE, revision: 5 }, { status: "saved" }]) {
     const f = await load({ data });

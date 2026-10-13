@@ -2,18 +2,18 @@
 
 import { createContext, startTransition, useCallback, useContext, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { guardarCheckpointOnboarding, finalizarOnboarding, type GuardarPasoInput } from "./actions";
+import { guardarCheckpointOnboarding, elegirCaminoOnboarding, finalizarOnboarding, type GuardarPasoInput } from "./actions";
 import type { OnboardingProfile } from "./load-profile";
 import { acknowledgeOnboardingCheckpoint, appendOnboardingCheckpoint, createOnboardingJournal, journalStorageKey, parseOnboardingJournal, prepareOnboardingCheckpoint, type OnboardingJournal } from "@/lib/onboarding/journal";
-import { discardOnboardingStepDraft, initialOnboardingDraft, restoreOnboardingDraft, type OnboardingDraft } from "@/lib/onboarding/draft";
-import { pasoParaReanudar, rutaDePaso, type CaminoOnboarding, type PasoOnboardingActual } from "@/lib/onboarding/steps";
+import { discardOnboardingStepDraft, initialOnboardingDraft, reconcileOnboardingDraft, restoreOnboardingDraft, type OnboardingDraft } from "@/lib/onboarding/draft";
+import { pasoParaReanudar, resolverCaminoOnboarding, rutaDePaso, type CaminoOnboarding, type PasoOnboardingActual } from "@/lib/onboarding/steps";
 import { recordOnboardingAcknowledgement } from "@/lib/onboarding/client-metrics";
 import { conTope, esTope } from "@/lib/auth/con-tope";
 
 interface FinalOperation { operationId: string; expectedRevision: number; decision: "explorar" | "activar" }
 const SessionContext = createContext<ReturnType<typeof useSessionController> | null>(null);
 
-function useSessionController(input: OnboardingProfile) {
+function useSessionController(input: OnboardingProfile, selectingPath: boolean) {
   const [initial] = useState(input);
   const router = useRouter();
   const [profile, setProfile] = useState(initial);
@@ -78,7 +78,8 @@ function useSessionController(input: OnboardingProfile) {
         if (!prepared && durablePending.current) throw new Error("No pudimos proteger los pasos pendientes en esta sesión. Reintenta antes de continuar.");
         const entry = journal.current.entries[0]!;
         const started = performance.now();
-        const result = await conTope(guardarCheckpointOnboarding({ expectedUserId: initial.id, operationId: entry.operationId,
+        const save = entry.purpose === "path-choice" ? elegirCaminoOnboarding : guardarCheckpointOnboarding;
+        const result = await conTope(save({ expectedUserId: initial.id, operationId: entry.operationId,
           expectedRevision: entry.expectedRevision!, fromStep: entry.fromStep, nextStep: entry.nextStep, camino: entry.camino, fields: entry.fields }));
         if (!accountValid.current || !mounted.current || generation.current !== epoch) throw new Error("Tu sesión cambió. Vuelve a entrar para continuar.");
         if ("error" in result && result.error) {
@@ -117,7 +118,7 @@ function useSessionController(input: OnboardingProfile) {
     let disposed = false;
     let unsubscribe: (() => void) | undefined;
     startTransition(() => {
-      const camino: CaminoOnboarding = new URLSearchParams(window.location.search).get("camino") === "vender" || initial.onboarding_camino === "vender" ? "vender" : "explorar";
+      const camino = resolverCaminoOnboarding(new URLSearchParams(window.location.search).get("camino"), initial.onboarding_camino);
       const step = pasoParaReanudar(initial.onboarding_paso, { camino, tipo: initial.seller_type === "business" ? "business" : "casual" });
       let recovered: OnboardingJournal | null = null;
       let corrupt = false;
@@ -149,9 +150,11 @@ function useSessionController(input: OnboardingProfile) {
         setError("No pudimos recuperar los pasos pendientes de esta sesión. Puedes volver al avance guardado.");
         journal.current = createOnboardingJournal(initial.id, step, camino, initial.onboarding_revision);
       } else {
-        persistJournal(recovered ?? createOnboardingJournal(initial.id, step, camino, initial.onboarding_revision));
-        if (finalOperation.current) window.history.replaceState(null, "", rutaDePaso("listo", camino));
-        else if (recovered?.entries.length) window.history.replaceState(null, "", rutaDePaso(recovered.viewStep, recovered.camino));
+        persistJournal(recovered?.entries.length ? recovered : createOnboardingJournal(initial.id, step, camino, initial.onboarding_revision));
+        if (!selectingPath) {
+          if (finalOperation.current) window.history.replaceState(null, "", rutaDePaso("listo", camino));
+          else if (recovered?.entries.length) window.history.replaceState(null, "", rutaDePaso(recovered.viewStep, recovered.camino));
+        }
         if (recovered?.entries.length) void flush().catch(() => {});
       }
       bootstrapped.current = true; setReady(true);
@@ -169,12 +172,28 @@ function useSessionController(input: OnboardingProfile) {
       unsubscribe = () => data.subscription.unsubscribe();
     });
     const permissionEpoch = generation.current;
-    void import("@/hooks/usePushNotifications").then(({ leerPermisoPush }) => conTope(leerPermisoPush())).then((permission) => {
+    if (!selectingPath) void import("@/hooks/usePushNotifications").then(({ leerPermisoPush }) => conTope(leerPermisoPush())).then((permission) => {
       if (disposed || !mounted.current || generation.current !== permissionEpoch) return;
       onPermissionRead(permission);
     }).catch(() => { /* Unknown native bridge state keeps the optional manual screen. */ });
     return () => { disposed = true; mounted.current = false; generation.current += 1; unsubscribe?.(); };
-  }, [initial, queueKey, draftKey, finalKey, flush, persistJournal, router]);
+  }, [initial, queueKey, draftKey, finalKey, flush, persistJournal, router, selectingPath]);
+
+  useEffect(() => {
+    if (!ready || !mounted.current || !accountValid.current || failed.current || journal.current?.entries.length
+      || finalOperation.current || input.id !== initial.id
+      || input.onboarding_revision <= confirmed.current.onboarding_revision) return;
+    startTransition(() => {
+      const previous = confirmed.current;
+      const nextDraft = reconcileOnboardingDraft(editable.current, previous, input);
+      mergeCanonical(input);
+      editable.current = nextDraft; setDraft(nextDraft);
+      try { sessionStorage.setItem(draftKey, JSON.stringify(nextDraft)); } catch { /* Editing remains available in memory. */ }
+      const camino = resolverCaminoOnboarding(new URLSearchParams(window.location.search).get("camino"), input.onboarding_camino);
+      const step = pasoParaReanudar(input.onboarding_paso, { camino, tipo: input.seller_type === "business" ? "business" : "casual" });
+      persistJournal(createOnboardingJournal(input.id, step, camino, input.onboarding_revision));
+    });
+  }, [input, initial.id, ready, pending, draftKey, mergeCanonical, persistJournal]);
 
   function update<K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]) {
     if (!mounted.current || !accountValid.current) return;
@@ -191,11 +210,11 @@ function useSessionController(input: OnboardingProfile) {
     try { sessionStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Optional editable cache. */ }
   }
 
-  async function checkpoint(fromStep: PasoOnboardingActual, nextStep: PasoOnboardingActual, camino: CaminoOnboarding, fields: GuardarPasoInput = {}, barrier = false) {
+  async function checkpoint(fromStep: PasoOnboardingActual, nextStep: PasoOnboardingActual, camino: CaminoOnboarding, fields: GuardarPasoInput = {}, barrier = false, purpose?: "path-choice") {
     const epoch = generation.current;
     if (!bootstrapped.current || !accountValid.current || failed.current || finalOperation.current) throw new Error("Recupera el guardado pendiente antes de continuar.");
     const next = appendOnboardingCheckpoint(journal.current!, { operationId: crypto.randomUUID(), revision: confirmed.current.onboarding_revision,
-      fromStep, nextStep, camino, fields });
+      fromStep, nextStep, camino, fields, purpose });
     const persisted = persistJournal(next);
     if (barrier || !persisted) {
       setBusy(true);
@@ -218,12 +237,46 @@ function useSessionController(input: OnboardingProfile) {
     if (!accountValid.current || !mounted.current || generation.current !== epoch) throw new Error("Tu sesión cambió. Recupera tu avance antes de continuar.");
   }
 
-  async function retry() {
+  /** Both explicit Back and browser Back preserve the old frontier before a new choice. */
+  async function waitForSaved() {
     const epoch = generation.current;
     setBusy(true);
     try {
+      await flush();
+      if (!accountValid.current || !mounted.current || generation.current !== epoch)
+        throw new Error("Tu sesión cambió. Recupera tu avance antes de continuar.");
+    } finally { if (mounted.current && generation.current === epoch) setBusy(false); }
+  }
+
+  async function selectPath(camino: CaminoOnboarding) {
+    await waitForSaved();
+    if (finalOperation.current) throw new Error("Recupera tu entrada pendiente antes de elegir otro recorrido.");
+    const saved = confirmed.current;
+    const from = pasoParaReanudar(saved.onboarding_paso, {
+      camino: resolverCaminoOnboarding(null, saved.onboarding_camino), tipo: saved.seller_type === "business" ? "business" : "casual",
+    });
+    const next = camino === "vender" ? "categoria" : "usuario";
+    await checkpoint(from, next, camino, {}, true, "path-choice");
+    return rutaDePaso(next, camino);
+  }
+
+  async function retry() {
+    const epoch = generation.current;
+    const resume = journal.current?.entries.length ? journal.current.entries.at(-1) : undefined;
+    setBusy(true);
+    try {
       await flush(true);
-      if (mounted.current && generation.current === epoch && knownResolvedPermission.current) setNotificacionesResueltas(true);
+      if (!mounted.current || !accountValid.current || generation.current !== epoch) return;
+      if (knownResolvedPermission.current) setNotificacionesResueltas(true);
+      if (resume) {
+        const saved = confirmed.current;
+        const camino = resolverCaminoOnboarding(null, saved.onboarding_camino);
+        const step = pasoParaReanudar(saved.onboarding_paso, { camino,
+          tipo: saved.seller_type === "business" ? "business" : "casual", notificacionesResueltas: knownResolvedPermission.current });
+        const target = rutaDePaso(step, camino);
+        if (selectingPath) return resume.purpose === "path-choice" ? target : undefined;
+        if (window.location.pathname + window.location.search !== target) window.history.pushState(null, "", target);
+      }
     } finally { if (mounted.current && generation.current === epoch) setBusy(false); }
   }
 
@@ -240,7 +293,7 @@ function useSessionController(input: OnboardingProfile) {
       setNotificacionesResueltas(true); return;
     }
     notificationAdvance.current = true;
-    const camino: CaminoOnboarding = new URLSearchParams(window.location.search).get("camino") === "vender" || confirmed.current.onboarding_camino === "vender" ? "vender" : "explorar";
+    const camino = resolverCaminoOnboarding(new URLSearchParams(window.location.search).get("camino"), confirmed.current.onboarding_camino);
     const epoch = generation.current;
     void checkpoint("notificaciones", "listo", camino).then(() => {
       if (mounted.current && generation.current === epoch) setNotificacionesResueltas(true);
@@ -263,7 +316,7 @@ function useSessionController(input: OnboardingProfile) {
     failed.current = false; setConflict(false); setUncertain(false); setError("");
     editable.current = initialOnboardingDraft(saved); setDraft(editable.current);
     try { sessionStorage.removeItem(finalKey); sessionStorage.removeItem(draftKey); } catch { /* State remains isolated. */ }
-    window.history.replaceState(null, "", rutaDePaso(step, camino));
+    if (!selectingPath) window.history.replaceState(null, "", rutaDePaso(step, camino));
   }
 
   async function finalize(decision: "explorar" | "activar") {
@@ -294,7 +347,9 @@ function useSessionController(input: OnboardingProfile) {
         }
         recordOnboardingAcknowledgement("listo", started, "error"); throw new Error(result.error);
       }
+      if (!result.success) throw new Error("No pudimos confirmar tu entrada. Reintenta con la misma decisión.");
       recordOnboardingAcknowledgement("listo", started, "saved");
+      mergeCanonical(result.data.snapshot);
       try { sessionStorage.removeItem(queueKey); sessionStorage.removeItem(draftKey); sessionStorage.removeItem(finalKey); } catch { /* Server completion remains authoritative. */ }
       finalOperation.current = null; setFinalPending(false); router.replace(result.destino ?? "/");
     } catch (failure) {
@@ -303,12 +358,14 @@ function useSessionController(input: OnboardingProfile) {
     } finally { if (mounted.current && generation.current === epoch) setBusy(false); }
   }
 
-  return { profile, draft, update, discardStep, checkpoint, finalize, retry, recoverConfirmed, notifyPermission, pending, error, conflict, uncertain, ready, busy, notificacionesResueltas,
-    blocked: conflict || !!error, finalPending };
+  return { profile, draft, update, discardStep, checkpoint, waitForSaved, selectPath, finalize, retry, recoverConfirmed, notifyPermission, pending, error, conflict, uncertain, ready, busy, notificacionesResueltas,
+    blocked: profile.has_seen_onboarding || conflict || !!error, finalPending };
 }
 
-export function OnboardingSessionProvider({ profile, children }: { profile: OnboardingProfile; children: ReactNode }) {
-  const session = useSessionController(profile);
+export type OnboardingSession = ReturnType<typeof useSessionController>;
+
+export function OnboardingSessionProvider({ profile, children, selectingPath = false }: { profile: OnboardingProfile; children: ReactNode; selectingPath?: boolean }) {
+  const session = useSessionController(profile, selectingPath);
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
 }
 

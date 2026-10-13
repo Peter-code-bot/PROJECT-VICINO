@@ -18,6 +18,17 @@ export function initialOnboardingDraft(profile: OnboardingProfile): OnboardingDr
   };
 }
 
+/** Refresh untouched values without losing edits when the same account receives a new snapshot. */
+export function reconcileOnboardingDraft(draft: OnboardingDraft, previous: OnboardingProfile, next: OnboardingProfile): OnboardingDraft {
+  const before = initialOnboardingDraft(previous);
+  const after = initialOnboardingDraft(next);
+  const value = <K extends keyof OnboardingDraft>(key: K): OnboardingDraft[K] =>
+    JSON.stringify(draft[key]) === JSON.stringify(before[key]) ? after[key] : draft[key];
+  return { username: value("username"), nombre: value("nombre"), foto: value("foto"), bio: value("bio"),
+    categoria: value("categoria"), tipo: value("tipo"), nombreNegocio: value("nombreNegocio"),
+    descripcionNegocio: value("descripcionNegocio"), pagos: value("pagos"), intereses: value("intereses") };
+}
+
 export function restoreOnboardingDraft(profile: OnboardingProfile, raw: string | null): OnboardingDraft {
   const clean = initialOnboardingDraft(profile);
   try {

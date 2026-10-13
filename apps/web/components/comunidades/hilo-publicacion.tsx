@@ -16,6 +16,7 @@ import { PostCard, ImagenesPublicacion } from "./post-card";
 import { PostComposer, type EnvioDeMuro } from "./post-composer";
 import { leerImagenes } from "@/lib/comunidades/media";
 import { ConfirmarDialog } from "./confirmar-dialog";
+import { markCommunityNavigationReplace } from "@/lib/navigation/retorno-comunidad";
 
 const PAGINA = 30;
 
@@ -128,7 +129,9 @@ export function HiloPublicacion({
           esCabeceraDeHilo
           onCambio={setCabecera}
           onBorrada={() => {
-            router.replace(`/comunidades/${post.community_id}`);
+            const destination = `/comunidades/${post.community_id}`;
+            markCommunityNavigationReplace(destination);
+            router.replace(destination);
           }}
         />
       </div>
