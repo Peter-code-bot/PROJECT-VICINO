@@ -41,7 +41,7 @@ export const PRODUCT_CONDITION_VALUES = [
 
 const baseProductSchema = z.object({
   titulo: z.string().trim().min(3, "Mínimo 3 caracteres").max(120),
-  descripcion: z.string().min(10, "Mínimo 10 caracteres").max(5000),
+  descripcion: z.string().trim().max(5000).default(""),
   precio: z.number().positive("El precio debe ser mayor a 0").max(99999999).nullable().optional(),
   modo_precio: z.enum(["precio", "cotizacion", "reservacion"]).default("precio"),
   tipo: z.enum(["producto", "servicio"]),

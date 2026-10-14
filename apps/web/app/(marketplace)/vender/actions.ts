@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -238,7 +238,7 @@ export async function createProduct(formData: FormData) {
 
   const raw = {
     titulo: formData.get("titulo") as string,
-    descripcion: formData.get("descripcion") as string,
+    descripcion: formData.get("descripcion") ?? undefined,
     precio: modoPrecioRaw === "precio" && precioRaw !== null && precioRaw !== ""
       ? Number(precioRaw)
       : null,
@@ -456,7 +456,8 @@ export async function updateProductFull(
   const estadoField = formData.get("estado");
   const colorField = formData.get("color");
   if (typeof titulo === "string" && titulo.length > 0) raw.titulo = titulo;
-  if (typeof descripcion === "string" && descripcion.length > 0) raw.descripcion = descripcion;
+  // Ausente conserva el valor; una cadena vacía lo borra expresamente.
+  if (typeof descripcion === "string") raw.descripcion = descripcion;
   // 4c-1: el modo manda sobre el precio. En "cotizacion"/"reservacion" se
   // escribe null explicito (limpia el precio viejo si el seller cambio de
   // modo); solo en "precio" se toma el valor del input.
@@ -488,8 +489,8 @@ export async function updateProductFull(
   // estado is only present in the form when tipoSeleccionado === "producto";
   // servicios never render the select. If the field arrives we validate it
   // and rely on the DB CHECK constraint as the last line of defense.
-  if (typeof estadoField === "string" && estadoField.length > 0) {
-    raw.estado = estadoField;
+  if (typeof estadoField === "string") {
+    raw.estado = estadoField === "" ? null : estadoField;
   }
   // color is also only rendered for productos in the form. Tri-state: if
   // the field is present we send the trimmed value (empty -> null via
@@ -610,7 +611,7 @@ export async function updateProductFull(
   // Fase 2. Bloque updateObj.categoria removido aqui.
   if (parsed.data.ubicacion !== undefined) updateObj.ubicacion = parsed.data.ubicacion;
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
-  if (parsed.data.estado !== undefined && parsed.data.estado !== null) {
+  if (parsed.data.estado !== undefined) {
     updateObj.estado = parsed.data.estado;
   }
   // color allows null on update (the seller can clear the field) so the
@@ -737,7 +738,7 @@ export async function updateProductFull(
   redirect("/seller/listings");
 }
 
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: string, returnTo: "/perfil" | "/seller/listings" = "/perfil") {
   const supabase = await createClient();
 
   const {
@@ -748,20 +749,37 @@ export async function deleteProduct(id: string) {
     redirect("/login");
   }
 
+  const input = z.object({
+    id: z.string().uuid(),
+    returnTo: z.enum(["/perfil", "/seller/listings"]),
+  }).safeParse({ id, returnTo });
+  if (!input.success) return { error: "No se pudo identificar la publicación." };
+
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
-  const { error } = await supabase
+  // Repetir una eliminación propia es seguro: permite recuperarse si la
+  // escritura terminó pero la conexión se perdió antes de recibir el retorno.
+  const { data: deleted, error } = await supabase
     .from("products_services")
     .update({ estatus: "eliminado" })
-    .eq("id", id)
-    .eq("creador_id", user.id);
+    .eq("id", input.data.id)
+    .eq("creador_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
-    return { error: error.message };
+    Sentry.captureException(error, { tags: { action: "deleteProduct" } });
+    return { error: "No se pudo eliminar la publicación. Intenta de nuevo." };
   }
 
-  redirect("/seller/listings");
+  if (!deleted) return { error: "Esa publicación no está disponible o no te pertenece." };
+
+  // También avisa a la memoria de sesión del perfil; el redirect por sí solo
+  // podía recuperar la tarjeta anterior desde una página ya visitada.
+  await revalidatePath("/perfil");
+  await revalidatePath("/seller/listings");
+  redirect(input.data.returnTo, RedirectType.replace);
 }
 
 export async function toggleProductStatus(id: string, newStatus: "disponible" | "pausado") {

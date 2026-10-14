@@ -1,3 +1,9 @@
+## 14-oct-2026 — Eliminación de publicaciones y campos opcionales
+
+- Desde los tres puntos de la ficha, confirmar elimina y regresa a `/perfil`, reemplazando la ficha en el historial y revalidando publicaciones. Diálogo con carga, protección contra doble envío, errores recuperables y recuperación de foco. Descripción y condición física opcionales; edición permite limpiar ambas.
+- Integración sobre `master` `70e8a19`; se conservan AuthLink, BotonRegresar y `data-cromo-galeria` vigentes. Validador 18/18 y acciones 14/14, interacción con componentes reales y Auth/DB/transporte simulados, CSS compilado en 375×812 y 1280×800. Lint exit 0; build de integración con pnpm 9.15.0 exit 0 (60/60 páginas estáticas, BUILD_ID `3xghsBZr1oocxmAqQHAcV`). Sin migración ni escrituras en publicaciones reales.
+- Referencia de entrega: rama `fix/eliminar-publicacion-20261014`; SHA, revisión y estado de publicación en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd). La validación aislada no acredita aceptación autenticada en producción ni en dispositivos físicos.
+
 ## 14-oct-2026 — Fluidez de ubicación y Solicitudes
 
 - LU01 y FL01–FL04 implementados por autorización de Javier de ejecutar el plan y hacer push tras verificar. Palomita blanca sin texto; GPS aplica el punto antes de resolver el nombre, con enriquecimiento sin repetir la consulta del feed. Búsqueda distingue demora, error recuperable y ausencia de resultados.
