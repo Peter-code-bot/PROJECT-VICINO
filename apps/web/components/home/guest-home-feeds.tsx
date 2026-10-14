@@ -33,6 +33,7 @@ export function GuestRequestsFeed({ preview }: {
   return <div data-guest-preview="solicitudes" className="mx-auto w-full max-w-lg pb-28">
     <NationalPreviewIntro title="Solicitudes" />
     <GuestAuthCta destino={context} />
+    <p className="px-4 pb-3 text-sm leading-relaxed text-fg-muted">Publica lo que necesitas y recibe ofertas de personas cercanas.</p>
     <div className="flex items-center justify-between gap-3 px-4 pb-3">
       <AuthLink href={loginPara(context)} aria-label="Filtrar solicitudes" className="product-card-custom inline-flex min-h-12 items-center gap-2 rounded-xl px-3.5 text-sm font-medium text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg!">
         <LayoutGrid className="h-4 w-4 text-brand-hi" aria-hidden="true" />Categorías<ChevronDown className="h-3.5 w-3.5 text-fg-muted" aria-hidden="true" />
@@ -91,6 +92,7 @@ export function GuestCommunitiesFeed({ preview, activeTab }: {
   return <div data-guest-preview="comunidades" className="mx-auto w-full max-w-lg pb-28">
     <NationalPreviewIntro title="Comunidades" />
     <GuestAuthCta destino={context} />
+    <p className="px-4 pb-3 text-sm leading-relaxed text-fg-muted">Conecta con tus vecinos y comparte intereses en comunidad.</p>
     <div className="pb-3"><SubTabs active={activeTab === "descubrir" ? "descubrir" : "muro"} onChange={changeTab} largeTargets /></div>
     <div className="space-y-3 px-4">
       {!preview || failure ? <CatalogQueryState failure={failure ?? { kind: "failure" }} section="las comunidades de vista previa" />

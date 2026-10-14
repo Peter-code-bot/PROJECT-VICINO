@@ -1,3 +1,8 @@
+## 14-oct-2026 — Frases introductorias de Solicitudes y Comunidades
+
+- Inicio 07:44:27 CDMX por petición de Javier. «Publica lo que necesitas y recibe ofertas de personas cercanas.» encima del filtro de Solicitudes; «Conecta con tus vecinos y comparte intereses en comunidad.» encima de Muro/Mis comunidades/Descubrir, también en las vistas de invitado. Texto pequeño con tokens y márgenes existentes; guía UX Copy aplicada.
+- Verificación y publicación de COPY-SC-20261014 en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9); ampliación del [plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Los pendientes de aceptación autenticada y física de la entrega anterior conservan su seguimiento en Notion.
+
 ## 14-oct-2026 — Solicitudes, comunidades, ubicación y legales: integración técnica
 
 - Inicio de implementación autorizado por Javier: 13-oct 23:31:05 CDMX; reanudación 14-oct 01:00:17. Workflow Advisor aplicado; base d00e567, rama feat/solicitudes-comunidades-ubicacion-20261013. [Plan único](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).
