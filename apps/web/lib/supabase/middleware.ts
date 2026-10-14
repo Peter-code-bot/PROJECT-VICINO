@@ -7,7 +7,7 @@ import { usuarioOInvitado } from "../session-auth";
 import { CABECERA_RUTA } from "../navigation/rutas-legales";
 import { requiereSesion, loginPara, COOKIE_DESTINO_ONBOARDING } from "../auth/acceso-invitado";
 import { exentaDeConfirmacionLegal, legalStateSchema, rutaConfirmacionCuenta } from "../auth/confirmacion-legal";
-import { COOKIE_AGREGANDO_CUENTA, estaAgregandoCuenta } from "../cuentas/agregando-cuenta";
+import { COOKIE_AGREGANDO_CUENTA, expulsarDePantallaDeEntrada } from "../cuentas/agregando-cuenta";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
@@ -108,9 +108,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   // cookie, puesta por la hoja de cuentas y de 10 minutos, quien YA tiene
   // sesion puede ver /login y /register para entrar con OTRA cuenta sin cerrar
   // la actual. Las paginas y la accion signUp leen la misma cookie.
-  const agregandoCuenta = estaAgregandoCuenta(request.cookies.get(COOKIE_AGREGANDO_CUENTA)?.value);
-  if (user && !agregandoCuenta && (pathname === "/login" || pathname.startsWith("/login/") ||
-      pathname === "/register" || pathname.startsWith("/register/"))) {
+  if (expulsarDePantallaDeEntrada(!!user, pathname, request.cookies.get(COOKIE_AGREGANDO_CUENTA)?.value)) {
     const next = request.nextUrl.searchParams.get("next");
     const destino = destinoAutenticadoSeguro(next);
     const redirectUrl = new URL(destino, request.url);

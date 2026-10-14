@@ -28,6 +28,24 @@ export function estaAgregandoCuenta(valorCookie: string | null | undefined): boo
   return valorCookie === "1";
 }
 
+function esPantallaDeEntrada(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/")
+  );
+}
+
+/**
+ * La condicion del proxy (lib/supabase/middleware.ts), en una funcion pura
+ * para poder probarla: a quien tiene sesion se le echa de /login y /register,
+ * SALVO que este agregando otra cuenta.
+ */
+export function expulsarDePantallaDeEntrada(haySesion: boolean, pathname: string, valorCookie: string | null | undefined): boolean {
+  return haySesion && esPantallaDeEntrada(pathname) && !estaAgregandoCuenta(valorCookie);
+}
+
 export function hrefAgregarCuenta(ruta: "/login" | "/register" = "/login"): string {
   return `${ruta}?next=${encodeURIComponent(DESTINO_TRAS_AGREGAR)}&${PARAM_AGREGANDO}=1`;
 }
