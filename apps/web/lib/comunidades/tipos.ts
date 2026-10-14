@@ -19,12 +19,12 @@ export type ComentarioComunidad = Funciones["comentarios_de_publicacion"]["Retur
 
 /** Tarjeta de comunidad: mis_comunidades y descubrir_comunidades comparten
  *  los campos de relacion; descubrir anade distancia_m. */
-export type ComunidadMia = Funciones["mis_comunidades"]["Returns"][number];
-export type ComunidadCercana = Funciones["descubrir_comunidades"]["Returns"][number];
+export type ComunidadMia = Funciones["mis_comunidades"]["Returns"][number] & { foto_url?: string | null };
+export type ComunidadCercana = Funciones["descubrir_comunidades"]["Returns"][number] & { foto_url?: string | null };
 export type ComunidadResumen = ComunidadMia | ComunidadCercana;
 
 /** Cabecera de /comunidades/[id]. */
-export type DetalleComunidad = Funciones["detalle_comunidad"]["Returns"][number];
+export type DetalleComunidad = Funciones["detalle_comunidad"]["Returns"][number] & { foto_url?: string | null };
 
 /** Fila de la cola de solicitudes (owner/moderadores). */
 export type SolicitudEnCola = Funciones["solicitudes_de_comunidad"]["Returns"][number];

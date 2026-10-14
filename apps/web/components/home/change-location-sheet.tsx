@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, startTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
-import { Search, LocateFixed, Check, X, Loader2, MapPin, ChevronDown } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Search, LocateFixed, Check, Loader2, MapPin, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -16,10 +15,10 @@ import {
   type LocationSearchResult,
 } from "@/lib/geo/location-search";
 import { useReglaCobertura } from "@/lib/geo/cobertura";
-import { hayCambiosDeUbicacion, mismoPunto } from "@/lib/geo/cambios-ubicacion";
+import { mismoPunto } from "@/lib/geo/cambios-ubicacion";
 import { hapticSelection } from "@/lib/haptics";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
-import type { GeoPosition } from "@/lib/geo/location-storage";
+import { isValidRadius, type GeoPosition } from "@/lib/geo/location-storage";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -33,7 +32,6 @@ const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
 const PUEBLA_DEFAULT = { lat: 19.0414, lng: -98.2063 };
 const RECENTS_KEY = "vicino_recent_locations";
 const MAX_RECENTS = 5;
-const MATCH_TOLERANCE = 0.0001; // ~11 m
 
 export interface SavedLocation {
   lat: number;
@@ -41,12 +39,13 @@ export interface SavedLocation {
   name: string;
   fullName: string;
   timestamp: number;
+  accuracy?: number;
 }
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** An explicit link affects this draft only; persistence still requires Apply. */
+  /** An explicit link previews a point; opening alone never persists it. */
   initialPositionOverride?: GeoPosition | null;
 }
 
@@ -62,7 +61,7 @@ function isValidSavedLocation(x: unknown): x is SavedLocation {
     Math.abs(r.lng) <= 180 &&
     typeof r.name === "string" &&
     typeof r.fullName === "string" &&
-    typeof r.timestamp === "number"
+    typeof r.timestamp === "number" && Number.isFinite(r.timestamp)
   );
 }
 
@@ -73,7 +72,8 @@ function readRecents(): SavedLocation[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidSavedLocation).slice(0, MAX_RECENTS);
+    const valid = parsed.filter(isValidSavedLocation) as SavedLocation[];
+    return valid.filter((item, index) => valid.findIndex((other) => mismoPunto(item, other)) === index).slice(0, MAX_RECENTS);
   } catch {
     return [];
   }
@@ -91,11 +91,7 @@ function dedupAndPrepend(
   list: SavedLocation[],
   item: SavedLocation,
 ): SavedLocation[] {
-  const filtered = list.filter(
-    (l) =>
-      Math.abs(l.lat - item.lat) >= MATCH_TOLERANCE ||
-      Math.abs(l.lng - item.lng) >= MATCH_TOLERANCE,
-  );
+  const filtered = list.filter((location) => !mismoPunto(location, item));
   return [item, ...filtered].slice(0, MAX_RECENTS);
 }
 
@@ -117,7 +113,10 @@ async function reverseGeocodeOnce(
 }
 
 export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: Props) {
-  const router = useRouter();
+  const reducedMotion = useReducedMotion();
+  const onCloseRef = useRef(onClose);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const gestureRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const cobertura = useReglaCobertura();
   const { state, setManualPosition } = useGeolocation();
   const storedPosition =
@@ -126,7 +125,8 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const overrideRadius = initialPositionOverride?.radius;
   const overrideName = initialPositionOverride?.name, overrideFullName = initialPositionOverride?.fullName;
   const hasOverride = initialPositionOverride !== undefined;
-  const activePosition = useMemo<GeoPosition | null>(() => {
+  const activePosition = storedPosition;
+  const previewPosition = useMemo<GeoPosition | null>(() => {
     if (!hasOverride) return storedPosition;
     if (overrideLat === undefined || overrideLng === undefined || clasificarResultado({ lat: overrideLat, lng: overrideLng }, null) !== "ok") return null;
     const matchesStored = mismoPunto({ lat: overrideLat, lng: overrideLng }, storedPosition);
@@ -136,11 +136,11 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   }, [hasOverride, overrideLat, overrideLng, overrideRadius, overrideName, overrideFullName, storedPosition]);
 
   const [center, setCenter] = useState<{ lat: number; lng: number }>(
-    activePosition ?? PUEBLA_DEFAULT,
+    previewPosition ?? PUEBLA_DEFAULT,
   );
   const [view, setView] = useState(center);
   const [draft, setDraft] = useState<SavedLocation | null>(null);
-  const [draftRadius, setDraftRadius] = useState(activePosition?.radius ?? 10000);
+  const [draftRadius, setDraftRadius] = useState(previewPosition?.radius ?? 10000);
   const [centerLabels, setCenterLabels] = useState<{
     zone: string | null;
     city: string | null;
@@ -153,9 +153,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  // El borrador ya es el de ESTA apertura. Sin esto, al reabrir despues de
-  // descartar, el primer frame calculaba la palomita con el borrador viejo.
-  const [borradorListo, setBorradorListo] = useState(false);
+  const [selectionReady, setSelectionReady] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRef = useRef(open);
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -175,9 +173,11 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const closeSheet = useCallback(() => {
     openRef.current = false;
     cancelPending();
-    setBorradorListo(false);
-    onClose();
-  }, [cancelPending, onClose]);
+    setSelectionReady(false);
+    onCloseRef.current();
+  }, [cancelPending]);
+
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount-detection pattern
@@ -195,38 +195,54 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
 
   useBodyScrollLock(open);
 
-  // A4 sub-fase 4.2 (codex follow-up): Escape listener para el smart back
-  // button del APK (dispatch sintetico cuando data-modal-open="true").
   useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        closeSheet();
+    if (!open || !mounted) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    const containFocus = (event: FocusEvent) => {
+      if (openRef.current && dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
+        dialogRef.current.querySelector<HTMLElement>("button:not([disabled]), input, select")?.focus();
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSheet();
+      if (event.key !== "Tab") return;
+      const controls = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input, select, [tabindex="0"]');
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, closeSheet]);
+    document.addEventListener("focusin", containFocus);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("focusin", containFocus);
+      gestureRef.current = null;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [open, mounted, closeSheet]);
 
   // Reset state al abrir
   useEffect(() => {
     if (!open || draftTouchedRef.current) return;
     startTransition(() => {
       setRecents(readRecents());
-      setCenter(activePosition ?? PUEBLA_DEFAULT);
-      setView(activePosition ?? PUEBLA_DEFAULT);
-      const previous = activePosition;
+      setCenter(previewPosition ?? PUEBLA_DEFAULT);
+      setView(previewPosition ?? PUEBLA_DEFAULT);
+      const previous = previewPosition;
       setDraft(previous ? { ...previous, name: previous.name ?? "Mi ubicación", fullName: previous.fullName ?? "Mi ubicación", timestamp: Date.now() } : null);
-      setDraftRadius(previous?.radius ?? 10000);
+      setDraftRadius(previous?.radius !== undefined && isValidRadius(previous.radius) ? previous.radius : 10000);
       setQuery("");
       setResults([]);
       setSearching(false);
       setGpsError(null);
       setRequestingGps(false);
       setSearchNotice(null);
-      setBorradorListo(true);
+      setSelectionReady(true);
     });
-  }, [open, activePosition]);
+  }, [open, previewPosition]);
 
   // Reverse geocode del centro para overlays del mapa
   useEffect(() => {
@@ -299,52 +315,43 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
     [center.lat, center.lng, cancelPending, cobertura],
   );
 
-  const selectLocation = useCallback(
-    (loc: SavedLocation, recenter = true) => {
-      if (!openRef.current) return;
-      cancelPending();
-      const valid = clasificarResultado({ lat: loc.lat, lng: loc.lng }, null);
-      if (valid !== "ok") {
-        setSearchNotice(valid === "fuera-de-mexico"
-          ? "La ubicación debe estar en México."
-          : "No pudimos comprobar las coordenadas de esa ubicación.");
-        return false;
-      }
-      setDraft(loc);
-      setCenter({ lat: loc.lat, lng: loc.lng });
-      if (recenter) setView({ lat: loc.lat, lng: loc.lng });
-      setQuery(loc.name);
-      setResults([]);
-      setSearchNotice(null);
-      setGpsError(null);
-      return true;
-    },
-    [cancelPending],
-  );
-
-  // Tarea 8 (decision de Pedro, 27-sep): con cambios pendientes la X del
-  // header pasa a palomita y aplica; ya no hay boton "Aplicar ubicacion" al
-  // fondo, que quedaba fuera de vista (la hoja mide hasta 85vh con scroll).
-  // Solo se ofrece aplicar lo que se puede aplicar: un borrador fuera de
-  // Mexico (p. ej. una ubicacion activa por GPS en EE. UU. a la que solo se le
-  // cambia el radio) dejaba una palomita que no hacia nada.
-  const borradorValido = !!draft && clasificarResultado(draft, null) === "ok";
-  const hayCambios =
-    borradorListo && borradorValido && hayCambiosDeUbicacion(draft, draftRadius, storedPosition);
-  const aplicarBloqueado = searching || requestingGps;
-
-  const applyLocation = () => {
-    if (!openRef.current || !draft) return;
-    if (clasificarResultado(draft, null) !== "ok") {
-      setSearchNotice("La ubicación debe estar en México. Busca otra zona o mueve el mapa.");
-      return;
+  // Pass the candidate directly so stale React state cannot be persisted.
+  const applyLocation = useCallback((candidate: SavedLocation, radius: number) => {
+    if (!openRef.current) return false;
+    const valid = clasificarResultado(candidate, null);
+    if (valid !== "ok" || !isValidRadius(radius)) {
+      setSearchNotice("La ubicación debe estar en México y tener un radio válido.");
+      return false;
     }
-    void hapticSelection();
+    if (!setManualPosition({ ...candidate, radius })) {
+      setSearchNotice("No se pudo guardar la ubicación. Tu ubicación anterior sigue activa. Intenta de nuevo.");
+      return false;
+    }
+    const nextRecents = dedupAndPrepend(readRecents(), { ...candidate, timestamp: Date.now() });
+    writeRecents(nextRecents);
+    setRecents(nextRecents);
+    setDraft(candidate);
+    setDraftRadius(radius);
+    setSearchNotice(null);
+    return true;
+  }, [setManualPosition]);
+
+  const selectLocation = useCallback((loc: SavedLocation, recenter = true) => {
+    if (!openRef.current) return false;
     cancelPending();
-    setManualPosition({ ...draft, radius: draftRadius });
-    writeRecents(dedupAndPrepend(recents, { ...draft, timestamp: Date.now() }));
+    if (!applyLocation(loc, draftRadius)) return false;
+    setCenter({ lat: loc.lat, lng: loc.lng });
+    if (recenter) setView({ lat: loc.lat, lng: loc.lng });
+    setQuery(loc.name);
+    setResults([]);
+    setGpsError(null);
+    void hapticSelection();
+    return true;
+  }, [cancelPending, applyLocation, draftRadius]);
+
+  const finish = () => {
+    if (draft && !applyLocation(draft, draftRadius)) return;
     closeSheet();
-    router.refresh();
   };
 
   const handleSelectResult = useCallback(
@@ -411,7 +418,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
         // abandonar — no queremos cambiar su ubicación silenciosamente.
         if (!openRef.current || sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
-        selectLocation({ lat, lng, name, fullName, timestamp: Date.now() });
+        selectLocation({ lat, lng, name, fullName, accuracy: pos.coords.accuracy, timestamp: Date.now() });
       },
       (err) => {
         if (!openRef.current || sequence !== searchSeqRef.current) return;
@@ -439,7 +446,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
             onClick={closeSheet}
             className="fixed inset-0 md:left-64 z-[100] bg-black/60 backdrop-blur-sm"
             aria-hidden
@@ -447,71 +454,54 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
           <div className="pointer-events-none fixed inset-0 md:left-64 z-[100] flex items-end" data-modal-open="true">
             <motion.div
               key="sheet"
+              ref={dialogRef}
               role="dialog"
               aria-modal="true"
               aria-label="Cambiar ubicación"
-              initial={{ y: "100%" }}
+              initial={{ y: reducedMotion ? 0 : "100%" }}
               animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              exit={{ y: reducedMotion ? 0 : "100%" }}
+              transition={reducedMotion ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
               className="pointer-events-auto w-full overflow-y-auto rounded-t-3xl bg-[color:var(--bg)] pb-[calc(env(safe-area-inset-bottom)_+_2rem)]"
-              style={{ maxHeight: "85vh" }}
+              style={{ maxHeight: "min(85dvh, calc(100dvh - env(safe-area-inset-top, 0px)))", paddingLeft: "env(safe-area-inset-left, 0px)", paddingRight: "env(safe-area-inset-right, 0px)", overscrollBehavior: "contain" }}
             >
-              {/* Asa y header fijos: la palomita tiene que verse aunque el
-                  usuario haya bajado a "Ubicaciones recientes". z por encima
-                  de la lista de resultados del buscador (z-60). */}
-              <div className="sticky top-0 z-[70] bg-[color:var(--bg)]">
-              {/* Handle */}
-              <div className="mx-auto mt-3 mb-4 h-1 w-12 rounded-full bg-[color:var(--fg-dim)]/30" />
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pb-4">
-                <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">
-                  Cambiar ubicación
-                </h2>
-                {/* Sin cambios: X que cierra. Con cambios (pin, buscador, GPS,
-                    reciente o radio): la misma pieza con la palomita de
-                    "Ubicacion actual" y aplica. Descartar sigue siendo tocar
-                    fuera, Escape o el Atras de Android. */}
-                <button
-                  type="button"
-                  onClick={hayCambios ? applyLocation : closeSheet}
-                  disabled={hayCambios && aplicarBloqueado}
-                  aria-label={hayCambios ? "Aplicar ubicación" : "Cerrar"}
-                  data-accion={hayCambios ? "aplicar" : "cerrar"}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--card-2)] transition-colors hover:bg-[color:var(--border)] active:bg-[color:var(--border-strong)] disabled:opacity-40"
-                >
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                      key={hayCambios ? "aplicar" : "cerrar"}
-                      initial={{ scale: 0.6, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.6, opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex"
-                    >
-                      {hayCambios ? (
-                        <Check size={18} className="text-[color:var(--brand-hi)]" />
-                      ) : (
-                        <X size={18} className="text-[color:var(--fg-muted)]" />
-                      )}
-                    </motion.span>
-                  </AnimatePresence>
-                </button>
-                {/* Lector de pantalla: con la palomita ya no hay un control
-                    con nombre para descartar (el fondo es aria-hidden y en
-                    iOS no hay Atras). Invisible, no cambia el diseno. */}
-                {hayCambios && (
-                  <button type="button" onClick={closeSheet} className="sr-only">
-                    Descartar cambios
+              <div
+                data-location-sheet-handle="true"
+                data-no-page-swipe="true"
+                data-no-pull-to-refresh="true"
+                className="sticky top-0 z-[70] bg-[color:var(--bg)] pt-3"
+                style={{ touchAction: "none" }}
+                onPointerDown={(event) => {
+                  if (!event.isPrimary || (event.target as HTMLElement).closest("button")) {
+                    gestureRef.current = null;
+                    return;
+                  }
+                  gestureRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerCancel={() => { gestureRef.current = null; }}
+                onPointerUp={(event) => {
+                  const gesture = gestureRef.current;
+                  gestureRef.current = null;
+                  if (!gesture || gesture.id !== event.pointerId) return;
+                  const dy = event.clientY - gesture.y, dx = Math.abs(event.clientX - gesture.x);
+                  if (dy >= 72 && dy > dx * 1.5) closeSheet();
+                }}
+              >
+                <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-[color:var(--fg-dim)]/30" />
+                <div className="flex items-center justify-between gap-3 px-5 pb-4">
+                  <h2 className="font-heading text-xl font-bold text-[color:var(--fg)]">Cambiar ubicación</h2>
+                  <button
+                    type="button"
+                    onClick={finish}
+                    disabled={!selectionReady || searching || requestingGps}
+                    aria-label="Listo"
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[color:var(--brand)] px-4 font-semibold text-[color:var(--cream)] transition-colors hover:bg-[color:var(--brand-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)] disabled:opacity-40"
+                  >
+                    <Check size={18} aria-hidden="true" />
+                    Listo
                   </button>
-                )}
-                <p className="sr-only" aria-live="polite">
-                  {hayCambios && draft
-                    ? `Ubicación sin aplicar: ${draft.name}. Confírmala con Aplicar ubicación, arriba.`
-                    : ""}
-                </p>
-              </div>
+                </div>
               </div>
 
               {/* Map */}
@@ -598,9 +588,11 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                   <select
                     value={draftRadius}
                     onChange={(e) => {
-                      draftTouchedRef.current = true;
-                      const newRadius = parseInt(e.target.value, 10);
-                      setDraftRadius(newRadius);
+                      cancelPending();
+                      const newRadius = Number(e.target.value);
+                      if (!isValidRadius(newRadius)) return;
+                      if (draft) applyLocation(draft, newRadius);
+                      else setDraftRadius(newRadius);
                     }}
                     className="w-full appearance-none rounded-2xl bg-[color:var(--card-2)] px-4 py-3.5 text-sm font-semibold text-[color:var(--fg)] shadow-[inset_0_0_0_1px_var(--border)] outline-none transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand-hi)]"
                   >
@@ -682,6 +674,9 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                             <span className="flex min-w-0 flex-col">
                               <span className="truncate text-sm font-medium text-[color:var(--fg)]">
                                 {loc.name}
+                              </span>
+                              <span className="truncate text-xs text-[color:var(--fg-muted)]">
+                                {loc.fullName}
                               </span>
                               {active && (
                                 <span className="text-xs text-[color:var(--brand-hi)]">

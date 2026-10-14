@@ -18,6 +18,7 @@ import {
 } from "@/lib/auth/verificacion-pendiente";
 import { VerificarCodigo } from "./verificar-codigo";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { LegalFooter } from "@/components/auth/legal-footer";
 
 const suscribirInicio = () => () => {};
 const inicioCliente = () => true;
@@ -319,18 +320,6 @@ export function RegisterForm() {
         />
       </div>
 
-      <p className="text-xs text-muted-foreground/80 mt-4 leading-relaxed">
-        Antes de registrarte, revisa nuestros{" "}
-        <Link href="/terminos" className="text-primary hover:underline" target="_blank">
-          Términos y Condiciones
-        </Link>{" "}
-        y nuestra{" "}
-        <Link href="/privacidad" className="text-primary hover:underline" target="_blank">
-          Aviso de Privacidad
-        </Link>
-        . Al verificar tu cuenta te pediremos que los confirmes.
-      </p>
-
       <button
         type="submit"
         disabled={loading || !listo}
@@ -382,6 +371,8 @@ export function RegisterForm() {
         </svg>
         Continuar con Apple
       </button>
+
+      <LegalFooter />
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿Ya tienes cuenta?{" "}

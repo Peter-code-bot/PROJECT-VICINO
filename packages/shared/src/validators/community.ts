@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COMMUNITY_CATEGORIES } from "../constants/community-categories";
 
 /**
  * Esquemas Zod de comunidades hiperlocales.
@@ -64,14 +65,25 @@ const descripcionComunidad = z
   .nullable()
   .optional();
 
-/** fundar_comunidad(p_nombre, p_lat, p_lng, p_descripcion) + editar_visibilidad_comunidad. */
+const categoriaComunidad = z.string({ required_error: "Elige una categoría" })
+  .refine(value => COMMUNITY_CATEGORIES.some(category => category.id === value), "Elige una categoría válida");
+
+/** Category and privacy are committed with the initial creation. */
 export const fundarComunidadSchema = z.object({
   nombre: nombreComunidad,
+  categoria_id: categoriaComunidad,
+  creation_id: z.string().uuid().optional(),
   descripcion: descripcionComunidad,
   lat: latitud,
   lng: longitud,
   // Decision 4: publica por defecto; cerrarla es un acto deliberado.
   es_privada: z.boolean().default(false),
+});
+
+export const editarIdentidadComunidadSchema = z.object({
+  community_id: z.string().uuid(),
+  categoria_id: categoriaComunidad,
+  foto_path: z.string().max(512).nullable().optional(),
 });
 
 /** editar_descripcion_comunidad(p_community_id, p_descripcion). */

@@ -1,28 +1,20 @@
 /**
- * Si la hoja "Cambiar ubicación" tiene algo que aplicar (Tarea 8, 27-sep).
- * Con cambios, la X del header pasa a palomita y aplica; sin cambios cierra.
- * Pura para poder probarla sin React ni MapKit.
+ * Comparación contra la ubicación aplicada, usando la precisión de la cookie.
  */
 
 type Punto = { lat: number; lng: number };
 
 /**
- * Tolerancia contra la ubicacion ACTIVA. La cookie `vicino_location` guarda 3
- * decimales (~110 m, a proposito) y readLocation devuelve esas coordenadas,
- * asi que un punto elegido con precision completa difiere hasta 0.0005 del que
- * vuelve al recargar. Con ~11 m la ubicacion actual nunca "coincidia" consigo
- * misma: la marca de recientes desaparecia y la palomita se encendia sola.
+ * La cookie `vicino_location` guarda 3 decimales (~110 m). La identidad de un
+ * punto debe usar exactamente ese redondeo, también al deduplicar recientes.
  */
-export const TOLERANCIA_UBICACION = 0.0006;
 /** Radio que la hoja da por hecho cuando la ubicación activa no trae uno. */
 export const RADIO_POR_DEFECTO = 10000;
 
 export function mismoPunto(a: Punto | null | undefined, b: Punto | null | undefined): boolean {
   if (!a || !b) return false;
-  return (
-    Math.abs(a.lat - b.lat) < TOLERANCIA_UBICACION &&
-    Math.abs(a.lng - b.lng) < TOLERANCIA_UBICACION
-  );
+  return Number.isFinite(a.lat) && Number.isFinite(a.lng) && Number.isFinite(b.lat) && Number.isFinite(b.lng)
+    && a.lat.toFixed(3) === b.lat.toFixed(3) && a.lng.toFixed(3) === b.lng.toFixed(3);
 }
 
 /**

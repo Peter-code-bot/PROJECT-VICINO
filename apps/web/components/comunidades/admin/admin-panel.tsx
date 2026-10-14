@@ -18,6 +18,7 @@ import type {
 import { MoverCentroSheet } from "./mover-centro-sheet";
 import { ModeradoresPanel } from "./moderadores-panel";
 import { SolicitudesCola } from "./solicitudes-cola";
+import { CommunityIdentityEditor } from "./community-identity-editor";
 
 interface AdminPanelProps {
   detalle: DetalleComunidad;
@@ -121,6 +122,9 @@ export function AdminPanel({ detalle, centro: centroInicial, solicitudes, miembr
 
       {esOwner && (
         <>
+          <Seccion titulo="Categoría y foto" texto="Una categoría para encontrar tu comunidad y una foto opcional.">
+            <CommunityIdentityEditor detalle={detalle} />
+          </Seccion>
           <Seccion titulo="Descripción" texto="El nombre no se puede cambiar; la descripción sí.">
             <div className="rounded-2xl bg-[color:var(--card)] p-3 shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand-hi)]">
               <textarea

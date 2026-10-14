@@ -173,29 +173,31 @@ async function main() {
 
       await openLocation();
       await page.getByRole("button", { name: "Elegir punto de prueba", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Aplicar ubicación", exact: true })).toBeVisible();
-      assert.deepEqual(await snapshot(), before);
+      await expect(page.getByRole("button", { name: "Listo", exact: true })).toBeVisible();
+      const autoSaved = await snapshot();
+      assert.equal(autoSaved.events, 1);
+      assert.equal(JSON.parse(autoSaved.mirror!).lat, changedPoint.lat);
       await returnWithEscape();
-      assert.deepEqual(await snapshot(), before);
+      assert.deepEqual(await snapshot(), autoSaved);
       await openLocation();
-      await expect(page.getByTestId("location-center")).toHaveText("19.05,-98.2");
+      await expect(page.getByTestId("location-center")).toHaveText("19.072,-98.224");
       await page.evaluate(() => { (window as any).f.gpsMode = "defer"; });
       await page.getByRole("button", { name: /Usar mi ubicación actual/ }).click();
       await returnWithEscape();
       await page.evaluate(() => (window as any).f.resolveGps());
       await expect(page.getByRole("button", { name: "Cambiar ubicación", exact: true })).toBeFocused();
-      assert.deepEqual(await snapshot(), before);
-      pass("pin edit is deferred; canceled edits and late GPS callback never replace the saved zone");
+      assert.deepEqual(await snapshot(), autoSaved);
+      pass("pin selection applies without closing; Escape preserves it; late GPS callback cannot replace it");
 
       await openLocation();
       await page.getByRole("button", { name: "Elegir punto de prueba", exact: true }).click();
       await page.getByRole("dialog").getByRole("combobox").selectOption("25000");
-      await page.getByRole("button", { name: "Aplicar ubicación", exact: true }).click();
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
       await expect(page.getByRole("dialog", { name: "Filtros", exact: true })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(1);
       await expect(page.getByRole("button", { name: "Cambiar ubicación", exact: true })).toBeFocused();
       const saved = await snapshot();
-      assert.equal(saved.events, 1);
+      assert.equal(saved.events, 2);
       const mirror = JSON.parse(saved.mirror!);
       assert.equal(mirror.lat, changedPoint.lat);
       assert.equal(mirror.lng, changedPoint.lng);
@@ -222,14 +224,14 @@ async function main() {
       assert.equal(await page.evaluate(() => (window as any).f.requested.length), 2);
       await page.evaluate(() => (window as any).f.confirm(1));
       await expect(page.getByTestId("discovery-filters-trigger")).toBeFocused();
-      pass("explicit location Apply writes once, clears old URL override/page; filter draft applies atomically afterward");
+      pass("location and radius apply automatically, Listo is idempotent, old URL override clears; filter draft applies afterward");
 
       await mount("q=cafe&page=3");
       await openFilters();
       await page.getByRole("spinbutton", { name: "Precio mínimo" }).fill("123");
       await openLocation();
       await page.getByRole("button", { name: "Elegir punto de prueba", exact: true }).click();
-      await page.getByRole("button", { name: "Aplicar ubicación", exact: true }).click();
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
       await expect(page.getByRole("dialog", { name: "Filtros", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Cancelar", exact: true }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -249,8 +251,8 @@ async function main() {
       await expect(page.getByRole("button", { name: "Universidad", exact: true })).toBeEnabled();
       const emptyBefore = await snapshot();
       await openLocation();
-      await expect(page.getByRole("button", { name: "Cerrar", exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Listo", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
       await expect(page.getByRole("dialog", { name: "Filtros", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Cambiar ubicación", exact: true })).toBeFocused();
       assert.deepEqual(await snapshot(), emptyBefore);

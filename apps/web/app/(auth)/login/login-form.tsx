@@ -13,6 +13,7 @@ import { guardarCorreoAuth, useCorreoAuth, limpiarCorreoAuth, hrefAuth } from "@
 import { reenviarCodigo } from "../actions";
 import { VerificarCodigo } from "../register/verificar-codigo";
 import { guardarPendiente, borrarPendiente } from "@/lib/auth/verificacion-pendiente";
+import { LegalFooter } from "@/components/auth/legal-footer";
 
 export function LoginForm() {
   const [email, setEmail] = useCorreoAuth();
@@ -195,6 +196,8 @@ export function LoginForm() {
         </svg>
         Continuar con Apple
       </button>
+
+      <LegalFooter />
 
       <p className="text-center text-sm text-muted-foreground pt-2">
         ¿No tienes cuenta?{" "}

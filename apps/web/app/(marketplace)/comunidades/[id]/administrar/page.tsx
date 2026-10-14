@@ -2,6 +2,7 @@ import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { withCommunityPhotos } from "@/lib/comunidades/group-photo";
 import { AdminPanel } from "@/components/comunidades/admin/admin-panel";
 import { ComunidadNoDisponible } from "@/components/comunidades/no-disponible";
 import { esMando } from "@/lib/comunidades/tipos";
@@ -33,7 +34,7 @@ export default async function AdministrarPage({ params }: Props) {
     Sentry.captureException(detalleError, { tags: { action: "detalle_comunidad@administrar" } });
     return <ComunidadNoDisponible titulo={traducirErrorComunidad(detalleError)} />;
   }
-  const detalle = detalleData?.[0];
+  const detalle = (await withCommunityPhotos(supabase, detalleData ?? []))[0];
   if (!detalle) return <ComunidadNoDisponible />;
   // Sin mando aqui no hay nada que ver: de vuelta a la comunidad.
   if (!esMando(detalle.mi_rol) || !detalle.disponible) redirect(`/comunidades/${id}`);

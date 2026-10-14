@@ -5,8 +5,9 @@ import { Heart, MessageCircle, LayoutGrid, Plus, ChevronDown } from "lucide-reac
 import { useRouter } from "next/navigation";
 import AuthLink from "@/components/auth/auth-link";
 import { useMuroSesion } from "@/components/auth/muro-sesion";
-import { RequestCard, type RequestCardPreviewData } from "@/components/solicitudes/request-card";
-import { ComunidadCard } from "@/components/comunidades/comunidad-card";
+import { type RequestCardPreviewData } from "@/components/solicitudes/request-card";
+import { RequestRows } from "@/components/solicitudes/request-rows";
+import { CommunityCarousel } from "@/components/comunidades/community-carousel";
 import { SubTabs, type SubTabComunidades } from "@/components/comunidades/sub-tabs";
 import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 import { loginPara } from "@/lib/auth/acceso-invitado";
@@ -22,6 +23,7 @@ function NationalPreviewIntro({ title }: { title: string }) {
 export function GuestRequestsFeed({ preview }: {
   preview: Extract<HomeGuestPreview, { kind: "solicitudes" }> | null;
 }) {
+  const { pedirSesion } = useMuroSesion();
   const context = "/?feed=solicitudes";
   const requests: RequestCardPreviewData[] = (preview?.requests ?? []).map(request => ({
     id: request.id, title: request.titulo, description: request.descripcion,
@@ -42,7 +44,7 @@ export function GuestRequestsFeed({ preview }: {
     <div className="space-y-3 px-4">
       {!preview || preview.failure ? <CatalogQueryState failure={preview?.failure ?? { kind: "failure" }} section="las solicitudes de vista previa" />
         : requests.length === 0 ? <p role="status" className="py-10 text-center text-sm text-fg-muted">No hay solicitudes disponibles para esta vista previa.</p>
-          : requests.map(request => <RequestCard key={request.id} data={request} />)}
+          : <RequestRows requests={requests} onViewMore={() => { pedirSesion("Inicia sesión para ver más solicitudes", context); }} />}
     </div>
   </div>;
 }
@@ -94,7 +96,7 @@ export function GuestCommunitiesFeed({ preview, activeTab }: {
       {!preview || failure ? <CatalogQueryState failure={failure ?? { kind: "failure" }} section="las comunidades de vista previa" />
         : activeTab === "descubrir" ? communities.length === 0
           ? <p role="status" className="py-10 text-center text-sm text-fg-muted">No hay comunidades públicas disponibles para esta vista previa.</p>
-          : communities.map(community => <ComunidadCard key={community.id} comunidad={{ ...community, es_privada: false }} />)
+          : <CommunityCarousel items={communities.map(community => ({ ...community, es_privada: false }))} />
         : posts.length === 0
           ? <p role="status" className="py-10 text-center text-sm text-fg-muted">No hay publicaciones públicas disponibles para esta vista previa.</p>
           : posts.map(post => <GuestPostCard key={post.id} post={post} />)}

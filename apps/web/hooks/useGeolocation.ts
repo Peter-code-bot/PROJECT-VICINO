@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, startTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, useEffect, useRef, startTransition } from "react";
 
 import {
   readLocation,
@@ -21,7 +20,7 @@ type GeoState =
 
 export function useGeolocation() {
   const [state, setState] = useState<GeoState>({ status: "idle" });
-  const router = useRouter();
+  const generation = useRef(0);
 
   useEffect(() => {
     const cached = readLocation();
@@ -32,6 +31,7 @@ export function useGeolocation() {
     }
 
     const onLocationUpdated = (e: Event) => {
+      generation.current++;
       const customEvent = e as CustomEvent<GeoPosition | null>;
       if (customEvent.detail) {
         startTransition(() => {
@@ -44,11 +44,15 @@ export function useGeolocation() {
 
     window.addEventListener("vicino_location_updated", onLocationUpdated);
     return () => {
+      // This is a request generation counter, deliberately invalidated at unmount.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      generation.current++;
       window.removeEventListener("vicino_location_updated", onLocationUpdated);
     };
   }, []);
 
   const request = useCallback(() => {
+    const sequence = ++generation.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setState({ status: "error", message: "Geolocalización no disponible en este dispositivo" });
       return;
@@ -59,6 +63,7 @@ export function useGeolocation() {
     );
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (sequence !== generation.current) return;
         const cached = readLocation();
         const position: GeoPosition = {
           lat: pos.coords.latitude,
@@ -66,10 +71,11 @@ export function useGeolocation() {
           accuracy: pos.coords.accuracy,
           radius: cached?.radius ?? 10000,
         };
-        writeLocation(position);
-        setState({ status: "success", position });
+        if (writeLocation(position)) setState({ status: "success", position: { ...position, lat: Number(position.lat.toFixed(3)), lng: Number(position.lng.toFixed(3)) } });
+        else setState((prev) => prev.status === "success" ? prev : { status: "error", message: "No se pudo guardar la ubicación. Intenta de nuevo." });
       },
       (err) => {
+        if (sequence !== generation.current) return;
         const message =
           err.code === 1
             ? "Permiso de ubicación denegado"
@@ -82,14 +88,15 @@ export function useGeolocation() {
     );
   }, []);
 
-  const setManualPosition = useCallback((pos: { lat: number; lng: number; radius?: number; name?: string; fullName?: string }) => {
+  const setManualPosition = useCallback((pos: GeoPosition) => {
+    generation.current++;
     if (
       !Number.isFinite(pos.lat) ||
       !Number.isFinite(pos.lng) ||
       Math.abs(pos.lat) > 90 ||
       Math.abs(pos.lng) > 180
     ) {
-      return;
+      return false;
     }
     const cached = readLocation();
     const position: GeoPosition = { 
@@ -97,21 +104,18 @@ export function useGeolocation() {
       lng: pos.lng, 
       radius: pos.radius ?? cached?.radius ?? 10000,
       name: pos.name,
-      fullName: pos.fullName
+      fullName: pos.fullName,
+      accuracy: pos.accuracy,
     };
-    writeLocation(position);
-    setState({ status: "success", position });
+    if (!writeLocation(position)) return false;
+    setState({ status: "success", position: { ...position, lat: Number(position.lat.toFixed(3)), lng: Number(position.lng.toFixed(3)) } });
+    return true;
   }, []);
 
   const setRadius = useCallback((radius: number) => {
-    setState((prev) => {
-      if (prev.status !== "success") return prev;
-      const position = { ...prev.position, radius };
-      writeLocation(position);
-      return { ...prev, position };
-    });
-    router.refresh();
-  }, [router]);
+    const current = readLocation();
+    return current ? setManualPosition({ ...current, radius }) : false;
+  }, [setManualPosition]);
 
   return { state, request, setManualPosition, setRadius };
 }

@@ -5,7 +5,7 @@ import { hayCambiosDeUbicacion, mismoPunto, RADIO_POR_DEFECTO } from "./cambios-
 const PUEBLA = { lat: 19.0414, lng: -98.2063, radius: 10000 };
 const VILLAHERMOSA = { lat: 17.9892, lng: -92.9281 };
 
-test("al abrir, el borrador es la ubicación activa: sin cambios (se ve la X)", () => {
+test("confirmar el punto y radio aplicados es idempotente", () => {
   assert.equal(hayCambiosDeUbicacion({ lat: PUEBLA.lat, lng: PUEBLA.lng }, 10000, PUEBLA), false);
 });
 
@@ -47,4 +47,13 @@ test("ubicación activa sin radio: se compara contra el radio por defecto", () =
 test("mismoPunto tolera nulos", () => {
   assert.equal(mismoPunto(null, PUEBLA), false);
   assert.equal(mismoPunto(PUEBLA, undefined), false);
+});
+
+test("puntos próximos en celdas canónicas diferentes no se confunden", () => {
+  assert.equal(mismoPunto({ lat: 19.04049, lng: -98.2001 }, { lat: 19.04051, lng: -98.2001 }), false);
+});
+
+test("el mismo punto canónico agrupa distintos nombres y precisión completa", () => {
+  assert.equal(mismoPunto({ lat: 19.0401, lng: -98.2001 }, { lat: 19.0404, lng: -98.2004 }), true);
+  assert.equal(mismoPunto({ lat: Number.NaN, lng: -98.2 }, PUEBLA), false);
 });
