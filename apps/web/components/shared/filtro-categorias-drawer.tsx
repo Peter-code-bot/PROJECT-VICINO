@@ -185,12 +185,12 @@ export function FiltroCategoriasDrawer({
         className={cn(
           "inline-flex h-9 sm:h-10 items-center gap-2 rounded-xl px-3.5 text-xs sm:text-sm font-medium transition-colors hover:opacity-90",
           seleccionadas.length > 0
-            ? "bg-[color:var(--brand-tint-strong)] text-[color:var(--brand-hi)] shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] font-semibold"
+            ? "product-card-tab font-semibold"
             : "product-card-custom text-[color:var(--fg)]",
           className,
         )}
       >
-        <IconoDelBoton className="h-4 w-4 shrink-0 text-[color:var(--brand-hi)]" />
+        <IconoDelBoton className={cn("h-4 w-4 shrink-0", seleccionadas.length === 0 && "text-[color:var(--brand-hi)]")} />
         <span className="truncate">{etiqueta}</span>
         {seleccionadas.length > 0 ? (
           <span
@@ -208,7 +208,7 @@ export function FiltroCategoriasDrawer({
                 onAplicar([]);
               }
             }}
-            className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-white/10 dark:hover:bg-black/10 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </span>

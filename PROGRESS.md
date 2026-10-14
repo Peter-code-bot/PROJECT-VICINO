@@ -1,3 +1,8 @@
+## 14-oct-2026 — Chip de categoría activo oscuro con blanco
+
+- Inicio 08:58:34 CDMX por petición y captura de Javier. FiltroCategoriasDrawer reutiliza product-card-tab: fondo charcoal y texto/iconos blancos en claro, con la adaptación al tema oscuro vigente en las etiquetas. Icono y X heredan el color del chip; hover acorde al fondo. Rol FilterChip revisado con Button Expert.
+- Tipos/lint, CI/build remoto y publicación de CHIP-CAT-20261014, con sus SHA/PR y horas de cierre, en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). Aceptación visual conserva el seguimiento de QA01.
+
 ## 14-oct-2026 — Frases introductorias de Solicitudes y Comunidades
 
 - Inicio 07:44:27 CDMX por petición de Javier. «Publica lo que necesitas y recibe ofertas de personas cercanas.» encima del filtro de Solicitudes; «Conecta con tus vecinos y comparte intereses en comunidad.» encima de Muro/Mis comunidades/Descubrir, también en las vistas de invitado. Texto pequeño con tokens y márgenes existentes; guía UX Copy aplicada.
