@@ -14,6 +14,8 @@ import { reenviarCodigo } from "../actions";
 import { VerificarCodigo } from "../register/verificar-codigo";
 import { guardarPendiente, borrarPendiente } from "@/lib/auth/verificacion-pendiente";
 import { LegalFooter } from "@/components/auth/legal-footer";
+import { PARAM_AGREGANDO, hrefAgregarCuenta } from "@/lib/cuentas/agregando-cuenta";
+import { AvisoAgregandoCuenta } from "@/components/cuentas/aviso-agregando-cuenta";
 
 export function LoginForm() {
   const [email, setEmail] = useCorreoAuth();
@@ -26,9 +28,14 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const destino = searchParams.get("next");
-  const hrefRegistro = destino
-    ? `/register?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
-    : "/register";
+  // Agregando OTRA cuenta (lib/cuentas/agregando-cuenta.ts): hay sesion, se
+  // pinta el aviso y el salto a registro conserva la intencion.
+  const agregando = searchParams.get(PARAM_AGREGANDO) === "1";
+  const hrefRegistro = agregando
+    ? hrefAgregarCuenta("/register")
+    : destino
+      ? `/register?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
+      : "/register";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +108,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {agregando && <AvisoAgregandoCuenta />}
       {error && (
         <div role="alert" className="rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
           {error}

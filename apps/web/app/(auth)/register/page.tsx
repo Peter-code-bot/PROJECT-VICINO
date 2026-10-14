@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import { usuarioOInvitado } from "@/lib/session-auth";
+import { cookies } from "next/headers";
+import { COOKIE_AGREGANDO_CUENTA, estaAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 
 export const metadata = {
   title: "Crear cuenta — VICINO",
@@ -20,7 +22,10 @@ export default async function RegisterPage({
   const supabase = await createClient();
   const user = await usuarioOInvitado(supabase);
 
-  if (user) {
+  // Con sesion solo se entra aqui para AGREGAR otra cuenta (cookie de la hoja
+  // de cuentas, ver lib/cuentas/agregando-cuenta.ts). El proxy aplica la misma
+  // excepcion; esta es la segunda guarda.
+  if (user && !estaAgregandoCuenta((await cookies()).get(COOKIE_AGREGANDO_CUENTA)?.value)) {
     const params = searchParams ? await searchParams : undefined;
     redirect(destinoAutenticadoSeguro(params?.next));
   }

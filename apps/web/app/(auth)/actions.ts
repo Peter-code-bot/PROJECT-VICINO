@@ -1,7 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { COOKIE_AGREGANDO_CUENTA, estaAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,13 +92,18 @@ export async function signUp(email: string, password: string, fullName: string, 
   // Guarda de sesión activa en el servidor:
   // Comprueba getUser antes de intentar el alta para no sustituir una sesión
   // existente ni registrar usuarios encima de una sesión abierta.
+  //
+  // Excepcion: "agregar cuenta" (lib/cuentas/agregando-cuenta.ts). Con esa
+  // cookie la persona PIDIO sustituir la sesion: la actual ya esta guardada en
+  // la boveda del dispositivo y la nueva la pisa a proposito. Es la misma
+  // excepcion que aplican el proxy y las paginas de /login y /register.
   let user;
   try {
     user = await usuarioOInvitado(supabase);
   } catch {
     return { estado: "error", error: "No pudimos comprobar tu sesión. Intenta de nuevo.", sessionUnavailable: true };
   }
-  if (user) {
+  if (user && !estaAgregandoCuenta((await cookies()).get(COOKIE_AGREGANDO_CUENTA)?.value)) {
     return { estado: "autenticado", hasSession: true, alreadyLoggedIn: true };
   }
 

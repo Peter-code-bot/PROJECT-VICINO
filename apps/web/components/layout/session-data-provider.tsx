@@ -8,10 +8,18 @@ import { locationScopeFromDocumentCookie } from "@/lib/session-scope";
 import { consumirRestauracion } from "@/lib/navigation/restauracion-ui";
 import { guardarOrigenVender } from "@/lib/navigation/retorno-vender";
 import { COMMUNITY_NAVIGATION_UPDATED, createCommunityNavigationObserver, type CommunityNavigationObserver } from "@/lib/navigation/retorno-comunidad";
+import { hayCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 
 const Context = createContext<SessionCache | null>(null);
 export function SessionDataProvider({ userId, revision, children }: { userId: string; revision: string; children: React.ReactNode }) {
-  const [cache] = useState(() => new SessionCache(userId, fetch, () => window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`)));
+  // Durante un cambio de cuenta (lib/cuentas) una respuesta de /api/session con
+  // otro userId es la de la cuenta nueva llegando a la memoria de la vieja, no
+  // una sesion invalida: la memoria ya se vacio y la navegacion la pone quien
+  // cambia. Fuera de un cambio, se manda a identificarse como siempre.
+  const [cache] = useState(() => new SessionCache(userId, fetch, () => {
+    if (hayCambioEnCurso()) return;
+    window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`);
+  }));
   const previousRevision = useRef(revision);
   useEffect(() => {
     if (previousRevision.current !== revision) { previousRevision.current = revision; cache.invalidate(); }
@@ -54,6 +62,11 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
       // salir, otra cuenta en otra pestaña) justifica tirar la pagina.
       if (event === "INITIAL_SESSION") return;
       cache.clear();
+      // Cambio de cuenta intencional (lib/cuentas/cambio.ts): la navegacion es
+      // BLANDA y la pone quien cambia, por la carrera de la cookie en iOS
+      // (components/auth/oauth-url-listener.tsx). Aqui solo se vacia la memoria.
+      // La marca caduca sola a los 10 s, y entonces vuelve lo de siempre.
+      if (hayCambioEnCurso()) return;
       // A hard navigation also discards private RSC entries held by Next.
       if (!sessionUser) window.location.replace("/login");
       else if (!userId) window.location.reload();

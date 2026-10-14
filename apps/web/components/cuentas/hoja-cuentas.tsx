@@ -1,0 +1,292 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Loader2, LogOut, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { BottomSheet } from "@/components/product/bottom-sheet";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { useLogout } from "@/hooks/use-logout";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+import { buscarCuenta, guardarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
+import { useCuentas } from "@/lib/cuentas/use-cuentas";
+import { cambiarACuenta, datosDeSesion, nombreVisible } from "@/lib/cuentas/cambio";
+import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
+import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
+import { DESTINO_TRAS_AGREGAR, hrefAgregarCuenta, marcarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
+
+interface HojaCuentasProps {
+  open: boolean;
+  onClose: () => void;
+  /** La cuenta con sesion: la que el servidor pinto en el layout. */
+  userId: string;
+  /** Cierra la hoja Y el cajon que la abrio, justo antes de navegar. */
+  onNavegar: () => void;
+}
+
+type Ocupado =
+  | { tipo: "cambiar" | "quitar"; userId: string }
+  | { tipo: "agregar" }
+  | { tipo: "salir" }
+  | null;
+
+/**
+ * La hoja "Cuentas": las cuentas guardadas en este telefono, la activa marcada,
+ * y "Agregar cuenta" al final. Es lo que Instagram abre al tocar el nombre de
+ * usuario en el perfil (decision D1).
+ *
+ * Mientras una accion esta en vuelo la hoja NO se cierra y las demas filas se
+ * deshabilitan: un fallo se muestra aqui mismo, donde se toco.
+ */
+export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasProps) {
+  const router = useRouter();
+  const cuentas = useCuentas();
+  const logout = useLogout();
+  const [ocupado, setOcupado] = useState<Ocupado>(null);
+  const [confirmarQuitar, setConfirmarQuitar] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const activa = cuentas.find((c) => c.userId === userId) ?? null;
+  const dormidas = cuentas.filter((c) => c.userId !== userId);
+  const llena = cuentas.length >= MAX_CUENTAS && !!activa;
+
+  function cerrar() {
+    if (ocupado) return;
+    setError(null);
+    setConfirmarQuitar(null);
+    onClose();
+  }
+
+  function irAlPerfil() {
+    onNavegar();
+    router.push(DESTINO_TRAS_AGREGAR);
+  }
+
+  async function cambiar(cuenta: Cuenta) {
+    if (ocupado) return;
+    setError(null);
+    setConfirmarQuitar(null);
+    setOcupado({ tipo: "cambiar", userId: cuenta.userId });
+    try {
+      const resultado = await cambiarACuenta(cuenta, puertoCambioReal());
+      if (!resultado.ok) {
+        if (resultado.motivo !== "en_curso") setError(resultado.mensaje);
+        return;
+      }
+      toast.success(`Ahora estás en ${resultado.nombre}`);
+      onNavegar();
+      // Navegacion BLANDA: el router lee document.cookie en JS. Una navegacion
+      // completa podria salir sin la cookie nueva en iOS (ver
+      // components/auth/oauth-url-listener.tsx). Mismo compas de 50 ms que ahi.
+      router.refresh();
+      setTimeout(() => router.replace(DESTINO_TRAS_AGREGAR), 50);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function quitar(cuenta: Cuenta) {
+    if (ocupado) return;
+    setError(null);
+    setOcupado({ tipo: "quitar", userId: cuenta.userId });
+    try {
+      const resultado = await revocarSesion(cuenta);
+      if (!resultado.ok) {
+        reportarCuentas("revocar", resultado.error, "warning");
+        setError("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
+        return;
+      }
+      puertoCambioReal().boveda.quitar(cuenta.userId);
+      setConfirmarQuitar(null);
+      toast.success(`${nombreVisible(cuenta)} ya no está en este teléfono`);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function agregar() {
+    if (ocupado) return;
+    setError(null);
+    setConfirmarQuitar(null);
+    if (llena) {
+      setError("Quita una cuenta para agregar otra.");
+      return;
+    }
+    setOcupado({ tipo: "agregar" });
+    try {
+      // La cuenta actual se guarda ANTES de salir hacia /login: el login (o
+      // Google, o Apple) va a pisar la cookie con la cuenta nueva, y sin esto
+      // la actual se perderia. Si no se puede guardar, no se sale.
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("No encontramos tu sesión actual. Vuelve a entrar.");
+        return;
+      }
+      const guardado = guardarCuenta(datosDeSesion(session, buscarCuenta(session.user.id)));
+      if (guardado === "llena") {
+        setError("Quita una cuenta para agregar otra.");
+        return;
+      }
+      if (guardado === "sin_almacenamiento") {
+        setError("No se pudo guardar tu cuenta actual. Inténtalo de nuevo.");
+        return;
+      }
+      marcarAgregandoCuenta();
+      onNavegar();
+      router.push(hrefAgregarCuenta("/login"));
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function salirDeTodas() {
+    if (ocupado) return;
+    setError(null);
+    setOcupado({ tipo: "salir" });
+    try {
+      const resultado = await logout({ todas: true });
+      if (resultado.error) setError(resultado.error);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <BottomSheet open={open} onClose={cerrar} title="Cuentas" zIndex={60} className="pb-2">
+      <ul className="-mx-4 -mt-2" aria-label="Cuentas en este teléfono">
+        {activa && (
+          <li>
+            <button
+              type="button"
+              onClick={irAlPerfil}
+              disabled={!!ocupado}
+              aria-current="true"
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
+            >
+              <UserAvatar src={activa.foto} name={nombreVisible(activa)} size="md" />
+              <FilaTexto cuenta={activa} />
+              <Check className="h-5 w-5 shrink-0 text-[color:var(--brand)]" aria-label="Cuenta activa" />
+            </button>
+          </li>
+        )}
+        {dormidas.map((cuenta) => {
+          const cambiando = ocupado?.tipo === "cambiar" && ocupado.userId === cuenta.userId;
+          const quitando = ocupado?.tipo === "quitar" && ocupado.userId === cuenta.userId;
+          const confirmando = confirmarQuitar === cuenta.userId;
+          return (
+            <li key={cuenta.userId} className="border-t border-border/15">
+              <div className="flex items-stretch">
+                <button
+                  type="button"
+                  onClick={() => void cambiar(cuenta)}
+                  disabled={!!ocupado}
+                  className="flex min-h-14 flex-1 items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
+                >
+                  {cambiando ? (
+                    <Loader2 className="h-10 w-10 shrink-0 animate-spin p-2 text-[color:var(--brand)]" aria-label="Cambiando de cuenta" />
+                  ) : (
+                    <UserAvatar src={cuenta.foto} name={nombreVisible(cuenta)} size="md" />
+                  )}
+                  <FilaTexto cuenta={cuenta} />
+                </button>
+                {!confirmando && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setConfirmarQuitar(cuenta.userId);
+                    }}
+                    disabled={!!ocupado}
+                    className="px-4 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {confirmando && (
+                <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-xs">
+                  <span className="flex-1 min-w-0 text-muted-foreground">
+                    ¿Quitar {nombreVisible(cuenta)} de este teléfono? Tendrás que volver a entrar para usarla aquí.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void quitar(cuenta)}
+                    disabled={!!ocupado}
+                    className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--danger)] px-3 py-1.5 font-semibold text-white disabled:opacity-60"
+                  >
+                    {quitando && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+                    Quitar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmarQuitar(null)}
+                    disabled={!!ocupado}
+                    className="rounded-lg px-3 py-1.5 font-medium text-foreground shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+        <li className="border-t border-border/15">
+          <button
+            type="button"
+            onClick={() => void agregar()}
+            disabled={!!ocupado}
+            className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand)]">
+              {ocupado?.tipo === "agregar" ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Plus className="h-5 w-5" aria-hidden="true" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-sm font-semibold text-foreground">Agregar cuenta</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {llena ? `Máximo ${MAX_CUENTAS} cuentas por teléfono` : "La actual sigue guardada en este teléfono"}
+              </span>
+            </span>
+          </button>
+        </li>
+        {dormidas.length > 0 && (
+          <li className="border-t border-border/15">
+            <button
+              type="button"
+              onClick={() => void salirDeTodas()}
+              disabled={!!ocupado}
+              className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[rgba(255,59,48,0.08)] disabled:opacity-60"
+            >
+              {ocupado?.tipo === "salir" ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+              ) : (
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+              )}
+              Salir de todas las cuentas
+            </button>
+          </li>
+        )}
+      </ul>
+      {error && (
+        <p role="alert" className="mt-3 rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
+          {error}
+        </p>
+      )}
+    </BottomSheet>
+  );
+}
+
+function FilaTexto({ cuenta, className }: { cuenta: Cuenta; className?: string }) {
+  return (
+    <span className={cn("min-w-0 flex-1", className)}>
+      <span className="block truncate font-display text-sm font-semibold text-foreground">{nombreVisible(cuenta)}</span>
+      {/* El correo va siempre: en un telefono compartido es como alguien sabe
+          que una cuenta no es suya y hay que quitarla. */}
+      <span className="block truncate text-xs text-muted-foreground">
+        {cuenta.username ? `@${cuenta.username} · ` : ""}
+        {cuenta.email}
+      </span>
+    </span>
+  );
+}

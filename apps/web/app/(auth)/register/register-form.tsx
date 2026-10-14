@@ -19,6 +19,8 @@ import {
 import { VerificarCodigo } from "./verificar-codigo";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { LegalFooter } from "@/components/auth/legal-footer";
+import { PARAM_AGREGANDO, hrefAgregarCuenta } from "@/lib/cuentas/agregando-cuenta";
+import { AvisoAgregandoCuenta } from "@/components/cuentas/aviso-agregando-cuenta";
 
 const suscribirInicio = () => () => {};
 const inicioCliente = () => true;
@@ -82,9 +84,14 @@ export function RegisterForm() {
   // El destino acompana a la persona por los CUATRO caminos de entrada:
   // email, Google, Apple, y el salto a iniciar sesion.
   const destino = searchParams.get("next");
-  const hrefLogin = destino
-    ? `/login?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
-    : "/login";
+  // Agregando OTRA cuenta (lib/cuentas/agregando-cuenta.ts): hay sesion, se
+  // pinta el aviso y el salto a iniciar sesion conserva la intencion.
+  const agregando = searchParams.get(PARAM_AGREGANDO) === "1";
+  const hrefLogin = agregando
+    ? hrefAgregarCuenta("/login")
+    : destino
+      ? `/login?next=${encodeURIComponent(destinoAutenticadoSeguro(destino))}`
+      : "/login";
 
   // El correo pendiente sale del dispositivo si se pudo escribir, y si no, de
   // memoria. El del dispositivo manda, porque es el que sobrevive a que el
@@ -258,9 +265,11 @@ export function RegisterForm() {
           cambia la pantalla: "Crea tu cuenta para empezar" encima de unas
           casillas de codigo describe un paso que ya paso. */}
       <div className="mb-6 space-y-1.5 text-center">
-        <h1 className="font-heading text-2xl font-bold">Únete a VICINO</h1>
-        <p className="text-sm text-muted-foreground">Crea tu cuenta para empezar</p>
+        <h1 className="font-heading text-2xl font-bold">{agregando ? "Otra cuenta en VICINO" : "Únete a VICINO"}</h1>
+        <p className="text-sm text-muted-foreground">{agregando ? "Crea la cuenta nueva; la actual sigue guardada" : "Crea tu cuenta para empezar"}</p>
       </div>
+
+      {agregando && <AvisoAgregandoCuenta />}
 
       {error && (
         <div

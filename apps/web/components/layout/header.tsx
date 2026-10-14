@@ -93,6 +93,7 @@ export function Header({ isAdmin, user, profile }: HeaderProps) {
           {/* Menu Drawer */}
           {user && (
             <AccountMenuDrawer
+              userId={user.id}
               userName={publicProfileName(profile)}
               userAvatar={profile?.foto}
               username={profile?.username}

@@ -4,11 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { quitarCuenta } from "@/lib/cuentas/boveda";
 
 const CONFIRM_WORD = "ELIMINAR";
 
-/** `agrupado`: ultima fila del grupo de "Sesion" en /configuracion. */
-export function DeleteAccountSection({ agrupado = false }: { agrupado?: boolean }) {
+/**
+ * `agrupado`: ultima fila del grupo de "Sesion" en /configuracion.
+ * `userId`: para purgar la entrada de la boveda de cuentas al borrar; las demas
+ * cuentas del telefono se quedan (la persona borro UNA cuenta, no el telefono).
+ */
+export function DeleteAccountSection({ agrupado = false, userId }: { agrupado?: boolean; userId?: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -36,6 +41,8 @@ export function DeleteAccountSection({ agrupado = false }: { agrupado?: boolean 
         throw new Error(data.error ?? "No se pudo eliminar la cuenta.");
       }
 
+      // La cuenta ya no existe: su refresh token guardado no vale para nada.
+      if (userId) quitarCuenta(userId);
       router.push("/cuenta-eliminada");
       router.refresh();
     } catch (err: unknown) {

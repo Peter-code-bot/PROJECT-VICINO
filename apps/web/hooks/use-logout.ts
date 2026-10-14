@@ -1,8 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import * as Sentry from "@sentry/nextjs";
+import { cuentaMasReciente, cuentasDormidas, quitarCuenta, vaciarBoveda } from "@/lib/cuentas/boveda";
+import { desmarcarCambioEnCurso, marcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
+import { aplicarCuenta } from "@/lib/cuentas/cambio";
+import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
+import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
+import { DESTINO_TRAS_AGREGAR } from "@/lib/cuentas/agregando-cuenta";
+
+export interface OpcionesLogout {
+  /** Revoca tambien las cuentas dormidas y vacia la boveda: el telefono queda limpio. */
+  todas?: boolean;
+}
 
 /**
  * Implementacion unica de cierre de sesion en cliente.
@@ -17,12 +29,19 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Por eso solo navegamos cuando signOut() confirma exito. Si falla, devolvemos
  * el mensaje para que quien llama lo muestre y el usuario pueda reintentar.
+ *
+ * Consciente de cuentas (decision D3): si hay otras cuentas guardadas en el
+ * telefono, al cerrar la activa se pasa a la mas reciente en vez de ir a
+ * /login, como hace Instagram. signOut() sigue siendo GLOBAL a proposito (es lo
+ * que este boton ha hecho siempre y lo que se espera de el en un telefono
+ * compartido); lo local es "Quitar" en la hoja de cuentas.
  */
 export function useLogout() {
   const router = useRouter();
 
-  return async (): Promise<{ error?: string }> => {
+  return async (opciones?: OpcionesLogout): Promise<{ error?: string }> => {
     const supabase = createClient();
+    const todas = opciones?.todas === true;
 
     // Soltar el token de push ANTES de cerrar sesion: despues ya no hay permiso
     // para escribir en el perfil.
@@ -49,16 +68,65 @@ export function useLogout() {
       }
     }
 
+    if (todas) {
+      // Las dormidas se revocan una a una ANTES de perder la activa. Un fallo de
+      // red en una no detiene el resto: el objetivo de quien pulsa esto es que el
+      // telefono quede limpio, y eso se cumple vaciando la boveda. La sesion que
+      // no se pudo revocar NO caduca sola (sesiones indefinidas en prod), por
+      // eso se reporta con el userId: se puede revocar a mano desde el panel.
+      for (const dormida of cuentasDormidas(user?.id)) {
+        const resultado = await revocarSesion(dormida);
+        if (resultado.ok) {
+          quitarCuenta(dormida.userId);
+        } else {
+          Sentry.captureException(resultado.error, {
+            level: "warning",
+            tags: { hook: "useLogout", step: "revocar_dormida" },
+            extra: { userId: dormida.userId },
+          });
+        }
+      }
+    }
+
+    const siguiente = todas ? null : cuentaMasReciente(user?.id);
+    // La marca va ANTES de signOut: el SIGNED_OUT que emite llegaria a
+    // session-data-provider, que sin marca haria una navegacion dura a /login
+    // antes de que pudieramos pasar a la siguiente cuenta.
+    if (siguiente) marcarCambioEnCurso(siguiente.userId);
+
     const { error } = await supabase.auth.signOut();
     if (error) {
+      if (siguiente) desmarcarCambioEnCurso();
       Sentry.captureException(error, {
         tags: { hook: "useLogout" },
         contexts: { auth: { name: error.name, status: error.status ?? null } },
       });
       return { error: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
     }
-    router.push("/login");
+
+    if (user) quitarCuenta(user.id);
+    if (todas) vaciarBoveda();
+
+    if (!siguiente) {
+      router.push("/login");
+      router.refresh();
+      return {};
+    }
+
+    const resultado = await aplicarCuenta(siguiente, puertoCambioReal());
+    if (!resultado.ok) {
+      desmarcarCambioEnCurso();
+      if (resultado.motivo === "red") reportarCuentas("logout_siguiente", new Error(resultado.motivo), "warning");
+      // Ya no hay sesion: el aviso va por toast porque quien llamo se desmonta.
+      toast.error(resultado.mensaje);
+      router.push("/login");
+      router.refresh();
+      return {};
+    }
+    toast.success(`Ahora estás en ${resultado.nombre}`);
+    // Navegacion blanda, como en la hoja de cuentas (carrera de la cookie en iOS).
     router.refresh();
+    setTimeout(() => router.replace(DESTINO_TRAS_AGREGAR), 50);
     return {};
   };
 }

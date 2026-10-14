@@ -6,13 +6,16 @@ import Link, { useLinkStatus } from "next/link";
 import {
   User, Store, BadgeCheck, ShoppingBag, Calendar, Heart, Star,
   Bell, Lock, Sun, Moon, HelpCircle, MessageCircle, FileText,
-  Shield, Info, Settings, ChevronRight, X, Loader2, Pencil,
+  Shield, Info, Settings, ChevronRight, ChevronDown, Users, X, Loader2, Pencil,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { HojaCuentas } from "@/components/cuentas/hoja-cuentas";
 
 interface AccountMenuDrawerProps {
   trigger: React.ReactNode;
+  /** La cuenta con sesion. Con el, la fila de perfil abre la hoja "Cuentas". */
+  userId?: string;
   userName?: string;
   userAvatar?: string | null;
   username?: string | null;
@@ -20,8 +23,11 @@ interface AccountMenuDrawerProps {
   userIsVendedor?: boolean;
 }
 
-export function AccountMenuDrawer({ trigger, userName, userAvatar, username, userIsVendedor = false }: AccountMenuDrawerProps) {
+export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, username, userIsVendedor = false }: AccountMenuDrawerProps) {
   const [open, setOpen] = useState(false);
+  // La hoja "Cuentas" (cambio de cuenta, decision D1): la fila de perfil la
+  // abre encima del cajon, como el selector de Instagram.
+  const [hojaAbierta, setHojaAbierta] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- next-themes hydration pattern; refactor pendiente como follow-up tecnico
@@ -34,14 +40,23 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
   // sintetico cuando detecta data-modal-open="true". Cualquier futuro
   // custom drawer (que no use Radix Dialog underneath) debe adoptar este
   // mismo patron para ser back-button-aware.
+  //
+  // Con la hoja de cuentas abierta, Escape (y el boton Atras) es para ELLA:
+  // su propio listener la cierra y el cajon se queda. Sin esta guarda, un
+  // solo Atras cerraba las dos capas de golpe.
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape" && !hojaAbierta) setOpen(false);
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
+  }, [open, hojaAbierta]);
+
+  function cerrarTodo() {
+    setHojaAbierta(false);
+    setOpen(false);
+  }
 
   return (
     <>
@@ -62,8 +77,37 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
               </button>
             </div>
 
-            {/* User summary */}
-            {userName && (
+            {/* User summary. Con userId, la fila abre la hoja "Cuentas"
+                (cambiar de cuenta o agregar otra); el "▾" junto al nombre es la
+                convencion de Instagram para "aqui hay mas cuentas". Dentro de la
+                hoja, tocar la cuenta activa lleva a /perfil; y "Mi perfil" sigue
+                a un toque en la seccion de abajo. */}
+            {userName && (userId ? (
+              <button
+                type="button"
+                onClick={() => setHojaAbierta(true)}
+                aria-haspopup="dialog"
+                aria-expanded={hojaAbierta}
+                aria-label={`Cuentas: ${userName}. Cambiar de cuenta`}
+                className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-muted transition-colors border-b border-border/15"
+              >
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-semibold">{userName[0]?.toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground truncate">
+                    {userName}
+                    <ChevronDown className="ml-1 inline-block h-4 w-4 align-[-2px] text-muted-foreground" aria-hidden="true" />
+                  </p>
+                  {username && <p className="text-xs text-muted-foreground">@{username}</p>}
+                </div>
+                <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              </button>
+            ) : (
               <Link href="/perfil" onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-5 py-4 hover:bg-muted transition-colors border-b border-border/15">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
@@ -79,11 +123,12 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </Link>
-            )}
+            ))}
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_5rem)]">
               <Section label="Cuenta">
+                {userId && <Item href="/perfil" icon={User} label="Mi perfil" onClose={() => setOpen(false)} />}
                 {userIsVendedor ? (
                   <>
                     <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
@@ -127,6 +172,14 @@ export function AccountMenuDrawer({ trigger, userName, userAvatar, username, use
             </div>
 
           </div>
+          {userId && (
+            <HojaCuentas
+              open={hojaAbierta}
+              onClose={() => setHojaAbierta(false)}
+              userId={userId}
+              onNavegar={cerrarTodo}
+            />
+          )}
         </div>,
         document.body
       )}

@@ -7,6 +7,7 @@ import { usuarioOInvitado } from "../session-auth";
 import { CABECERA_RUTA } from "../navigation/rutas-legales";
 import { requiereSesion, loginPara, COOKIE_DESTINO_ONBOARDING } from "../auth/acceso-invitado";
 import { exentaDeConfirmacionLegal, legalStateSchema, rutaConfirmacionCuenta } from "../auth/confirmacion-legal";
+import { COOKIE_AGREGANDO_CUENTA, estaAgregandoCuenta } from "../cuentas/agregando-cuenta";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
@@ -102,7 +103,13 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   //
   // Crucial: se copian las cookies renovadas por createServerClient al objeto
   // redirectResponse, para no perder la sesion recien emitida o refrescada.
-  if (user && (pathname === "/login" || pathname.startsWith("/login/") ||
+  //
+  // Excepcion: "agregar cuenta" (lib/cuentas/agregando-cuenta.ts). Con esa
+  // cookie, puesta por la hoja de cuentas y de 10 minutos, quien YA tiene
+  // sesion puede ver /login y /register para entrar con OTRA cuenta sin cerrar
+  // la actual. Las paginas y la accion signUp leen la misma cookie.
+  const agregandoCuenta = estaAgregandoCuenta(request.cookies.get(COOKIE_AGREGANDO_CUENTA)?.value);
+  if (user && !agregandoCuenta && (pathname === "/login" || pathname.startsWith("/login/") ||
       pathname === "/register" || pathname.startsWith("/register/"))) {
     const next = request.nextUrl.searchParams.get("next");
     const destino = destinoAutenticadoSeguro(next);

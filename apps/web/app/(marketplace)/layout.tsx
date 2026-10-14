@@ -15,6 +15,7 @@ import { ChatUnreadProvider } from "@/components/layout/chat-unread-provider";
 import { NotificationUnreadProvider } from "@/components/layout/notification-unread-provider";
 import { FavoritesProvider } from "@/components/layout/favorites-provider";
 import { MuroSesionProvider } from "@/components/auth/muro-sesion";
+import { RegistroCuentaActiva } from "@/components/cuentas/registro-cuenta-activa";
 import { createClient } from "@/lib/supabase/server";
 
 import { MainWrapper } from "@/components/layout/main-wrapper";
@@ -172,6 +173,21 @@ export default async function MarketplaceLayout({
 
   return (
     <SessionDataProvider key={user?.id ?? "guest"} userId={user?.id ?? ""} revision={(await cookies()).get("vicino_data_revision")?.value ?? ""}>
+    {/* Espejo de la cuenta activa en la boveda de cuentas del dispositivo
+        (cambio de cuenta). Con key por usuario, como los demas: un cambio
+        de cuenta lo remonta con la nueva. */}
+    {user && (
+      <RegistroCuentaActiva
+        key={user.id}
+        cuenta={{
+          userId: user.id,
+          email: user.email ?? "",
+          nombre: profile ? publicProfileName(profile, "") : "",
+          username: profile?.username ?? null,
+          foto: profile?.foto ?? null,
+        }}
+      />
+    )}
     <ChatUnreadProvider userId={user?.id ?? ""} initialCount={unreadChatMessages}>
       <NotificationUnreadProvider
         userId={user?.id ?? ""}
