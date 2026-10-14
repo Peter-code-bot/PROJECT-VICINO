@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.4"
   }
   graphql_public: {
     Tables: {
@@ -413,10 +413,33 @@ export type Database = {
         ]
       }
       community_categories: {
-        Row: { activo: boolean; id: string; nombre: string; source_category_id: string | null }
-        Insert: { activo?: boolean; id: string; nombre: string; source_category_id?: string | null }
-        Update: { activo?: boolean; id?: string; nombre?: string; source_category_id?: string | null }
-        Relationships: [{ foreignKeyName: "community_categories_source_category_id_fkey"; columns: ["source_category_id"]; isOneToOne: true; referencedRelation: "categories"; referencedColumns: ["id"] }]
+        Row: {
+          activo: boolean
+          id: string
+          nombre: string
+          source_category_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          id: string
+          nombre: string
+          source_category_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          id?: string
+          nombre?: string
+          source_category_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_categories_source_category_id_fkey"
+            columns: ["source_category_id"]
+            isOneToOne: true
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       community_join_requests: {
         Row: {
@@ -2822,6 +2845,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_purchase_request_v2: {
+        Args: {
+          category_slugs: string[]
+          expiry_hours?: number
+          operation_id: string
+          request_budget?: number
+          request_description?: string
+          request_image_url?: string
+          request_lat: number
+          request_lng: number
+          request_title: string
+        }
+        Returns: string
+      }
       delete_user_data: { Args: { target_user_id: string }; Returns: Json }
       dentro_de_cobertura: {
         Args: { p_lat: number; p_lng: number }
@@ -2908,7 +2945,11 @@ export type Database = {
         Returns: Json
       }
       editar_identidad_comunidad: {
-        Args: { p_categoria_id: string; p_community_id: string; p_foto_path?: string }
+        Args: {
+          p_categoria_id: string
+          p_community_id: string
+          p_foto_path?: string
+        }
         Returns: Json
       }
       editar_visibilidad_comunidad: {
@@ -3034,28 +3075,6 @@ export type Database = {
           status: Database["public"]["Enums"]["request_status"]
           title: string
         }[]
-      }
-      nearby_request_categories: {
-        Args: {
-          radius_meters?: number
-          user_lat: number
-          user_lng: number
-        }
-        Returns: { nombre: string; slug: string }[]
-      }
-      create_purchase_request_v2: {
-        Args: {
-          category_slugs: string[]
-          expiry_hours?: number
-          operation_id: string
-          request_budget?: number
-          request_description?: string
-          request_image_url?: string
-          request_lat: number
-          request_lng: number
-          request_title: string
-        }
-        Returns: string
       }
       finalizar_onboarding_v3: {
         Args: {
@@ -3497,6 +3516,13 @@ export type Database = {
           vendedor_rating: number
           vendedor_reviews: number
           vendedor_trust: string
+        }[]
+      }
+      nearby_request_categories: {
+        Args: { radius_meters?: number; user_lat: number; user_lng: number }
+        Returns: {
+          nombre: string
+          slug: string
         }[]
       }
       nombrar_moderador_comunidad: {
