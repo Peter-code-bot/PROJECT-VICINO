@@ -112,7 +112,7 @@ export function CompletarPerfil() {
   };
 
   function omit() {
-    if (session.blocked || ocupado) return;
+    if (session.blocked || session.finalPending || ocupado) return;
     startOnboardingNavigation(paso, paso === "listo" ? "finish" : "skip");
     if (paso === "listo") { run(() => session.finalize("explorar")); return; }
     const next = siguientePaso(paso, context);
@@ -186,8 +186,7 @@ export function CompletarPerfil() {
     progressPending={!profile.has_seen_onboarding && (session.pending > 0 || session.busy)} busy={ocupado}
     footer={<OnboardingActions type="submit" form="onboarding-question" busy={ocupado} disabled={!canContinue[paso] || session.blocked}
       continueLabel={paso === "listo" ? session.finalPending ? "Reintentar entrada" : finalVendedor ? "Activar y entrar" : "Entrar a VICINO" : "Continuar"}
-      onSkip={session.blocked || session.finalPending || (paso === "listo" && !finalVendedor) ? undefined : omit}
-      skipLabel={paso === "listo" ? "Entrar por ahora" : "Omitir"} />}>
+      onSkip={omit} skipDisabled={session.blocked || session.finalPending} />}>
     {status}
     <form id="onboarding-question" onSubmit={(event) => { event.preventDefault(); continueStep(); }}>
       <fieldset disabled={ocupado || session.finalPending} className="min-w-0 space-y-5">

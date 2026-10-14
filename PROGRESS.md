@@ -1,3 +1,10 @@
+## 13-oct-2026 — ONB-SKIP-01: Omitir en todos los pasos opcionales
+
+- Nueva revisión pedida por Javier: Omitir también en listo de comprador/vendedor y label uniforme en el alta posterior de vendedor. Al cerrar usa la finalización confirmada sin activar vendedor; conserva una tienda ya activa.
+- Omitir permanece visible ante fallos o respuestas inciertas; se deshabilita temporalmente durante envío/foto/permiso nativo activo o recuperación, manteniendo la operación y decisión pendientes. La validación de campos/ID sólo bloquea Continuar. Elegir Comprar/Vender y los legales siguen obligatorios por requisito previo.
+- Auditoría independiente del diff y suite UI completa 134/134, exit 0: seis recorridos completos Comprador/Casual/Negocio × Continuar/Omitir verifican presencia y habilitación por paso, final incierto, permisos, vendedor activo y doble clic sin operación duplicada. TypeScript exit 0; CI y despliegue quedan registrados con sus SHA/PR en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+- Sin cambios de SQL ni cuentas. La suite simula Auth/ACK, foto/mapa y permisos; aceptación autenticada y física Android NAT-AND-02/08 e iOS NAT-IOS-02/07 conserva su seguimiento en Notion.
+
 ## 13-oct-2026 — Onboarding publicado; comprobación de todos los pasos
 
 - Revisión solicitada por Javier tras el registro bloqueado de un amigo: Gemini había subido `6d6ee49` a la rama, pero no había creado ni integrado un PR. Production seguía en `9aae1ed`; el enlace `/pull/new/…` era un formulario.

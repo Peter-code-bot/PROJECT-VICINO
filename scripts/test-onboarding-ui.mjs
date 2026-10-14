@@ -298,7 +298,7 @@ try{
  await runCase('seller-final-enter-for-now-stays-buyer',mobile,'/completar-perfil/listo?camino=vender&push=prompt',async page=>{
   assert.equal(await page.getByRole('heading',{name:'Tu perfil para vender',exact:true}).isVisible(),true);
   assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').length),0);
-  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
   assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish')[0].input.decision),'explorar');
  });
@@ -320,6 +320,7 @@ try{
  });
  await runCase('permission-unknown-can-omit',mobile,'/completar-perfil/notificaciones?push=unknown',async page=>{
   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='push-request').length),0);
  });
  for(const mode of ['request-error','read-error','request-denied'])await runCase(`permission-continues-${mode}`,mobile,`/completar-perfil/notificaciones?push=${mode}`,async page=>{
   await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('heading',{name:'Tu perfil está listo',exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='push-request').length),1);
@@ -345,6 +346,11 @@ try{
    const step=expected[index];
    await page.waitForFunction(step=>location.pathname===`/completar-perfil/${step}`,step);
    assert.equal(await page.getByRole('alert').count(),0,`Unexpected error at ${step}`);
+   const skip=page.getByRole('button',{name:'Omitir',exact:true});
+   await skip.waitFor();
+   await page.waitForFunction(()=>[...document.querySelectorAll('footer button')].some(button=>button.textContent==='Omitir'&&!button.disabled));
+   assert.equal(await skip.count(),1,`One Skip at ${step}`);
+   assert.equal(await skip.isEnabled(),true,`Skip available at ${step}`);
    if(action==='continue'){
     if(step==='categoria'||step==='intereses')await page.getByText('Comida y Bebidas',{exact:true}).click();
     if(step==='tipo')await page.getByText(journey.tipo==='business'?'Negocio':'Casual',{exact:true}).click();
@@ -358,7 +364,7 @@ try{
     }
     if(step==='ubicacion')await page.getByRole('button',{name:'Elegir zona de prueba',exact:true}).click();
    }
-   const label=step==='listo'?(journey.camino==='vender'?(action==='skip'?'Entrar por ahora':'Activar y entrar'):'Entrar a VICINO'):(action==='skip'?'Omitir':'Continuar');
+   const label=action==='skip'?'Omitir':step==='listo'?(journey.camino==='vender'?'Activar y entrar':'Entrar a VICINO'):'Continuar';
    await page.getByRole('button',{name:label,exact:true}).click();
    if(step!=='listo')await page.waitForFunction(next=>location.pathname===`/completar-perfil/${next}`,expected[index+1]);
   }
@@ -578,6 +584,8 @@ try{
   await page.clock.fastForward(20_001);await page.getByText('Aún no sabemos si este paso se guardó. Conservaremos la misma operación para comprobarlo.',{exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Reintentar guardado',exact:true}).isEnabled(),true);
   assert.equal(await page.getByRole('button',{name:'Volver al avance guardado',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isVisible(),true);
+  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isDisabled(),true);
  },{clock:true});
  await runCase('business-branch-and-counter-wait-for-confirmed-type',mobile,'/completar-perfil/tipo?camino=vender&ackDelay=300',async page=>{
   await page.getByText('Negocio',{exact:true}).click();await page.getByRole('button',{name:'Continuar',exact:true}).click();
@@ -592,13 +600,14 @@ try{
  await runCase('definitive-final-failure-allows-changing-the-decision',mobile,'/completar-perfil/listo?camino=vender&finalFail=1',async page=>{
   await page.getByRole('button',{name:'Activar y entrar',exact:true}).click();await page.getByRole('alert').waitFor();
   assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),false);
-  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
   const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').map(x=>x.input));
   assert.deepEqual(inputs.map(x=>x.decision),['activar','explorar']);assert.notEqual(inputs[0].operationId,inputs[1].operationId);
  });
  await runCase('uncertain-final-retains-the-original-decision-and-id',mobile,'/completar-perfil/listo?camino=vender&finalLostAck=1',async page=>{
-  await page.getByRole('button',{name:'Entrar por ahora',exact:true}).click();await page.getByRole('alert').waitFor();
-  assert.equal(await page.getByRole('button',{name:'Entrar por ahora',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).count(),1);
+  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isDisabled(),true);
   await page.getByRole('button',{name:'Reintentar entrada',exact:true}).click();await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
   const inputs=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='finish').map(x=>x.input));
   assert.deepEqual(inputs[0],inputs[1]);assert.equal(inputs[1].decision,'explorar');
@@ -608,6 +617,20 @@ try{
  for(const mode of ['granted','denied','no-nativo'])await runCase('final-back-stays-editable-'+mode,mobile,'/completar-perfil/listo?push='+mode,async page=>{
   await page.getByRole('button',{name:'Regresar',exact:true}).click();await page.getByRole('heading',{name:'¿Dónde estás?',exact:true}).waitFor();
   await page.waitForTimeout(100);assert.equal(new URL(page.url()).pathname,'/completar-perfil/ubicacion');
+ });
+ await runCase('skip-final-existing-seller-preserves-activation',mobile,'/completar-perfil/listo?camino=vender&active=1',async page=>{
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();
+  await page.getByRole('heading',{name:'Finalizado',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.es_vendedor),true);
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(entry=>entry.action==='finish')[0].input.decision),'explorar');
+ });
+ await runCase('skip-double-click-preserves-one-operation',mobile,'/completar-perfil/nombre?ackDelay=600',async page=>{
+  await page.waitForFunction(()=>[...document.querySelectorAll('footer button')].some(button=>button.textContent==='Omitir'&&!button.disabled));
+  await page.evaluate(()=>{const button=[...document.querySelectorAll('footer button')].find(button=>button.textContent==='Omitir');button.click();button.click();});
+  await page.getByRole('heading',{name:'Agrega tu foto',exact:true}).waitFor();
+  await page.waitForFunction(()=>window.__fixture.profile.onboarding_revision===1);
+  assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(entry=>entry.action==='save').length),1);
+  assert.equal(await page.getByRole('alert').count(),0);
  });
  }
 }finally{
