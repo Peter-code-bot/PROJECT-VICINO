@@ -82,6 +82,7 @@ export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: Soli
   const hasLocation = userLat !== null && userLng !== null;
   const zoneKey = `${userId}:${userLat}:${userLng}:${radiusMeters}:${revision}`;
   return <div className="w-full">
+    <p className="px-4 pb-3 text-sm leading-relaxed text-fg-muted">Publica lo que necesitas y recibe ofertas de personas cercanas.</p>
     <div className="flex items-center px-4 pb-3"><FiltroCategoriasDrawer seleccionadas={collection?.category ? [collection.category.slug] : []} modo="una" onAplicar={slugs => {
       const slug = slugs.at(0);
       if (slug) openCollection({ slug, nombre: CATEGORIES.find(category => category.slug === slug)?.name ?? slug }); else closeCollection();

@@ -244,6 +244,7 @@ export function ComunidadesFeed({
 
   return (
     <div className="mx-auto w-full max-w-lg pb-28">
+      <p className="px-4 pb-3 text-sm leading-relaxed text-fg-muted">Conecta con tus vecinos y comparte intereses en comunidad.</p>
       <div className="pt-1 pb-3">
         <SubTabs active={tab} onChange={cambiarTab} pendientes={pendientes.length} />
       </div>
