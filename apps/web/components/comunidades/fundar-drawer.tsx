@@ -13,8 +13,12 @@ import {
   COMMUNITY_NOMBRE_MIN,
   COMMUNITY_NOMBRE_MAX,
   COMMUNITY_DESCRIPCION_MAX,
+  COMMUNITY_CATEGORIES,
 } from "@vicino/shared";
-import { fundarComunidad, estadoCuotaFundacion } from "@/app/(marketplace)/comunidades/actions";
+import { fundarComunidad, estadoCuotaFundacion, editarIdentidad } from "@/app/(marketplace)/comunidades/actions";
+import { createClient } from "@/lib/supabase/client";
+import { uploadCommunityPhoto, removeCommunityPhoto, cleanupUnreferencedCommunityPhoto } from "@/lib/comunidades/group-photo";
+import { CommunityPhotoInput } from "./community-photo-input";
 import { tiempoQueFalta } from "@/lib/comunidades/errores";
 import type { EstadoCuotaFundacion } from "@/lib/comunidades/tipos";
 
@@ -49,6 +53,9 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
   });
   const [mounted, setMounted] = useState(false);
   const [nombre, setNombre] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [foto, setFoto] = useState<File | null>(null);
+  const [creationId] = useState(() => crypto.randomUUID());
   const [descripcion, setDescripcion] = useState("");
   const [privada, setPrivada] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -101,7 +108,7 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
   const bloqueadoPorCuota = !cuota.puede_fundar && (cuota.siguiente_en === null || falta !== null);
   const nombreValido =
     nombre.trim().length >= COMMUNITY_NOMBRE_MIN && nombre.trim().length <= COMMUNITY_NOMBRE_MAX;
-  const puedeEnviar = !enviando && !bloqueadoPorCuota && nombreValido && posicion !== null;
+  const puedeEnviar = !enviando && !bloqueadoPorCuota && nombreValido && categoria !== "" && posicion !== null;
 
   async function handleSubmit() {
     setError(null);
@@ -113,6 +120,8 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
     try {
       const r = await fundarComunidad({
         nombre,
+        categoria_id: categoria,
+        creation_id: creationId,
         descripcion,
         lat: posicion.lat,
         lng: posicion.lng,
@@ -122,10 +131,24 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
         setError(r.error);
         return;
       }
-      if (privada && !r.data.es_privada) {
-        toast.warning("La comunidad se fundó pero quedó pública. Puedes cerrarla desde Administrar.");
-      } else {
-        toast.success(`Fundaste ${r.data.nombre}`);
+      toast.success(`Fundaste ${r.data.nombre}`);
+      // Creation already committed. Photo failures always navigate to the new
+      // community; retrying the whole form must never create another group.
+      if (foto) {
+        const supabase = createClient();
+        let path: string | null = null;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Sin sesión");
+          path = await uploadCommunityPhoto(supabase, r.data.id, user.id, foto);
+          const saved = await editarIdentidad({ community_id: r.data.id, categoria_id: categoria, foto_path: path });
+          if ("error" in saved) { await removeCommunityPhoto(supabase, path); throw new Error(saved.error); }
+        } catch {
+          // A network rejection may follow a successful identity commit: retain
+          // the object then, instead of deleting a photo that the group uses.
+          if (path) await cleanupUnreferencedCommunityPhoto(supabase, r.data.id, path);
+          toast.warning("Tu comunidad está creada. La foto no se pudo confirmar; puedes revisarla en Administrar.");
+        }
       }
       onClose();
       router.push(`/comunidades/${r.data.id}`);
@@ -188,6 +211,16 @@ export function FundarDrawer({ onClose, lat, lng, cuotaInicial }: FundarDrawerPr
               Entre {COMMUNITY_NOMBRE_MIN} y {COMMUNITY_NOMBRE_MAX} caracteres. El nombre no se puede cambiar después.
             </p>
           </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="fundar-categoria" className="text-sm font-medium text-fg">Categoría</label>
+            <select id="fundar-categoria" value={categoria} onChange={event => setCategoria(event.target.value)} required className="min-h-12 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground">
+              <option value="" disabled>Elige una categoría</option>
+              {COMMUNITY_CATEGORIES.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </div>
+
+          <CommunityPhotoInput nombre={nombre} foto={foto} onChange={setFoto} disabled={enviando} />
 
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between">

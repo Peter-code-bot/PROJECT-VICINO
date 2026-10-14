@@ -17,6 +17,7 @@ import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consu
 import { parseRadiusCookie } from "@/lib/geo/radius";
 import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad } from "@/lib/comunidades/errores";
+import { withCommunityPhotos } from "@/lib/comunidades/group-photo";
 import type { SubTabComunidades } from "@/components/comunidades/sub-tabs";
 import { getGuestHomePreview } from "@/lib/home-guest-preview";
 
@@ -445,12 +446,16 @@ export async function getHomeSession(
     }
 
     const posts = muroData?.data ?? [];
+    const [miasConFoto, cercanasConFoto] = await Promise.all([
+      withCommunityPhotos(supabase, miasData?.data ?? []),
+      withCommunityPhotos(supabase, cercanasData?.data ?? []),
+    ]);
     return {
       user: { id: user.id, nombre: publicProfileName(perfilData, "Tú"), foto: perfilData?.foto ?? null },
       muro: { posts, cursor: cursorDeUltimo(posts, 30) },
-      mias: miasData?.data ?? [],
+      mias: miasConFoto,
       misSolicitudes: solicitudesData?.data ?? [],
-      cercanas: hasLocation && cercanasData && !cercanasData.error ? (cercanasData.data ?? []) : null,
+      cercanas: hasLocation && cercanasData && !cercanasData.error ? cercanasConFoto : null,
       cuota: leerEstadoCuota(cuotaData?.error ? null : cuotaData?.data),
       errores: {
         muro: muroData?.error ? traducirErrorComunidad(muroData.error) : undefined,

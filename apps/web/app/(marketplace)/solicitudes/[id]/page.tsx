@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Clock, MessageSquare } from "lucide-react";
 import { formatRelativeTime } from "@vicino/shared";
 import { OffersList } from "@/components/solicitudes/offers-list";
+import { safeRequestReturn } from "@/lib/solicitudes/request-navigation";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }
 
 export const dynamic = "force-dynamic";
@@ -64,8 +66,9 @@ function timeLeft(dateStr: string): string {
   return `${days}d restantes`;
 }
 
-export default async function SolicitudDetailPage({ params }: Props) {
+export default async function SolicitudDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const returnTo = safeRequestReturn((await searchParams).returnTo);
   const supabase = await createClient();
 
   const {
@@ -153,7 +156,7 @@ export default async function SolicitudDetailPage({ params }: Props) {
       {/* ─── Top bar ──────────────────────────────────── */}
       <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] md:top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center gap-3 px-4 py-3">
-          <BotonRegresar href="/?feed=solicitudes" aria-label="Volver a solicitudes" />
+          <BotonRegresar href={returnTo} aria-label="Volver a solicitudes" />
           <h1 className="font-heading text-base font-bold text-foreground truncate">
             Solicitud
           </h1>

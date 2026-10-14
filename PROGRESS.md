@@ -1,3 +1,19 @@
+## 14-oct-2026 — Solicitudes, comunidades, ubicación y legales: integración técnica
+
+- Inicio de implementación autorizado por Javier: 13-oct 23:31:05 CDMX; reanudación 14-oct 01:00:17. Workflow Advisor aplicado; base d00e567, rama feat/solicitudes-comunidades-ubicacion-20261013. [Plan único](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).
+- Tarjetas por categoría en Solicitudes y Mis comunidades/Descubrir; categoría obligatoria antes de descripción y foto opcional con inicial. Ubicación automática, Listo idempotente, cierre por deslizamiento y ventana estable durante refresh. Pie legal compartido en login/registro con enlaces independientes; conserva la confirmación explícita vigente.
+- Migraciones 20261014054500 y 20261014054632 aplicadas y registradas mediante el navegador de Supabase VICINO main. Catálogo33 opciones; backfill acotado a las seis comunidades de prueba; bucket privado; alta de solicitudes atómica y paginación por fecha/ID. Los RPC legados siguen disponibles.
+- Verificación local: build exit0 (60/60 páginas); lint0 errores/144avisos; previews26/26; comunidades SQL13/13, contratos8/8, UI18/18; solicitudes SQL11/11, comportamiento7/7, acción6/6, Chromium16/16 y WebKit16/16; ubicación34/34,60/60,4/4,22/22 y Home2/2. Fronteras Auth/GPS/SDK/transportes controladas en suites; PostGIS remoto comprobado con migraciones reversibles antes de aplicar.
+- [PR59](https://github.com/Peter-code-bot/PROJECT-VICINO/pull/59); tipos oficiales descargados del workflow Production database types (38531151244) e incorporados con protección de la columna de mapa. SHA y resultado vigente de CI/publicación en la [Bitácora](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). Aceptación autenticada y física Android/iOS pendiente en [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c), SC-AND-01/SC-IOS-01.
+
+## 13-oct-2026 — Solicitudes, comunidades y ubicación: planificación preparada
+
+- Workflow Advisor aplicado al plan solicitado por Javier. Inicio 23:09:59 y fin de elaboración/revisión 23:22:16 CDMX; [plan único en Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), bloque PLAN-20261013-SOLICITUDES-COMUNIDADES.
+- Tarjetas por categoría en Solicitudes y Mis comunidades/Descubrir, categoría obligatoria y foto de grupo opcional al fundar; selección automática de ubicación, palomita y cierre por deslizamiento. Muro conservado. Catálogo de comunidades por confirmar.
+- Ampliación AL01: bloque compacto de enlaces a Términos y Condiciones/Aviso de Privacidad bajo opciones de login/registro, referencia CapCut adaptada a VICINO; conservar confirmación explícita existente. Planificación añadida; implementación pendiente en Notion.
+- Implementación, clasificación de fixtures y QA pendientes en [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c), con SC-AND-01/SC-IOS-01 en sus apartados nativos. [Bitácora de inicio/cierre](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9).
+- Sólo inspección y planificación; sin cambios de aplicación/SQL/datos ni pruebas/build del producto, commit, push o despliegue.
+
 ## 13-oct-2026 — ONB-SKIP-01: Omitir en todos los pasos opcionales
 
 - Nueva revisión pedida por Javier: Omitir también en listo de comprador/vendedor y label uniforme en el alta posterior de vendedor. Al cerrar usa la finalización confirmada sin activar vendedor; conserva una tienda ya activa.

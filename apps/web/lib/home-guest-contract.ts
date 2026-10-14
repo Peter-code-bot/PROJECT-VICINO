@@ -47,6 +47,8 @@ const requestSchema = z.object({
 const communitySchema = z.object({
   id, nombre: previewText(100).refine(value => value.length > 0), descripcion: previewText(240).nullable(),
   miembros_count: count, publicaciones_count: count, ultima_publicacion_at: date.nullable(),
+  categoria_id: z.string().max(100).regex(/^[a-z0-9_-]+$/).default("otros"),
+  foto_url: z.string().url().nullable().default(null),
 });
 const postSchema = z.object({
   id, community_id: id, community_nombre: previewText(100).refine(value => value.length > 0),

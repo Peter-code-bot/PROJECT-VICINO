@@ -4,7 +4,8 @@ import { useState } from "react";
 import { CommunityBackButton } from "./community-back-button";
 import Link from "next/link";
 import { Settings, Users, MessageSquare } from "lucide-react";
-import { formatRelativeTime } from "@vicino/shared";
+import { formatRelativeTime, communityCategoryName } from "@vicino/shared";
+import { CommunityPhoto } from "./community-photo";
 import type { DetalleComunidad } from "@/lib/comunidades/tipos";
 import { esMando } from "@/lib/comunidades/tipos";
 import { BadgeVisibilidad, ChipRol } from "./comunidad-card";
@@ -113,9 +114,12 @@ export function DetalleCabecera({ detalle, solicitudes = null }: DetalleCabecera
         <ChipRol rol={relacion.mi_rol} />
       </div>
 
-      <h1 className="font-heading text-[26px] font-bold leading-[1.15] tracking-tight text-[color:var(--fg)]">
-        {detalle.nombre}
-      </h1>
+      <div className="flex items-center gap-3">
+        <CommunityPhoto nombre={detalle.nombre} url={detalle.foto_url} className="h-20 w-20 shrink-0 rounded-xl" />
+        <div><h1 className="font-heading text-[26px] font-bold leading-[1.15] tracking-tight text-[color:var(--fg)]">{detalle.nombre}</h1>
+          <p className="mt-1 text-xs text-fg-muted">{communityCategoryName(detalle.categoria_id)}</p>
+        </div>
+      </div>
       {detalle.descripcion && (
         <p className="mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-[color:var(--fg-muted)]">
           {detalle.descripcion}

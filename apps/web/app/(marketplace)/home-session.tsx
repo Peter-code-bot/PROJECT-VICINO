@@ -67,17 +67,26 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
   // volveria a pedir lo que el HTML ya trajo.
   const key = homeSessionKey(search.get("feed"), zone);
   const { data, error, retry, updatedAt } = useSessionData<HomeSessionValue>(key, seed);
+  const activeFeed = data?.feed ?? feedDesdeParametro(search.get("feed"));
+  const initial = data ?? seed?.value;
+  // Keep the location controls at a stable keyed position while data is
+  // invalidated/refetched. Auto-applying a zone must not unmount its open sheet.
+  const tabs = <HomeTabs key="home-tabs" active={activeFeed} />;
+  const locationPreview = activeFeed === "parati" ? (
+    <section key="home-location" className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl">
+      <LocationMapPreview initialPosition={initial?.userLat != null && initial?.userLng != null ? { lat: initial.userLat, lng: initial.userLng } : null} viewerScope={initial?.user?.id ?? "guest"} />
+    </div></section>
+  ) : null;
   if (!data) {
-    if (error) return <div className="px-4 py-6"><DataRetry error={error} retry={retry} /></div>;
     // Sin datos en memoria ni semilla (primera visita, pintada desde
     // loading.tsx; o memoria vaciada): las pestañas ya responden y el
     // esqueleto tiene la forma de la rejilla que viene, con el mismo
     // contenedor que el render completo para que nada salte al llegar.
-    const feedActivo = feedDesdeParametro(search.get("feed"));
     return (
       <div className="w-full min-w-0 min-h-screen">
-        <HomeTabs active={feedActivo} />
-        <SkeletonRejilla etiqueta="Cargando publicaciones" />
+        {tabs}
+        {locationPreview}
+        {error ? <div className="px-4 py-6"><DataRetry error={error} retry={retry} /></div> : <SkeletonRejilla etiqueta="Cargando publicaciones" />}
       </div>
     );
   }
@@ -86,14 +95,13 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
   const firstSelectedCategory = (search.get("cats") ?? "").split(",").find(slug => categoryCarousels.some(([available]) => available === slug));
   return (
     <div data-navigation-kind="home" data-navigation-ready={`home:${search.toString()}:${updatedAt}`} className="w-full min-w-0 min-h-screen">
-      <SessionScroll route="/" scope={`${key}:${search.toString()}`} />
-      <HomeTabs active={feed} />
+      <SessionScroll key="home-scroll" route="/" scope={`${key}:${search.toString()}`} />
+      {tabs}
+      {locationPreview}
       <DataRetry error={error} retry={retry} />
 
       {feed === "parati" ? (
         <>
-          <section className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl"><LocationMapPreview initialPosition={userLat !== null && userLng !== null ? {lat:userLat,lng:userLng} : null} viewerScope={user?.id ?? 'guest'} /></div></section>
-
           <GuestAuthCta destino={`/${search.size ? `?${search}` : ""}`} />
 
           <HomeCategoryOrder

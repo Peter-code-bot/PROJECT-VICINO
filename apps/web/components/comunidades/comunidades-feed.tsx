@@ -20,7 +20,7 @@ import type {
 } from "@/lib/comunidades/tipos";
 import { SubTabs, type SubTabComunidades } from "./sub-tabs";
 import { MuroComunidad } from "./muro-comunidad";
-import { ComunidadCard } from "./comunidad-card";
+import { CommunityCarousel } from "./community-carousel";
 import { FundarDrawer } from "./fundar-drawer";
 import type { EstadoRelacion } from "./join-button";
 import { toast } from "sonner";
@@ -67,6 +67,12 @@ export function ComunidadesFeed({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- el servidor manda cuando trae una copia fresca
     setSolicitudes(misSolicitudes);
   }, [misSolicitudes]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- new server payloads replace the location/membership directory
+    setCercanas(cercanasIniciales);
+    setErrorCercanas(errores?.cercanas ?? null);
+  }, [cercanasIniciales, errores?.cercanas]);
 
   // La sub-pestana viaja en la URL para que un enlace o un refresh vuelvan
   // al mismo sitio, pero con replaceState: navegar con el router volveria a
@@ -321,11 +327,7 @@ export function ComunidadesFeed({
                 {botonFundar}
               </EstadoVacio>
             ) : (
-              <section className="space-y-3">
-                {mias.map((c) => (
-                  <ComunidadCard key={c.id} comunidad={c} />
-                ))}
-              </section>
+              <CommunityCarousel items={mias} />
             )}
           </div>
         )}
@@ -380,9 +382,7 @@ export function ComunidadesFeed({
               )
             ) : (
               <>
-                {cercanas?.map((c) => (
-                  <ComunidadCard key={c.id} comunidad={c} conBoton onEstado={actualizarRelacion} />
-                ))}
+                <CommunityCarousel items={cercanas ?? []} conBoton onEstado={actualizarRelacion} />
                 <p className="pt-2 text-center text-xs text-[color:var(--fg-dim)]">
                   Se muestran las comunidades a menos de 5 km de tu zona.
                 </p>

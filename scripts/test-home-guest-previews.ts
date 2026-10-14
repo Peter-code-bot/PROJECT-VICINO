@@ -14,7 +14,7 @@ const communityId = "22222222-2222-4222-8222-222222222222";
 const postId = "33333333-3333-4333-8333-333333333333";
 const date = "2026-10-04T04:00:00Z";
 const request = { id: requestId, titulo: "Busco quien repare una silla", descripcion: "Para esta semana", presupuesto_max: 400, categoria: "servicios", created_at: date };
-const community = { id: communityId, nombre: "Vecinos del centro", descripcion: "Noticias del barrio", miembros_count: 8, publicaciones_count: 2, ultima_publicacion_at: date };
+const community = { id: communityId, nombre: "Vecinos del centro", descripcion: "Noticias del barrio", miembros_count: 8, publicaciones_count: 2, ultima_publicacion_at: date, categoria_id: "otros", foto_url: null };
 const post = { id: postId, community_id: communityId, community_nombre: community.nombre, contenido: "Este sábado hay un mercado vecinal.", created_at: date, likes_count: 3, comentarios_count: 1 };
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value));
 const sources = new Map<string, string>();
@@ -75,10 +75,34 @@ async function load(file: string, state: ReturnType<typeof fixture>) {
 
 test("DTO allowlists remove coordinates, identity, contact, membership and media", async () => {
   const contract = await load("lib/home-guest-contract.ts", fixture());
-  const extra = { lat: 19, lng: -98, ubicacion_geo: "private", buyer_profile: { nombre: "private" }, email: "private", author_id: "private", imagenes: ["private"], mi_rol: "owner" };
+  const extra = { lat: 19, lng: -98, ubicacion_geo: "private", buyer_profile: { nombre: "private" }, email: "private", author_id: "private", imagenes: ["private"], mi_rol: "owner", foto_path: "private/path" };
   assert.deepEqual(plain(contract.parseGuestRequests([{ ...request, ...extra }])), [request]);
   assert.deepEqual(plain(contract.parseGuestCommunities([{ ...community, ...extra }])), [community]);
   assert.deepEqual(plain(contract.parseGuestPosts([{ ...post, ...extra }])), [post]);
+});
+test("public community photo enrichment signs only paths belonging to that row and strips internal paths", async () => {
+  const photos = await load("lib/comunidades/group-photo.ts", fixture());
+  const contract = await load("lib/home-guest-contract.ts", fixture());
+  const path = `${communityId}/${requestId}/${postId}.webp`;
+  const signed: string[][] = [];
+  const client = { storage: { from: (bucket: string) => {
+    assert.equal(bucket, "community-photos");
+    return { createSignedUrls: async (paths: string[], lifetime: number) => {
+      assert.ok(lifetime >= 300); signed.push(paths);
+      return { data: paths.map(value => ({ path: value, signedUrl: "https://example.invalid/photo.webp" })), error: null };
+    } };
+  } } };
+  const rows = await photos.withCommunityPhotos(client, [
+    { ...community, foto_path: path },
+    { ...community, id: postId, foto_path: path },
+    { ...community, foto_path: `${communityId}/../../another-bucket` },
+  ]);
+  assert.deepEqual(plain(signed), [[path]]);
+  assert.equal(rows[0].foto_url, "https://example.invalid/photo.webp");
+  assert.equal(rows[1].foto_url, null); assert.equal(rows[2].foto_url, null);
+  const output = plain(contract.parseGuestCommunities(rows));
+  assert.equal(output[0].foto_url, rows[0].foto_url);
+  assert.ok(output.every((row: object) => !Object.hasOwn(row, "foto_path")));
 });
 test("DTO rejects malformed rows and more than twelve examples", async () => {
   const contract = await load("lib/home-guest-contract.ts", fixture());
@@ -216,7 +240,7 @@ const rendering = () => esbuild.build({ stdin: { contents: `import React from 'r
   bundle: true, platform: "node", packages: "external", format: "cjs", write: false, jsx: "automatic", tsconfig: path.join(web, "tsconfig.json"),
   plugins: [{ name: "render-boundaries", setup(build: any) {
     const mocks: Record<string, string> = {
-      "next/navigation": "export const useRouter=()=>({push(){},refresh(){}});",
+      "next/navigation": "export const useRouter=()=>({push(){},refresh(){}});export const usePathname=()=>'/';export const useSearchParams=()=>new URLSearchParams();",
       "next/link": "import React from 'react';export default function Link({prefetch,children,...props}){return React.createElement('a',props,children);}",
       "next/image": "export default function Image(){return null;}",
       "@/lib/haptics": "export const hapticLight=async()=>{};export const hapticMedium=async()=>{};export const hapticSelection=async()=>{};",

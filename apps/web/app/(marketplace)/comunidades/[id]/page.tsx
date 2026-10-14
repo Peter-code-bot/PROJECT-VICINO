@@ -2,6 +2,7 @@ import { publicProfileName } from "@vicino/shared";
 import { redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
+import { withCommunityPhotos } from "@/lib/comunidades/group-photo";
 import { DetalleCabecera } from "@/components/comunidades/detalle-cabecera";
 // import type: el modulo del drawer es "use client" y de ahi solo puede
 // cruzar la frontera un tipo, que se borra al compilar. Traer una funcion de
@@ -56,7 +57,7 @@ export default async function ComunidadPage({ params }: Props) {
     Sentry.captureException(detalleR.error, { tags: { action: "detalle_comunidad" } });
     return <ComunidadNoDisponible titulo={traducirErrorComunidad(detalleR.error)} />;
   }
-  const detalle = detalleR.data?.[0];
+  const detalle = (await withCommunityPhotos(supabase, detalleR.data ?? []))[0];
   if (!detalle) return <ComunidadNoDisponible />;
 
   const currentUser = {

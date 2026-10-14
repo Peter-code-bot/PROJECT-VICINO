@@ -2,6 +2,7 @@ import "server-only";
 import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { catalogFailure } from "@/lib/catalogo/estado-consulta";
+import { withCommunityPhotos } from "@/lib/comunidades/group-photo";
 import {
   HOME_GUEST_PREVIEW_LIMIT, parseGuestRequests, parseGuestCommunities, parseGuestPosts,
   type HomeGuestPreview,
@@ -22,7 +23,7 @@ export async function getGuestHomePreview(feed: "solicitudes" | "comunidades"): 
     }
   }
   const [communities, posts] = await Promise.allSettled([
-    admin.rpc("home_guest_communities_preview", { result_limit: HOME_GUEST_PREVIEW_LIMIT }).throwOnError().then(({ data }) => parseGuestCommunities(data)),
+    admin.rpc("home_guest_communities_preview", { result_limit: HOME_GUEST_PREVIEW_LIMIT }).throwOnError().then(async ({ data }) => parseGuestCommunities(await withCommunityPhotos(admin, data ?? []))),
     admin.rpc("home_guest_posts_preview", { result_limit: HOME_GUEST_PREVIEW_LIMIT }).throwOnError().then(({ data }) => parseGuestPosts(data)),
   ]);
   for (const [action, result] of [["home_guest_communities_preview", communities], ["home_guest_posts_preview", posts]] as const) {

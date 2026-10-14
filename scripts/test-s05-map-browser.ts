@@ -11,17 +11,23 @@ const { chromium, expect } = requireWeb('@playwright/test');
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
 async function main() {
   const mocks: Record<string, string> = {
+    '../activar-notificaciones/pedir-permiso': `export const PedirPermiso=()=>null;`,
     'next/dynamic': `import React,{Suspense,lazy} from 'react';export default function dynamic(load,options){const C=lazy(load);return props=><Suspense fallback={options?.loading?React.createElement(options.loading):null}><C {...props}/></Suspense>;}`,
+    'next/image': `import React from 'react';export default function Image({fill,sizes,priority,...props}){return <img {...props}/>;}`,
+    'next/link': `import React from 'react';export default function Link({href,children,...props}){return <a href={typeof href==='string'?href:'#'} {...props}>{children}</a>;}`,
     'next-themes': `export const useTheme=()=>({resolvedTheme:window.f.theme});`,
-    'next/navigation': `const router={refresh:()=>window.f.refreshes++,push:p=>window.f.pushes.push(p)};export const useRouter=()=>router;`,
+    'next/navigation': `const router={refresh:()=>window.f.refreshes++,push:p=>window.f.pushes.push(p),prefetch:()=>{}};export const useRouter=()=>router;export const usePathname=()=>'/completar-perfil/ubicacion';export const useSearchParams=()=>new URLSearchParams('camino=comprar');`,
+    '@/lib/geo/cobertura': `export const useReglaCobertura=()=>({modo:'pais'});`,
+    '@/lib/haptics': `export async function hapticSelection(){}`,
     '@/hooks/use-mapkit': `export const useMapKit=()=>({isReady:true,isAvailable:true,mapkit:window.f.sdk,retryWaitSeconds:0});`,
-    '@/hooks/useGeolocation': `export const STORAGE_KEY='synthetic-location';const setManualPosition=p=>window.f.writes.push(p);export const useGeolocation=()=>({state:window.f.geo,setManualPosition,setRadius:()=>{throw new Error('radius must be atomic');}});`,
+    '@/hooks/useGeolocation': `export const STORAGE_KEY='synthetic-location';const setManualPosition=p=>{const f=window.f;if(f.failWrites)return false;const old=f.geo.position;if(!old||old.lat.toFixed(3)!==p.lat.toFixed(3)||old.lng.toFixed(3)!==p.lng.toFixed(3)||old.radius!==p.radius)f.writes.push(p);f.geo={status:'success',position:p};return true;};export const useGeolocation=()=>({state:window.f.geo,setManualPosition,setRadius:()=>{throw new Error('radius must be atomic');}});`,
     '@/lib/geo/apple-geocoder': `export const reverseGeocodeWithApple=async()=>({name:'Puebla sintética',fullName:'Puebla sintética, México'});`,
     '@/lib/geo/location-search': `export {clasificarResultado} from ${JSON.stringify(path.join(web, 'lib/geo/location-search.ts'))};
-      export const searchLocations=async q=>({results:[{id:q,name:q,fullName:q,lat:19.08,lng:-98.24}],outOfCoverage:false});
+      export const searchLocations=async q=>({results:[{id:q,name:q,fullName:q,lat:q.startsWith("Nueva")?19.1:19.08,lng:-98.24}],outOfCoverage:false});
       export const resolveLocationCoordinates=async s=>window.f.holdResolve?new Promise(resolve=>window.f.resolve=()=>resolve(s)):s;`,
     '@/components/profile/avatar-inline-upload': `export const AvatarInlineUpload=()=>null;`,
     '@/app/(marketplace)/perfil/actions': `export const completeOnboarding=async()=>({});`,
+    './onboarding-session': `const draft={nombre:'Prueba',nombreNegocio:'',bio:'Prueba',descripcionNegocio:'',foto:'',tipo:'casual',intereses:[],pagos:[],categoria:''};export const useOnboardingSession=()=>({profile:{onboarding_paso:'ubicacion',onboarding_camino:'comprar'},draft,update:()=>{},ready:true,notificacionesResueltas:false,busy:false,blocked:false,checkpoint:async()=>{},discardStep:()=>{},waitForSaved:async()=>{},finalize:async()=>{}});`,
     './actions': `export const guardarPasoOnboarding=async()=>({});`,
   };
   const bundle = await esbuild.build({ stdin: { resolveDir: web, loader: 'tsx', contents: `
@@ -98,38 +104,40 @@ async function main() {
         await pin();
         await page.evaluate(() => { const f=(window as any).f;f.geo={status:'success',position:{lat:19.4,lng:-98.2,radius:10000,name:'Externa'}};f.redraw(); });
         await expect.poll(() => page.evaluate(() => (window as any).f.map().marker.coordinate.latitude)).toBe(19.09);
-        assert.deepEqual(await writes(), []); pass(route + ': late cached position loads without overwriting an edited draft');
+        assert.equal((await writes()).length, route==='/sheet'?1:0); pass(route + ': late cached position loads without overwriting an edited selection');
       }
 
       await mount('/sheet');
+      await expect(page.getByRole('button', { name: 'Listo', exact: true })).toBeVisible();
+      assert.deepEqual(await writes(), []);
       await page.evaluate(() => { const f=(window as any).f;f.map().region.span.latitudeDelta=.001; });
       await pin(); await page.locator('select').selectOption('25000');
-      assert.deepEqual(await writes(), []);
+      assert.equal((await writes()).length, 2);
+      assert.equal((await writes())[0].radius, 10000);
+      assert.equal((await writes())[1].radius, 25000);
       assert.equal(await page.evaluate(() => (window as any).f.map().recenters), 0);
-      // Tarea 8: con cambios pendientes la X del header es la palomita
-      // "Aplicar ubicación"; descartar es Escape (o tocar fuera / Atrás).
-      await expect(page.getByRole('button', { name: 'Aplicar ubicación', exact: true })).toBeVisible();
-      assert.equal(await page.getByRole('button', { name: 'Cerrar', exact: true }).count(), 0);
+      await expect(page.getByRole('dialog', {name:'Cambiar ubicación'})).toBeVisible();
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Abrir', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'Cerrar', exact: true })).toBeVisible();
-      await expect(page.locator('select')).toHaveValue('10000');
-      await expect.poll(() => page.evaluate(() => (window as any).f.map().marker.coordinate.latitude)).toBe(19.04);
-      assert.deepEqual(await writes(), []); pass('cancel discards pin/radius and restores previous selection; zoom preserved');
+      await expect(page.locator('select')).toHaveValue('25000');
+      await expect.poll(() => page.evaluate(() => (window as any).f.map().marker.coordinate.latitude)).toBe(19.09);
+      assert.equal((await writes()).length, 2);
+      pass('pin/radius apply immediately, remain applied after dismissal/reopen, zoom preserved');
 
       await pin(); await page.locator('select').selectOption('5000');
-      await page.getByRole('button', { name: 'Aplicar ubicación' }).click();
-      await expect.poll(async () => (await writes()).length).toBe(1);
-      assert.equal((await writes())[0].radius, 5000); assert.equal((await writes())[0].lat, 19.09);
+      await page.getByRole('button', { name: 'Listo' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      assert.equal((await writes()).length, 3);
+      assert.equal((await writes())[2].radius, 5000); assert.equal((await writes())[2].lat, 19.09);
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('vicino_recent_locations')!)[0].lat), 19.09);
-      pass('apply atomically persists selected location/radius once');
+      pass('Listo repeats idempotent apply and closes without a duplicate write');
 
       await mount('/sheet');
       await page.getByRole('button', { name: /Usar mi ubicación actual/ }).click();
-      await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Abrir', exact: true }).click();
       await page.evaluate(() => (window as any).f.gps[0].ok({ coords: { latitude: 19.12, longitude: -98.22 } }));
-      await pin(19.08, -98.23); await page.getByRole('button', { name: 'Aplicar ubicación' }).click();
+      await pin(19.08, -98.23); await page.getByRole('button', { name: 'Listo' }).click();
       assert.equal((await writes())[0].lat, 19.08); pass('GPS from closed session cannot commit after reopen');
 
       await mount('/sheet', { holdResolve: true });
@@ -137,8 +145,59 @@ async function main() {
       await page.getByRole('button', { name: 'Lugar pendiente' }).click();
       await expect.poll(() => page.evaluate(() => !!(window as any).f.resolve)).toBe(true);
       await pin(); await page.evaluate(() => (window as any).f.resolve());
-      await page.getByRole('button', { name: 'Aplicar ubicación' }).click();
+      await page.getByRole('button', { name: 'Listo' }).click();
       assert.equal((await writes())[0].lat, 19.09); pass('late address resolution cannot overwrite newer pin');
+
+      await mount('/sheet', {holdResolve:true});
+      await page.getByPlaceholder('Buscar zona, colonia o dirección…').fill('Primera consulta');
+      await page.getByRole('button',{name:'Primera consulta',exact:true}).click();
+      await expect.poll(()=>page.evaluate(()=>!!(window as any).f.resolve)).toBe(true);
+      await page.evaluate(()=>{const f=(window as any).f;f.resolveA=f.resolve;f.resolve=null;});
+      await page.getByPlaceholder('Buscar zona, colonia o dirección…').fill('Nueva consulta');
+      await page.getByRole('button',{name:'Nueva consulta',exact:true}).click();
+      await expect.poll(()=>page.evaluate(()=>!!(window as any).f.resolve)).toBe(true);
+      await page.evaluate(()=>(window as any).f.resolve());
+      await expect.poll(async ()=>(await writes()).length).toBe(1);
+      await page.evaluate(()=>(window as any).f.resolveA());
+      assert.equal((await writes())[0].lat,19.1);
+      assert.equal((await writes())[0].name,'Nueva consulta');
+      await expect(page.getByPlaceholder('Buscar zona, colonia o dirección…')).toHaveValue('Nueva consulta');
+      await page.getByRole('button',{name:'Listo',exact:true}).click();
+      assert.equal((await writes()).length,1);
+      pass('address resolution A→B commits B directly; late A and Listo cannot overwrite or duplicate it');
+
+      await mount('/sheet', {failWrites:true});
+      await page.evaluate(() => (window as any).f.tap(19.09,-98.25));
+      await expect(page.getByRole('status')).toContainText('Tu ubicación anterior sigue activa');
+      assert.deepEqual(await writes(), []);
+      assert.equal(await page.evaluate(() => (window as any).f.map().marker.coordinate.latitude), 19.04);
+      await expect(page.getByRole('dialog')).toBeVisible();
+      pass('failed canonical apply keeps prior center and sheet open with retry feedback');
+
+      await mount('/sheet');
+      await page.getByPlaceholder('Buscar zona, colonia o dirección…').fill('Consulta');
+      await expect(page.getByRole('button',{name:'Consulta',exact:true})).toBeVisible();
+      assert.deepEqual(await writes(), []);
+      await page.getByRole('button',{name:'Consulta',exact:true}).click();
+      await expect.poll(async ()=>(await writes()).length).toBe(1);
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.getByRole('button', { name: /Usar mi ubicación actual/ }).click();
+      await pin(19.11,-98.27);
+      await page.evaluate(() => (window as any).f.gps[0].ok({coords:{latitude:19.12,longitude:-98.22}}));
+      assert.equal((await writes()).length,2);
+      assert.equal((await writes())[1].lat,19.11);
+      pass('typing never applies; resolved result applies; late GPS cannot replace newer pin');
+
+      const mapBox=await page.locator('[data-testid="mapkit-canvas"]').boundingBox();
+      await page.mouse.move(mapBox.x+10,mapBox.y+10);await page.mouse.down();await page.mouse.move(mapBox.x+10,mapBox.y+100,{steps:6});await page.mouse.up();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      const header=await page.locator('[data-location-sheet-handle]').boundingBox();
+      await page.mouse.move(header.x+20,header.y+10);await page.mouse.down();await page.mouse.move(header.x+20,header.y+105,{steps:6});await page.mouse.up();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      assert.equal((await writes()).length,2);
+      await page.getByRole('button',{name:'Abrir',exact:true}).click();
+      await expect.poll(()=>page.evaluate(()=>(window as any).f.map().marker.coordinate.latitude)).toBe(19.11);
+      pass('map pan never dismisses; downward header gesture closes preserving applied selection');
 
       await mount('/sheet');
       await page.evaluate(() => (window as any).f.drag(40,-74));
@@ -155,7 +214,7 @@ async function main() {
         assert.equal(await page.evaluate(() => (window as any).f.maps.length), 1);
         assert.deepEqual(await writes(), []);
         if (route === '/profile') {
-          await page.getByRole('button', { name: 'Entrar a VICINO' }).click();
+          await page.getByRole('button', { name: 'Continuar' }).click();
           await expect.poll(async () => (await writes()).length).toBe(1);
           assert.equal((await writes())[0].lat, 19.09);
         }
@@ -167,7 +226,7 @@ async function main() {
       await expect.poll(() => page.evaluate(() => !!(window as any).f.resolve)).toBe(true);
       await page.getByRole('button', { name: 'Borrar búsqueda' }).click();
       await pin(); await page.evaluate(() => (window as any).f.resolve());
-      await page.getByRole('button', { name: 'Entrar a VICINO' }).click();
+      await page.getByRole('button', { name: 'Continuar' }).click();
       assert.equal((await writes())[0].lat, 19.09); pass('onboarding ignores cleared late result');
 
       await mount('/picker');

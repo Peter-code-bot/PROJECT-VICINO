@@ -23,6 +23,7 @@ import type { Database } from "@/types/database.types";
 import {
   COMMUNITY_POST_MAX,
   fundarComunidadSchema,
+  editarIdentidadComunidadSchema,
   editarDescripcionComunidadSchema,
   editarVisibilidadComunidadSchema,
   publicarEnComunidadSchema,
@@ -57,6 +58,7 @@ import {
   type CursorComunidad,
 } from "@/lib/comunidades/tipos";
 import { z } from "zod";
+import { isCommunityPhotoPath, withCommunityPhotos } from "@/lib/comunidades/group-photo";
 
 const uuid = z.string().uuid();
 
@@ -110,6 +112,8 @@ function cursorSeguro(cursor: CursorComunidad | null): CursorComunidad | null | 
 
 export async function fundarComunidad(input: {
   nombre: string;
+  categoria_id: string;
+  creation_id?: string;
   descripcion?: string | null;
   lat: number;
   lng: number;
@@ -122,40 +126,46 @@ export async function fundarComunidad(input: {
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   }
-  const { nombre, descripcion, lat, lng, es_privada } = parsed.data;
+  const { nombre, categoria_id, creation_id, descripcion, lat, lng, es_privada } = parsed.data;
 
-  // fundar_comunidad no recibe la visibilidad: nace publica (decision 4) y
-  // cerrarla es una segunda llamada, deliberada, que hace el mismo owner.
-  const { data, error } = await s.supabase.rpc("fundar_comunidad", {
+  const { data, error } = await s.supabase.rpc("fundar_comunidad_v2", {
     p_nombre: nombre,
     p_lat: lat,
     p_lng: lng,
     p_descripcion: descripcion ?? undefined,
+    p_categoria_id: categoria_id,
+    p_privada: es_privada,
+    p_creation_id: creation_id,
   });
   if (error) {
-    reportarSiInesperado(error, "fundar_comunidad");
+    reportarSiInesperado(error, "fundar_comunidad_v2");
     return { error: traducirErrorComunidad(error) };
   }
   const id = leerTexto(data, "id");
   if (!id) return { error: "No se pudo fundar la comunidad. Intenta de nuevo." };
 
-  let privadaFinal = false;
-  if (es_privada) {
-    const { error: errVis } = await s.supabase.rpc("editar_visibilidad_comunidad", {
-      p_community_id: id,
-      p_privada: true,
-    });
-    // La comunidad YA existe: no se oculta el exito. Se avisa de que quedo
-    // publica para que la cierre desde administrar.
-    if (errVis) {
-      reportarSiInesperado(errVis, "editar_visibilidad_comunidad@fundar");
-    } else {
-      privadaFinal = true;
-    }
-  }
-
   await revalidatePath("/");
-  return { data: { id, nombre: leerTexto(data, "nombre") ?? nombre, es_privada: privadaFinal } };
+  return { data: { id, nombre: leerTexto(data, "nombre") ?? nombre, es_privada: leerBooleano(data, "es_privada", es_privada) } };
+}
+
+export async function editarIdentidad(input: { community_id: string; categoria_id: string; foto_path?: string | null }) {
+  const s = await sesionYFreno();
+  if (!s.ok) return { error: s.error };
+  const parsed = editarIdentidadComunidadSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  const { community_id, categoria_id, foto_path } = parsed.data;
+  // The RPC checks ownership and allows retaining an existing photo after a transfer.
+  // New paths must be inside this owner's folder and already exist in storage.
+  if (foto_path && !isCommunityPhotoPath(foto_path, community_id, s.userId)) {
+    const { data: actual } = await s.supabase.rpc("detalle_comunidad", { p_community_id: community_id });
+    if (actual?.[0]?.mi_rol !== "owner" || actual[0].foto_path !== foto_path) return { error: "Foto inválida." };
+  }
+  const { data, error } = await s.supabase.rpc("editar_identidad_comunidad", { p_community_id: community_id, p_categoria_id: categoria_id, p_foto_path: foto_path ?? undefined });
+  if (error) { reportarSiInesperado(error, "editar_identidad_comunidad"); return { error: traducirErrorComunidad(error) }; }
+  await revalidatePath("/");
+  await revalidatePath(`/comunidades/${community_id}`);
+  await revalidatePath(`/comunidades/${community_id}/administrar`);
+  return { data };
 }
 
 /**
@@ -881,5 +891,5 @@ export async function cargarDescubrir(input: {
     reportarSiInesperado(error, "descubrir_comunidades");
     return { items: [], error: traducirErrorComunidad(error) };
   }
-  return { items: data ?? [] };
+  return { items: await withCommunityPhotos(supabase, data ?? []) };
 }

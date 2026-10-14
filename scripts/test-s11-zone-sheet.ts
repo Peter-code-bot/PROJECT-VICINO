@@ -9,7 +9,7 @@ async function main() {
   const mocks: Record<string, string> = {
     "next/navigation": "export const useRouter=()=>({refresh:()=>window.fixture.refreshes++});",
     "next/dynamic": "import React,{lazy,Suspense} from 'react';export default function dynamic(load){const Component=lazy(load);return props=><Suspense fallback={null}><Component {...props}/></Suspense>;}",
-    "@/hooks/useGeolocation": "export const useGeolocation=()=>({state:{status:'success',position:window.fixture.saved},setManualPosition:position=>window.fixture.writes.push(position)});",
+    "@/hooks/useGeolocation": "export const useGeolocation=()=>({state:{status:'success',position:window.fixture.saved},setManualPosition:position=>{window.fixture.writes.push(position);window.fixture.saved=position;return true;}});",
     "@/lib/geo/apple-geocoder": "export const reverseGeocodeWithApple=async(lat,lng)=>{window.fixture.geocodes.push({lat,lng});return {name:'Zona de prueba',fullName:'Zona de prueba, México'};};",
     "@/lib/geo/cobertura": "export const useReglaCobertura=()=>null;",
     "@/lib/geo/location-search": "export const clasificarResultado=p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&p.lat>=14.5&&p.lat<=32.8&&p.lng>=-118.5&&p.lng<=-86.5?'ok':'fuera-de-mexico';export const searchLocations=async()=>({results:[]});export const resolveLocationCoordinates=async()=>null;",
@@ -51,15 +51,15 @@ async function main() {
     assert.equal(await page.evaluate(() => (window as any).fixture.writes.length), 0);
     assert.equal(await page.evaluate(() => (window as any).fixture.saved.lat), 17.99);
     console.log("PASS denied GPS preserves draft A and persisted B");
-    await page.getByRole("button", { name: "Aplicar ubicación", exact: true }).click();
+    await page.getByRole("button", { name: "Listo", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Cambiar ubicación" })).toHaveCount(0);
     const writes = await page.evaluate(() => (window as any).fixture.writes);
     assert.equal(writes.length, 1); assert.equal(writes[0].lat, 19.04); assert.equal(writes[0].lng, -98.21); assert.equal(writes[0].radius, 25000);
-    console.log("PASS Apply is the only persistence action and retains the buyer radius");
+    console.log("PASS Listo explicitly applies URL preview and retains the buyer radius");
     await page.evaluate(() => (window as any).fixture.setOverride(undefined)); await zone.click();
-    await expect(page.getByTestId("draft-map")).toHaveAttribute("data-lat", "17.99");
-    await expect(page.getByTestId("draft-map")).toHaveAttribute("data-lng", "-92.928");
-    await expect(page.getByRole("button", { name: "Cerrar", exact: true })).toBeVisible();
+    await expect(page.getByTestId("draft-map")).toHaveAttribute("data-lat", "19.04");
+    await expect(page.getByTestId("draft-map")).toHaveAttribute("data-lng", "-98.21");
+    await expect(page.getByRole("button", { name: "Listo", exact: true })).toBeVisible();
     assert.equal(await page.evaluate(() => (window as any).fixture.writes.length), 1);
     assert.deepEqual(errors, []);
     console.log("PASS callers without override retain the original saved-location behavior");

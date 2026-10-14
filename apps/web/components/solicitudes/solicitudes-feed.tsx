@@ -1,192 +1,98 @@
 "use client";
 
-import { publicProfileName } from "@vicino/shared";
-
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSessionUI } from "@/components/layout/session-data-provider";
+import { useRequestReturnScroll } from "@/hooks/use-request-return-scroll";
+import { readRequestCollection, requestCollectionURL } from "@/lib/solicitudes/request-navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-import { RequestCard, type RequestCardData } from "./request-card";
+import { RequestCard } from "./request-card";
+import { RequestCarousel } from "./request-rows";
 import { CreateRequestDrawer } from "./create-request-drawer";
 import { FiltroCategoriasDrawer } from "@/components/shared/filtro-categorias-drawer";
-import {
-  Plus,
-  Inbox,
-} from "lucide-react";
+import { useRequestPage, type RequestZone } from "@/hooks/use-request-page";
+import { CATEGORIES } from "@vicino/shared";
+import { Plus, Inbox, ArrowLeft } from "lucide-react";
 
+type Category = { slug: string; nombre: string };
+interface SolicitudesFeedProps { userLat: number | null; userLng: number | null; radiusMeters: number; userId: string | null }
 
-
-interface SolicitudesFeedProps {
-  userLat: number | null;
-  userLng: number | null;
-  radiusMeters: number;
-  userId: string | null;
+function Retry({ onRetry }: { onRetry: () => void }) {
+  return <div role="alert" className="py-6 text-sm text-fg"><p>No pudimos cargar las solicitudes.</p><button type="button" className="mt-2 min-h-10 underline underline-offset-4" onClick={onRetry}>Reintentar</button></div>;
 }
-
-/**
- * La fila TAL COMO la declara el RPC generado. Antes esto era un tipo escrito
- * a mano con `[k: string]: unknown`, y ese indice borraba el tipo real de los
- * otros once campos — con lo cual el spread de abajo necesitaba un
- * `as unknown as` para recuperarlos. O sea que el cast que hacia falta me lo
- * habia fabricado yo al destruir la entrada. Con el tipo generado, el spread
- * compila solo: los campos del RPC son mas estrechos que los de la tarjeta.
- */
-type FilaCruda =
-  Database["public"]["Functions"]["feed_nearby_requests"]["Returns"][number];
-
-/**
- * Convierte una fila de feed_nearby_requests en una tarjeta, comprobando las
- * dos columnas que la base entrega como jsonb.
- *
- * Devuelve null si la forma no encaja. Descartar una fila rara es mejor que
- * pintarla: lo segundo revienta en `buyer_profile.nombre` a mitad del render
- * y se lleva por delante el feed entero.
- */
-function aSolicitud(fila: FilaCruda): RequestCardData | null {
-  const perfil = fila.buyer_profile;
-  if (!perfil || typeof perfil !== "object" || Array.isArray(perfil)) return null;
-  const p = perfil as Record<string, unknown>;
-  if (typeof p.nombre !== "string") return null;
-
-  const cats = Array.isArray(fila.categories) ? fila.categories : [];
-  const categories = cats.flatMap((c) => {
-    if (!c || typeof c !== "object" || Array.isArray(c)) return [];
-    const o = c as Record<string, unknown>;
-    return typeof o.slug === "string" && typeof o.nombre === "string"
-      ? [{ slug: o.slug, nombre: o.nombre }]
-      : [];
-  });
-
-  return {
-    ...fila,
-    buyer_profile: {
-      nombre: publicProfileName(p),
-      avatar_url: typeof p.avatar_url === "string" ? p.avatar_url : null,
-    },
-    categories,
-  };
+function Skeleton() {
+  return <div className="flex gap-3 overflow-hidden" aria-label="Cargando solicitudes" aria-busy="true">{[1,2,3].map(i => <div key={i} className="h-80 w-40 shrink-0 animate-pulse rounded-2xl bg-bg-elev-2 sm:w-48" />)}</div>;
+}
+function CategoryRow({ zone, category, onViewMore, onNavigate }: { zone: RequestZone; category: Category | null; onViewMore: () => void; onNavigate: () => void }) {
+  const page = useRequestPage(zone, category?.slug ?? null);
+  return <section>
+    <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-heading text-base font-bold text-fg">{category?.nombre ?? "Recientes"}</h2><button type="button" onClick={onViewMore} className="min-h-10 px-2 text-sm font-medium underline underline-offset-4">Ver más<span className="sr-only"> {category?.nombre ?? "solicitudes recientes"}</span></button></div>
+    {page.loading ? <Skeleton /> : page.error ? <Retry onRetry={page.retry} /> : page.requests.length ? <RequestCarousel requests={page.requests} category={category ?? undefined} scope={zone.cacheScope} onNavigate={onNavigate} /> : <p className="py-4 text-sm text-fg-muted">No hay solicitudes vigentes en esta categoría.</p>}
+  </section>;
+}
+function RequestOverview({ zone, onViewMore }: { zone: RequestZone; onViewMore: (category: Category | null) => void }) {
+  const saveY = useRequestReturnScroll(`${zone.cacheScope}:overview`);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [retry, setRetry] = useState(0);
+  const { lat, lng, radius } = zone;
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data, error } = await createClient().rpc("nearby_request_categories", { user_lat: lat, user_lng: lng, radius_meters: Math.max(1000, Math.min(50000,radius)) });
+        if (cancelled) return;
+        if (error || !data) { setState("error"); return; }
+        setCategories(data); setState("ready");
+      } catch { if (!cancelled) setState("error"); }
+    })();
+    return () => { cancelled = true; };
+  }, [lat,lng,radius,retry]);
+  return <div className="space-y-6">
+    <CategoryRow zone={zone} category={null} onViewMore={() => { saveY(); onViewMore(null); }} onNavigate={saveY} />
+    {state === "loading" && <Skeleton />}
+    {state === "error" && <Retry onRetry={() => { setState("loading"); setRetry(value => value+1); }} />}
+    {state === "ready" && categories.map(category => <CategoryRow key={category.slug} zone={zone} category={category} onViewMore={() => { saveY(); onViewMore(category); }} onNavigate={saveY} />)}
+  </div>;
+}
+function RequestCollection({ zone, category, onBack, fresh }: { zone: RequestZone; category: Category | null; onBack: () => void; fresh: boolean }) {
+  const page = useRequestPage(zone, category?.slug ?? null);
+  const saveY = useRequestReturnScroll(`${zone.cacheScope}:collection:${category?.slug ?? "all"}`, fresh);
+  return <section>
+    <button type="button" onClick={onBack} className="mb-3 flex min-h-11 items-center gap-2 text-sm"><ArrowLeft className="h-4 w-4" />Volver a las categorías</button>
+    <h2 className="mb-4 font-heading text-xl font-bold">{category?.nombre ?? "Solicitudes recientes"}</h2>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{page.requests.map(request => <RequestCard key={request.id} data={request} category={category ?? undefined} onNavigate={saveY} />)}</div>
+    {page.loading && <Skeleton />}
+    {page.error && <Retry onRetry={page.retry} />}
+    {!page.loading && !page.error && !page.requests.length && <div className="py-12 text-center text-sm text-fg-muted"><Inbox className="mx-auto mb-3 h-7 w-7" />No hay solicitudes vigentes cerca de ti.</div>}
+    {!page.error && page.hasMore && <button type="button" disabled={page.loading} onClick={page.loadMore} className="mt-4 min-h-11 w-full rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-50">{page.loading ? "Cargando…" : "Cargar más solicitudes"}</button>}
+  </section>;
 }
 
 export function SolicitudesFeed({ userLat, userLng, radiusMeters, userId }: SolicitudesFeedProps) {
-  const [requests, setRequests] = useState<RequestCardData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const collection = readRequestCollection(new URLSearchParams(search.toString()));
+  const [freshCollection, setFreshCollection] = useState(false);
+  const openCollection = (category: Category | null) => { setFreshCollection(true); router.push(requestCollectionURL(pathname, new URLSearchParams(search.toString()), category?.slug ?? null), { scroll: false }); };
+  const closeCollection = () => router.push(requestCollectionURL(pathname, new URLSearchParams(search.toString()), null, true), { scroll: false });
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const fetchRequests = useCallback(async () => {
-    if (userLat === null || userLng === null) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc("feed_nearby_requests", {
-      user_lat: userLat,
-      user_lng: userLng,
-      radius_meters: radiusMeters,
-      result_limit: 50,
-      // El RPC declara el parametro opcional, o sea `string | undefined`;
-      // activeCategory es `string | null`. null y undefined no son lo mismo
-      // para PostgREST: undefined omite el parametro y deja actuar su valor
-      // por defecto.
-      cat_slug: activeCategory ?? undefined,
-    });
-
-    if (!error && data) {
-      // El RPC devuelve buyer_profile y categories como Json, que es lo que
-      // son en la base. Un `as` los daria por buenos sin mirarlos; esto los
-      // COMPRUEBA, y una fila con forma rara se descarta en vez de reventar
-      // la tarjeta al pintarla.
-      setRequests(data.flatMap((fila) => aSolicitud(fila) ?? []));
-    }
-    setLoading(false);
-  }, [userLat, userLng, radiusMeters, activeCategory]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- disparo de la carga inicial; el estado lo pone fetchRequests, no el efecto
-    fetchRequests();
-  }, [fetchRequests]);
-
+  const [revision, setRevision] = useSessionUI(`request-revision:${userId}`, 0);
   const hasLocation = userLat !== null && userLng !== null;
-
-  return (
-    <div className="w-full">
-      {/* ─── Filtro de categoria ───────────────────────── */}
-      {/* El RPC feed_nearby_requests recibe UN cat_slug, asi que el modo es
-          "una". El filtro sigue viviendo en estado local y no en la URL, como
-          antes: esta pantalla se pinta dentro del feed del home y meterlo en la
-          URL cambiaria la navegacion de esa pagina, no solo la de aqui. */}
-      <div className="px-4 pb-3 flex items-center">
-        <FiltroCategoriasDrawer
-          seleccionadas={activeCategory ? [activeCategory] : []}
-          modo="una"
-          onAplicar={(slugs) => setActiveCategory(slugs[0] ?? null)}
-        />
-      </div>
-
-      {/* ─── Feed content ──────────────────────────────── */}
-      <div className="px-4 space-y-3 pb-28">
-        {!hasLocation && (
-          <div className="py-16 text-center">
-            <p className="text-muted-foreground text-sm">
-              Activa tu ubicación para ver solicitudes cerca de ti.
-            </p>
-          </div>
-        )}
-
-        {hasLocation && loading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-28 rounded-2xl bg-card border border-border/50 animate-pulse"
-              />
-            ))}
-          </div>
-        )}
-
-        {hasLocation && !loading && requests.length === 0 && (
-          <div className="py-16 text-center space-y-3">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-              <Inbox className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground text-sm font-medium">
-              No hay solicitudes cerca de ti
-            </p>
-            <p className="text-muted-foreground/70 text-xs">
-              Sé el primero en publicar lo que necesitas
-            </p>
-          </div>
-        )}
-
-        {hasLocation && !loading && requests.map((req) => (
-          <RequestCard key={req.id} data={req} />
-        ))}
-      </div>
-
-      {/* ─── Floating Action Button ────────────────────── */}
-      {userId && (
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-foreground text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-105 active:scale-95"
-          aria-label="Crear solicitud"
-        >
-          <Plus className="h-6 w-6" strokeWidth={2.5} />
-        </button>
-      )}
-
-      {/* ─── Create Request Drawer ─────────────────────── */}
-      {drawerOpen && (
-        <CreateRequestDrawer
-          onClose={() => setDrawerOpen(false)}
-          onCreated={() => {
-            setDrawerOpen(false);
-            fetchRequests();
-          }}
-
-        />
-      )}
+  const zoneKey = `${userId}:${userLat}:${userLng}:${radiusMeters}:${revision}`;
+  return <div className="w-full">
+    <div className="flex items-center px-4 pb-3"><FiltroCategoriasDrawer seleccionadas={collection?.category ? [collection.category.slug] : []} modo="una" onAplicar={slugs => {
+      const slug = slugs.at(0);
+      if (slug) openCollection({ slug, nombre: CATEGORIES.find(category => category.slug === slug)?.name ?? slug }); else closeCollection();
+    }} /></div>
+    <div className="space-y-6 px-4 pb-28">
+      {!userId ? <p className="py-16 text-center text-sm text-fg-muted">Inicia sesión para ver las solicitudes de tu zona.</p>
+        : !hasLocation ? <p className="py-16 text-center text-sm text-fg-muted">Activa tu ubicación para ver solicitudes cerca de ti.</p>
+        : collection ? <RequestCollection key={`${zoneKey}:${collection.category?.slug ?? "all"}`} zone={{ lat: userLat, lng: userLng, radius: radiusMeters, cacheScope: zoneKey }} category={collection.category} onBack={closeCollection} fresh={freshCollection} />
+        : <RequestOverview key={zoneKey} zone={{ lat: userLat, lng: userLng, radius: radiusMeters, cacheScope: zoneKey }} onViewMore={openCollection} />}
     </div>
-  );
+    {userId && <button type="button" onClick={() => setDrawerOpen(true)} className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-foreground text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-105 active:scale-95" aria-label="Crear solicitud"><Plus className="h-6 w-6" strokeWidth={2.5} /></button>}
+    {drawerOpen && <CreateRequestDrawer onClose={() => setDrawerOpen(false)} onCreated={() => { setDrawerOpen(false); setRevision(revision+1); }} />}
+  </div>;
 }

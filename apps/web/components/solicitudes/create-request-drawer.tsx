@@ -1,9 +1,10 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORIES } from "@vicino/shared";
+import { CATEGORIES, createPurchaseRequestSchema, type CreatePurchaseRequestInput } from "@vicino/shared";
+import { createPurchaseRequest } from "@/app/actions/purchase-request";
 import {
   X,
   Search,
@@ -11,13 +12,13 @@ import {
   ImagePlus,
   Clock,
   Loader2,
-  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useCerrarConEscape } from "@/hooks/use-cerrar-con-escape";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 
 const DeliveryMap = dynamic(() => import("@/components/map/delivery-map"), { ssr: false });
 
@@ -37,6 +38,19 @@ const EXPIRY_OPTIONS = [
   { label: "1 semana", hours: 168 },
 ] as const;
 
+type PendingRequest = { input: CreatePurchaseRequestInput; uploadedFilePath: string | null; uncertain: boolean };
+function readPendingRequest(userId: string): PendingRequest | null {
+  try {
+    const stored = sessionStorage.getItem("vicino:pending-request:" + userId);
+    if (!stored) return null;
+    const attempt = JSON.parse(stored);
+    const parsed = createPurchaseRequestSchema.safeParse(attempt.input);
+    if (!parsed.success || (attempt.uploadedFilePath !== null && typeof attempt.uploadedFilePath !== "string")) return null;
+    if (attempt.uploadedFilePath && !attempt.uploadedFilePath.startsWith(userId + "/solicitudes-" + parsed.data.operation_id + ".")) return null;
+    return { input: parsed.data, uploadedFilePath: attempt.uploadedFilePath, uncertain: true };
+  } catch { return null; }
+}
+
 export function CreateRequestDrawer({
   onClose,
   onCreated,
@@ -51,6 +65,10 @@ export function CreateRequestDrawer({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [unresolved, setUnresolved] = useState(false);
+  const [restoring, setRestoring] = useState(true);
+  const inFlight = useRef(false);
+  const pendingAttempt = useRef<PendingRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const [locationData, setLocationData] = useState({
@@ -69,128 +87,109 @@ export function CreateRequestDrawer({
     }
   };
 
-  const handleSubmit = async () => {
-    setError(null);
-
-    if (!title.trim()) {
-      setError("Escribe qué estás buscando");
-      return;
-    }
-    if (categories.length === 0) {
-      setError("Selecciona al menos una categoría");
-      return;
-    }
-    if (locationData.lat === 0 && locationData.lng === 0) {
-      setError("Selecciona la ubicación de tu solicitud");
-      return;
-    }
-
+  const submitRequest = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setSubmitting(true);
-
+    setError(null);
+    let draftKey: string | null = null;
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setError("Inicia sesión para publicar");
-        setSubmitting(false);
-        return;
-      }
-
-      // Upload image if provided — fail explicitly if upload errors
-      let imageUrl: string | null = null;
-      let uploadedFilePath: string | null = null;
-      if (imageFile) {
-        const ext = imageFile.name.split(".").pop() ?? "jpg";
-        const rand = Math.random().toString(36).slice(2, 8);
-        const filePath = `${user.id}/solicitudes-${Date.now()}-${rand}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("product-media")
-          .upload(filePath, imageFile, {
-            contentType: imageFile.type,
-            cacheControl: CACHE_INMUTABLE,
-          });
-        if (uploadError) {
-          setError(`Error subiendo imagen: ${uploadError.message}`);
-          setSubmitting(false);
-          return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError("Inicia sesión para publicar"); return; }
+      draftKey = "vicino:pending-request:" + user.id;
+      let attempt = pendingAttempt.current ?? readPendingRequest(user.id);
+      pendingAttempt.current = attempt;
+      if (!attempt) {
+        const input = {
+          operation_id: crypto.randomUUID(), request_title: title,
+          request_description: description || null,
+          request_budget: budget.trim() ? Number(budget) : null,
+          request_lat: locationData.lat, request_lng: locationData.lng,
+          category_slugs: categories.map(category => category.slug), expiry_hours: expiryHours,
+        };
+        const parsed = createPurchaseRequestSchema.safeParse(input);
+        if (!parsed.success) { setError(parsed.error.issues.at(0)?.message ?? "Revisa tu solicitud"); return; }
+        if (!locationData.address && locationData.lat === 0 && locationData.lng === 0) {
+          setError("Selecciona la ubicación de tu solicitud"); return;
         }
-        uploadedFilePath = filePath;
-        const { data: urlData } = supabase.storage
-          .from("product-media")
-          .getPublicUrl(filePath);
-        imageUrl = urlData?.publicUrl ?? null;
-      }
-
-      // Calculate expiration
-      const expiresAt = new Date(
-        Date.now() + expiryHours * 60 * 60 * 1000
-      ).toISOString();
-
-      // Insert purchase request — WKT with SRID prefix (matches product-form pattern)
-      const { data: newRequest, error: insertError } = await supabase
-        .from("purchase_requests")
-        .insert({
-          buyer_id: user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          budget_estimated: budget ? parseFloat(budget) : null,
-          image_url: imageUrl,
-          ubicacion_geo: `SRID=4326;POINT(${locationData.lng} ${locationData.lat})`,
-          expires_at: expiresAt,
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        // Clean up orphaned image if upload succeeded but insert failed
-        if (uploadedFilePath) {
-          await supabase.storage
-            .from("product-media")
-            .remove([uploadedFilePath])
-            .catch(() => {});
+        attempt = { input: parsed.data, uploadedFilePath: null, uncertain: false };
+        if (imageFile) {
+          const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+          const extension = extensions[imageFile.type];
+          if (!extension || imageFile.size > 5 * 1024 * 1024) {
+            setError("Usa una imagen JPG, PNG o WebP de hasta 5 MB"); return;
+          }
+          const path = user.id + "/solicitudes-" + attempt.input.operation_id + "." + extension;
+          const { error: uploadError } = await supabase.storage.from("product-media").upload(path, imageFile, { contentType: imageFile.type, cacheControl: CACHE_INMUTABLE });
+          if (uploadError) {
+            await supabase.storage.from("product-media").remove([path]);
+            setError("No se pudo subir la imagen. Intenta de nuevo."); return;
+          }
+          attempt.uploadedFilePath = path;
+          attempt.input.request_image_url = supabase.storage.from("product-media").getPublicUrl(path).data.publicUrl;
         }
-        // 22023 lo levanta el trigger exigir_cobertura_purchase_requests: la
-        // ubicación cae fuera de la zona donde VICINO opera. Esta pantalla no
-        // tiene Server Action — el INSERT sale directo del navegador a
-        // PostgREST — así que este es el único sitio donde se puede traducir.
-        setError(
-          insertError.code === "22023"
-            ? "Esa ubicación está fuera de la zona donde VICINO opera. Elige un punto dentro de la zona."
-            : "Error al publicar. Intenta de nuevo."
-        );
-        setSubmitting(false);
-        return;
+        pendingAttempt.current = attempt;
+        // Keep the same identity/payload across reloads after an ambiguous response.
+        try { sessionStorage.setItem(draftKey, JSON.stringify(attempt)); } catch { /* ref still protects retries in this drawer */ }
       }
-
-      // Insert categories into pivot table
-      if (newRequest) {
-        const { data: catRows } = await supabase
-          .from("categories")
-          .select("id, slug")
-          .in(
-            "slug",
-            categories.map((c) => c.slug)
-          );
-
-        if (catRows && catRows.length > 0) {
-          await supabase.from("purchase_request_categories").insert(
-            catRows.map((cat) => ({
-              request_id: newRequest.id,
-              categoria_id: cat.id,
-            }))
-          );
-        }
+      setUnresolved(true);
+      const hadUncertainResponse = attempt.uncertain;
+      attempt.uncertain = true;
+      try { sessionStorage.setItem(draftKey, JSON.stringify(attempt)); } catch { /* optional storage */ }
+      const result = await createPurchaseRequest(attempt.input);
+      if (result.status === "success") {
+        try { sessionStorage.removeItem(draftKey); } catch { /* optional storage */ }
+        pendingAttempt.current = null;
+        setUnresolved(false);
+        onCreated();
+      } else if (result.status === "rejected" && !hadUncertainResponse) {
+        if (attempt.uploadedFilePath) {
+          const { error: cleanupError } = await supabase.storage.from("product-media").remove([attempt.uploadedFilePath]);
+          if (cleanupError) setError(result.message + " No pudimos retirar la imagen de referencia.");
+          else setError(result.message);
+        } else setError(result.message);
+        try { sessionStorage.removeItem(draftKey); } catch { /* optional storage */ }
+        pendingAttempt.current = null;
+        setUnresolved(false);
+      } else {
+        setError(result.status === "rejected" ? result.message + " La publicación anterior sigue pendiente de confirmar." : result.message);
       }
-
-      onCreated();
     } catch {
-      setError("Error inesperado. Intenta de nuevo.");
+      // A dropped action response may follow a committed transaction. Never
+      // delete its image or generate another operation while it is unresolved.
+      setUnresolved(pendingAttempt.current !== null);
+      setError("No pudimos confirmar la publicación. Reintenta para comprobar la misma solicitud.");
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   };
+  const handleSubmit = () => startTransition(async () => { await submitRequest(); });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data: { user } } = await createClient().auth.getUser();
+        if (!user || cancelled) return;
+        const attempt = readPendingRequest(user.id);
+        if (!attempt) return;
+        const parsed = { data: attempt.input };
+        pendingAttempt.current = attempt;
+        setTitle(parsed.data.request_title);
+        setDescription(parsed.data.request_description ?? "");
+        setBudget(parsed.data.request_budget == null ? "" : String(parsed.data.request_budget));
+        setExpiryHours(parsed.data.expiry_hours ?? 72);
+        setCategories(parsed.data.category_slugs.map(slug => ({ slug, nombre: CATEGORIES.find(category => category.slug === slug)?.name ?? slug })));
+        setLocationData({ lat: parsed.data.request_lat, lng: parsed.data.request_lng, address: "Ubicación de la solicitud pendiente" });
+        setUnresolved(true);
+        setError("Hay una publicación pendiente de confirmar. Reintenta para comprobar la misma solicitud.");
+      } catch { /* no saved attempt */ }
+      finally { if (!cancelled) setRestoring(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const [mounted, setMounted] = useState(false);
 
@@ -202,7 +201,8 @@ export function CreateRequestDrawer({
   // el desplazamiento de la raiz, y al cerrar se borraba el overflow a ciegas.
   useBodyScrollLock(true);
   // Marca + Escape siempre juntos: el Atras de Android se traduce a Escape.
-  useCerrarConEscape(true, onClose);
+  const closeDrawer = () => { if (!inFlight.current) onClose(); };
+  useCerrarConEscape(true, closeDrawer);
 
   if (!mounted) return null;
 
@@ -214,7 +214,7 @@ export function CreateRequestDrawer({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={closeDrawer}
       />
 
       {/* Drawer */}
@@ -233,7 +233,7 @@ export function CreateRequestDrawer({
             </h2>
             <button
               type="button"
-              onClick={onClose}
+              onClick={closeDrawer}
               className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
             >
               <X className="h-4 w-4 text-muted-foreground" />
@@ -242,7 +242,7 @@ export function CreateRequestDrawer({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-5" inert={submitting || unresolved || restoring}>
           {/* Title */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground/80">
@@ -271,6 +271,7 @@ export function CreateRequestDrawer({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe con más detalle lo que necesitas..."
               rows={3}
+              maxLength={2000}
               className="w-full rounded-xl bg-background border border-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
             />
           </div>
@@ -468,7 +469,10 @@ export function CreateRequestDrawer({
             </label>
             {imagePreview ? (
               <div className="relative w-24 h-24 rounded-xl overflow-hidden">
-                <img
+                <Image
+                  width={96}
+                  height={96}
+                  unoptimized
                   src={imagePreview}
                   alt="Preview"
                   className="w-full h-full object-cover"
@@ -489,7 +493,7 @@ export function CreateRequestDrawer({
                 <ImagePlus className="h-6 w-6 text-muted-foreground" />
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageSelect}
                   className="hidden"
                 />
@@ -518,7 +522,7 @@ export function CreateRequestDrawer({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || restoring}
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? (
@@ -527,7 +531,7 @@ export function CreateRequestDrawer({
                 Publicando...
               </>
             ) : (
-              "Publicar solicitud"
+              unresolved ? "Confirmar publicación pendiente" : "Publicar solicitud"
             )}
           </button>
         </div>
