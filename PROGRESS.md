@@ -1,3 +1,9 @@
+## 14-oct-2026 — Fluidez de ubicación y Solicitudes
+
+- LU01 y FL01–FL04 implementados por autorización de Javier de ejecutar el plan y hacer push tras verificar. Palomita blanca sin texto; GPS aplica el punto antes de resolver el nombre, con enriquecimiento sin repetir la consulta del feed. Búsqueda distingue demora, error recuperable y ausencia de resultados.
+- Solicitudes carga filas visibles y prepara las cercanas, con catálogo/páginas y retorno al scroll conservados por usuario/zona/radio/revisión. La línea base de ocho categorías pasa de diez a tres consultas iniciales en viewport habitual; las pantallas altas cargan las filas que ya muestran.
+- [Plan, medición y criterios de aceptación](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Pruebas, revisión, SHA/PR y estado de publicación en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). La validación física de GPS/MapKit conserva el seguimiento existente; las suites locales usan transportes controlados.
+
 ## 14-oct-2026 — Chip de categoría activo oscuro con blanco
 
 - Inicio 08:58:34 CDMX por petición y captura de Javier. FiltroCategoriasDrawer reutiliza product-card-tab: fondo charcoal y texto/iconos blancos en claro, con la adaptación al tema oscuro vigente en las etiquetas. Icono y X heredan el color del chip; hover acorde al fondo. Rol FilterChip revisado con Button Expert.

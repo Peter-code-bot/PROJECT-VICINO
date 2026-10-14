@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSessionUI } from "@/components/layout/session-data-provider";
 import { useRequestReturnScroll } from "@/hooks/use-request-return-scroll";
@@ -21,38 +21,96 @@ function Retry({ onRetry }: { onRetry: () => void }) {
   return <div role="alert" className="py-6 text-sm text-fg"><p>No pudimos cargar las solicitudes.</p><button type="button" className="mt-2 min-h-10 underline underline-offset-4" onClick={onRetry}>Reintentar</button></div>;
 }
 function Skeleton() {
-  return <div className="flex gap-3 overflow-hidden" aria-label="Cargando solicitudes" aria-busy="true">{[1,2,3].map(i => <div key={i} className="h-80 w-40 shrink-0 animate-pulse rounded-2xl bg-bg-elev-2 sm:w-48" />)}</div>;
+  return <div className="flex gap-3 overflow-hidden" aria-label="Cargando solicitudes" aria-busy="true">{[1,2,3].map(i => <div key={i} className="h-[19.65rem] w-40 shrink-0 animate-pulse rounded-2xl bg-bg-elev-2 sm:h-[21.65rem] sm:w-48" />)}</div>;
 }
-function CategoryRow({ zone, category, onViewMore, onNavigate }: { zone: RequestZone; category: Category | null; onViewMore: () => void; onNavigate: () => void }) {
+function CategoryRowContent({ zone, category, onNavigate }: { zone: RequestZone; category: Category | null; onNavigate: () => void }) {
   const page = useRequestPage(zone, category?.slug ?? null);
-  return <section>
+  if (page.loading) return <Skeleton />;
+  if (page.error) return <Retry onRetry={page.retry} />;
+  if (!page.requests.length) return <p className="py-4 text-sm text-fg-muted">No hay solicitudes vigentes en esta categoría.</p>;
+  // Embla itself needs IntersectionObserver. Keep horizontal navigation usable
+  // with native scrolling on the same browsers that need our proximity fallback.
+  if (typeof IntersectionObserver === "undefined") return <div className="-mx-4 overflow-x-auto px-4" data-no-page-swipe>
+    <div className="flex gap-3">{page.requests.map(request => <div key={request.id} className="w-40 shrink-0 sm:w-48"><RequestCard data={request} category={category ?? undefined} onNavigate={onNavigate} /></div>)}</div>
+  </div>;
+  return <RequestCarousel requests={page.requests} category={category ?? undefined} scope={zone.cacheScope} onNavigate={onNavigate} />;
+}
+function CategoryRow({ zone, category, eager = false, onViewMore, onNavigate }: { zone: RequestZone; category: Category | null; eager?: boolean; onViewMore: () => void; onNavigate: () => void }) {
+  // Remember visited rows as well as their pages: a deep return has the same
+  // content/height on its first render, before the scroll restoration runs.
+  const [active, setActive] = useSessionUI(`request-row:${zone.cacheScope}:${category?.slug ?? "all"}`, eager);
+  const activate = useRef(setActive);
+  const row = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (active) return;
+    const element = row.current;
+    if (!element) return;
+    let observer: IntersectionObserver | undefined;
+    let frame = 0;
+    const near = (margin: number) => {
+      const bounds = element.getBoundingClientRect();
+      if (bounds.top < window.innerHeight + margin && bounds.bottom > -margin) activate.current(true);
+    };
+    const visible = () => near(0);
+    const start = () => {
+      // On opening, fill the actual viewport. Scrolling also prepares one
+      // nearby row, without consulting the distant categories.
+      window.removeEventListener("scroll", start);
+      if (typeof IntersectionObserver !== "undefined") {
+        observer = new IntersectionObserver(entries => {
+          if (entries.some(entry => entry.isIntersecting)) activate.current(true);
+        }, { rootMargin: "160px 0px" });
+        observer.observe(element);
+      } else {
+        window.addEventListener("scroll", schedule, { passive: true });
+      }
+      near(160);
+    };
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => near(160)); };
+    visible();
+    window.addEventListener("scroll", start, { passive: true });
+    window.addEventListener("resize", visible);
+    window.addEventListener("orientationchange", visible);
+    return () => {
+      observer?.disconnect(); cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", start);
+      window.removeEventListener("resize", visible);
+      window.removeEventListener("orientationchange", visible);
+      window.removeEventListener("scroll", schedule);
+    };
+  }, [active]);
+  return <section ref={row} data-request-row={category?.slug ?? "all"} onFocusCapture={event => { if (!active && event.target.matches(":focus-visible")) activate.current(true); }}>
     <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-heading text-base font-bold text-fg">{category?.nombre ?? "Recientes"}</h2><button type="button" onClick={onViewMore} className="min-h-10 px-2 text-sm font-medium underline underline-offset-4">Ver más<span className="sr-only"> {category?.nombre ?? "solicitudes recientes"}</span></button></div>
-    {page.loading ? <Skeleton /> : page.error ? <Retry onRetry={page.retry} /> : page.requests.length ? <RequestCarousel requests={page.requests} category={category ?? undefined} scope={zone.cacheScope} onNavigate={onNavigate} /> : <p className="py-4 text-sm text-fg-muted">No hay solicitudes vigentes en esta categoría.</p>}
+    <div className="min-h-[19.65rem] sm:min-h-[21.65rem]">{active ? <CategoryRowContent zone={zone} category={category} onNavigate={onNavigate} /> : <Skeleton />}</div>
   </section>;
 }
 function RequestOverview({ zone, onViewMore }: { zone: RequestZone; onViewMore: (category: Category | null) => void }) {
   const saveY = useRequestReturnScroll(`${zone.cacheScope}:overview`);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [cachedCategories, saveCategories] = useSessionUI<Category[] | null>(`request-catalog:${zone.cacheScope}`, null);
+  const initialCategories = useRef(cachedCategories);
+  const saveCatalog = useRef(saveCategories);
+  const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
+  const [state, setState] = useState<"loading" | "ready" | "error">(cachedCategories ? "ready" : "loading");
   const [retry, setRetry] = useState(0);
   const { lat, lng, radius } = zone;
   useEffect(() => {
+    if (initialCategories.current) return;
     let cancelled = false;
     void (async () => {
       try {
         const { data, error } = await createClient().rpc("nearby_request_categories", { user_lat: lat, user_lng: lng, radius_meters: Math.max(1000, Math.min(50000,radius)) });
         if (cancelled) return;
         if (error || !data) { setState("error"); return; }
-        setCategories(data); setState("ready");
+        saveCatalog.current(data); setCategories(data); setState("ready");
       } catch { if (!cancelled) setState("error"); }
     })();
     return () => { cancelled = true; };
   }, [lat,lng,radius,retry]);
   return <div className="space-y-6">
-    <CategoryRow zone={zone} category={null} onViewMore={() => { saveY(); onViewMore(null); }} onNavigate={saveY} />
+    <CategoryRow zone={zone} category={null} eager onViewMore={() => { saveY(); onViewMore(null); }} onNavigate={saveY} />
     {state === "loading" && <Skeleton />}
     {state === "error" && <Retry onRetry={() => { setState("loading"); setRetry(value => value+1); }} />}
-    {state === "ready" && categories.map(category => <CategoryRow key={category.slug} zone={zone} category={category} onViewMore={() => { saveY(); onViewMore(category); }} onNavigate={saveY} />)}
+    {state === "ready" && categories.map((category, index) => <CategoryRow key={category.slug} zone={zone} category={category} eager={index === 0} onViewMore={() => { saveY(); onViewMore(category); }} onNavigate={saveY} />)}
   </div>;
 }
 function RequestCollection({ zone, category, onBack, fresh }: { zone: RequestZone; category: Category | null; onBack: () => void; fresh: boolean }) {

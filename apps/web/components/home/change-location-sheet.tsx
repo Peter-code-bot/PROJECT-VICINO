@@ -18,7 +18,7 @@ import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { mismoPunto } from "@/lib/geo/cambios-ubicacion";
 import { hapticSelection } from "@/lib/haptics";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
-import { isValidRadius, type GeoPosition } from "@/lib/geo/location-storage";
+import { isValidRadius, updateLocationLabel, type GeoPosition } from "@/lib/geo/location-storage";
 
 const ChangeLocationMap = dynamic(() => import("./change-location-map"), {
   ssr: false,
@@ -149,9 +149,13 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const [results, setResults] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [recents, setRecents] = useState<SavedLocation[]>([]);
   const [requestingGps, setRequestingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [resolvingGpsLabel, setResolvingGpsLabel] = useState(false);
+  const [gpsLabelError, setGpsLabelError] = useState<string | null>(null);
+  const gpsLabelRef = useRef<{ controller: AbortController; lat: number; lng: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [selectionReady, setSelectionReady] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,6 +163,10 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchSeqRef = useRef(0);
   const draftTouchedRef = useRef(false);
+  const invalidateGpsLabel = useCallback(() => {
+    gpsLabelRef.current?.controller.abort();
+    gpsLabelRef.current = null;
+  }, []);
   const invalidatePending = useCallback(() => {
     searchSeqRef.current++;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -172,10 +180,11 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   }, [invalidatePending]);
   const closeSheet = useCallback(() => {
     openRef.current = false;
+    invalidateGpsLabel();
     cancelPending();
     setSelectionReady(false);
     onCloseRef.current();
-  }, [cancelPending]);
+  }, [cancelPending, invalidateGpsLabel]);
 
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
@@ -190,8 +199,9 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
     return () => {
       openRef.current = false;
       invalidatePending();
+      invalidateGpsLabel();
     };
-  }, [open, invalidatePending]);
+  }, [open, invalidatePending, invalidateGpsLabel]);
 
   useBodyScrollLock(open);
 
@@ -240,6 +250,9 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
       setGpsError(null);
       setRequestingGps(false);
       setSearchNotice(null);
+      setSearchFailed(false);
+      setResolvingGpsLabel(false);
+      setGpsLabelError(null);
       setSelectionReady(true);
     });
   }, [open, previewPosition]);
@@ -247,6 +260,8 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   // Reverse geocode del centro para overlays del mapa
   useEffect(() => {
     if (!open) return;
+    const gpsLabel = gpsLabelRef.current;
+    if (gpsLabel && gpsLabel.lat === center.lat && gpsLabel.lng === center.lng) return;
     const controller = new AbortController();
     reverseGeocodeOnce(center.lat, center.lng, controller.signal).then(
       (res) => {
@@ -266,6 +281,8 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
     (v: string) => {
       cancelPending();
       setQuery(v);
+      setResults([]);
+      setSearchFailed(false);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       searchAbortRef.current?.abort();
 
@@ -292,18 +309,22 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
           });
           if (searchSeqRef.current === currentSeq && !controller.signal.aborted) {
             setResults(data.results);
+            setSearchFailed(Boolean(data.error));
             setSearchNotice(
-              data.reason === "fuera-de-mexico"
+              data.error
+                ? "No pudimos buscar. Intenta de nuevo."
+                : data.reason === "fuera-de-mexico"
                 ? "Ese lugar está fuera de México."
                 : data.outOfCoverage
                 ? "Encontramos ese lugar, pero está fuera de la zona donde VICINO opera por ahora."
-                : null,
+                : data.results.length === 0 ? "No encontramos lugares. Prueba con otra zona o dirección." : null,
             );
           }
         } catch {
           if (searchSeqRef.current === currentSeq) {
             setResults([]);
-            setSearchNotice(null);
+            setSearchFailed(true);
+            setSearchNotice("No pudimos buscar. Intenta de nuevo.");
           }
         } finally {
           if (searchSeqRef.current === currentSeq) {
@@ -339,6 +360,10 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
   const selectLocation = useCallback((loc: SavedLocation, recenter = true) => {
     if (!openRef.current) return false;
     cancelPending();
+    invalidateGpsLabel();
+    setResolvingGpsLabel(false);
+    setGpsLabelError(null);
+    setSearchFailed(false);
     if (!applyLocation(loc, draftRadius)) return false;
     setCenter({ lat: loc.lat, lng: loc.lng });
     if (recenter) setView({ lat: loc.lat, lng: loc.lng });
@@ -347,7 +372,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
     setGpsError(null);
     void hapticSelection();
     return true;
-  }, [cancelPending, applyLocation, draftRadius]);
+  }, [cancelPending, applyLocation, draftRadius, invalidateGpsLabel]);
 
   const finish = () => {
     if (draft && !applyLocation(draft, draftRadius)) return;
@@ -401,6 +426,9 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
 
   const handleUseMyLocation = useCallback(() => {
     cancelPending();
+    invalidateGpsLabel();
+    setResolvingGpsLabel(false);
+    setGpsLabelError(null);
     const sequence = searchSeqRef.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGpsError("Geolocalización no disponible en este dispositivo");
@@ -409,16 +437,44 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
     setRequestingGps(true);
     setGpsError(null);
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         if (!openRef.current || sequence !== searchSeqRef.current) return;
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const { name, fullName } = await reverseGeocodeOnce(lat, lng);
-        // Si el usuario cerró el sheet mientras esperábamos el GPS,
-        // abandonar — no queremos cambiar su ubicación silenciosamente.
-        if (!openRef.current || sequence !== searchSeqRef.current) return;
         setRequestingGps(false);
-        selectLocation({ lat, lng, name, fullName, accuracy: pos.coords.accuracy, timestamp: Date.now() });
+        if (!selectLocation({ lat, lng, name: "Mi ubicación", fullName: "Mi ubicación", accuracy: pos.coords.accuracy, timestamp: Date.now() })) return;
+        const pending = { lat, lng, controller: new AbortController() };
+        gpsLabelRef.current = pending;
+        setCenterLabels({ zone: "Mi ubicación", city: null });
+        setResolvingGpsLabel(true);
+        // The confirmed point is usable now. A name never changes point/radius.
+        void reverseGeocodeWithApple(lat, lng, pending.controller.signal).then(label => {
+          if (!openRef.current || pending.controller.signal.aborted || gpsLabelRef.current !== pending) return;
+          if (!label?.name) {
+            setGpsLabelError("No pudimos obtener la dirección. Tu ubicación ya está aplicada.");
+            return;
+          }
+          if (!updateLocationLabel(pending, label)) {
+            setGpsLabelError("Tu ubicación está aplicada, pero no pudimos guardar su dirección.");
+            return;
+          }
+          setDraft(previous => previous && mismoPunto(previous, pending) ? { ...previous, name: label.name, fullName: label.fullName } : previous);
+          const next = readRecents().map(location => mismoPunto(location, pending) ? { ...location, name: label.name, fullName: label.fullName } : location);
+          writeRecents(next);
+          setRecents(next);
+          setQuery(previous => previous === "Mi ubicación" ? label.name : previous);
+          const parts = label.name.split(",").map(part => part.trim());
+          setCenterLabels({ zone: parts[0] ?? null, city: parts[1] ?? null });
+        }).catch(() => {
+          if (openRef.current && !pending.controller.signal.aborted && gpsLabelRef.current === pending) {
+            setGpsLabelError("No pudimos obtener la dirección. Tu ubicación ya está aplicada.");
+          }
+        }).finally(() => {
+          if (openRef.current && gpsLabelRef.current === pending) {
+            gpsLabelRef.current = null;
+            setResolvingGpsLabel(false);
+          }
+        });
       },
       (err) => {
         if (!openRef.current || sequence !== searchSeqRef.current) return;
@@ -433,7 +489,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
     );
-  }, [selectLocation, cancelPending]);
+  }, [selectLocation, cancelPending, invalidateGpsLabel]);
 
   if (!mounted) return null;
 
@@ -496,10 +552,9 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                     onClick={finish}
                     disabled={!selectionReady || searching || requestingGps}
                     aria-label="Listo"
-                    className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[color:var(--brand)] px-4 font-semibold text-[color:var(--cream)] transition-colors hover:bg-[color:var(--brand-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)] disabled:opacity-40"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand)] text-white transition-colors hover:bg-[color:var(--brand-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--brand-hi)] disabled:opacity-40"
                   >
-                    <Check size={18} aria-hidden="true" />
-                    Listo
+                    <Check size={22} strokeWidth={2.5} aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -523,6 +578,7 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                   />
                   <input
                     type="text"
+                    aria-label="Buscar zona, colonia o dirección"
                     value={query}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     placeholder="Buscar zona, colonia o dirección…"
@@ -536,13 +592,15 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                   )}
                 </div>
 
-                {searchNotice && (
-                  <p
+                {searching && <p role="status" className="mt-2 text-xs text-[color:var(--fg-muted)]">Buscando…</p>}
+                {!searching && searchNotice && (
+                  <div
                     role="status"
                     className="mt-2 rounded-xl bg-[color:var(--card-2)] px-3 py-2 text-xs leading-snug text-[color:var(--fg-dim)]"
                   >
-                    {searchNotice}
-                  </p>
+                    <span>{searchNotice}</span>
+                    {searchFailed && <button type="button" aria-label="Reintentar búsqueda" onClick={() => handleSearchChange(query)} className="mt-1 block min-h-12 font-semibold text-[color:var(--brand-hi)] underline underline-offset-4">Reintentar</button>}
+                  </div>
                 )}
 
                 {results.length > 0 && (
@@ -639,10 +697,11 @@ export function ChangeLocationSheet({ open, onClose, initialPositionOverride }: 
                     Usar mi ubicación actual
                   </span>
                   <span className="text-xs text-[color:var(--fg-muted)]">
-                    {gpsError ?? "Requiere permisos de ubicación"}
+                    {gpsError ?? (requestingGps ? "Obteniendo ubicación…" : "Requiere permisos de ubicación")}
                   </span>
                 </span>
               </button>
+              {(resolvingGpsLabel || gpsLabelError) && <p role="status" className="mx-5 mt-2 text-xs text-[color:var(--fg-muted)]">{resolvingGpsLabel ? "Ubicando dirección…" : gpsLabelError}</p>}
 
               {/* Recientes */}
               <div className="px-5 pt-5">

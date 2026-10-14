@@ -42,6 +42,8 @@ export interface SearchLocationsOptions {
 
 export interface LocationSearchOutcome {
   results: LocationSearchResult[];
+  /** Transport/SDK failures differ from a successful search with no matches. */
+  error?: "unavailable" | "timeout";
   /**
    * Apple SI devolvio resultados, pero todos cayeron fuera del radio de
    * cobertura. Sin esto la UI pinta una lista vacia identica a la de "no existe
@@ -256,7 +258,7 @@ async function searchWithMapKit(
   const vacio: LocationSearchOutcome = { results: [], outOfCoverage: false };
   const mapkit = await mapkitListo();
   if (signal?.aborted) return vacio;
-  if (!mapkit || !mapkit.Search || !mapkit.Coordinate) return vacio;
+  if (!mapkit || !mapkit.Search || !mapkit.Coordinate) return { ...vacio, error: "unavailable" };
 
   return new Promise((resolve) => {
     let finished = false;
@@ -272,11 +274,12 @@ async function searchWithMapKit(
     let huboFueraDeCobertura = false;
     let huboFueraDeMexico = false;
 
-    const finish = (results: LocationSearchResult[]) => {
+    const finish = (results: LocationSearchResult[], error?: LocationSearchOutcome["error"]) => {
       if (finished) return;
       cleanup();
       resolve({
         results,
+        ...(error ? { error } : {}),
         outOfCoverage: results.length === 0 && huboFueraDeCobertura,
         reason: results.length > 0 ? undefined
           : huboFueraDeCobertura ? "fuera-de-cobertura"
@@ -285,7 +288,7 @@ async function searchWithMapKit(
     };
 
     const timer = setTimeout(() => {
-      finish([]);
+      finish([], "timeout");
     }, SEARCH_TIMEOUT_MS);
 
     const onAbort = () => {
@@ -391,7 +394,7 @@ async function searchWithMapKit(
           searchInstance.search(query, (error, data) => {
             if (finished) return;
             if (error || !data || !Array.isArray(data.places)) {
-              finish([]);
+              finish([], "unavailable");
               return;
             }
 
@@ -426,7 +429,7 @@ async function searchWithMapKit(
             finish(items);
           });
         } catch {
-          finish([]);
+          finish([], "unavailable");
         }
       };
 
@@ -436,7 +439,7 @@ async function searchWithMapKit(
         searchDirectly();
       }
     } catch {
-      finish([]);
+      finish([], "unavailable");
     }
   });
 }
@@ -537,7 +540,7 @@ export async function searchLocations(
 ): Promise<LocationSearchOutcome> {
   const trimmed = query.trim();
   // P1-3: Mínimo 3 caracteres para no quemar cuota en cada pulsación inicial
-  if (trimmed.length < 3) return { results: [], outOfCoverage: false };
+  if (trimmed.length < 3 || options?.signal?.aborted) return { results: [], outOfCoverage: false };
 
   const center =
     options?.center && Number.isFinite(options.center.lat) && Number.isFinite(options.center.lng)
@@ -558,7 +561,7 @@ export async function searchLocations(
 
   // Se cachea tambien el "fuera de cobertura": es una respuesta estable de Apple
   // y repetir la consulta no la va a cambiar.
-  if (outcome.results.length > 0 || outcome.outOfCoverage) {
+  if (!outcome.error && !options?.signal?.aborted && (outcome.results.length > 0 || outcome.outOfCoverage)) {
     if (sessionSearchCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
       const oldest = sessionSearchCache.keys().next();
       if (!oldest.done) sessionSearchCache.delete(oldest.value);

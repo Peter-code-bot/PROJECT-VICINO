@@ -42,12 +42,23 @@ export function useGeolocation() {
       }
     };
 
+    const onLabelUpdated = (event: Event) => {
+      const position = (event as CustomEvent<GeoPosition>).detail;
+      setState(previous => previous.status === "success"
+        && previous.position.lat.toFixed(3) === position.lat.toFixed(3)
+        && previous.position.lng.toFixed(3) === position.lng.toFixed(3)
+        ? { status: "success", position: { ...previous.position, name: position.name, fullName: position.fullName } }
+        : previous);
+    };
+
     window.addEventListener("vicino_location_updated", onLocationUpdated);
+    window.addEventListener("vicino_location_label_updated", onLabelUpdated);
     return () => {
       // This is a request generation counter, deliberately invalidated at unmount.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       generation.current++;
       window.removeEventListener("vicino_location_updated", onLocationUpdated);
+      window.removeEventListener("vicino_location_label_updated", onLabelUpdated);
     };
   }, []);
 
