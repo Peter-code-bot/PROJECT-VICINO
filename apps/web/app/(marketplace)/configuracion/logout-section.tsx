@@ -49,7 +49,8 @@ export function LogoutSection({ agrupado = false, userId }: { agrupado?: boolean
           <button
             onClick={() => void handleConfirm(false)}
             disabled={loading !== null}
-            aria-label="Confirmar cierre de sesión"
+            // Sin aria-label: el nombre accesible es el texto visible, que ya
+            // dice la verdad ("Si, pasar a X" o "Si, cerrar sesion").
             className="inline-flex items-center gap-2 rounded-lg bg-[color:var(--danger)] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-95 disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />

@@ -4,6 +4,8 @@ import { instalarWindowFalso, type WindowFalso } from "./pruebas-entorno";
 import {
   CLAVE_BOVEDA,
   MAX_CUENTAS,
+  actualizarPerfil,
+  actualizarTokens,
   buscarCuenta,
   cuentaMasReciente,
   cuentasDormidas,
@@ -109,6 +111,30 @@ test("quitar y vaciar notifican a los oyentes; otra pestaña entra por el evento
   baja();
   guardarCuenta(cuenta(3), 3);
   assert.equal(avisos, 5);
+});
+
+test("actualizar tokens o perfil no crea entradas ni cambia el orden", () => {
+  guardarCuenta(cuenta(1), 100);
+  guardarCuenta(cuenta(2), 200);
+  assert.equal(actualizarTokens(cuenta(3).userId, { accessToken: "a", refreshToken: "r" }), false);
+  assert.equal(actualizarTokens(cuenta(1).userId, { accessToken: "a-1b", refreshToken: "r-1b" }), true);
+  assert.equal(buscarCuenta(cuenta(1).userId)?.refreshToken, "r-1b");
+  assert.equal(actualizarPerfil(cuenta(3).userId, { nombre: "x", username: null, foto: null, email: "" }), false);
+  assert.equal(actualizarPerfil(cuenta(1).userId, { nombre: "Persona Uno", username: "uno", foto: "https://x/1.png", email: "" }), true);
+  const uno = buscarCuenta(cuenta(1).userId)!;
+  assert.equal(uno.nombre, "Persona Uno");
+  assert.equal(uno.username, "uno");
+  assert.equal(uno.email, "persona1@correo.mx", "un correo vacio no pisa el guardado");
+  assert.equal(uno.refreshToken, "r-1b", "el perfil no toca los tokens");
+  // Ni tokens ni perfil mueven a la cuenta de sitio: la 2 sigue siendo la mas reciente.
+  assert.equal(leerCuentas()[0]?.userId, cuenta(2).userId);
+  // Sin cambios no se escribe (ni se avisa).
+  let avisos = 0;
+  const baja = suscribirBoveda(() => avisos++);
+  assert.equal(actualizarTokens(cuenta(1).userId, { accessToken: "a-1b", refreshToken: "r-1b" }), true);
+  assert.equal(actualizarPerfil(cuenta(1).userId, { nombre: "Persona Uno", username: "uno", foto: "https://x/1.png", email: "persona1@correo.mx" }), true);
+  assert.equal(avisos, 0);
+  baja();
 });
 
 test("la instantanea es el string crudo, estable entre lecturas", () => {

@@ -161,6 +161,22 @@ export function actualizarTokens(userId: string, tokens: { accessToken: string; 
   return escribir(actuales.map((c) => (c.userId === userId ? { ...c, ...tokens } : c)));
 }
 
+/**
+ * Reescribe SOLO lo que se pinta (nombre, usuario, foto, correo) de una
+ * cuenta que ya esta en la boveda, sin tocar tokens ni `ultimoUso`. Lo usa
+ * RegistroCuentaActiva cuando el layout vuelve a renderizar con un perfil
+ * editado: sin esto la hoja mostraba el nombre viejo hasta el siguiente
+ * evento de auth.
+ */
+export function actualizarPerfil(userId: string, perfil: Pick<DatosCuenta, "nombre" | "username" | "foto" | "email">): boolean {
+  const actuales = leerCuentas();
+  const cuenta = actuales.find((c) => c.userId === userId);
+  if (!cuenta) return false;
+  const email = perfil.email || cuenta.email;
+  if (cuenta.nombre === perfil.nombre && cuenta.username === perfil.username && cuenta.foto === perfil.foto && cuenta.email === email) return true;
+  return escribir(actuales.map((c) => (c.userId === userId ? { ...c, nombre: perfil.nombre, username: perfil.username, foto: perfil.foto, email } : c)));
+}
+
 export function quitarCuenta(userId: string): void {
   const actuales = leerCuentas();
   const resto = actuales.filter((c) => c.userId !== userId);

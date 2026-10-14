@@ -165,6 +165,25 @@ y seguridad, flujos React/UX). Lo que se corrigió:
     pestaña si apareció después.
 12. **`clasificarErrorAuth`** vuelve a tratar `AuthUnknownError` (un 52x con
     HTML) como red: el servidor no dio veredicto.
+13. **La bóveda refleja el perfil editado sin esperar a un evento de auth**:
+    `actualizarPerfil` (solo nombre, usuario, foto y correo; ni tokens ni
+    `ultimoUso`) se llama cada vez que el layout vuelve a pintar la cuenta
+    activa. Antes la hoja mostraba el nombre viejo hasta una hora.
+14. **Los tokens rotados durante una revocación fallida se guardan con
+    `actualizarTokens`, no con `guardarCuenta`**: guardar subía `ultimoUso` y
+    convertía a la cuenta que se intentaba quitar en "la más reciente", justo
+    la que "Cerrar sesión" elige a continuación.
+15. **Accesibilidad de la hoja y del diálogo de cierre**: el botón de
+    confirmar cierre ya no lleva un `aria-label` fijo ("Confirmar cierre de
+    sesión") que contradecía su texto visible ("Sí, pasar a X"); cada fila de
+    cuenta enlaza su correo con `aria-describedby` (el `aria-label` de la fila
+    lo tapaba y el correo es como alguien distingue una cuenta que no es suya);
+    y el botón de confirmar "Quitar" recibe el foco cuando sustituye al que lo
+    tenía.
+16. **Un fallo que llega con la hoja cerrada solo se avisa por toast** y no se
+    guarda como error de la hoja; cada apertura empieza sin error ni
+    confirmación pendiente (estado derivado de `open` durante el render, no en
+    un efecto).
 
 **Riesgo aceptado y documentado (no corregido en la fase 1):** las cuentas
 dormidas quedan a un toque y con todos sus privilegios. Quien tenga el

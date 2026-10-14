@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import * as Sentry from "@sentry/nextjs";
 import { conTope } from "@/lib/auth/con-tope";
-import { cuentaMasReciente, cuentasDormidas, guardarCuenta, quitarCuenta, vaciarBoveda } from "@/lib/cuentas/boveda";
+import { actualizarTokens, cuentaMasReciente, cuentasDormidas, guardarCuenta, quitarCuenta, vaciarBoveda } from "@/lib/cuentas/boveda";
 import { desmarcarCambioEnCurso, marcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 import { aplicarCuenta } from "@/lib/cuentas/cambio";
 import { cerrarSesionConCuentas, type OpcionesCierre } from "@/lib/cuentas/cierre";
@@ -53,10 +53,13 @@ export function useLogout() {
         // pantalla. Ya hubo dos cuentas compartiendo token en produccion.
         soltarTokenPush: (userId) => puertoCambioReal().soltarTokenPush(userId),
         pedirRegistroPush,
+        // Solo los tokens rotados, sin subir `ultimoUso`: una dormida cuya
+        // revocacion fallo por red no debe pasar a ser "la mas reciente".
         revocar: (cuenta) =>
-          revocarSesion(cuenta, (sesion) =>
-            guardarCuenta({ ...cuenta, accessToken: sesion.access_token, refreshToken: sesion.refresh_token }),
-          ),
+          revocarSesion(cuenta, (sesion) => {
+            const tokens = { accessToken: sesion.access_token, refreshToken: sesion.refresh_token };
+            if (!actualizarTokens(cuenta.userId, tokens)) guardarCuenta({ ...cuenta, ...tokens });
+          }),
         signOut: () => conTope(supabase.auth.signOut()),
         aplicar: (destino) => aplicarCuenta(destino, puertoCambioReal()),
         boveda: { quitar: quitarCuenta, vaciar: vaciarBoveda, cuentaMasReciente, cuentasDormidas },

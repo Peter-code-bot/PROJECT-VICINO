@@ -8,7 +8,7 @@ import { BottomSheet } from "@/components/product/bottom-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLogout } from "@/hooks/use-logout";
 import { cn } from "@/lib/utils";
-import { buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
+import { actualizarTokens, buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
 import { cambiarACuenta, datosDeSesion, nombreVisible, sesionActivaParaGuardar } from "@/lib/cuentas/cambio";
 import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
@@ -53,6 +53,17 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
   useEffect(() => {
     abiertaRef.current = open;
   }, [open]);
+  // Cada apertura empieza limpia: un fallo de una accion que siguio en vuelo
+  // con la hoja cerrada ya se aviso por toast. Se ajusta durante el render
+  // (patron "estado derivado de una prop" de React), no en un efecto.
+  const [abiertaAntes, setAbiertaAntes] = useState(open);
+  if (open !== abiertaAntes) {
+    setAbiertaAntes(open);
+    if (open) {
+      setError(null);
+      setConfirmarQuitar(null);
+    }
+  }
 
   const activa = cuentas.find((c) => c.userId === userId) ?? null;
   const dormidas = cuentas.filter((c) => c.userId !== userId);
@@ -68,8 +79,8 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
   }, [onClose]);
 
   function avisar(mensaje: string) {
-    setError(mensaje);
-    if (!abiertaRef.current) toast.error(mensaje);
+    if (abiertaRef.current) setError(mensaje);
+    else toast.error(mensaje);
   }
 
   function irAlPerfil() {
@@ -118,10 +129,13 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     setOcupado({ tipo: "quitar", userId: cuenta.userId });
     try {
       // Si cargar la sesion roto el refresh token y el /logout falla despues,
-      // la boveda se queda con los tokens que SI valen (alRotar).
-      const resultado = await revocarSesion(cuenta, (sesion) =>
-        guardarCuenta({ ...cuenta, accessToken: sesion.access_token, refreshToken: sesion.refresh_token }),
-      );
+      // la boveda se queda con los tokens que SI valen (alRotar). Solo los
+      // tokens: subir `ultimoUso` convertiria a la cuenta que se intento
+      // quitar en "la mas reciente" y el cierre de sesion la elegiria.
+      const resultado = await revocarSesion(cuenta, (sesion) => {
+        const tokens = { accessToken: sesion.access_token, refreshToken: sesion.refresh_token };
+        if (!actualizarTokens(cuenta.userId, tokens)) guardarCuenta({ ...cuenta, ...tokens });
+      });
       if (!resultado.ok) {
         reportarCuentas("revocar", resultado.error, "warning");
         avisar("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
@@ -220,6 +234,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
               disabled={!!ocupado}
               aria-current="true"
               aria-label={`Cuenta activa: ${nombreVisible(activa)}. Ver perfil`}
+              aria-describedby={idCorreo(activa)}
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
             >
               <UserAvatar src={activa.foto} name={nombreVisible(activa)} size="md" />
@@ -246,6 +261,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
                   onClick={() => void cambiar(cuenta)}
                   disabled={!!ocupado}
                   aria-label={`Cambiar a ${nombre}`}
+                  aria-describedby={idCorreo(cuenta)}
                   className="flex min-h-14 flex-1 items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
                 >
                   {cambiando ? (
@@ -279,6 +295,8 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
                     type="button"
                     onClick={() => void quitar(cuenta)}
                     disabled={!!ocupado}
+                    // El boton "Quitar" que tenia el foco acaba de desmontarse: el foco sigue aqui.
+                    autoFocus
                     aria-label={`Confirmar quitar ${nombre}`}
                     className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--danger)] px-3 py-1.5 font-semibold text-white disabled:opacity-60"
                   >
@@ -344,13 +362,20 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
   );
 }
 
+/** El id del correo de cada fila: las filas lo enlazan con aria-describedby. */
+function idCorreo(cuenta: Cuenta): string {
+  return `cuenta-correo-${cuenta.userId}`;
+}
+
 function FilaTexto({ cuenta, className }: { cuenta: Cuenta; className?: string }) {
   return (
     <span className={cn("min-w-0 flex-1", className)}>
       <span className="block truncate font-display text-sm font-semibold text-foreground">{nombreVisible(cuenta)}</span>
       {/* El correo va siempre: en un telefono compartido es como alguien sabe
-          que una cuenta no es suya y hay que quitarla. */}
-      <span className="block truncate text-xs text-muted-foreground">
+          que una cuenta no es suya y hay que quitarla. Con id para que tambien
+          lo oiga quien usa lector de pantalla (el aria-label de la fila lo
+          taparia). */}
+      <span id={idCorreo(cuenta)} className="block truncate text-xs text-muted-foreground">
         {cuenta.username ? `@${cuenta.username} · ` : ""}
         {cuenta.email}
       </span>

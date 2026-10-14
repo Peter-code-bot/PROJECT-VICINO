@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { buscarCuenta, guardarCuenta, type DatosCuenta } from "@/lib/cuentas/boveda";
+import { actualizarPerfil, buscarCuenta, guardarCuenta, type DatosCuenta } from "@/lib/cuentas/boveda";
 import { cambioEnCurso, desmarcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 import { limpiarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import { aplicarCuenta } from "@/lib/cuentas/cambio";
@@ -50,6 +50,10 @@ export function RegistroCuentaActiva({ cuenta, renderId }: { cuenta: CuentaActiv
   const cuentaRef = useRef(cuenta);
   useEffect(() => {
     cuentaRef.current = cuenta;
+    // El perfil se edito y el layout volvio a renderizar con la misma cuenta:
+    // la boveda tiene que decir lo mismo que la cabecera del cajon, sin
+    // esperar al siguiente evento de auth (hasta una hora).
+    actualizarPerfil(cuenta.userId, { nombre: cuenta.nombre, username: cuenta.username, foto: cuenta.foto, email: cuenta.email });
   }, [cuenta]);
 
   useEffect(() => {
