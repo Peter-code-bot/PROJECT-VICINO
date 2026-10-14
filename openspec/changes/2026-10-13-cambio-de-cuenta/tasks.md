@@ -97,11 +97,12 @@
       dimensión (auth, seguridad, React/Next, fallos y concurrencia,
       pruebas/spec), 39 hallazgos, 16 correcciones; iteración 2 con 3
       auditores sobre el código corregido (regresiones, auth/seguridad,
-      flujos), 16 correcciones más. Las dos listas en `design.md` ("Lo que
-      cambió tras el CODEX"). Verificación adversarial de los hallazgos de la
-      iteración 2 en el reporte final.
+      flujos), 16 correcciones más; iteración 3 sobre el diff final contra
+      master con 3 auditores y 2 escépticos por hallazgo (11 hallazgos, 6
+      confirmados = 4 problemas, 1 refutado), 5 correcciones más. Las tres
+      listas en `design.md` ("Lo que cambió tras el CODEX").
 - [x] T-24 — `pnpm build` verde (14-oct), `tsc --noEmit` en 0, lint sin
-      errores nuevos, 52 pruebas unitarias en verde. El recorrido manual a
+      errores nuevos, 56 pruebas unitarias en verde. El recorrido manual a
       375×812 claro/oscuro queda para Pedro (T-44): el contenedor no tiene
       cuenta de pruebas ni `.env.local`.
 

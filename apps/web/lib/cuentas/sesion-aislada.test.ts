@@ -88,6 +88,40 @@ test("revocar carga la sesion y cierra SOLO esa (scope local); avisa de los toke
   assert.deepEqual(avisos, []);
 });
 
+test("las operaciones del aislado van en serie: una prueba no se cuela entre el setSession y el signOut de una revocacion", async () => {
+  const orden: string[] = [];
+  let soltar!: () => void;
+  const primera = new Promise<void>((r) => {
+    soltar = r;
+  });
+  const auth: AuthAislado = {
+    async setSession(t) {
+      orden.push(`setSession:${t.refresh_token}`);
+      if (t.refresh_token === "refresh-lenta") await primera;
+      return { data: { session: sesion(t.refresh_token.replace("refresh-", "")) }, error: null };
+    },
+    async refreshSession() {
+      throw new Error("no deberia llamarse");
+    },
+    async signOut() {
+      orden.push("signOut");
+      return { error: null };
+    },
+  };
+  const revocacion = revocarSesion({ accessToken: "access-lenta", refreshToken: "refresh-lenta" }, undefined, auth);
+  const prueba = probarSesion({ accessToken: "access-otra", refreshToken: "refresh-otra" }, auth);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(orden, ["setSession:refresh-lenta"], "la prueba espera a que termine la revocacion");
+  soltar();
+  const [r1, r2] = await Promise.all([revocacion, prueba]);
+  assert.deepEqual(orden, ["setSession:refresh-lenta", "signOut", "setSession:refresh-otra"]);
+  assert.equal(r1.ok && r2.ok, true);
+  // Un fallo no atasca la cola.
+  const falla = await probarSesion(tokens, authFalso({ setSession: "lanza" }).auth);
+  assert.equal(falla.ok, false);
+  assert.equal((await probarSesion(tokens, authFalso({}).auth)).ok, true);
+});
+
 test("un token que ya no vale cuenta como revocado; la red conserva la entrada, con los tokens rotados avisados", async () => {
   const ya = await revocarSesion(tokens, undefined, authFalso({ setSession: credencial(), refresh: credencial() }).auth);
   assert.deepEqual(ya, { ok: true, yaInvalida: true });

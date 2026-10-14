@@ -115,15 +115,20 @@ test("si la siguiente no despierta, se avisa y se va a /login; una vencida ya sa
   assert.deepEqual(red.reportes, ["cierre_siguiente"]);
 });
 
-test("la cuenta que se va se resuelve con la cookie, sin red: sin sesion local no se inventa una siguiente equivocada", async () => {
-  // Sin sesion: la "mas reciente" es la primera de la boveda, que es A (su espejo).
+test("la cuenta que se va se resuelve con la cookie, sin red: sin sesion local no hay siguiente, y si no se puede leer no se cierra nada", async () => {
+  // Sin cookie: la "mas reciente" de la boveda es A (su propio espejo), asi
+  // que no se inventa una siguiente: se cierra y se va a /login.
   const { p, llamadas } = puerto({ activa: null });
   const r = await cerrarSesionConCuentas(p);
-  assert.equal(r.ok && r.siguiente?.userId, A);
-  assert.equal(llamadas.includes(`soltarPush:${A}`), false);
-  // Si leer la cookie lanza, se sigue sin cuenta activa y se reporta.
+  assert.deepEqual(r, { ok: true, siguiente: null });
+  assert.deepEqual(llamadas, ["sesionActual", "signOut"]);
+  assert.deepEqual(leerCuentas().map((c) => c.userId), [A, B, C], "la boveda no se toca");
+  // Si leer la cookie falla (tope, o auth-js la borro por un 429 al refrescar
+  // por dentro), cerrar "a ciegas" volvia a entrar en la propia A: no se hace.
   const lanza = puerto({ sesionActualLanza: true });
-  assert.equal((await cerrarSesionConCuentas(lanza.p)).ok, true);
+  const r2 = await cerrarSesionConCuentas(lanza.p);
+  assert.equal(r2.ok, false);
+  assert.deepEqual(lanza.llamadas, ["sesionActual"]);
   assert.deepEqual(lanza.reportes, ["sesion_actual"]);
 });
 

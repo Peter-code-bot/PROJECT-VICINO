@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { actualizarPerfil, buscarCuenta, guardarCuenta, type DatosCuenta } from "@/lib/cuentas/boveda";
+import { actualizarPerfil, buscarCuenta, guardarCuenta, perfilEnBlanco, type DatosCuenta } from "@/lib/cuentas/boveda";
 import { cambioEnCurso, desmarcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 import { limpiarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import { aplicarCuenta } from "@/lib/cuentas/cambio";
@@ -83,9 +83,16 @@ export function RegistroCuentaActiva({ cuenta, renderId }: { cuenta: CuentaActiv
           }, 0);
         }
       }
+      // Un perfil en blanco (la consulta de `profiles` del layout fallo) no
+      // pisa el nombre y la foto que la boveda ya tenia.
+      const actual = cuentaRef.current;
+      const perfil = perfilEnBlanco(actual) && previa ? previa : actual;
       const resultado = guardarCuenta({
-        ...cuentaRef.current,
-        email: cuentaRef.current.email || sesion.user.email || "",
+        userId: actual.userId,
+        email: actual.email || previa?.email || sesion.user.email || "",
+        nombre: perfil.nombre,
+        username: perfil.username,
+        foto: perfil.foto,
         accessToken: sesion.access_token,
         refreshToken: sesion.refresh_token,
       });

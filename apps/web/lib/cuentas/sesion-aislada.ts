@@ -108,6 +108,22 @@ function olvidar(): void {
 }
 
 /**
+ * Una operacion a la vez. Todas comparten la unica `memoria`, y cada
+ * operacion son DOS llamadas a auth-js con el cerrojo suelto en medio
+ * (setSession y luego signOut). Sin esto, un "Quitar X" lento (su /user en
+ * vuelo) y un "Cambiar a Y" tocado despues se cruzaban: el setSession(Y) de
+ * la prueba entraba entre las dos llamadas de la revocacion, su olvidar()
+ * vaciaba la memoria, y el signOut de X salia sin sesion (o con la de Y):
+ * "revocada" sin revocar nada, o revocando la equivocada.
+ */
+let cola: Promise<unknown> = Promise.resolve();
+function enSerie<T>(operacion: () => Promise<T>): Promise<T> {
+  const resultado = cola.then(operacion, operacion);
+  cola = resultado.then(() => undefined, () => undefined);
+  return resultado;
+}
+
+/**
  * Carga la sesion en el cliente aislado y devuelve una vigente.
  *
  * setSession decide por el reloj LOCAL si el access token caduco: si el
@@ -136,14 +152,16 @@ async function cargar(tokens: Tokens, auth: AuthAislado): Promise<ResultadoProba
  * refresh token roto, los tokens que vuelven son los UNICOS validos: hay que
  * guardarlos en la boveda antes de hacer nada mas.
  */
-export async function probarSesion(tokens: Tokens, auth: AuthAislado = authAislado()): Promise<ResultadoProbar> {
-  try {
-    return await cargar(tokens, auth);
-  } catch (error) {
-    return { ok: false, clase: clasificarErrorAuth(error), error };
-  } finally {
-    olvidar();
-  }
+export function probarSesion(tokens: Tokens, auth: AuthAislado = authAislado()): Promise<ResultadoProbar> {
+  return enSerie(async () => {
+    try {
+      return await cargar(tokens, auth);
+    } catch (error) {
+      return { ok: false, clase: clasificarErrorAuth(error), error };
+    } finally {
+      olvidar();
+    }
+  });
 }
 
 /**
@@ -163,36 +181,38 @@ export async function probarSesion(tokens: Tokens, auth: AuthAislado = authAisla
  * como exito: no habia nada que revocar. Solo la red devuelve ok: false, y
  * entonces la entrada se conserva para reintentar.
  */
-export async function revocarSesion(
+export function revocarSesion(
   tokens: Tokens,
   alRotar?: (sesion: Session) => void,
   auth: AuthAislado = authAislado(),
 ): Promise<ResultadoRevocar> {
-  try {
-    const carga = await cargar(tokens, auth);
-    if (!carga.ok) {
-      return carga.clase === "credencial" ? { ok: true, yaInvalida: true } : { ok: false, clase: "red", error: carga.error };
-    }
-    if (carga.sesion.refresh_token !== tokens.refreshToken) alRotar?.(carga.sesion);
-    // auth-js ya ignora 401/403/404 del /logout (sesion que no existe): un error
-    // aqui es de transporte. OJO: signOut() carga la sesion con un margen de
-    // 90 s (setSession no lo aplica), asi que puede haber rotado el refresh
-    // token POR DENTRO justo antes del /logout fallido. Lo que haya quedado
-    // en memoria es lo que vale, y se avisa antes de olvidarlo.
-    const { error: errorSalida } = await auth.signOut({ scope: "local" });
-    if (errorSalida) {
-      const enMemoria = sesionEnMemoria();
-      if (enMemoria && enMemoria.refresh_token !== tokens.refreshToken && enMemoria.refresh_token !== carga.sesion.refresh_token) {
-        alRotar?.(enMemoria);
+  return enSerie(async () => {
+    try {
+      const carga = await cargar(tokens, auth);
+      if (!carga.ok) {
+        return carga.clase === "credencial" ? { ok: true, yaInvalida: true } : { ok: false, clase: "red", error: carga.error };
       }
-      return { ok: false, clase: "red", error: errorSalida };
+      if (carga.sesion.refresh_token !== tokens.refreshToken) alRotar?.(carga.sesion);
+      // auth-js ya ignora 401/403/404 del /logout (sesion que no existe): un error
+      // aqui es de transporte. OJO: signOut() carga la sesion con un margen de
+      // 90 s (setSession no lo aplica), asi que puede haber rotado el refresh
+      // token POR DENTRO justo antes del /logout fallido. Lo que haya quedado
+      // en memoria es lo que vale, y se avisa antes de olvidarlo.
+      const { error: errorSalida } = await auth.signOut({ scope: "local" });
+      if (errorSalida) {
+        const enMemoria = sesionEnMemoria();
+        if (enMemoria && enMemoria.refresh_token !== tokens.refreshToken && enMemoria.refresh_token !== carga.sesion.refresh_token) {
+          alRotar?.(enMemoria);
+        }
+        return { ok: false, clase: "red", error: errorSalida };
+      }
+      return { ok: true, yaInvalida: false };
+    } catch (error) {
+      return { ok: false, clase: "red", error };
+    } finally {
+      olvidar();
     }
-    return { ok: true, yaInvalida: false };
-  } catch (error) {
-    return { ok: false, clase: "red", error };
-  } finally {
-    olvidar();
-  }
+  });
 }
 
 /** Lo que auth-js dejo guardado en la memoria del cliente aislado, si es una sesion. */

@@ -38,6 +38,8 @@ function cuentaB(): Cuenta {
 interface Escenario {
   /** undefined = A con una hora por delante; null = sin sesion. */
   sesionActual?: Session | null;
+  /** Error de la PRIMERA lectura de la cookie (auth-js refresco por dentro y fallo): llega con session null. */
+  errorGetSession?: AuthApiError | AuthRetryableFetchError;
   /** Lo que devuelve refreshSession; "lanza" = tope. */
   refresh?: { sesion: Session } | AuthApiError | AuthRetryableFetchError | AuthUnknownError | "lanza";
   /** Que hay en la cookie en las lecturas posteriores a la primera (restauraciones). */
@@ -64,6 +66,7 @@ function puerto(escenario: Escenario, ventana: WindowFalso) {
       async getSession() {
         llamadas.push("getSession");
         lecturas += 1;
+        if (lecturas === 1 && escenario.errorGetSession) return { data: { session: null }, error: escenario.errorGetSession };
         if (lecturas > 1 && escenario.cookieDespues !== undefined) return { data: { session: escenario.cookieDespues }, error: null };
         return { data: { session: sesionA }, error: null };
       },
@@ -131,6 +134,22 @@ test("camino feliz: marca, lee A (sin refrescar: le queda una hora), la guarda, 
   // El UPDATE del fcm_token fue para A y solo para A.
   const patch = peticiones.find((q) => q.metodo === "PATCH");
   assert.ok(patch && patch.recurso === "profiles" && patch.url.includes(`id=eq.${A}`));
+});
+
+test("si getSession falla porque auth-js refresco por dentro: el transporte deja la cookie (red); cualquier otro error la borro (sin sesion) y se pasa a B sin tocar A", async () => {
+  const transporte = puerto({ errorGetSession: new AuthRetryableFetchError("fetch failed", 0) }, ventana);
+  assert.deepEqual(await sesionActivaParaGuardar(transporte.p.principal, transporte.p.reportar), { estado: "red" });
+  assert.deepEqual(transporte.reportes, ["get_session"]);
+  const limite = puerto({ errorGetSession: new AuthApiError("rate limit", 429, "over_request_rate_limit") }, ventana);
+  assert.deepEqual(await sesionActivaParaGuardar(limite.p.principal, limite.p.reportar), { estado: "sin_sesion" });
+  // En el cambio completo: A no se guarda (no hay con que) ni se le suelta el
+  // push (no hay sesion), pero conserva sus tokens de antes, y se aplica B.
+  const cambio = puerto({ errorGetSession: new AuthApiError("boom", 500, "unexpected_failure") }, ventana);
+  const r = await cambiarACuenta(cuentaB(), cambio.p);
+  assert.deepEqual(r, { ok: true, userId: B, nombre: "Tienda B" });
+  assert.equal(buscarCuenta(A)?.refreshToken, "refresh-a-viejo");
+  assert.equal(cambio.llamadas.includes(`soltarPush:${A}`), false);
+  assert.deepEqual(cambio.llamadas.slice(0, 3), [`marcar:${B}`, "getSession", "probar:refresh-b-viejo"]);
 });
 
 test("con poco token por delante, A se refresca antes de guardarse", async () => {

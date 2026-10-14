@@ -137,6 +137,38 @@ test("actualizar tokens o perfil no crea entradas ni cambia el orden", () => {
   baja();
 });
 
+function jwt(claims: Record<string, unknown>): string {
+  const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${b64(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${b64(JSON.stringify(claims))}.firma`;
+}
+
+test("actualizar tokens solo acepta rotaciones de la MISMA sesion de GoTrue; otra sesion la registra guardarCuenta", () => {
+  const s1 = jwt({ sub: cuenta(1).userId, session_id: "s-1" });
+  guardarCuenta(cuenta(1, { accessToken: s1, refreshToken: "r-s1" }), 100);
+  // Rotacion dentro de s-1: se acepta.
+  assert.equal(actualizarTokens(cuenta(1).userId, { accessToken: jwt({ sub: "x", session_id: "s-1" }), refreshToken: "r-s1-b" }), true);
+  assert.equal(buscarCuenta(cuenta(1).userId)?.refreshToken, "r-s1-b");
+  // Otra sesion (volvio a entrar por /login): el espejo NO la pisa, para que
+  // RegistroCuentaActiva vea la vieja, la revoque y guarde la nueva.
+  const s2 = jwt({ sub: "x", session_id: "s-2" });
+  assert.equal(actualizarTokens(cuenta(1).userId, { accessToken: s2, refreshToken: "r-s2" }), false);
+  assert.equal(buscarCuenta(cuenta(1).userId)?.refreshToken, "r-s1-b");
+  assert.equal(guardarCuenta(cuenta(1, { accessToken: s2, refreshToken: "r-s2" }), 200), "guardada");
+  assert.equal(buscarCuenta(cuenta(1).userId)?.refreshToken, "r-s2");
+  // Tokens que no son JWT legibles (sin session_id): se acepta, como antes.
+  assert.equal(actualizarTokens(cuenta(1).userId, { accessToken: "opaco", refreshToken: "r-opaco" }), true);
+});
+
+test("un perfil en blanco (consulta fallida) no pisa el guardado", () => {
+  guardarCuenta(cuenta(1), 100);
+  assert.equal(actualizarPerfil(cuenta(1).userId, { nombre: "", username: null, foto: null, email: "" }), true);
+  assert.equal(buscarCuenta(cuenta(1).userId)?.nombre, "Persona 1");
+  assert.equal(buscarCuenta(cuenta(1).userId)?.username, "persona1");
+  // Quitar el usuario de verdad (queda nombre) si se refleja.
+  assert.equal(actualizarPerfil(cuenta(1).userId, { nombre: "Persona 1", username: null, foto: null, email: "" }), true);
+  assert.equal(buscarCuenta(cuenta(1).userId)?.username, null);
+});
+
 test("la instantanea es el string crudo, estable entre lecturas", () => {
   guardarCuenta(cuenta(1), 1);
   assert.equal(instantaneaBoveda(), instantaneaBoveda());

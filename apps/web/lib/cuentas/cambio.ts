@@ -36,7 +36,7 @@
  * La navegacion (router.refresh + router.replace("/perfil")) la hace quien
  * llama: necesita el router y es la unica parte que no se puede probar aqui.
  */
-import type { AuthError, Session } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError, type AuthError, type Session } from "@supabase/supabase-js";
 import type { Cuenta, DatosCuenta, ResultadoGuardar } from "./boveda";
 import { clasificarErrorAuth } from "./clasificar-error-auth";
 import type { ResultadoProbar, Tokens } from "./sesion-aislada";
@@ -107,7 +107,7 @@ export function datosDeSesion(sesion: Session, previa: DatosCuenta | null): Dato
 
 export type SesionActiva =
   | { estado: "ok"; sesion: Session }
-  /** No hay cookie. */
+  /** No hay cookie (o auth-js la borro al fallarle un refresh por dentro de getSession). */
   | { estado: "sin_sesion" }
   /** GoTrue dio un veredicto sobre el refresh token de A: auth-js ya borro la cookie. */
   | { estado: "muerta"; userId: string }
@@ -126,7 +126,20 @@ export async function sesionActivaParaGuardar(
 ): Promise<SesionActiva> {
   let instantanea: Session | null;
   try {
-    ({ data: { session: instantanea } } = await principal.getSession());
+    const { data, error } = await principal.getSession();
+    if (error) {
+      // getSession solo es "sin red" con mas de 90 s de token por delante: por
+      // debajo, auth-js refresca POR DENTRO y el error llega con session null.
+      // Un fallo de transporte deja la cookie como estaba: se reintenta luego.
+      // Cualquier otro AuthError (429, 5xx, veredicto de credencial) hace que
+      // auth-js la BORRE antes de devolverlo, y sin instantanea no hay con que
+      // restaurarla: es como no tener sesion. A sigue en la boveda con los
+      // tokens de antes (un 429 no consume nada), asi que volver a ella sigue
+      // siendo posible; su token de push no se puede soltar sin sesion.
+      reportar("get_session", error, "warning");
+      return isAuthRetryableFetchError(error) ? { estado: "red" } : { estado: "sin_sesion" };
+    }
+    instantanea = data.session;
   } catch (excepcion) {
     reportar("get_session", excepcion, "warning");
     return { estado: "red" };

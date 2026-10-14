@@ -185,6 +185,51 @@ y seguridad, flujos React/UX). Lo que se corrigió:
     confirmación pendiente (estado derivado de `open` durante el render, no en
     un efecto).
 
+## Lo que cambió tras el CODEX Adversarial Review Loop (iteración 3)
+
+Tres auditores sobre el diff final contra `master` (auth/seguridad, fallos y
+concurrencia, React/Next/UX) y dos escépticos independientes por hallazgo con
+la consigna de refutarlo. 11 hallazgos; 6 confirmados por los dos escépticos
+(4 problemas distintos: dos los reportaron dos auditores), 1 refutado (el
+único marcado "crítico": que `router.replace` a los 50 ms descartara el
+`router.refresh()`; ambos escépticos lo refutaron leyendo el router de Next
+16.3), 4 sugerencias. Lo que se corrigió:
+
+1. **El espejo de tokens solo acepta rotaciones de la MISMA sesión de GoTrue**
+   (`actualizarTokens` compara el `session_id` de los dos access tokens).
+   Antes, al volver a entrar por Google/Apple o enlace de correo en una cuenta
+   que ya estaba guardada, `EspejoDeTokens` (en el layout raíz, montado antes
+   que `RegistroCuentaActiva` y vivo en `/login`) pisaba la entrada con la
+   sesión nueva ANTES de que `RegistroCuentaActiva` pudiera comparar y
+   revocar la vieja: la corrección #7 de la iteración 2 solo funcionaba con
+   contraseña o código (login de servidor, sin evento en el cliente).
+2. **Las operaciones del cliente aislado van en serie** (cola de promesas a
+   nivel de módulo). Comparten una sola memoria y cada operación son dos
+   llamadas con el cerrojo suelto en medio; un "Quitar X" lento y un
+   "Cambiar a Y" tocado después se cruzaban y la revocación de X salía sin
+   sesión (o con la de Y). Reproducido por los escépticos contra el
+   `GoTrueClient` real.
+3. **"Cerrar sesión" no cierra nada si no sabe quién se va**: un error de
+   `getSession()` (tope, o auth-js borrando la cookie por un 429 al
+   refrescar por dentro) se leía como "sin sesión", la "más reciente" de la
+   bóveda era el espejo de la propia cuenta activa, y el cierre acababa
+   volviendo a entrar en ella sin revocar nada. Ahora el error aborta con
+   mensaje, y sin cookie no hay "siguiente".
+4. **El paso 1 del cambio lee el error de `getSession()`**: con menos de 90 s
+   de token auth-js refresca por dentro, y un 429/500 ahí borra la cookie y
+   devuelve `session: null` con error. Se trataba como "sin sesión" a secas;
+   ahora un fallo de transporte (cookie intacta) es "red" y cualquier otro
+   AuthError es "sin sesión" explícito y reportado. A conserva sus tokens en
+   la bóveda (un 429 no consume nada); su token de push no se puede soltar
+   sin sesión y queda documentado.
+5. **Un perfil en blanco no pisa el guardado** (sugerencia de dos auditores):
+   si la consulta de `profiles` del layout falla, `actualizarPerfil` y el
+   espejo de la activa conservan nombre, usuario y foto anteriores.
+
+Sugerencias no aplicadas (fase 2): el reintento de aterrizaje en el segundo
+montaje de StrictMode (solo desarrollo) y devolver el foco al botón "Quitar"
+tras "Cancelar" en la hoja.
+
 **Riesgo aceptado y documentado (no corregido en la fase 1):** las cuentas
 dormidas quedan a un toque y con todos sus privilegios. Quien tenga el
 teléfono desbloqueado puede entrar en cualquiera de la lista y borrarla o

@@ -4,7 +4,9 @@
  *
  *   1. La cuenta que se va se resuelve LOCALMENTE (la cookie, via getSession),
  *      no con getUser(): con la red caida getUser devuelve null y la boveda
- *      tomaria el espejo de la propia cuenta activa como "la siguiente".
+ *      tomaria el espejo de la propia cuenta activa como "la siguiente". Si
+ *      ni la cookie se puede leer, no se cierra nada; y sin cookie no hay
+ *      siguiente (mismo motivo).
  *   2. Con `todas`: revocar cada dormida con el cliente aislado ANTES de tocar
  *      nada de la activa (ni su token de push). Si alguna falla por red, se
  *      para AQUI y se avisa: "salir de todas" promete un telefono limpio, y
@@ -63,11 +65,16 @@ export type ResultadoCierre =
 
 export async function cerrarSesionConCuentas(puerto: PuertoCierre, opciones: OpcionesCierre = {}): Promise<ResultadoCierre> {
   const todas = opciones.todas === true;
-  let activa: string | null = null;
+  let activa: string | null;
   try {
     activa = await puerto.sesionActual();
   } catch (excepcion) {
+    // Sin saber quien se va no se cierra nada. Con getSession fallando (tope,
+    // o auth-js borrando la cookie por un 429 al refrescar por dentro), la
+    // "mas reciente" de la boveda seria el espejo de la PROPIA cuenta activa,
+    // y el cierre acababa volviendo a entrar en ella, sin revocar nada.
     puerto.reportar("sesion_actual", excepcion, "warning");
+    return { ok: false, mensaje: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
   }
 
   if (todas) {
@@ -95,7 +102,9 @@ export async function cerrarSesionConCuentas(puerto: PuertoCierre, opciones: Opc
     }
   }
 
-  const siguiente = todas ? null : puerto.boveda.cuentaMasReciente(activa);
+  // Sin cookie no hay "siguiente": la primera de la boveda seria el espejo de
+  // la cuenta que la persona cree estar cerrando.
+  const siguiente = todas || !activa ? null : puerto.boveda.cuentaMasReciente(activa);
   if (siguiente) puerto.marcar(siguiente.userId);
 
   const noSeCerro = (error: unknown): ResultadoCierre => {

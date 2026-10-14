@@ -44,7 +44,10 @@ export function useLogout() {
     const resultado = await cerrarSesionConCuentas(
       {
         async sesionActual() {
-          const { data } = await conTope(supabase.auth.getSession());
+          // getSession refresca por dentro si quedan < 90 s, y un error ahi
+          // llega con session null: no es "sin sesion", es "no se sabe".
+          const { data, error } = await conTope(supabase.auth.getSession());
+          if (error) throw error;
           return data.session?.user.id ?? null;
         },
         // El token de FCM es por dispositivo, no por persona. Si no se limpia, el

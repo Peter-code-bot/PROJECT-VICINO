@@ -26,6 +26,7 @@
  * lib/cuentas/sesion-aislada.ts para la revocacion al quitar una cuenta.
  */
 import { z } from "zod";
+import { sessionIdDeJwt } from "./jwt";
 
 export const CLAVE_BOVEDA = "vicino_cuentas_v1";
 /** Decision D4: el tope que publica Instagram. Cada entrada es un refresh token vivo. */
@@ -158,7 +159,23 @@ export function actualizarTokens(userId: string, tokens: { accessToken: string; 
   const cuenta = actuales.find((c) => c.userId === userId);
   if (!cuenta) return false;
   if (cuenta.accessToken === tokens.accessToken && cuenta.refreshToken === tokens.refreshToken) return true;
+  // Solo tokens ROTADOS de la misma sesion de GoTrue. Otra sesion (volver a
+  // entrar por /login en una cuenta que ya estaba guardada) no pisa la
+  // entrada: eso lo hace RegistroCuentaActiva con guardarCuenta, DESPUES de
+  // revocar la sesion vieja. Si el espejo la pisara antes, la vieja quedaria
+  // viva en el servidor sin que nadie tuviera ya sus tokens.
+  const sesionGuardada = sessionIdDeJwt(cuenta.accessToken);
+  const sesionNueva = sessionIdDeJwt(tokens.accessToken);
+  if (sesionGuardada && sesionNueva && sesionGuardada !== sesionNueva) return false;
   return escribir(actuales.map((c) => (c.userId === userId ? { ...c, ...tokens } : c)));
+}
+
+/**
+ * Un perfil sin nombre, usuario ni foto es lo que el layout pinta cuando la
+ * consulta de `profiles` fallo: no debe pisar lo que la boveda ya tenia.
+ */
+export function perfilEnBlanco(perfil: Pick<DatosCuenta, "nombre" | "username" | "foto">): boolean {
+  return !perfil.nombre.trim() && !perfil.username && !perfil.foto;
 }
 
 /**
@@ -172,6 +189,7 @@ export function actualizarPerfil(userId: string, perfil: Pick<DatosCuenta, "nomb
   const actuales = leerCuentas();
   const cuenta = actuales.find((c) => c.userId === userId);
   if (!cuenta) return false;
+  if (perfilEnBlanco(perfil) && !perfilEnBlanco(cuenta)) return true;
   const email = perfil.email || cuenta.email;
   if (cuenta.nombre === perfil.nombre && cuenta.username === perfil.username && cuenta.foto === perfil.foto && cuenta.email === email) return true;
   return escribir(actuales.map((c) => (c.userId === userId ? { ...c, nombre: perfil.nombre, username: perfil.username, foto: perfil.foto, email } : c)));
