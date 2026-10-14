@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLogout } from "@/hooks/use-logout";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { buscarCuenta, guardarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
+import { buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
 import { cambiarACuenta, datosDeSesion, nombreVisible } from "@/lib/cuentas/cambio";
 import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
@@ -97,7 +97,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
         setError("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
         return;
       }
-      puertoCambioReal().boveda.quitar(cuenta.userId);
+      quitarCuenta(cuenta.userId);
       setConfirmarQuitar(null);
       toast.success(`${nombreVisible(cuenta)} ya no está en este teléfono`);
     } finally {
@@ -133,6 +133,12 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
         setError("No se pudo guardar tu cuenta actual. Inténtalo de nuevo.");
         return;
       }
+      // El token de push es del telefono: si se queda en el perfil de la
+      // cuenta actual, sus avisos aterrizan en la pantalla de la cuenta que
+      // entre despues (mismo motivo que use-logout.ts y que el paso 5 del
+      // cambio). Mejor esfuerzo; quien vuelva a esta cuenta la registra de
+      // nuevo al siguiente primer plano (usePushNotifications).
+      await puertoCambioReal().soltarTokenPush(session.user.id);
       marcarAgregandoCuenta();
       onNavegar();
       router.push(hrefAgregarCuenta("/login"));

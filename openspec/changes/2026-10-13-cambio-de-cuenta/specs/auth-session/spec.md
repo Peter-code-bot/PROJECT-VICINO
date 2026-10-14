@@ -15,19 +15,27 @@ refreshToken, ultimoUso }`, validated with Zod on every read, capped at
 
 - GIVEN accounts A (active) and B (stored) on the device
 - WHEN the user taps B in the "Cuentas" sheet
-- THEN the client calls `auth.getSession()` for A and stores A's current tokens
+- THEN the client calls `auth.getSession()` for A on the main client and stores A's current tokens
+- AND validates B's tokens on an ISOLATED supabase-js client (in-memory storage, own `storageKey`), which refreshes them if the access token expired, and stores the returned tokens for B
 - AND sets `profiles.fcm_token = NULL` for A (best effort)
-- AND calls `auth.setSession(B.tokens)`
+- AND only then calls `auth.setSession(B validated tokens)` on the main client, so the main client never refreshes foreign tokens
 - AND navigates with `router.refresh()` + `router.replace("/perfil")` (no full navigation)
 - AND `/perfil` renders B without any visit to `/login`
 
-### Scenario: setSession failure leaves the user in A
+### Scenario: The main client never receives unvalidated tokens
 
-- GIVEN `auth.setSession(B.tokens)` returns an error
-- WHEN the error is 400/401 (invalid or already-used refresh token)
-- THEN B is removed from the vault and the user stays in A with the message "La sesión de @b venció. Vuelve a entrar."
+- GIVEN auth-js `_setSession` calls `_removeSession()` (clearing the cookie storage) when a refresh fails with a non-retryable error
+- WHEN B's stored refresh token is invalid
+- THEN the failure happens on the isolated client, whose storage is in memory
+- AND A's session cookie is never touched
+
+### Scenario: Validation failure leaves the user in A
+
+- GIVEN the isolated validation of B's tokens returns an error
+- WHEN the error is 400/401/403/404 (invalid or already-used refresh token, deleted user)
+- THEN B is removed from the vault and the user stays in A with the message "La sesión de B venció. Vuelve a entrar."
 - WHEN the error is a network/5xx/429 error
-- THEN B stays in the vault and the user stays in A with the message "Sin conexión. Sigues en @a."
+- THEN B stays in the vault and the user stays in A with the message "Sin conexión. Sigues en A."
 
 ## ADDED Requirement: Auth state change during an intentional switch does not hard-navigate
 
@@ -44,11 +52,15 @@ the existing behavior is unchanged.
 
 ## ADDED Requirement: Adding an account reuses /login and /register
 
-WHEN the cookie `vicino_agregando_cuenta` is present, the proxy SHALL NOT
-redirect an authenticated user away from `/login` or `/register`. The cookie
-SHALL be set by the client with `Max-Age=600`, `SameSite=Lax`, `Secure`,
-`Path=/`, and SHALL be removed by the client when the new account lands in the
-marketplace layout.
+WHEN the cookie `vicino_agregando_cuenta=1` is present, the proxy, the
+`/login` and `/register` pages, and the `signUp` server action SHALL NOT
+redirect or refuse an authenticated user (`estaAgregandoCuenta` in
+`lib/cuentas/agregando-cuenta.ts`). The cookie SHALL be set by the client with
+`Max-Age=600`, `SameSite=Lax`, `Secure` (on https), `Path=/`, and SHALL be
+removed by the client when the new account lands in the marketplace layout.
+The add-account link SHALL be `/login?next=%2Fperfil&agregar=1`, and both auth
+forms SHALL show the "Estás agregando otra cuenta" notice with a Cancel action
+when `agregar=1` is present.
 
 ### Scenario: Previous account is preserved
 
@@ -74,8 +86,11 @@ the entry is kept and the user is told to retry.
 
 WHEN the active account signs out successfully and other accounts remain in
 the vault, the system SHALL switch to the most recently used one instead of
-navigating to `/login`. "Salir de todas las cuentas" SHALL revoke every stored
-session, sign out the active one, empty the vault and navigate to `/login`.
+navigating to `/login`, setting the switch-in-progress marker BEFORE calling
+`signOut()` so the `SIGNED_OUT` event does not trigger a hard navigation.
+"Salir de todas las cuentas" SHALL revoke every stored session (best effort,
+failures reported to Sentry with the userId), sign out the active one, empty
+the vault and navigate to `/login`.
 
 ## ADDED Requirement: Account deletion purges the vault entry
 
