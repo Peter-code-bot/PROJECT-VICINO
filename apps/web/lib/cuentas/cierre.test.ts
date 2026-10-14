@@ -33,6 +33,9 @@ function puerto(e: Escenario) {
     async soltarTokenPush(userId) {
       llamadas.push(`soltarPush:${userId}`);
     },
+    pedirRegistroPush() {
+      llamadas.push("pedirRegistroPush");
+    },
     async revocar(c) {
       llamadas.push(`revocar:${c.userId}`);
       return e.revocarFalla?.has(c.userId) ? { ok: false, clase: "red", error: new AuthRetryableFetchError("x", 0) } : { ok: true, yaInvalida: false };
@@ -85,11 +88,11 @@ test("sin otras cuentas, es el cierre de siempre: a /login", async () => {
   assert.equal(leerCuentas().length, 0);
 });
 
-test("si signOut falla, la sesion sigue viva: no se navega, se desmarca y nada sale de la boveda", async () => {
+test("si signOut falla, la sesion sigue viva: no se navega, se desmarca, nada sale de la boveda y se vuelve a pedir el push", async () => {
   const red = puerto({ signOutError: new AuthRetryableFetchError("x", 0) });
   const r = await cerrarSesionConCuentas(red.p);
   assert.equal(r.ok, false);
-  assert.deepEqual(red.llamadas.slice(-2), ["signOut", "desmarcar"]);
+  assert.deepEqual(red.llamadas.slice(-3), ["signOut", "desmarcar", "pedirRegistroPush"]);
   assert.equal(leerCuentas().length, 3);
   const tope = puerto({ signOutError: "lanza" });
   assert.equal((await cerrarSesionConCuentas(tope.p)).ok, false);
@@ -124,20 +127,21 @@ test("la cuenta que se va se resuelve con la cookie, sin red: sin sesion local n
   assert.deepEqual(lanza.reportes, ["sesion_actual"]);
 });
 
-test("salir de todas revoca cada dormida antes de tocar la activa y deja la boveda vacia", async () => {
+test("salir de todas revoca cada dormida ANTES de tocar la activa y deja la boveda vacia", async () => {
   const { p, llamadas } = puerto({});
   const r = await cerrarSesionConCuentas(p, { todas: true });
   assert.deepEqual(r, { ok: true, siguiente: null });
-  assert.deepEqual(llamadas, ["sesionActual", `soltarPush:${A}`, `revocar:${B}`, `revocar:${C}`, "signOut"]);
+  assert.deepEqual(llamadas, ["sesionActual", `revocar:${B}`, `revocar:${C}`, `soltarPush:${A}`, "signOut"]);
   assert.equal(leerCuentas().length, 0);
 });
 
-test("salir de todas se detiene si una dormida no se pudo revocar: la activa sigue viva y la fallida sigue en la boveda", async () => {
+test("salir de todas se detiene si una dormida no se pudo revocar: la activa sigue viva, con su push, y la fallida sigue en la boveda", async () => {
   const { p, llamadas, reportes } = puerto({ revocarFalla: new Set([C]) });
   const r = await cerrarSesionConCuentas(p, { todas: true });
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.mensaje, /Vieja/);
   assert.equal(llamadas.includes("signOut"), false);
+  assert.equal(llamadas.includes(`soltarPush:${A}`), false);
   assert.deepEqual(leerCuentas().map((c) => c.userId), [A, C]);
   assert.deepEqual(reportes, ["revocar_dormida"]);
 });

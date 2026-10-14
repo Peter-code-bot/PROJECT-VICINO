@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test, { beforeEach } from "node:test";
 import { instalarWindowFalso, type WindowFalso } from "./pruebas-entorno";
-import { VIGENCIA_CAMBIO_MS, cambioEnCurso, desmarcarCambioEnCurso, hayCambioEnCurso, marcarCambioEnCurso } from "./cambio-en-curso";
+import {
+  VIGENCIA_CAMBIO_MS,
+  cambioEnCurso,
+  desmarcarCambioEnCurso,
+  hayCambioEnCurso,
+  hayCambioEnCursoEnAlgunaPestana,
+  marcarCambioEnCurso,
+} from "./cambio-en-curso";
 
 let ventana: WindowFalso;
 beforeEach(() => {
@@ -37,4 +44,18 @@ test("sin sessionStorage queda el respaldo en memoria", () => {
 test("un reloj que retrocede no deja una marca eterna", () => {
   marcarCambioEnCurso("b", 50_000);
   assert.equal(cambioEnCurso(1_000), null);
+});
+
+test("la pista para otras pestañas vive en localStorage, caduca igual y se borra al desmarcar", () => {
+  assert.equal(hayCambioEnCursoEnAlgunaPestana(5), false);
+  marcarCambioEnCurso("b", 5);
+  assert.equal(hayCambioEnCursoEnAlgunaPestana(6), true);
+  assert.equal(hayCambioEnCursoEnAlgunaPestana(6 + VIGENCIA_CAMBIO_MS), false);
+  desmarcarCambioEnCurso();
+  assert.equal(hayCambioEnCursoEnAlgunaPestana(6), false);
+  // Sin localStorage no hay pista, pero la marca de esta pestaña sigue.
+  ventana.localStorage.lanzar = true;
+  marcarCambioEnCurso("b", 5);
+  assert.equal(hayCambioEnCurso(6), true);
+  assert.equal(hayCambioEnCursoEnAlgunaPestana(6), false);
 });

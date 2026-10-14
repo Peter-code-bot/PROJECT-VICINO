@@ -1,19 +1,29 @@
-import { isAuthApiError, isAuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
+import {
+  isAuthApiError,
+  isAuthRetryableFetchError,
+  isAuthSessionMissingError,
+  AuthInvalidCredentialsError,
+  AuthInvalidJwtError,
+} from "@supabase/supabase-js";
 
 /**
  * Dos clases de fallo al despertar o revocar una sesion dormida, porque se
  * tratan al reves:
  *
- *   - "credencial": GoTrue (o auth-js) dio un veredicto sobre el token:
- *     invalido, ya usado, usuario borrado, sesion revocada desde otro sitio,
- *     JWT malformado. No mejora reintentando: la cuenta se QUITA de la boveda.
- *   - "red": transporte (fetch caido, timeout, abort, 5xx, 429, 408). La
- *     cuenta se queda y se avisa para reintentar.
+ *   - "credencial": un VEREDICTO sobre el token. Del servidor: AuthApiError
+ *     4xx (invalido, ya usado, usuario borrado, sesion revocada desde otro
+ *     sitio); de auth-js, sin ir a la red: JWT malformado
+ *     (AuthInvalidJwtError), tokens que faltan (AuthSessionMissingError),
+ *     credenciales incompletas. No mejora reintentando: la cuenta se QUITA de
+ *     la boveda.
+ *   - "red": transporte y servidor sin veredicto (fetch caido, abort, 5xx,
+ *     429, 408, una respuesta que no es JSON: AuthUnknownError). La cuenta se
+ *     queda y se avisa para reintentar.
  *
- * La regla es "red solo lo que es transporte": cualquier otro AuthError es un
- * veredicto. Al reves (todo lo desconocido como red) una entrada con un token
- * malformado no se purgaba nunca y la persona veia "Sin conexion" para
- * siempre. Mismo criterio que usuarioOInvitado() en lib/session-auth.ts.
+ * Un 429 o un 500 de /token NO son veredictos sobre el token aunque auth-js
+ * los trate como AuthError definitivo (y borre su storage): aqui se clasifican
+ * como red, y quien llama restaura lo que auth-js borro.
+ * Mismo criterio que usuarioOInvitado() en lib/session-auth.ts.
  */
 export type ClaseErrorAuth = "credencial" | "red";
 
@@ -23,6 +33,7 @@ export function clasificarErrorAuth(error: unknown): ClaseErrorAuth {
     const estado = error.status ?? 0;
     return estado >= 400 && estado < 500 && estado !== 408 && estado !== 429 ? "credencial" : "red";
   }
-  if (isAuthError(error)) return "credencial";
+  if (isAuthSessionMissingError(error)) return "credencial";
+  if (error instanceof AuthInvalidJwtError || error instanceof AuthInvalidCredentialsError) return "credencial";
   return "red";
 }

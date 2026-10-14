@@ -113,6 +113,59 @@ y por qué, en orden de gravedad:
 16. **La activa sin sitio en la bóveda** (cinco dormidas ajenas) se dice en la
     hoja tal cual, en vez de pintar una lista sin cuenta activa.
 
+## Lo que cambió tras el CODEX Adversarial Review Loop (iteración 2)
+
+Tres auditores sobre el código corregido (regresiones de la iteración 1, auth
+y seguridad, flujos React/UX). Lo que se corrigió:
+
+1. **El `refreshSession()` forzado era una regresión**: auth-js borra su
+   storage (la cookie) ante cualquier `AuthError` no reintentable, y un 429
+   (límite de `/token` por IP, compartida en CGNAT móvil) o un 500 lo son. Un
+   cambio o un "agregar cuenta" con mala suerte dejaba a la persona fuera.
+   Ahora el paso 1 toma una instantánea con `getSession()` (sin red con el
+   token vigente), refresca **solo si quedan menos de 5 min**, y si el refresh
+   falla sin veredicto (429, 5xx, tope, respuesta que no es JSON) relee la
+   cookie y la restaura con la instantánea. Solo un 4xx de `/token` cuenta como
+   "A ya no vale".
+2. **La marca de cambio se pone desde el principio** de `cambiarACuenta` (y
+   durante el paso 1 de "agregar cuenta"), no en el paso 5: el refresh y su
+   restauración emiten `SIGNED_OUT`/`SIGNED_IN` y el proveedor no debe navegar
+   ni recargar por ellos. Todo camino que no acaba en ok la quita.
+3. **El tope del cliente aislado sube a 35 s**: auth-js reintenta un `/token`
+   fallido por transporte con el mismo refresh token durante 30 s, y nuestro
+   abort a los 20 s contaba como transporte; si la primera petición sí había
+   llegado al servidor, el reenvío caía fuera de la ventana de reuso y GoTrue
+   revocaba la familia entera.
+4. **La restauración de A tras un `setSession(B)` fallido solo actúa si la
+   cookie quedó vacía**: si es de B, es que el `setSession` cuajó tarde (tras
+   el tope) y se da por bueno; antes se pisaba B con A y el estado final era
+   una carrera.
+5. **`revocarSesion` lee lo que quedó en la memoria del aislado antes de
+   olvidarlo**: `signOut()` carga la sesión con un margen de 90 s (`setSession`
+   no lo aplica) y puede rotar el refresh token por dentro justo antes de un
+   `/logout` fallido; esos tokens también se avisan por `alRotar`.
+6. **"Salir de todas" revoca las dormidas antes de tocar el push de la activa**:
+   un abort por red dejaba a la cuenta que seguía sin token. Y si el `signOut()`
+   falla después de soltarlo, se vuelve a pedir el registro.
+7. **Volver a entrar por `/login` en una cuenta que ya estaba en la bóveda
+   revoca la sesión anterior**: pisar la entrada dejaba viva para siempre una
+   sesión de GoTrue de la que ya nadie tenía el token. `RegistroCuentaActiva`
+   compara el `session_id` de los dos access tokens y, si difieren, revoca la
+   vieja con el cliente aislado.
+8. **`soltarTokenPush` nunca lanza** (tampoco por el tope): un `PATCH` colgado
+   abortaba "agregar cuenta" en silencio, sin cookie ni navegación.
+9. **`EspejoDeTokens` relee la cookie** al volver a primer plano, al recibir el
+   foco y en `pageshow`: los refrescos del servidor (proxy, acciones) no emiten
+   eventos en el cliente.
+10. **Tras un cambio fallido se vuelve a pedir el registro de push**: el paso 4
+    pudo soltar el de la cuenta actual antes de que el 6 fallara.
+11. **La pista de cambio en curso se espeja en `localStorage`** para que la
+    navegación diferida de otras pestañas espere (hasta 6 s) mientras la
+    pestaña que cambia termina; y esa navegación respeta la marca de su propia
+    pestaña si apareció después.
+12. **`clasificarErrorAuth`** vuelve a tratar `AuthUnknownError` (un 52x con
+    HTML) como red: el servidor no dio veredicto.
+
 **Riesgo aceptado y documentado (no corregido en la fase 1):** las cuentas
 dormidas quedan a un toque y con todos sus privilegios. Quien tenga el
 teléfono desbloqueado puede entrar en cualquiera de la lista y borrarla o
@@ -219,13 +272,14 @@ bóveda, marca, Sentry) para poder probarse sin navegador; los reales están en
 
 | Paso | Qué | Por qué en este orden |
 |---|---|---|
-| 1 | `getSession()` de A en el cliente principal | Refresca si el access token caducó, o sea que lo que se guarda es **el token más nuevo**. Guardar uno viejo y usarlo después = "Already Used" = sesión A revocada entera. Si A y destino son la misma cuenta, no hay nada que hacer. |
+| 0 | `marcarCambioEnCurso(B)` | Desde el principio: el paso 1 puede emitir `SIGNED_OUT`/`SIGNED_IN` y el proveedor no debe navegar. Todo camino que no acaba en ok la quita. |
+| 1 | `getSession()` de A y, solo si le quedan menos de 5 min, `refreshSession()` | Lo que se guarda tiene que aguantar dormido: un refresh token con minutos de vida lo rotaría el ticker o el proxy sin que la bóveda se entere, y volver a A sería "Already Used". El refresh no es incondicional porque auth-js borra la cookie ante un 429 o un 500 de `/token`: si falla sin veredicto se restaura con la instantánea. Si A y destino son la misma cuenta, no hay nada que hacer. |
 | 2 | `guardarCuenta(A)` con esos tokens; si devuelve `sin_almacenamiento` o `llena`, **abortar** | Sin A en la bóveda, cambiar a B es cerrar sesión de A con otro nombre. Nombre, usuario y foto se conservan del espejo si ya estaba. |
 | 3 | `probarSesion(B)` en el **cliente aislado** | Valida (y refresca si hace falta) la sesión dormida **en memoria**. Fallo de credencial: B sale de la bóveda y la persona sigue en A, con la cookie intacta. Fallo de red: B se queda, la persona sigue en A. Es el paso que protege la cookie de A del `_removeSession()` de auth-js. |
 | 4 | `guardarCuenta(B)` con los tokens que devolvió la prueba | Si hubo refresh, son los **únicos** tokens válidos de B; perderlos sería perder B. Por eso va antes de cualquier otra cosa. |
 | 5 | `profiles.update({ fcm_token: null }).eq("id", A)` — mejor esfuerzo, Sentry en `warning` | El token de push es del teléfono (`use-logout.ts`). **Después** de probar B (para no dejar a A sin push por un cambio que no iba a ocurrir) y **antes** de `setSession` (después ya no hay permiso de escribir en A). Con D6=(b) desaparecería. |
 | 6 | `marcarCambioEnCurso(B.userId)` | Avisa a `session-data-provider.tsx` de que el `SIGNED_IN` que viene es intencional. |
-| 7 | `setSession(B vigente)` en el cliente principal | Con el access token vigente, auth-js llama a `/user` y guarda la cookie. Si falla por red: se desmarca, la cookie de A sigue, B ya está a salvo en la bóveda. Si falla por credencial (raro: revocada entre el paso 3 y este): B sale de la bóveda. |
+| 7 | `setSession(B vigente)` en el cliente principal | Con el access token vigente, auth-js llama a `/user` y guarda la cookie. Si falla por red: se desmarca, B ya está a salvo en la bóveda. Si falla por credencial (raro: revocada entre el paso 3 y este): B sale de la bóveda. Tras cualquier fallo se relee la cookie: si quedó vacía (auth-js la borra ante `session_not_found`) se restaura A con los tokens del paso 1; si es de B, el `setSession` cuajó tarde y se da por bueno. |
 | 8 | Quien llama: `router.refresh()` y, a los 50 ms, `router.replace("/perfil")` | Navegación **blanda**: lee `document.cookie` en JS, sin la carrera de la capa nativa de iOS (`oauth-url-listener.tsx:93-105`). `/perfil` y no `/` porque es donde la persona **ve** que cambió. |
 
 Otras pestañas: el `BroadcastChannel` que `GoTrueClient` abre con el nombre del
@@ -530,7 +584,8 @@ guarda de sesión de `signUp` (lee la cookie de agregar).
 | `lib/cuentas/cambio.ts` | `cambiarACuenta`, `aplicarCuenta`, `datosDeSesion` con puertos |
 | `lib/cuentas/puertos.ts` | Puertos reales (Supabase, bóveda, marca, Sentry) |
 | `lib/cuentas/cierre.ts` | Cierre de sesión consciente de cuentas, con puertos |
-| `lib/cuentas/*.test.ts` + `pruebas-entorno.ts` | 46 pruebas `node:test` |
+| `lib/cuentas/jwt.ts` | `session_id` de un access token, para revocar sesiones huérfanas |
+| `lib/cuentas/*.test.ts` + `pruebas-entorno.ts` | 51 pruebas `node:test` |
 | `lib/push/registro.ts` | Evento para pedir el registro de push a `usePushNotifications` |
 | `components/cuentas/espejo-de-tokens.tsx` | Espejo de tokens en el layout raíz |
 | `components/cuentas/hoja-cuentas.tsx` | La hoja "Cuentas" |

@@ -93,13 +93,15 @@
       `console.log` del módulo imprime tokens. Sentry no adjunta
       `localStorage` por sí solo, así que no hay lista que ampliar.
 - [x] T-22 — Delta `specs/auth-session/spec.md` revisado contra lo implementado.
-- [x] T-23 — CODEX Adversarial Review Loop, iteración 1: 5 auditores por
+- [x] T-23 — CODEX Adversarial Review Loop: iteración 1 con 5 auditores por
       dimensión (auth, seguridad, React/Next, fallos y concurrencia,
-      pruebas/spec), 39 hallazgos, 16 correcciones (lista en `design.md`,
-      "Lo que cambió tras el CODEX"). Iteración 2 sobre el código corregido:
-      ver el reporte final.
+      pruebas/spec), 39 hallazgos, 16 correcciones; iteración 2 con 3
+      auditores sobre el código corregido (regresiones, auth/seguridad,
+      flujos), 12 correcciones más. Las dos listas en `design.md` ("Lo que
+      cambió tras el CODEX"). Verificación adversarial de los hallazgos de la
+      iteración 2 en el reporte final.
 - [x] T-24 — `pnpm build` verde (14-oct), `tsc --noEmit` en 0, lint sin
-      errores nuevos, 46 pruebas unitarias en verde. El recorrido manual a
+      errores nuevos, 51 pruebas unitarias en verde. El recorrido manual a
       375×812 claro/oscuro queda para Pedro (T-44): el contenedor no tiene
       cuenta de pruebas ni `.env.local`.
 

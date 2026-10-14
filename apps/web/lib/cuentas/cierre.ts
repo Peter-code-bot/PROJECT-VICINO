@@ -5,18 +5,21 @@
  *   1. La cuenta que se va se resuelve LOCALMENTE (la cookie, via getSession),
  *      no con getUser(): con la red caida getUser devuelve null y la boveda
  *      tomaria el espejo de la propia cuenta activa como "la siguiente".
- *   2. Soltar el token de push de la que se va (mejor esfuerzo; el token es
+ *   2. Con `todas`: revocar cada dormida con el cliente aislado ANTES de tocar
+ *      nada de la activa (ni su token de push). Si alguna falla por red, se
+ *      para AQUI y se avisa: "salir de todas" promete un telefono limpio, y
+ *      borrar de la boveda una sesion que sigue viva en el servidor
+ *      (indefinidamente: no caducan) seria mentir. Las que si se revocaron ya
+ *      salieron de la boveda; reintentar es seguro, y la activa sigue intacta,
+ *      con su push.
+ *   3. Soltar el token de push de la que se va (mejor esfuerzo; el token es
  *      del telefono).
- *   3. Con `todas`: revocar cada dormida con el cliente aislado ANTES de tocar
- *      la activa. Si alguna falla por red, se para AQUI y se avisa: "salir de
- *      todas" promete un telefono limpio, y borrar de la boveda una sesion que
- *      sigue viva en el servidor (indefinidamente: no caducan) seria mentir.
- *      Las que si se revocaron ya salieron de la boveda; reintentar es seguro.
  *   4. Marcar el cambio en curso ANTES de signOut: el SIGNED_OUT que emite
  *      llegaria a session-data-provider y sin marca haria la navegacion dura
  *      a /login antes de pasar a la siguiente.
  *   5. signOut() GLOBAL, igual que siempre: revoca la activa en todos los
- *      dispositivos. Si falla, no se navega (la sesion sigue viva).
+ *      dispositivos. Si falla, no se navega (la sesion sigue viva) y se vuelve
+ *      a pedir el registro de push que el paso 3 solto.
  *   6. La que se fue sale de la boveda; con `todas`, la boveda se vacia.
  *   7. Si hay siguiente, se renueva la marca y se despierta con aplicarCuenta.
  *      Si eso falla, se avisa y se va a /login: ya no hay sesion.
@@ -30,6 +33,8 @@ export interface PuertoCierre {
   /** El userId de la cookie, sin red. null si no hay sesion. */
   sesionActual(): Promise<string | null>;
   soltarTokenPush(userId: string): Promise<void>;
+  /** Vuelve a pedir el registro de push (lib/push/registro.ts) si el cierre no prospero. */
+  pedirRegistroPush(): void;
   /** Revoca una dormida; quien lo implementa persiste los tokens rotados (alRotar). */
   revocar(cuenta: Cuenta): Promise<ResultadoRevocar>;
   signOut(): Promise<{ error: AuthError | null }>;
@@ -65,14 +70,6 @@ export async function cerrarSesionConCuentas(puerto: PuertoCierre, opciones: Opc
     puerto.reportar("sesion_actual", excepcion, "warning");
   }
 
-  if (activa) {
-    try {
-      await puerto.soltarTokenPush(activa);
-    } catch (excepcion) {
-      puerto.reportar("soltar_token_push", excepcion, "warning");
-    }
-  }
-
   if (todas) {
     const fallidas: Cuenta[] = [];
     for (const dormida of puerto.boveda.cuentasDormidas(activa)) {
@@ -90,22 +87,31 @@ export async function cerrarSesionConCuentas(puerto: PuertoCierre, opciones: Opc
     }
   }
 
+  if (activa) {
+    try {
+      await puerto.soltarTokenPush(activa);
+    } catch (excepcion) {
+      puerto.reportar("soltar_token_push", excepcion, "warning");
+    }
+  }
+
   const siguiente = todas ? null : puerto.boveda.cuentaMasReciente(activa);
   if (siguiente) puerto.marcar(siguiente.userId);
 
+  const noSeCerro = (error: unknown): ResultadoCierre => {
+    if (siguiente) puerto.desmarcar();
+    puerto.reportar("sign_out", error);
+    // La sesion sigue viva pero su token de push ya se solto: se vuelve a pedir.
+    if (activa) puerto.pedirRegistroPush();
+    return { ok: false, mensaje: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
+  };
   let error: AuthError | null = null;
   try {
     ({ error } = await puerto.signOut());
   } catch (excepcion) {
-    if (siguiente) puerto.desmarcar();
-    puerto.reportar("sign_out", excepcion);
-    return { ok: false, mensaje: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
+    return noSeCerro(excepcion);
   }
-  if (error) {
-    if (siguiente) puerto.desmarcar();
-    puerto.reportar("sign_out", error);
-    return { ok: false, mensaje: "No se pudo cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo." };
-  }
+  if (error) return noSeCerro(error);
 
   if (activa) puerto.boveda.quitar(activa);
   if (todas) puerto.boveda.vaciar();

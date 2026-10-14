@@ -12,6 +12,7 @@ import { cerrarSesionConCuentas, type OpcionesCierre } from "@/lib/cuentas/cierr
 import { puertoCambioReal } from "@/lib/cuentas/puertos";
 import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
 import { DESTINO_TRAS_AGREGAR } from "@/lib/cuentas/agregando-cuenta";
+import { pedirRegistroPush } from "@/lib/push/registro";
 
 export type { OpcionesCierre as OpcionesLogout };
 
@@ -51,6 +52,7 @@ export function useLogout() {
         // persona entra, las notificaciones del anterior aterrizan en su
         // pantalla. Ya hubo dos cuentas compartiendo token en produccion.
         soltarTokenPush: (userId) => puertoCambioReal().soltarTokenPush(userId),
+        pedirRegistroPush,
         revocar: (cuenta) =>
           revocarSesion(cuenta, (sesion) =>
             guardarCuenta({ ...cuenta, accessToken: sesion.access_token, refreshToken: sesion.refresh_token }),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuthApiError, AuthInvalidJwtError, AuthRetryableFetchError, AuthSessionMissingError } from "@supabase/supabase-js";
+import { AuthApiError, AuthInvalidJwtError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } from "@supabase/supabase-js";
 import { clasificarErrorAuth } from "./clasificar-error-auth";
 
 test("un veredicto de GoTrue o de auth-js sobre el token es de credencial", () => {
@@ -20,5 +20,7 @@ test("el transporte, los 5xx, el 429, el 408 y los errores que no son de auth so
   assert.equal(clasificarErrorAuth(new AuthApiError("timeout", 408, undefined)), "red");
   assert.equal(clasificarErrorAuth(new TypeError("Failed to fetch")), "red");
   assert.equal(clasificarErrorAuth(new DOMException("VICINO_AUTH_TIMEOUT", "TimeoutError")), "red");
+  // Un 52x con cuerpo HTML llega como AuthUnknownError: el servidor no dio veredicto.
+  assert.equal(clasificarErrorAuth(new AuthUnknownError("Unexpected token <", new Error("html"))), "red");
   assert.equal(clasificarErrorAuth(undefined), "red");
 });

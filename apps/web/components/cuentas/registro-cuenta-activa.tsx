@@ -9,6 +9,8 @@ import { cambioEnCurso, desmarcarCambioEnCurso } from "@/lib/cuentas/cambio-en-c
 import { limpiarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import { aplicarCuenta } from "@/lib/cuentas/cambio";
 import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
+import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
+import { sessionIdDeJwt } from "@/lib/cuentas/jwt";
 import { pedirRegistroPush } from "@/lib/push/registro";
 
 export type CuentaActiva = Omit<DatosCuenta, "accessToken" | "refreshToken">;
@@ -59,6 +61,24 @@ export function RegistroCuentaActiva({ cuenta, renderId }: { cuenta: CuentaActiv
       // Un evento de OTRA cuenta a mitad de un cambio no es de esta instancia:
       // el layout se remonta con la nueva y es esa la que escribe.
       if (sesion.user.id !== cuentaRef.current.userId) return;
+      // Si la cuenta ya estaba en la boveda con OTRA sesion de GoTrue (la
+      // persona volvio a entrar por /login en una cuenta que ya tenia
+      // guardada), pisar la entrada dejaria la sesion vieja viva en el
+      // servidor para siempre (las sesiones no caducan). Se revoca esa, y solo
+      // esa, con el cliente aislado, fuera de este callback (cerrojo tomado).
+      const previa = buscarCuenta(sesion.user.id);
+      if (previa && previa.refreshToken !== sesion.refresh_token) {
+        const sesionVieja = sessionIdDeJwt(previa.accessToken);
+        const sesionNueva = sessionIdDeJwt(sesion.access_token);
+        if (sesionVieja && sesionNueva && sesionVieja !== sesionNueva) {
+          const huerfana = { accessToken: previa.accessToken, refreshToken: previa.refreshToken };
+          setTimeout(() => {
+            void revocarSesion(huerfana).then((r) => {
+              if (!r.ok) reportarCuentas("revocar_huerfana", r.error, "warning");
+            });
+          }, 0);
+        }
+      }
       const resultado = guardarCuenta({
         ...cuentaRef.current,
         email: cuentaRef.current.email || sesion.user.email || "",

@@ -16,9 +16,15 @@ import { actualizarTokens } from "@/lib/cuentas/boveda";
  * Sin nadie que lo recoja, la boveda se quedaba con un refresh token ya
  * consumido y volver a esa cuenta la revocaba entera ("Already Used").
  *
+ * Los refrescos que hace el SERVIDOR (el proxy o una accion de servidor, via
+ * Set-Cookie) no emiten ningun evento en el cliente. Por eso, ademas de los
+ * eventos, se relee la cookie al volver a primer plano, al recibir el foco y
+ * al restaurar la pagina (pageshow): es barato con el token fresco (sin red) y
+ * cubre la ventana entre un refresco del servidor y el siguiente evento.
+ *
  * Solo ACTUALIZA entradas que ya existen (actualizarTokens no crea): no sabe
- * nada del perfil y no es quien decide que cuentas se guardan. El callback no
- * llama a nada de supabase: corre con el cerrojo del cliente tomado.
+ * nada del perfil y no es quien decide que cuentas se guardan. El callback de
+ * onAuthStateChange no llama a nada de supabase: corre con el cerrojo tomado.
  */
 export function EspejoDeTokens() {
   useEffect(() => {
@@ -28,7 +34,22 @@ export function EspejoDeTokens() {
       if (evento !== "INITIAL_SESSION" && evento !== "SIGNED_IN" && evento !== "TOKEN_REFRESHED") return;
       actualizarTokens(sesion.user.id, { accessToken: sesion.access_token, refreshToken: sesion.refresh_token });
     });
-    return () => subscription.unsubscribe();
+    const releer = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase.auth.getSession().then(({ data }) => {
+        const sesion = data.session;
+        if (sesion) actualizarTokens(sesion.user.id, { accessToken: sesion.access_token, refreshToken: sesion.refresh_token });
+      }).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", releer);
+    window.addEventListener("focus", releer);
+    window.addEventListener("pageshow", releer);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", releer);
+      window.removeEventListener("focus", releer);
+      window.removeEventListener("pageshow", releer);
+    };
   }, []);
   return null;
 }

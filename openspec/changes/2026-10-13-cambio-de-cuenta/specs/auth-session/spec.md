@@ -15,8 +15,8 @@ refreshToken, ultimoUso }`, validated with Zod on every read, capped at
 
 - GIVEN accounts A (active) and B (stored) on the device
 - WHEN the user taps B in the "Cuentas" sheet
-- THEN the client calls `auth.refreshSession()` for A on the main client and stores A's fresh tokens (a forced refresh, so the stored refresh token is not rotated by the auto-refresh ticker or the proxy while A is dormant)
-- AND validates B's tokens on an ISOLATED supabase-js client (in-memory storage, own `storageKey`, 20 s fetch timeout), which refreshes them if the access token expired or if the server rejects the access token, and stores the returned tokens for B BEFORE anything else
+- THEN the client sets the switch-in-progress marker, reads A's session with `auth.getSession()` and, only if the access token has less than 5 minutes left, calls `auth.refreshSession()` so the stored refresh token is not rotated by the auto-refresh ticker or the proxy while A is dormant; a refresh that fails without a verdict (429, 5xx, timeout, non-JSON response) restores the cookie from the snapshot, and only a 4xx verdict from `/token` counts as "A is dead"
+- AND validates B's tokens on an ISOLATED supabase-js client (in-memory storage, own `storageKey`, 35 s fetch timeout so auth-js never re-sends a refresh token), which refreshes them if the access token expired or if the server rejects the access token, and stores the returned tokens for B BEFORE anything else
 - AND sets `profiles.fcm_token = NULL` for A (best effort, 20 s timeout)
 - AND only then calls `auth.setSession(B validated tokens)` on the main client, so the main client never refreshes foreign tokens
 - AND navigates with `router.refresh()` + `router.replace("/perfil")` (no full navigation)
@@ -33,7 +33,13 @@ refreshToken, ultimoUso }`, validated with Zod on every read, capped at
 
 - GIVEN auth-js `_getUser()` calls `_removeSession()` on a 403 `session_not_found` (B revoked between the isolated validation and the main `setSession`)
 - WHEN the main `setSession(B)` fails
-- THEN the client reads the cookie again and, if it no longer belongs to A, calls `setSession(A fresh tokens)` to restore it
+- THEN the client reads the cookie again and, only if it is EMPTY, calls `setSession(A tokens)` to restore it; if the cookie already belongs to B (a late success after the timeout) the switch is reported as successful and nothing is overwritten
+
+### Scenario: Re-logging into a stored account revokes the orphaned session
+
+- GIVEN account C is stored in the vault with GoTrue session S1
+- WHEN the user logs into C again through `/login` (session S2) and lands in the marketplace
+- THEN `RegistroCuentaActiva` detects that the stored access token carries a different `session_id` and revokes S1 through the isolated client before overwriting the entry
 
 ### Scenario: Tokens stay current while A is dormant
 

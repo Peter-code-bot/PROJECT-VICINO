@@ -17,14 +17,25 @@
  *     dispositivos de esa persona.
  *   - Su cerrojo (navigator.locks) y su BroadcastChannel llevan otro nombre,
  *     asi que no bloquean ni avisan al cliente principal.
- *   - Todas sus peticiones llevan tope de tiempo: fetchConLimite no acota
- *     /auth/v1/*, y un socket parado en un movil tarda minutos en morir.
+ *   - Todas sus peticiones llevan tope de tiempo (35 s, ver abajo):
+ *     fetchConLimite no acota /auth/v1/*, y un socket parado en un movil
+ *     tarda minutos en morir.
  *
  * La memoria se vacia al terminar cada operacion: aqui no se queda nada.
  */
 import { createClient, type AuthError, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { TOPE_ACCION_MS } from "../auth/con-tope";
 import { clasificarErrorAuth, type ClaseErrorAuth } from "./clasificar-error-auth";
+
+/**
+ * Tope de las peticiones del cliente aislado. MAYOR que los 30 s
+ * (AUTO_REFRESH_TICK_DURATION_MS) en los que auth-js reintenta un
+ * /token fallido por transporte con el MISMO refresh token: un abort nuestro
+ * a los 20 s contaba como fallo de transporte, auth-js reenviaba el refresh
+ * token, y si la primera peticion si habia llegado al servidor, el reenvio
+ * caia fuera de la ventana de reuso de 10 s y GoTrue revocaba la familia
+ * entera. Con 35 s el predicado de reintento es falso y nunca se reenvia.
+ */
+export const TOPE_AUTH_AISLADO_MS = 35_000;
 
 export interface Tokens {
   accessToken: string;
@@ -52,11 +63,11 @@ const STORAGE_KEY_AISLADO = "vicino-cuentas-aislado";
 const memoria = new Map<string, string>();
 let cliente: SupabaseClient | null = null;
 
-/** fetch con tope: aborta a los 20 s, respetando la señal de quien llama si la hay. */
+/** fetch con tope: aborta a los 35 s, respetando la señal de quien llama si la hay. */
 function fetchConTope(original: typeof fetch): typeof fetch {
   return (input, init) => {
     const controlador = new AbortController();
-    const reloj = setTimeout(() => controlador.abort(new DOMException("VICINO_AUTH_TIMEOUT", "TimeoutError")), TOPE_ACCION_MS);
+    const reloj = setTimeout(() => controlador.abort(new DOMException("VICINO_AUTH_TIMEOUT", "TimeoutError")), TOPE_AUTH_AISLADO_MS);
     const señal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
     if (señal?.aborted) controlador.abort(señal.reason);
     else señal?.addEventListener("abort", () => controlador.abort(señal.reason), { once: true });
@@ -164,13 +175,34 @@ export async function revocarSesion(
     }
     if (carga.sesion.refresh_token !== tokens.refreshToken) alRotar?.(carga.sesion);
     // auth-js ya ignora 401/403/404 del /logout (sesion que no existe): un error
-    // aqui es de transporte.
+    // aqui es de transporte. OJO: signOut() carga la sesion con un margen de
+    // 90 s (setSession no lo aplica), asi que puede haber rotado el refresh
+    // token POR DENTRO justo antes del /logout fallido. Lo que haya quedado
+    // en memoria es lo que vale, y se avisa antes de olvidarlo.
     const { error: errorSalida } = await auth.signOut({ scope: "local" });
-    if (errorSalida) return { ok: false, clase: "red", error: errorSalida };
+    if (errorSalida) {
+      const enMemoria = sesionEnMemoria();
+      if (enMemoria && enMemoria.refresh_token !== tokens.refreshToken && enMemoria.refresh_token !== carga.sesion.refresh_token) {
+        alRotar?.(enMemoria);
+      }
+      return { ok: false, clase: "red", error: errorSalida };
+    }
     return { ok: true, yaInvalida: false };
   } catch (error) {
     return { ok: false, clase: "red", error };
   } finally {
     olvidar();
+  }
+}
+
+/** Lo que auth-js dejo guardado en la memoria del cliente aislado, si es una sesion. */
+function sesionEnMemoria(): Session | null {
+  try {
+    const crudo = memoria.get(STORAGE_KEY_AISLADO);
+    if (!crudo) return null;
+    const dato = JSON.parse(crudo) as Partial<Session> | null;
+    return dato && typeof dato.access_token === "string" && typeof dato.refresh_token === "string" ? (dato as Session) : null;
+  } catch {
+    return null;
   }
 }

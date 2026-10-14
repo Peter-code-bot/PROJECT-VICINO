@@ -8,7 +8,7 @@ import { locationScopeFromDocumentCookie } from "@/lib/session-scope";
 import { consumirRestauracion } from "@/lib/navigation/restauracion-ui";
 import { guardarOrigenVender } from "@/lib/navigation/retorno-vender";
 import { COMMUNITY_NAVIGATION_UPDATED, createCommunityNavigationObserver, type CommunityNavigationObserver } from "@/lib/navigation/retorno-comunidad";
-import { hayCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
+import { hayCambioEnCurso, hayCambioEnCursoEnAlgunaPestana } from "@/lib/cuentas/cambio-en-curso";
 
 const Context = createContext<SessionCache | null>(null);
 export function SessionDataProvider({ userId, revision, children }: { userId: string; revision: string; children: React.ReactNode }) {
@@ -77,16 +77,28 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
         // pestaña (auth-js lo reenvia por BroadcastChannel, y la marca es por
         // pestaña): un instante despues la cookie es de otra cuenta. Se relee
         // la cookie tras un compas y se va a donde diga, fuera del callback
-        // porque dentro el cliente tiene tomado su cerrojo.
-        cierreDiferido = setTimeout(() => {
+        // porque dentro el cliente tiene tomado su cerrojo. Mientras esa otra
+        // pestaña siga marcando el cambio (espejo en localStorage), se espera
+        // un poco mas, hasta cuatro veces; y si ESTA pestaña marco un cambio
+        // despues (la sesion murio y se esta pasando a la siguiente), la
+        // navegacion la pone quien cambia.
+        let esperas = 0;
+        const decidir = () => {
           cierreDiferido = undefined;
+          if (hayCambioEnCurso()) return;
           void supabase.auth.getSession().then(({ data }) => {
             const ahora = data.session?.user.id;
+            if (!ahora && esperas < 4 && hayCambioEnCursoEnAlgunaPestana()) {
+              esperas += 1;
+              cierreDiferido = setTimeout(decidir, 1500);
+              return;
+            }
             if (!ahora) window.location.replace("/login");
             else if (ahora === userId) window.location.reload();
             else window.location.replace("/");
           }).catch(() => window.location.replace("/login"));
-        }, 1500);
+        };
+        cierreDiferido = setTimeout(decidir, 1500);
         return;
       }
       if (!userId) window.location.reload();

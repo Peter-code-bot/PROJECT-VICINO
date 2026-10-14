@@ -41,13 +41,18 @@ export function puertoCambioReal(): PuertoCambio {
     },
     probar: (tokens) => probarSesion(tokens),
     async soltarTokenPush(userId) {
-      // Igual que hooks/use-logout.ts: el token de FCM es del telefono. Si no
-      // se suelta, los avisos de la cuenta que se va aterrizan en la pantalla
-      // de la que entra.
-      // El builder de PostgREST es un thenable, no una Promise: se envuelve
-      // para que conTope pueda competir con el.
-      const { error } = await conTope(Promise.resolve(supabase.from("profiles").update({ fcm_token: null }).eq("id", userId)));
-      if (error) reportarCuentas("soltar_token_push", error, "warning");
+      // El token de FCM es del telefono. Si no se suelta, los avisos de la
+      // cuenta que se va aterrizan en la pantalla de la que entra. Mejor
+      // esfuerzo de verdad: NUNCA lanza, ni por el tope ni por un 42501; se
+      // reporta y quien llama sigue.
+      try {
+        // El builder de PostgREST es un thenable, no una Promise: se envuelve
+        // para que conTope pueda competir con el.
+        const { error } = await conTope(Promise.resolve(supabase.from("profiles").update({ fcm_token: null }).eq("id", userId)));
+        if (error) reportarCuentas("soltar_token_push", error, "warning");
+      } catch (excepcion) {
+        reportarCuentas("soltar_token_push", excepcion, "warning");
+      }
     },
     boveda: { guardar: guardarCuenta, quitar: quitarCuenta, buscar: buscarCuenta },
     marcar: marcarCambioEnCurso,

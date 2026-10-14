@@ -7,16 +7,15 @@ import { toast } from "sonner";
 import { BottomSheet } from "@/components/product/bottom-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLogout } from "@/hooks/use-logout";
-import { createClient } from "@/lib/supabase/client";
-import { conTope } from "@/lib/auth/con-tope";
 import { cn } from "@/lib/utils";
 import { buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
-import { cambiarACuenta, datosDeSesion, nombreVisible } from "@/lib/cuentas/cambio";
-import { clasificarErrorAuth } from "@/lib/cuentas/clasificar-error-auth";
+import { cambiarACuenta, datosDeSesion, nombreVisible, sesionActivaParaGuardar } from "@/lib/cuentas/cambio";
 import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
 import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
 import { DESTINO_TRAS_AGREGAR, hrefAgregarCuenta, marcarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
+import { desmarcarCambioEnCurso, marcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
+import { pedirRegistroPush } from "@/lib/push/registro";
 
 interface HojaCuentasProps {
   open: boolean;
@@ -86,7 +85,19 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     try {
       const resultado = await cambiarACuenta(cuenta, puertoCambioReal());
       if (!resultado.ok) {
-        if (resultado.motivo !== "en_curso") avisar(resultado.mensaje);
+        if (resultado.motivo === "sin_sesion") {
+          // La sesion actual murio y la otra no entro: no queda ninguna.
+          toast.error(resultado.mensaje);
+          onNavegar();
+          window.location.replace("/login");
+          return;
+        }
+        if (resultado.motivo !== "en_curso") {
+          avisar(resultado.mensaje);
+          // El paso 4 pudo soltar el token de push de la cuenta actual antes
+          // de que el 6 fallara: se vuelve a pedir (es idempotente).
+          pedirRegistroPush();
+        }
         return;
       }
       toast.success(`Ahora estás en ${resultado.nombre}`);
@@ -136,27 +147,33 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     try {
       // La cuenta actual se guarda ANTES de salir hacia /login: el login (o
       // Google, o Apple) va a pisar la cookie con la cuenta nueva, y sin esto
-      // la actual se perderia. Con refreshSession y no getSession: lo que se
-      // guarda nace con una hora por delante, para que ni el ticker del
-      // cliente ni el proxy lo roten mientras la persona esta en /login
-      // (EspejoDeTokens cubre el resto). Si no se puede guardar, no se sale.
-      const supabase = createClient();
-      let sesion = null;
+      // la actual se perderia. Con la misma exigencia que el paso 1 del cambio
+      // (lib/cuentas/cambio.ts): si al token le queda poco, se refresca para
+      // que lo guardado no lo roten el ticker ni el proxy mientras la persona
+      // esta en /login (EspejoDeTokens cubre el resto). Si no se puede
+      // guardar, no se sale.
+      const puerto = puertoCambioReal();
+      // Marca mientras se asegura la sesion: un refresh puede hacer que
+      // auth-js borre y vuelva a poner la cookie, y el proveedor no debe
+      // navegar ni recargar por eso. Se quita en cuanto termina.
+      marcarCambioEnCurso(userId);
+      let activa;
       try {
-        const { data, error: errorRefresco } = await conTope(supabase.auth.refreshSession());
-        sesion = data.session;
-        if (errorRefresco && clasificarErrorAuth(errorRefresco) === "red") {
-          avisar("Sin conexión. Inténtalo de nuevo.");
-          return;
-        }
-      } catch {
+        activa = await sesionActivaParaGuardar(puerto.principal, puerto.reportar);
+      } finally {
+        desmarcarCambioEnCurso();
+      }
+      if (activa.estado === "red") {
         avisar("Sin conexión. Inténtalo de nuevo.");
         return;
       }
-      if (!sesion) {
-        avisar("No encontramos tu sesión actual. Vuelve a entrar.");
+      if (activa.estado !== "ok") {
+        toast.error("Tu sesión venció. Vuelve a entrar.");
+        onNavegar();
+        window.location.replace("/login");
         return;
       }
+      const sesion = activa.sesion;
       const guardado = guardarCuenta(datosDeSesion(sesion, buscarCuenta(sesion.user.id)));
       if (guardado === "llena") {
         avisar("Quita una cuenta para agregar otra.");
@@ -171,7 +188,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
       // entre despues (mismo motivo que use-logout.ts y que el paso 4 del
       // cambio). Mejor esfuerzo y con tope; al cancelar, el aviso de /login
       // vuelve a pedir el registro (lib/push/registro.ts).
-      await puertoCambioReal().soltarTokenPush(sesion.user.id);
+      await puerto.soltarTokenPush(sesion.user.id);
       marcarAgregandoCuenta();
       onNavegar();
       router.push(hrefAgregarCuenta("/login"));

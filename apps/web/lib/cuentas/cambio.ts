@@ -4,12 +4,15 @@
  * El orden importa; cada paso esta donde esta por un fallo concreto que evita
  * (ver openspec/changes/2026-10-13-cambio-de-cuenta/design.md):
  *
- *   1. refreshSession() de la cuenta activa (A) en el cliente principal. No
- *      getSession(): esa solo refresca si quedan menos de 90 s, y un refresh
- *      token guardado con minutos de vida lo puede rotar despues el ticker del
- *      cliente o el proxy sin que la boveda se entere; al volver a A seria
- *      "Already Used" y la sesion de A quedaria revocada entera. Con un
- *      refresh forzado, el token guardado nace con una hora por delante.
+ *   1. La sesion de la cuenta activa (A), con tokens que duren: getSession()
+ *      (sin red con el token vigente) y, solo si le quedan menos de 5 min,
+ *      un refreshSession() forzado. Un refresh token guardado con minutos de
+ *      vida lo rotaria despues el ticker del cliente o el proxy sin que la
+ *      boveda se entere, y al volver a A seria "Already Used". El refresh NO
+ *      es incondicional: auth-js borra su storage (la cookie) ante cualquier
+ *      AuthError no reintentable, y un 429 o un 500 de /token lo son; por eso
+ *      se guarda antes una instantanea y, si el refresh falla sin veredicto,
+ *      se restaura la cookie con ella.
  *   2. A a la boveda. Si el almacenamiento no escribe se aborta aqui: sin A
  *      guardada, cambiar a B seria cerrar sesion de A con otro nombre.
  *   3. Probar B en el cliente AISLADO (lib/cuentas/sesion-aislada.ts) y
@@ -27,8 +30,8 @@
  *      access token vigente auth-js llama a /user y guarda. Si /user contesta
  *      que esa sesion ya no existe (B revocada entre el paso 3 y este), auth-js
  *      BORRA el storage, o sea la cookie de A: por eso, tras un fallo, se
- *      comprueba que la cookie siga siendo de A y si no se restaura con los
- *      tokens frescos del paso 1.
+ *      relee la cookie y SOLO si quedo vacia se restaura con los tokens del
+ *      paso 1 (si es de B, es que el setSession cuajo tarde: se da por bueno).
  *
  * La navegacion (router.refresh + router.replace("/perfil")) la hace quien
  * llama: necesita el router y es la unica parte que no se puede probar aqui.
@@ -52,6 +55,8 @@ export interface PuertoBoveda {
   buscar(userId: string): Cuenta | null;
 }
 
+export type Reportar = (paso: string, error: unknown, nivel?: "warning" | "error") => void;
+
 export interface PuertoCambio {
   principal: PuertoAuthPrincipal;
   probar(tokens: Tokens): Promise<ResultadoProbar>;
@@ -61,7 +66,7 @@ export interface PuertoCambio {
   marcar(userId: string): void;
   desmarcar(): void;
   /** Para Sentry. Nunca recibe tokens. */
-  reportar(paso: string, error: unknown, nivel?: "warning" | "error"): void;
+  reportar: Reportar;
 }
 
 export type MotivoFallo = "sin_sesion" | "sin_almacenamiento" | "llena" | "vencida" | "red" | "en_curso";
@@ -71,6 +76,9 @@ export type ResultadoCambio =
   | { ok: false; motivo: MotivoFallo; mensaje: string };
 
 type Fallo = Extract<ResultadoCambio, { ok: false }>;
+
+/** Con menos de esto por delante, el token de la cuenta que se va se refresca antes de guardarlo. */
+export const UMBRAL_REFRESCO_MS = 5 * 60 * 1000;
 
 let enCurso = false;
 
@@ -95,6 +103,65 @@ export function datosDeSesion(sesion: Session, previa: DatosCuenta | null): Dato
     accessToken: sesion.access_token,
     refreshToken: sesion.refresh_token,
   };
+}
+
+export type SesionActiva =
+  | { estado: "ok"; sesion: Session }
+  /** No hay cookie. */
+  | { estado: "sin_sesion" }
+  /** GoTrue dio un veredicto sobre el refresh token de A: auth-js ya borro la cookie. */
+  | { estado: "muerta"; userId: string }
+  | { estado: "red" };
+
+/**
+ * Paso 1: la sesion activa con tokens que aguanten dormidos.
+ *
+ * Compartido con "Agregar cuenta" (components/cuentas/hoja-cuentas.tsx), que
+ * guarda la cuenta actual con la misma exigencia antes de salir a /login.
+ */
+export async function sesionActivaParaGuardar(
+  principal: PuertoAuthPrincipal,
+  reportar: Reportar,
+  ahora: number = Date.now(),
+): Promise<SesionActiva> {
+  let instantanea: Session | null;
+  try {
+    ({ data: { session: instantanea } } = await principal.getSession());
+  } catch (excepcion) {
+    reportar("get_session", excepcion, "warning");
+    return { estado: "red" };
+  }
+  if (!instantanea) return { estado: "sin_sesion" };
+  const vence = (instantanea.expires_at ?? 0) * 1000;
+  if (vence - ahora > UMBRAL_REFRESCO_MS) return { estado: "ok", sesion: instantanea };
+
+  try {
+    const { data, error } = await principal.refreshSession();
+    if (!error && data.session) return { estado: "ok", sesion: data.session };
+    if (error && clasificarErrorAuth(error) === "credencial") return { estado: "muerta", userId: instantanea.user.id };
+    reportar("refresh_actual", error ?? new Error("refreshSession sin sesion"), "warning");
+  } catch (excepcion) {
+    reportar("refresh_actual", excepcion, "warning");
+  }
+  // Sin veredicto (429, 5xx, tope, respuesta rara): auth-js pudo borrar la
+  // cookie igual. La instantanea sigue siendo valida; se vuelve a poner.
+  try {
+    const { data } = await principal.getSession();
+    if (!data.session) {
+      const { error } = await principal.setSession({
+        access_token: instantanea.access_token,
+        refresh_token: instantanea.refresh_token,
+      });
+      if (error) {
+        reportar("restaurar_actual", error);
+        return { estado: "red" };
+      }
+    }
+  } catch (excepcion) {
+    reportar("restaurar_actual", excepcion);
+    return { estado: "red" };
+  }
+  return { estado: "ok", sesion: instantanea };
 }
 
 function fallo(motivo: MotivoFallo, mensaje: string): Fallo {
@@ -152,22 +219,29 @@ async function aplicarSesionProbada(destino: Cuenta, sesion: Session, puerto: Pu
 }
 
 /**
- * Tras un fallo del paso 6: si auth-js borro la cookie de A (el /user de B
- * contesto session_not_found), se vuelve a poner con los tokens frescos del
- * paso 1. Mejor esfuerzo: si tampoco se puede, se reporta y la persona vera
- * la pantalla de entrada, que es la verdad.
+ * Tras un fallo del paso 6, que hay en la cookie:
+ *   - "destino": el setSession de B cuajo tarde (tras el tope). Se da por bueno.
+ *   - "intacta": sigue habiendo sesion (A): no se toca.
+ *   - "restaurada" / "fallo": auth-js la borro (el /user de B contesto
+ *     session_not_found) y se vuelve a poner A con los tokens del paso 1.
  */
-async function restaurarSiHaceFalta(actual: Session, puerto: PuertoCambio): Promise<void> {
+async function trasFalloDeAplicar(actual: Session, destino: Cuenta, puerto: PuertoCambio): Promise<"destino" | "intacta" | "restaurada" | "fallo"> {
   try {
     const { data } = await puerto.principal.getSession();
-    if (data.session?.user.id === actual.user.id) return;
+    if (data.session?.user.id === destino.userId) return "destino";
+    if (data.session) return "intacta";
     const { error } = await puerto.principal.setSession({
       access_token: actual.access_token,
       refresh_token: actual.refresh_token,
     });
-    if (error) puerto.reportar("restaurar_actual", error);
+    if (error) {
+      puerto.reportar("restaurar_actual", error);
+      return "fallo";
+    }
+    return "restaurada";
   } catch (excepcion) {
     puerto.reportar("restaurar_actual", excepcion);
+    return "fallo";
   }
 }
 
@@ -186,28 +260,36 @@ export async function aplicarCuenta(destino: Cuenta, puerto: PuertoCambio): Prom
 export async function cambiarACuenta(destino: Cuenta, puerto: PuertoCambio): Promise<ResultadoCambio> {
   if (enCurso) return fallo("en_curso", "Ya hay un cambio en curso.");
   enCurso = true;
+  // La marca va desde el principio: el refresh del paso 1 puede hacer que
+  // auth-js borre la cookie y emita SIGNED_OUT (y la restauracion, SIGNED_IN),
+  // y session-data-provider no debe navegar ni recargar por ninguno de los
+  // dos. Todo camino que no acabe en ok la quita (finally).
+  puerto.marcar(destino.userId);
+  let resultado: ResultadoCambio = fallo("red", "Sin conexión. Inténtalo de nuevo.");
   try {
+    resultado = await ejecutarCambio(destino, puerto);
+    return resultado;
+  } finally {
+    enCurso = false;
+    if (!resultado.ok) puerto.desmarcar();
+  }
+}
+
+async function ejecutarCambio(destino: Cuenta, puerto: PuertoCambio): Promise<ResultadoCambio> {
+  {
     // Paso 1.
-    let data: { session: Session | null };
-    let error: AuthError | null;
-    try {
-      ({ data, error } = await puerto.principal.refreshSession());
-    } catch (excepcion) {
-      // Tope de tiempo o fetch roto: la cookie de A no cambio, nada que deshacer.
-      puerto.reportar("refresh_actual", excepcion, "warning");
-      return sinConexion();
+    const activa = await sesionActivaParaGuardar(puerto.principal, puerto.reportar);
+    if (activa.estado === "red") return sinConexion();
+    if (activa.estado === "sin_sesion" || activa.estado === "muerta") {
+      // No hay cuenta que conservar: se pasa a B como tras un cierre de sesion.
+      // Con "muerta", auth-js ya borro la cookie; si B tampoco entra, no queda
+      // sesion ninguna y quien llama manda a /login.
+      if (activa.estado === "muerta") puerto.boveda.quitar(activa.userId);
+      const resultado = await aplicarCuenta(destino, puerto);
+      if (!resultado.ok && activa.estado === "muerta") return fallo("sin_sesion", "Tu sesión venció. Vuelve a entrar.");
+      return resultado;
     }
-    const actual = data.session;
-    if (error || !actual) {
-      if (error && clasificarErrorAuth(error) === "red") {
-        puerto.reportar("refresh_actual", error, "warning");
-        return sinConexion();
-      }
-      // La sesion de A ya no vale (revocada desde otro sitio): no hay nada que
-      // conservar. Se pasa a B como tras un cierre de sesion.
-      if (error) puerto.reportar("refresh_actual", error, "warning");
-      return await aplicarCuenta(destino, puerto);
-    }
+    const actual = activa.sesion;
     if (actual.user.id === destino.userId) return { ok: true, userId: destino.userId, nombre: nombreVisible(destino) };
 
     // Paso 2.
@@ -232,10 +314,13 @@ export async function cambiarACuenta(destino: Cuenta, puerto: PuertoCambio): Pro
 
     // Pasos 5 y 6.
     const resultado = await aplicarSesionProbada(destino, prueba.sesion, puerto, nombreA);
-    if (!resultado.ok) await restaurarSiHaceFalta(actual, puerto);
+    if (resultado.ok) return resultado;
+    const cookie = await trasFalloDeAplicar(actual, destino, puerto);
+    if (cookie === "destino") {
+      puerto.marcar(destino.userId);
+      return { ok: true, userId: destino.userId, nombre: nombreVisible(destino) };
+    }
     return resultado;
-  } finally {
-    enCurso = false;
   }
 }
 
