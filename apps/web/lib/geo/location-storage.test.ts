@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { readLocation, writeLocation, isValidRadius, COOKIE_LOCATION, COOKIE_RADIUS, STORAGE_KEY } from "./location-storage";
+import { readLocation, writeLocation, updateLocationLabel, isValidRadius, COOKIE_LOCATION, COOKIE_RADIUS, STORAGE_KEY } from "./location-storage";
 
 const prior = { lat: 19.04, lng: -98.2, radius: 10000, name: "Anterior" };
 const next = { lat: 19.07238, lng: -98.22414, radius: 25000, name: "Centro", fullName: "Centro, Puebla, México" };
@@ -95,4 +95,35 @@ test("reading a local mirror without canonical cookie never applies it", () => {
   assert.equal(readLocation(), null);
   assert.equal(cookies.size, 0);
   assert.equal(events.length, 0);
+});
+
+test("label enrichment updates only the mirror and label consumers, preserving radius", () => {
+  assert.equal(writeLocation(next), true);
+  const previousCookies = [...cookies];
+  const label = { name: "Dirección GPS", fullName: "Dirección GPS, Puebla" };
+  assert.equal(updateLocationLabel(next, label), true);
+  assert.deepEqual([...cookies], previousCookies);
+  assert.equal(readLocation()?.name, label.name);
+  assert.equal(readLocation()?.radius, next.radius);
+  assert.equal(events.filter(event => event.type === "vicino_location_updated").length, 1);
+  assert.equal(events.filter(event => event.type === "vicino_location_label_updated").length, 1);
+  assert.equal(JSON.parse(storage.get(STORAGE_KEY)!).lat, next.lat);
+});
+
+test("late labels cannot replace another point, including a newer point in the same grid", () => {
+  assert.equal(writeLocation(next), true);
+  const replacement = { ...next, lat: next.lat + 0.00001, name: "Elección más reciente" };
+  assert.equal(writeLocation(replacement), true);
+  assert.equal(updateLocationLabel(next, { name: "Antigua", fullName: "Antigua" }), false);
+  assert.equal(updateLocationLabel(prior, { name: "Antigua", fullName: "Antigua" }), false);
+  assert.equal(readLocation()?.name, replacement.name);
+  assert.equal(events.filter(event => event.type === "vicino_location_label_updated").length, 0);
+});
+
+test("blocked metadata storage never undoes the confirmed point or emits a label event", () => {
+  assert.equal(writeLocation(next), true);
+  rejectMirror = true;
+  assert.equal(updateLocationLabel(next, { name: "Dirección GPS", fullName: "Dirección GPS" }), false);
+  assert.equal(readLocation()?.name, next.name);
+  assert.equal(events.length, 1);
 });

@@ -380,3 +380,32 @@ test("modo radio de la base: se mide contra su centro, no contra el de la busque
     g.window = previo;
   }
 });
+
+test("search failures and timeouts differ from successful empty results and are retryable", async () => {
+  const g = globalThis as unknown as { window?: unknown };
+  const previous = g.window;
+  let mode = "error", requests = 0;
+  const sdk = fakeMapkit([], []);
+  sdk.Search = function (this: Record<string, unknown>) {
+    this.search = (_query: string, callback: (error: Error | null, data: { places: unknown[] } | null) => void) => {
+      requests++;
+      if (mode === "timeout") return;
+      if (mode === "error") callback(new Error("offline"), null);
+      else callback(null, { places: [] });
+    };
+    return this;
+  };
+  g.window = { mapkit: sdk };
+  try {
+    assert.equal((await searchLocations("transport unique retry")).error, "unavailable");
+    mode = "empty";
+    assert.equal((await searchLocations("transport unique retry")).error, undefined);
+    assert.equal(requests, 2, "failed outcome was not cached");
+    mode = "timeout";
+    assert.equal((await searchLocations("timeout unique retry")).error, "timeout");
+    const controller = new AbortController();
+    controller.abort();
+    assert.deepEqual(await searchLocations("aborted unique retry", {signal:controller.signal}), {results:[],outOfCoverage:false});
+    assert.equal(requests, 3, "already aborted search never calls SDK");
+  } finally { g.window = previous; }
+});

@@ -173,6 +173,26 @@ export function writeLocation(pos: GeoPosition): boolean {
   return true;
 }
 
+/** Enrich only the point already applied; labels never invalidate nearby feeds. */
+export function updateLocationLabel(
+  expected: { lat: number; lng: number },
+  label: { name: string; fullName: string },
+): boolean {
+  const current = readLocation();
+  if (!current || !Number.isFinite(expected.lat) || !Number.isFinite(expected.lng)
+    || current.lat.toFixed(3) !== expected.lat.toFixed(3)
+    || current.lng.toFixed(3) !== expected.lng.toFixed(3)) return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const mirror = raw ? JSON.parse(raw) as GeoPosition : null;
+    // A newer selection in the same cookie grid must also keep its own name.
+    if (!mirror || mirror.lat !== expected.lat || mirror.lng !== expected.lng) return false;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, lat: mirror.lat, lng: mirror.lng, ...label }));
+  } catch { return false; }
+  window.dispatchEvent(new CustomEvent("vicino_location_label_updated", { detail: { ...current, ...label } }));
+  return true;
+}
+
 /**
  * Limpia la ubicación de cookies y almacenamiento local.
  */
