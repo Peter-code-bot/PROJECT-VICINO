@@ -180,6 +180,7 @@ export interface OnboardingActionsProps {
   onContinue?: () => void;
   onSkip?: () => void;
   skipLabel?: string;
+  skipDisabled?: boolean;
   disabled?: boolean;
   busy?: boolean;
   form?: string;
@@ -191,6 +192,7 @@ export function OnboardingActions({
   onContinue,
   onSkip,
   skipLabel = "Omitir",
+  skipDisabled = false,
   disabled,
   busy,
   form,
@@ -214,7 +216,7 @@ export function OnboardingActions({
         <Button
           type="button"
           onClick={onSkip}
-          disabled={busy}
+          disabled={busy || skipDisabled}
           variant="ghost"
           size="lg"
           className="h-auto min-h-12 w-full rounded-xl py-3 text-fg-muted hover:text-fg motion-reduce:transition-none"

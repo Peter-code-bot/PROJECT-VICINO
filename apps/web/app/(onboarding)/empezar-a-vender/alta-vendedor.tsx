@@ -170,7 +170,6 @@ export function AltaVendedor({
           type="submit"
           form="alta-vendedor-paso"
           onSkip={omitir}
-          skipLabel={paso === "listo" ? yaEsVendedor ? "Entrar a VICINO" : "Entrar por ahora" : "Omitir"}
           disabled={!canContinue}
           busy={ocupado}
         />
