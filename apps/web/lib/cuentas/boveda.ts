@@ -147,6 +147,20 @@ export function guardarCuenta(datos: DatosCuenta, ahora: number = Date.now()): R
   return escribir([cuenta, ...resto]) ? "guardada" : "sin_almacenamiento";
 }
 
+/**
+ * Reescribe SOLO los tokens de una cuenta que ya esta en la boveda. Si no
+ * esta, no la crea: es lo que usa el espejo global de tokens
+ * (components/cuentas/espejo-de-tokens.tsx), que corre en todas las pantallas
+ * y no sabe nada del perfil.
+ */
+export function actualizarTokens(userId: string, tokens: { accessToken: string; refreshToken: string }): boolean {
+  const actuales = leerCuentas();
+  const cuenta = actuales.find((c) => c.userId === userId);
+  if (!cuenta) return false;
+  if (cuenta.accessToken === tokens.accessToken && cuenta.refreshToken === tokens.refreshToken) return true;
+  return escribir(actuales.map((c) => (c.userId === userId ? { ...c, ...tokens } : c)));
+}
+
 export function quitarCuenta(userId: string): void {
   const actuales = leerCuentas();
   const resto = actuales.filter((c) => c.userId !== userId);

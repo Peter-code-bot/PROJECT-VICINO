@@ -62,7 +62,7 @@ export default async function ConfiguracionPage() {
           Sesión
         </h2>
         <div className="overflow-hidden rounded-2xl bg-[color:var(--sidebar-bg)]">
-          <LogoutSection agrupado />
+          <LogoutSection agrupado userId={user.id} />
           {/* Solo con mas de una cuenta guardada en el telefono (cambio de cuenta). */}
           <SalirDeTodasSection agrupado />
           <DeleteAccountSection agrupado userId={user.id} />

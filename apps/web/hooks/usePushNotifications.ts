@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
 import { destinoSeguro } from "@/lib/auth/destino-seguro";
+import { EVENTO_PUSH_REGISTRAR } from "@/lib/push/registro";
 
 /**
  * El enlace que trae una notificacion, SOLO si se puede navegar a el.
@@ -234,6 +235,8 @@ export function usePushNotifications() {
     let sesionSub: { unsubscribe: () => void } | undefined;
     // Para que cuenta se registro ya este dispositivo en ESTA carga.
     let ultimaCuentaRegistrada: string | null = null;
+    // El oyente del evento de lib/push/registro.ts; se da de baja en el cleanup.
+    let alPedirRegistro: (() => void) | undefined;
 
     /**
      * Registra este dispositivo para la cuenta que tenga la sesion AHORA.
@@ -465,6 +468,18 @@ export function usePushNotifications() {
           estadoAppHandle = handle;
         }
 
+        // 5. Y CUANDO ALGUIEN LO PIDE (lib/push/registro.ts). Entrar por la
+        //    accion de servidor no emite SIGNED_IN en el cliente (la cookie la
+        //    escribe la respuesta), asi que la cuenta que acaba de entrar no
+        //    pasaba por (3); y el cambio de cuenta suelta el token de la que se
+        //    va antes de saber si la otra entra. Se olvida la marca para que
+        //    la MISMA cuenta pueda volver a registrarse.
+        alPedirRegistro = () => {
+          ultimaCuentaRegistrada = null;
+          void registrarDispositivo("peticion");
+        };
+        window.addEventListener(EVENTO_PUSH_REGISTRAR, alPedirRegistro);
+
       } catch (err) {
         console.error("Fallo al inicializar PushNotifications", err);
       }
@@ -486,6 +501,8 @@ export function usePushNotifications() {
       estadoAppHandle = undefined;
       sesionSub?.unsubscribe();
       sesionSub = undefined;
+      if (alPedirRegistro) window.removeEventListener(EVENTO_PUSH_REGISTRAR, alPedirRegistro);
+      alPedirRegistro = undefined;
     };
   }, []);
 }

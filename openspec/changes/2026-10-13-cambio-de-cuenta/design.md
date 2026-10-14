@@ -34,6 +34,93 @@ Otros dos ajustes menores que salieron de leer las librerías:
   `signUp` (se niega a registrar encima de una sesión). Las tres leen la misma
   cookie de "agregando cuenta".
 
+## Lo que cambió tras el CODEX Adversarial Review Loop (iteración 1)
+
+Cinco auditores por dimensión (auth, seguridad, React/Next, fallos y
+concurrencia, pruebas/spec) sobre la primera implementación. Lo que se corrigió
+y por qué, en orden de gravedad:
+
+1. **CRÍTICO — el refresh token de A podía rotar mientras la persona estaba en
+   `/login`** (ticker de auto-refresh del cliente singleton o refresco del
+   proxy) y la bóveda se quedaba con uno ya consumido: volver a A era "Already
+   Used" y revocaba su sesión entera. Dos arreglos: (a) la cuenta que se guarda
+   antes de cambiar o de agregar se guarda tras un **`refreshSession()`
+   forzado**, no `getSession()`, así que nace con una hora por delante y ni el
+   ticker ni el proxy la tocan en ese plazo; (b) `EspejoDeTokens` en el layout
+   raíz reescribe los tokens de cualquier entrada existente en cada
+   `TOKEN_REFRESHED`, en todas las pantallas.
+2. **`setSession(B)` en el principal también podía borrar la cookie de A**:
+   `_getUser()` ejecuta `_removeSession()` ante un 403 `session_not_found` (B
+   revocada entre la prueba aislada y este paso). Tras un fallo del paso 6 se
+   relee la cookie y, si ya no es de A, se restaura con los tokens frescos del
+   paso 1.
+3. **Los tokens rotados de B se guardan nada más probarla**, antes del `PATCH`
+   del `fcm_token`: un `PATCH` colgado o una pestaña cerrada ya no pueden
+   perder el único refresh token válido de B.
+4. **Un 4xx al cargar una dormida no es veredicto hasta probar el refresh
+   token**: con el reloj del teléfono atrasado, `setSession` manda un access
+   token que el servidor ya rechaza y eso parecía credencial inválida. El
+   cliente aislado reintenta con `refreshSession()`; solo `/token` decide.
+5. **`revocarSesion` avisa de los tokens rotados (`alRotar`) antes del
+   `/logout`**: si ese `/logout` falla por red, la bóveda conserva los tokens
+   que sí valen y el siguiente intento no dispara la detección de reuso.
+6. **"Salir de todas" ya no vacía la bóveda a ciegas**: revoca las dormidas
+   primero y, si alguna falla por red, se detiene y lo dice, sin cerrar la
+   activa. Un teléfono "limpio" con sesiones vivas en el servidor era mentir.
+7. **Tope de tiempo en todo `/auth/v1/*`** (`fetchConLimite` no lo cubre): el
+   cliente aislado aborta sus `fetch` a los 20 s y las llamadas del principal
+   van con `conTope`. Y la hoja **se puede cerrar aunque haya una acción en
+   vuelo** (Escape, Atrás, el fondo): nadie se queda atrapado en un modal por
+   un socket parado; el resultado llega por toast.
+8. **La marca de cambio dura 60 s y se renueva tras `signOut()`**: con 10 s, un
+   `/logout` lento emitía `SIGNED_OUT` con la marca ya caducada y la navegación
+   dura cortaba el cambio a mitad.
+9. **`session-data-provider` ya no vacía la memoria con la marca puesta**: si el
+   cambio cuaja, el layout remonta el proveedor; si no cuaja, la memoria de la
+   cuenta que sigue tiene que seguir viva. Y un `SIGNED_OUT` espera 1,5 s y
+   relee la cookie antes de navegar: en otra pestaña puede ser el primer acto
+   de un cambio de cuenta (auth-js lo reenvía por `BroadcastChannel` y la marca
+   es por pestaña).
+10. **El reintento de aterrizaje se comprueba en cada render del servidor**
+    (`renderId` desde el layout): con navegación blanda y la misma cuenta, React
+    conserva la instancia y un efecto solo-al-montar nunca lo veía. El "ya
+    reintentado" vive en memoria del módulo (StrictMode montaba dos veces y un
+    contador en `sessionStorage` se creía el reintento hecho).
+11. **Push tras entrar por la acción de servidor**: `signInWithPassword`,
+    `verificarCodigo` y el callback de OAuth escriben la cookie desde el
+    servidor y el cliente no emite `SIGNED_IN`, así que la cuenta nueva (y la
+    que cancela "agregar cuenta") se quedaba sin token de push hasta el siguiente
+    primer plano. `lib/push/registro.ts` pide el registro a
+    `usePushNotifications`; lo disparan `RegistroCuentaActiva` al montar y el
+    "Cancelar" del aviso. Esto cierra también el hueco (a) que el propio hook
+    documentaba para cerrar sesión y volver a entrar.
+12. **El cierre de sesión resuelve la cuenta que se va con la cookie
+    (`getSession`), no con `getUser()`**: con la red caída `getUser` daba
+    `null` y la "más reciente" era el espejo de la propia cuenta activa. La
+    lógica vive ahora en `lib/cuentas/cierre.ts` con puertos y 7 pruebas.
+13. **El diálogo de "Cerrar sesión" dice la verdad**: con otras cuentas
+    guardadas, "Saldrás de esta cuenta y pasarás a X" y un segundo botón "Salir
+    de todas las cuentas". Prometer "tendrás que volver a iniciar sesión" y
+    dejar abierta la cuenta del negocio era justo lo contrario de lo que espera
+    quien presta el teléfono.
+14. **`useBodyScrollLock` es reentrante** (contador a nivel de módulo): cerrar
+    la hoja liberaba el scroll de la página con el cajón todavía abierto, y los
+    gestos de pestaña volvían a vivir por debajo. Y `BottomSheet` devuelve el
+    foco a quien lo abrió al cerrarse.
+15. **`clasificarErrorAuth` trata como credencial cualquier `AuthError` que no
+    sea de transporte** (antes `AuthInvalidJwtError` era "red" para siempre y
+    la entrada no se purgaba nunca).
+16. **La activa sin sitio en la bóveda** (cinco dormidas ajenas) se dice en la
+    hoja tal cual, en vez de pintar una lista sin cuenta activa.
+
+**Riesgo aceptado y documentado (no corregido en la fase 1):** las cuentas
+dormidas quedan a un toque y con todos sus privilegios. Quien tenga el
+teléfono desbloqueado puede entrar en cualquiera de la lista y borrarla o
+cerrar su sesión en todos los dispositivos sin volver a teclear la contraseña.
+Es exactamente lo que hace Instagram al cambiar de cuenta, pero Instagram pide
+la contraseña para borrar la cuenta. Queda como T-35 (fase 2): reautenticación
+en `/api/account/delete` y en los cambios de contraseña y correo.
+
 ## El modelo en una frase
 
 **La cookie de Supabase sigue siendo la única sesión viva; la bóveda es una
@@ -69,12 +156,12 @@ const cuentaSchema = z.object({
   email: z.string().min(1),
   nombre: z.string(),
   username: z.string().nullable(),
-  foto: z.string().url().nullable(),
+  foto: z.string().nullable(),
   accessToken: z.string().min(1),
   refreshToken: z.string().min(1),
   ultimoUso: z.number().int().positive(),
 });
-const bovedaSchema = z.array(cuentaSchema).max(MAX_CUENTAS);
+// La lista se valida entrada a entrada y se recorta a MAX_CUENTAS tras ordenar.
 ```
 
 - **Zod al leer, no al escribir.** Lo que hay en `localStorage` lo pudo
@@ -89,9 +176,12 @@ const bovedaSchema = z.array(cuentaSchema).max(MAX_CUENTAS);
 - **Orden = `ultimoUso` descendente.** La primera es la activa (o la más
   reciente, si no hay sesión). Es lo que "cerrar sesión y pasar a la más
   reciente" necesita sin ordenar en cada sitio.
-- **`guardarCuenta()` devuelve `boolean`**, como `guardarPendiente()`: en
-  Safari con cookies bloqueadas o cuota llena, `setItem` lanza, y quien llama
-  tiene que saberlo para no prometer un cambio que no va a poder deshacer.
+- **`guardarCuenta()` dice qué pasó** (`"guardada" | "llena" |
+  "sin_almacenamiento"`), como `guardarPendiente()` devuelve si pudo: en Safari
+  con cookies bloqueadas o cuota llena, `setItem` lanza, y quien llama tiene
+  que saberlo para no prometer un cambio que no va a poder deshacer.
+- **`actualizarTokens(userId, tokens)`** reescribe solo los tokens de una
+  entrada que ya existe; no crea. Es lo que usa `EspejoDeTokens`.
 - **Si se supera `MAX_CUENTAS`, no se guarda** y la hoja muestra "Quita una
   cuenta para agregar otra". No se expulsa la más vieja en silencio: la más
   vieja puede ser la del negocio.
@@ -184,10 +274,13 @@ Tres sitios echan de `/login` y `/register` a quien ya tiene sesión: el proxy
 abierta). Los tres leen la misma cookie con `estaAgregandoCuenta()`
 (`lib/cuentas/agregando-cuenta.ts`):
 
-1. La hoja, al tocar "Agregar cuenta": (a) `getSession()` + `guardarCuenta(A)`
-   (si falla, abortar: sin A guardada, agregar B es perder A); (b) escribe la
-   cookie `vicino_agregando_cuenta=1; Max-Age=600; Path=/; SameSite=Lax;
-   Secure` desde `document.cookie`; (c) `router.push("/login?next=%2Fperfil&agregar=1")`.
+1. La hoja, al tocar "Agregar cuenta": (a) `refreshSession()` +
+   `guardarCuenta(A)` (tokens con una hora por delante; si falla, abortar: sin
+   A guardada, agregar B es perder A); (b) `fcm_token` de A a NULL, mejor
+   esfuerzo (el token es del teléfono; al cancelar, el aviso pide el registro
+   de nuevo); (c) escribe la cookie `vicino_agregando_cuenta=1; Max-Age=600;
+   Path=/; SameSite=Lax` (`Secure` en https) desde `document.cookie`; (d)
+   `router.push("/login?next=%2Fperfil&agregar=1")`.
 2. **Proxy, páginas y `signUp`**: con la cookie puesta, dejan pasar. Quien
    tenga la cookie y sesión puede ver `/login` y `/register` **durante 10
    minutos**. Nadie en el servidor la borra: la borra el cliente al aterrizar
@@ -318,7 +411,10 @@ despedida); al volver a `/login`, la fase 2 puede ofrecer "Continuar como @x".
 | Cambio, paso 8 | La cookie de B se pisó con una respuesta tardía del servidor que refrescó A (rotación concurrente) | Nada o un parpadeo | `RegistroCuentaActiva` ve A donde esperaba B y reaplica `aplicarCuenta(B)` una vez; si tampoco, limpia la marca y muestra "No se pudo cambiar de cuenta" |
 | Cambio | Segundo toque mientras hay un cambio en vuelo | Nada (las filas están deshabilitadas) | `cambiarACuenta` lo rechaza con `en_curso` |
 | Cambio en curso | Pasan 10 s sin que aterrice B | Comportamiento de siempre | La marca caduca sola; `session-data-provider` vuelve a su navegación dura |
-| Agregar | La persona cierra la app en Google | Nada | Cookie `vicino_agregando_cuenta` caduca en 10 min; A intacta |
+| Agregar | La persona cierra la app en Google | Nada | Cookie `vicino_agregando_cuenta` caduca en 10 min; A intacta, con tokens frescos en la bóveda |
+| Agregar | "Cancelar" en el aviso de `/login` | Vuelve a `/perfil` como A | La cookie se borra; se vuelve a pedir el registro de push de A |
+| Agregar | El `PATCH` del `fcm_token` de A falla o se cuelga | Nada (mejor esfuerzo, tope de 20 s) | Se sale igual a `/login`; A puede seguir recibiendo push hasta el siguiente registro |
+| Cualquiera | Una llamada de auth se cuelga | La hoja se puede cerrar; a los 20 s, "Sin conexión" | La cookie no cambió; si la llamada cuaja después, la cookie cambia y el proveedor recarga con la cuenta nueva |
 | Agregar | Bóveda llena (5) | "Quita una cuenta para agregar otra." | Nada cambió |
 | Agregar | Entra con la **misma** cuenta A | Vuelve a `/perfil` como A | `RegistroCuentaActiva` actualiza la entrada de A, no la duplica (clave = `userId`) |
 | Quitar | Red | "No se pudo quitar. Revisa tu conexión." | La entrada sigue |
@@ -433,12 +529,17 @@ guarda de sesión de `signUp` (lee la cookie de agregar).
 | `lib/cuentas/sesion-aislada.ts` | Cliente aislado: `probarSesion`, `revocarSesion` |
 | `lib/cuentas/cambio.ts` | `cambiarACuenta`, `aplicarCuenta`, `datosDeSesion` con puertos |
 | `lib/cuentas/puertos.ts` | Puertos reales (Supabase, bóveda, marca, Sentry) |
-| `lib/cuentas/*.test.ts` + `pruebas-entorno.ts` | 32 pruebas `node:test` |
+| `lib/cuentas/cierre.ts` | Cierre de sesión consciente de cuentas, con puertos |
+| `lib/cuentas/*.test.ts` + `pruebas-entorno.ts` | 46 pruebas `node:test` |
+| `lib/push/registro.ts` | Evento para pedir el registro de push a `usePushNotifications` |
+| `components/cuentas/espejo-de-tokens.tsx` | Espejo de tokens en el layout raíz |
 | `components/cuentas/hoja-cuentas.tsx` | La hoja "Cuentas" |
 | `components/cuentas/registro-cuenta-activa.tsx` | Espejo de la activa, cierre del cambio en curso, borrado de la cookie |
 | `components/cuentas/aviso-agregando-cuenta.tsx` | Aviso en `/login` y `/register` |
 | `components/cuentas/salir-de-todas-section.tsx` | Fila en `/configuracion` |
-| `hooks/use-logout.ts` | Cierre consciente de cuentas, `{ todas }` |
+| `hooks/use-logout.ts` | Cables y navegación del cierre, `{ todas }` |
+| `hooks/use-body-scroll-lock.ts`, `components/product/bottom-sheet.tsx` | Bloqueo de scroll reentrante; foco de vuelta al cerrar |
+| `hooks/usePushNotifications.ts` | Oye el evento de `lib/push/registro.ts` |
 | `components/profile/account-menu-drawer.tsx`, `components/layout/header.tsx` | Disparador |
 | `components/layout/session-data-provider.tsx` | Guarda de la marca (dos sitios) |
 | `lib/supabase/middleware.ts`, `app/(auth)/{login,register}/page.tsx`, `app/(auth)/actions.ts` | Las tres guardas de "agregar cuenta" |

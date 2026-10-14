@@ -179,6 +179,10 @@ export default async function MarketplaceLayout({
     {user && (
       <RegistroCuentaActiva
         key={user.id}
+        // Cambia en cada render del servidor para que el aterrizaje de un
+        // cambio de cuenta se compruebe tambien cuando aterriza la MISMA
+        // cuenta (React conserva la instancia y no vuelve a montar).
+        renderId={crypto.randomUUID()}
         cuenta={{
           userId: user.id,
           email: user.email ?? "",

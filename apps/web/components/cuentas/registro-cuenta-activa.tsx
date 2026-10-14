@@ -8,11 +8,19 @@ import { buscarCuenta, guardarCuenta, type DatosCuenta } from "@/lib/cuentas/bov
 import { cambioEnCurso, desmarcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 import { limpiarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import { aplicarCuenta } from "@/lib/cuentas/cambio";
-import { puertoCambioReal } from "@/lib/cuentas/puertos";
+import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
+import { pedirRegistroPush } from "@/lib/push/registro";
 
 export type CuentaActiva = Omit<DatosCuenta, "accessToken" | "refreshToken">;
 
-const CLAVE_REINTENTO = "vicino_cambio_reintentado";
+/**
+ * Para que cuenta se reintento ya el aterrizaje en ESTA carga. A nivel de
+ * modulo y no en sessionStorage: en desarrollo, StrictMode monta dos veces y
+ * un contador en sessionStorage hacia que el segundo montaje se creyera el
+ * reintento ya hecho.
+ */
+let reintentoHecho: string | null = null;
+let bovedaLlenaAvisada = false;
 
 /**
  * El espejo de la cuenta ACTIVA en la boveda, montado en el layout del
@@ -20,19 +28,22 @@ const CLAVE_REINTENTO = "vicino_cambio_reintentado";
  *
  * 1. En cada INITIAL_SESSION / SIGNED_IN / TOKEN_REFRESHED de la cuenta que el
  *    servidor pinto, reescribe su entrada con los tokens de la sesion y los
- *    datos de perfil que el layout ya consulto. Asi la activa siempre tiene en
- *    la boveda su ULTIMO refresh token, y una cuenta que entra por cualquier
- *    camino (contraseña, codigo, Google, Apple) queda registrada sin que las
- *    pantallas de auth sepan que la boveda existe.
+ *    datos de perfil que el layout ya consulto. Asi una cuenta que entra por
+ *    cualquier camino (contraseña, codigo, Google, Apple) queda registrada sin
+ *    que las pantallas de auth sepan que la boveda existe. (Los tokens en las
+ *    demas pantallas los mantiene EspejoDeTokens, en el layout raiz.)
  * 2. Cierra el "cambio en curso" si aterrizo la cuenta esperada. Si aterrizo
  *    la ANTERIOR (la cookie se piso con un refresh tardio de A), reaplica el
- *    cambio UNA vez; si tampoco, limpia la marca y avisa.
- * 3. Borra la cookie de "agregando cuenta": la persona ya esta dentro.
+ *    cambio UNA vez; si tampoco, limpia la marca y avisa. Se comprueba en cada
+ *    render del servidor (`renderId`), no solo al montar: con navegacion
+ *    blanda y la misma cuenta, React conserva la instancia.
+ * 3. Borra la cookie de "agregando cuenta" y pide registrar el dispositivo
+ *    para push: entrar por la accion de servidor no emite SIGNED_IN.
  *
  * El callback de onAuthStateChange no llama a nada de supabase: dentro de el
  * el cliente tiene tomado su cerrojo (la trampa documentada de supabase-js).
  */
-export function RegistroCuentaActiva({ cuenta }: { cuenta: CuentaActiva }) {
+export function RegistroCuentaActiva({ cuenta, renderId }: { cuenta: CuentaActiva; renderId: string }) {
   const router = useRouter();
   const cuentaRef = useRef(cuenta);
   useEffect(() => {
@@ -48,67 +59,59 @@ export function RegistroCuentaActiva({ cuenta }: { cuenta: CuentaActiva }) {
       // Un evento de OTRA cuenta a mitad de un cambio no es de esta instancia:
       // el layout se remonta con la nueva y es esa la que escribe.
       if (sesion.user.id !== cuentaRef.current.userId) return;
-      guardarCuenta({
+      const resultado = guardarCuenta({
         ...cuentaRef.current,
         email: cuentaRef.current.email || sesion.user.email || "",
         accessToken: sesion.access_token,
         refreshToken: sesion.refresh_token,
       });
+      // La activa sin sitio en la boveda (5 dormidas de otras cuentas): la
+      // hoja lo explica; aqui solo se deja constancia una vez por carga.
+      if (resultado === "llena" && !bovedaLlenaAvisada) {
+        bovedaLlenaAvisada = true;
+        reportarCuentas("espejo_activa", new Error("boveda llena: la cuenta activa no cabe"), "warning");
+      }
     });
 
     limpiarAgregandoCuenta();
-
-    const esperado = cambioEnCurso();
-    if (esperado) {
-      if (esperado === cuenta.userId) {
-        desmarcarCambioEnCurso();
-        limpiarReintento();
-      } else {
-        void reintentarAterrizaje(esperado);
-      }
-    }
-
-    async function reintentarAterrizaje(userIdEsperado: string) {
-      const destino = buscarCuenta(userIdEsperado);
-      let yaReintentado = false;
-      try {
-        yaReintentado = window.sessionStorage.getItem(CLAVE_REINTENTO) === userIdEsperado;
-        window.sessionStorage.setItem(CLAVE_REINTENTO, userIdEsperado);
-      } catch {
-        // Sin sessionStorage no hay como contar: se reintenta una vez por montaje.
-      }
-      if (!destino || yaReintentado) {
-        desmarcarCambioEnCurso();
-        limpiarReintento();
-        if (destino) toast.error("No se pudo cambiar de cuenta. Inténtalo de nuevo.");
-        return;
-      }
-      const resultado = await aplicarCuenta(destino, puertoCambioReal());
-      if (desmontado) return;
-      if (resultado.ok) {
-        router.refresh();
-        return;
-      }
-      desmarcarCambioEnCurso();
-      limpiarReintento();
-      toast.error(resultado.mensaje);
-    }
+    pedirRegistroPush();
 
     return () => {
       desmontado = true;
       subscription.unsubscribe();
     };
-    // Solo al montar: el layout remonta este componente con key={user.id}.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuenta.userId]);
 
-  return null;
-}
+  useEffect(() => {
+    const esperado = cambioEnCurso();
+    if (!esperado) return;
+    if (esperado === cuenta.userId) {
+      desmarcarCambioEnCurso();
+      reintentoHecho = null;
+      return;
+    }
+    const destino = buscarCuenta(esperado);
+    if (!destino || reintentoHecho === esperado) {
+      desmarcarCambioEnCurso();
+      reintentoHecho = null;
+      if (destino) toast.error("No se pudo cambiar de cuenta. Inténtalo de nuevo.");
+      return;
+    }
+    reintentoHecho = esperado;
+    let cancelado = false;
+    void aplicarCuenta(destino, puertoCambioReal()).then((resultado) => {
+      if (cancelado) return;
+      if (resultado.ok) {
+        router.refresh();
+        return;
+      }
+      desmarcarCambioEnCurso();
+      toast.error(resultado.mensaje);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [cuenta.userId, renderId, router]);
 
-function limpiarReintento(): void {
-  try {
-    window.sessionStorage.removeItem(CLAVE_REINTENTO);
-  } catch {
-    // Nada que limpiar.
-  }
+  return null;
 }

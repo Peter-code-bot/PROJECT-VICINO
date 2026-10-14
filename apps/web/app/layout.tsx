@@ -7,6 +7,7 @@ import { CapacitorInit } from "@/components/capacitor-init";
 import { CapacitorSentryInit } from "@/components/capacitor-sentry-init";
 import { PushNotificationInit } from "@/components/push-notification-init";
 import { OAuthUrlListener } from "@/components/auth/oauth-url-listener";
+import { EspejoDeTokens } from "@/components/cuentas/espejo-de-tokens";
 import { OfflineDetector } from "@/components/offline-detector";
 import { RegistroServiceWorker } from "@/components/registro-service-worker";
 import { Toaster } from "sonner";
@@ -130,6 +131,7 @@ export default function RootLayout({
           <CapacitorSentryInit />
           <PushNotificationInit />
           <OAuthUrlListener />
+          <EspejoDeTokens />
           <OfflineDetector />
           <RegistroServiceWorker />
           {children}

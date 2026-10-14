@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -8,10 +8,12 @@ import { BottomSheet } from "@/components/product/bottom-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useLogout } from "@/hooks/use-logout";
 import { createClient } from "@/lib/supabase/client";
+import { conTope } from "@/lib/auth/con-tope";
 import { cn } from "@/lib/utils";
 import { buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
 import { cambiarACuenta, datosDeSesion, nombreVisible } from "@/lib/cuentas/cambio";
+import { clasificarErrorAuth } from "@/lib/cuentas/clasificar-error-auth";
 import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
 import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
 import { DESTINO_TRAS_AGREGAR, hrefAgregarCuenta, marcarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
@@ -36,8 +38,10 @@ type Ocupado =
  * y "Agregar cuenta" al final. Es lo que Instagram abre al tocar el nombre de
  * usuario en el perfil (decision D1).
  *
- * Mientras una accion esta en vuelo la hoja NO se cierra y las demas filas se
- * deshabilitan: un fallo se muestra aqui mismo, donde se toco.
+ * Mientras una accion esta en vuelo las filas se deshabilitan, pero la hoja
+ * SE PUEDE CERRAR (Escape, Atras, el fondo): una peticion colgada no puede
+ * dejar a nadie atrapado en un modal. Si se cierra con la accion en vuelo, el
+ * resultado llega por toast.
  */
 export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasProps) {
   const router = useRouter();
@@ -46,16 +50,27 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
   const [ocupado, setOcupado] = useState<Ocupado>(null);
   const [confirmarQuitar, setConfirmarQuitar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const abiertaRef = useRef(open);
+  useEffect(() => {
+    abiertaRef.current = open;
+  }, [open]);
 
   const activa = cuentas.find((c) => c.userId === userId) ?? null;
   const dormidas = cuentas.filter((c) => c.userId !== userId);
-  const llena = cuentas.length >= MAX_CUENTAS && !!activa;
+  const llena = cuentas.length >= MAX_CUENTAS;
+  // La activa sin sitio: cinco dormidas de otras cuentas y la que tiene sesion
+  // no cabe. Se dice tal cual; lo contrario era una lista sin marca de activa.
+  const activaSinSitio = !activa && llena;
 
-  function cerrar() {
-    if (ocupado) return;
+  const cerrar = useCallback(() => {
     setError(null);
     setConfirmarQuitar(null);
     onClose();
+  }, [onClose]);
+
+  function avisar(mensaje: string) {
+    setError(mensaje);
+    if (!abiertaRef.current) toast.error(mensaje);
   }
 
   function irAlPerfil() {
@@ -71,7 +86,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     try {
       const resultado = await cambiarACuenta(cuenta, puertoCambioReal());
       if (!resultado.ok) {
-        if (resultado.motivo !== "en_curso") setError(resultado.mensaje);
+        if (resultado.motivo !== "en_curso") avisar(resultado.mensaje);
         return;
       }
       toast.success(`Ahora estás en ${resultado.nombre}`);
@@ -91,10 +106,14 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     setError(null);
     setOcupado({ tipo: "quitar", userId: cuenta.userId });
     try {
-      const resultado = await revocarSesion(cuenta);
+      // Si cargar la sesion roto el refresh token y el /logout falla despues,
+      // la boveda se queda con los tokens que SI valen (alRotar).
+      const resultado = await revocarSesion(cuenta, (sesion) =>
+        guardarCuenta({ ...cuenta, accessToken: sesion.access_token, refreshToken: sesion.refresh_token }),
+      );
       if (!resultado.ok) {
         reportarCuentas("revocar", resultado.error, "warning");
-        setError("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
+        avisar("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
         return;
       }
       quitarCuenta(cuenta.userId);
@@ -110,35 +129,49 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     setError(null);
     setConfirmarQuitar(null);
     if (llena) {
-      setError("Quita una cuenta para agregar otra.");
+      avisar(activaSinSitio ? "Tu cuenta actual no cabe en la lista. Quita una cuenta." : "Quita una cuenta para agregar otra.");
       return;
     }
     setOcupado({ tipo: "agregar" });
     try {
       // La cuenta actual se guarda ANTES de salir hacia /login: el login (o
       // Google, o Apple) va a pisar la cookie con la cuenta nueva, y sin esto
-      // la actual se perderia. Si no se puede guardar, no se sale.
+      // la actual se perderia. Con refreshSession y no getSession: lo que se
+      // guarda nace con una hora por delante, para que ni el ticker del
+      // cliente ni el proxy lo roten mientras la persona esta en /login
+      // (EspejoDeTokens cubre el resto). Si no se puede guardar, no se sale.
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError("No encontramos tu sesión actual. Vuelve a entrar.");
+      let sesion = null;
+      try {
+        const { data, error: errorRefresco } = await conTope(supabase.auth.refreshSession());
+        sesion = data.session;
+        if (errorRefresco && clasificarErrorAuth(errorRefresco) === "red") {
+          avisar("Sin conexión. Inténtalo de nuevo.");
+          return;
+        }
+      } catch {
+        avisar("Sin conexión. Inténtalo de nuevo.");
         return;
       }
-      const guardado = guardarCuenta(datosDeSesion(session, buscarCuenta(session.user.id)));
+      if (!sesion) {
+        avisar("No encontramos tu sesión actual. Vuelve a entrar.");
+        return;
+      }
+      const guardado = guardarCuenta(datosDeSesion(sesion, buscarCuenta(sesion.user.id)));
       if (guardado === "llena") {
-        setError("Quita una cuenta para agregar otra.");
+        avisar("Quita una cuenta para agregar otra.");
         return;
       }
       if (guardado === "sin_almacenamiento") {
-        setError("No se pudo guardar tu cuenta actual. Inténtalo de nuevo.");
+        avisar("No se pudo guardar tu cuenta actual. Inténtalo de nuevo.");
         return;
       }
       // El token de push es del telefono: si se queda en el perfil de la
       // cuenta actual, sus avisos aterrizan en la pantalla de la cuenta que
-      // entre despues (mismo motivo que use-logout.ts y que el paso 5 del
-      // cambio). Mejor esfuerzo; quien vuelva a esta cuenta la registra de
-      // nuevo al siguiente primer plano (usePushNotifications).
-      await puertoCambioReal().soltarTokenPush(session.user.id);
+      // entre despues (mismo motivo que use-logout.ts y que el paso 4 del
+      // cambio). Mejor esfuerzo y con tope; al cancelar, el aviso de /login
+      // vuelve a pedir el registro (lib/push/registro.ts).
+      await puertoCambioReal().soltarTokenPush(sesion.user.id);
       marcarAgregandoCuenta();
       onNavegar();
       router.push(hrefAgregarCuenta("/login"));
@@ -153,7 +186,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     setOcupado({ tipo: "salir" });
     try {
       const resultado = await logout({ todas: true });
-      if (resultado.error) setError(resultado.error);
+      if (resultado.error) avisar(resultado.error);
     } finally {
       setOcupado(null);
     }
@@ -169,15 +202,22 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
               onClick={irAlPerfil}
               disabled={!!ocupado}
               aria-current="true"
+              aria-label={`Cuenta activa: ${nombreVisible(activa)}. Ver perfil`}
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
             >
               <UserAvatar src={activa.foto} name={nombreVisible(activa)} size="md" />
               <FilaTexto cuenta={activa} />
-              <Check className="h-5 w-5 shrink-0 text-[color:var(--brand)]" aria-label="Cuenta activa" />
+              <Check className="h-5 w-5 shrink-0 text-[color:var(--brand)]" aria-hidden="true" />
             </button>
           </li>
         )}
+        {activaSinSitio && (
+          <li className="px-4 py-3 text-xs text-muted-foreground">
+            Tu cuenta actual no cabe en la lista (máximo {MAX_CUENTAS}). Quita una de las guardadas para que aparezca.
+          </li>
+        )}
         {dormidas.map((cuenta) => {
+          const nombre = nombreVisible(cuenta);
           const cambiando = ocupado?.tipo === "cambiar" && ocupado.userId === cuenta.userId;
           const quitando = ocupado?.tipo === "quitar" && ocupado.userId === cuenta.userId;
           const confirmando = confirmarQuitar === cuenta.userId;
@@ -188,12 +228,13 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
                   type="button"
                   onClick={() => void cambiar(cuenta)}
                   disabled={!!ocupado}
+                  aria-label={`Cambiar a ${nombre}`}
                   className="flex min-h-14 flex-1 items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
                 >
                   {cambiando ? (
-                    <Loader2 className="h-10 w-10 shrink-0 animate-spin p-2 text-[color:var(--brand)]" aria-label="Cambiando de cuenta" />
+                    <Loader2 className="h-10 w-10 shrink-0 animate-spin p-2 text-[color:var(--brand)]" aria-hidden="true" />
                   ) : (
-                    <UserAvatar src={cuenta.foto} name={nombreVisible(cuenta)} size="md" />
+                    <UserAvatar src={cuenta.foto} name={nombre} size="md" />
                   )}
                   <FilaTexto cuenta={cuenta} />
                 </button>
@@ -205,6 +246,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
                       setConfirmarQuitar(cuenta.userId);
                     }}
                     disabled={!!ocupado}
+                    aria-label={`Quitar ${nombre}`}
                     className="px-4 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
                   >
                     Quitar
@@ -214,12 +256,13 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
               {confirmando && (
                 <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-xs">
                   <span className="flex-1 min-w-0 text-muted-foreground">
-                    ¿Quitar {nombreVisible(cuenta)} de este teléfono? Tendrás que volver a entrar para usarla aquí.
+                    ¿Quitar {nombre} de este teléfono? Tendrás que volver a entrar para usarla aquí.
                   </span>
                   <button
                     type="button"
                     onClick={() => void quitar(cuenta)}
                     disabled={!!ocupado}
+                    aria-label={`Confirmar quitar ${nombre}`}
                     className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--danger)] px-3 py-1.5 font-semibold text-white disabled:opacity-60"
                   >
                     {quitando && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
@@ -243,6 +286,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
             type="button"
             onClick={() => void agregar()}
             disabled={!!ocupado}
+            aria-label="Agregar cuenta"
             className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted disabled:opacity-60"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-tint)] text-[color:var(--brand)]">

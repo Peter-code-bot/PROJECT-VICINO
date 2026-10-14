@@ -64,9 +64,23 @@ export function BottomSheet({
     return () => clearTimeout(timeout);
   }, [open]);
 
+  // El foco va al boton de cerrar al montar y VUELVE a quien abrio la hoja al
+  // desmontar (si sigue en el DOM). Sin la vuelta, tras Escape el foco caia a
+  // body y el siguiente Tab empezaba desde el principio del documento, por
+  // detras del overlay que quedara abierto (el cajon de cuenta, por ejemplo).
+  // Depende solo de `mounted`: con `onClose` aqui, cada render de quien
+  // pasara un callback nuevo volvia a enfocar el boton de cerrar.
   useEffect(() => {
     if (!mounted) return;
+    const previo = document.activeElement;
     closeButtonRef.current?.focus();
+    return () => {
+      if (previo instanceof HTMLElement && previo.isConnected) previo.focus();
+    };
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }

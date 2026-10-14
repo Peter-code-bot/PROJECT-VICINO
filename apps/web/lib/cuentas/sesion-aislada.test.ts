@@ -13,14 +13,22 @@ function sesion(sufijo: string): Session {
   };
 }
 
-function authFalso(opciones: { setSession?: AuthApiError | AuthRetryableFetchError | "lanza"; signOut?: AuthRetryableFetchError; devuelve?: Session }) {
+type Fallo = AuthApiError | AuthRetryableFetchError | "lanza";
+
+function authFalso(opciones: { setSession?: Fallo; refresh?: Fallo; signOut?: AuthRetryableFetchError; devuelve?: Session; sinRotar?: boolean }) {
   const llamadas: string[] = [];
   const auth: AuthAislado = {
     async setSession(tokens) {
       llamadas.push(`setSession:${tokens.refresh_token}`);
       if (opciones.setSession === "lanza") throw new TypeError("Failed to fetch");
       if (opciones.setSession) return { data: { session: null }, error: opciones.setSession };
-      return { data: { session: opciones.devuelve ?? sesion("nuevo") }, error: null };
+      return { data: { session: opciones.devuelve ?? sesion(opciones.sinRotar ? "viejo" : "nuevo") }, error: null };
+    },
+    async refreshSession(tokens) {
+      llamadas.push(`refreshSession:${tokens.refresh_token}`);
+      if (opciones.refresh === "lanza") throw new TypeError("Failed to fetch");
+      if (opciones.refresh) return { data: { session: null }, error: opciones.refresh };
+      return { data: { session: sesion("refrescado") }, error: null };
     },
     async signOut(o) {
       llamadas.push(`signOut:${o.scope}`);
@@ -31,8 +39,10 @@ function authFalso(opciones: { setSession?: AuthApiError | AuthRetryableFetchErr
 }
 
 const tokens = { accessToken: "access-viejo", refreshToken: "refresh-viejo" };
+const credencial = () => new AuthApiError("bad_jwt", 403, "bad_jwt");
+const red = () => new AuthRetryableFetchError("fetch failed", 0);
 
-test("probar devuelve la sesion refrescada y no revoca nada", async () => {
+test("probar devuelve la sesion y no revoca nada", async () => {
   const { auth, llamadas } = authFalso({});
   const r = await probarSesion(tokens, auth);
   assert.equal(r.ok, true);
@@ -40,29 +50,53 @@ test("probar devuelve la sesion refrescada y no revoca nada", async () => {
   assert.deepEqual(llamadas, ["setSession:refresh-viejo"]);
 });
 
-test("probar distingue credencial de red, incluida una excepcion del fetch", async () => {
-  const credencial = await probarSesion(tokens, authFalso({ setSession: new AuthApiError("Already Used", 400, "refresh_token_already_used") }).auth);
-  assert.deepEqual(credencial.ok ? null : credencial.clase, "credencial");
-  const red = await probarSesion(tokens, authFalso({ setSession: new AuthRetryableFetchError("fetch failed", 0) }).auth);
-  assert.deepEqual(red.ok ? null : red.clase, "red");
+test("un 4xx al cargar NO es veredicto hasta probar el refresh token (reloj atrasado)", async () => {
+  const recuperada = authFalso({ setSession: credencial() });
+  const r = await probarSesion(tokens, recuperada.auth);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.sesion.refresh_token, "refresh-refrescado");
+  assert.deepEqual(recuperada.llamadas, ["setSession:refresh-viejo", "refreshSession:refresh-viejo"]);
+
+  const muerta = authFalso({ setSession: credencial(), refresh: new AuthApiError("Already Used", 400, "refresh_token_already_used") });
+  const r2 = await probarSesion(tokens, muerta.auth);
+  assert.deepEqual(r2.ok ? null : r2.clase, "credencial");
+
+  const redAlRefrescar = authFalso({ setSession: credencial(), refresh: red() });
+  const r3 = await probarSesion(tokens, redAlRefrescar.auth);
+  assert.deepEqual(r3.ok ? null : r3.clase, "red");
+});
+
+test("la red al cargar es red, incluida una excepcion del fetch, y no se intenta el refresh", async () => {
+  const red1 = authFalso({ setSession: red() });
+  assert.deepEqual((await probarSesion(tokens, red1.auth)).ok, false);
+  assert.deepEqual(red1.llamadas, ["setSession:refresh-viejo"]);
   const lanza = await probarSesion(tokens, authFalso({ setSession: "lanza" }).auth);
   assert.deepEqual(lanza.ok ? null : lanza.clase, "red");
 });
 
-test("revocar carga la sesion y cierra SOLO esa (scope local)", async () => {
+test("revocar carga la sesion y cierra SOLO esa (scope local); avisa de los tokens rotados antes", async () => {
+  const rotados: string[] = [];
   const { auth, llamadas } = authFalso({});
-  const r = await revocarSesion(tokens, auth);
+  const r = await revocarSesion(tokens, (s) => rotados.push(s.refresh_token), auth);
   assert.deepEqual(r, { ok: true, yaInvalida: false });
   assert.deepEqual(llamadas, ["setSession:refresh-viejo", "signOut:local"]);
+  assert.deepEqual(rotados, ["refresh-nuevo"]);
+  // Sin rotacion no hay aviso.
+  const sinRotar = authFalso({ sinRotar: true });
+  const avisos: string[] = [];
+  await revocarSesion(tokens, (s) => avisos.push(s.refresh_token), sinRotar.auth);
+  assert.deepEqual(avisos, []);
 });
 
-test("un token que ya no vale cuenta como revocado; la red conserva la entrada", async () => {
-  const ya = await revocarSesion(tokens, authFalso({ setSession: new AuthApiError("invalid", 401, "bad_jwt") }).auth);
+test("un token que ya no vale cuenta como revocado; la red conserva la entrada, con los tokens rotados avisados", async () => {
+  const ya = await revocarSesion(tokens, undefined, authFalso({ setSession: credencial(), refresh: credencial() }).auth);
   assert.deepEqual(ya, { ok: true, yaInvalida: true });
-  const red = await revocarSesion(tokens, authFalso({ setSession: new AuthRetryableFetchError("fetch failed", 0) }).auth);
-  assert.equal(red.ok, false);
-  const redAlSalir = await revocarSesion(tokens, authFalso({ signOut: new AuthRetryableFetchError("fetch failed", 0) }).auth);
+  const redCarga = await revocarSesion(tokens, undefined, authFalso({ setSession: red() }).auth);
+  assert.equal(redCarga.ok, false);
+  const rotados: string[] = [];
+  const redAlSalir = await revocarSesion(tokens, (s) => rotados.push(s.refresh_token), authFalso({ signOut: red() }).auth);
   assert.equal(redAlSalir.ok, false);
-  const lanza = await revocarSesion(tokens, authFalso({ setSession: "lanza" }).auth);
+  assert.deepEqual(rotados, ["refresh-nuevo"]);
+  const lanza = await revocarSesion(tokens, undefined, authFalso({ setSession: "lanza" }).auth);
   assert.equal(lanza.ok, false);
 });

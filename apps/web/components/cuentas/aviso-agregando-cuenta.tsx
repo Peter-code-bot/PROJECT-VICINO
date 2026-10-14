@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
 import { DESTINO_TRAS_AGREGAR, limpiarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
+import { pedirRegistroPush } from "@/lib/push/registro";
 
 /**
  * Encima del formulario de /login y /register cuando se llega con ?agregar=1:
@@ -25,6 +26,9 @@ export function AvisoAgregandoCuenta() {
         type="button"
         onClick={() => {
           limpiarAgregandoCuenta();
+          // Al salir hacia aqui se solto el token de push de la cuenta actual
+          // (el token es del telefono); al cancelar hay que volver a pedirlo.
+          pedirRegistroPush();
           router.push(DESTINO_TRAS_AGREGAR);
         }}
         className="shrink-0 text-xs font-semibold text-[color:var(--brand)] underline-offset-2 hover:underline"

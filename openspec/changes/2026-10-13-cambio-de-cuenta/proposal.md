@@ -106,6 +106,11 @@ Fuentes: [Instagram — Add and Switch Between Multiple Accounts](https://help.i
   ya tiene la cookie de sesión (que `@supabase/ssr` lee desde JS, o sea que no
   es `httpOnly`). No se gana ni se pierde superficie de ataque respecto a hoy,
   pero hay que decirlo (ver seguridad en `design.md`).
+- Instagram **pide la contraseña para borrar la cuenta** aunque se haya entrado
+  desde el selector. En VICINO, con el cambio de cuenta, una cuenta dormida
+  queda a un toque con todos sus privilegios, incluido eliminarla. Es un riesgo
+  aceptado para la fase 1 y queda como seguimiento (T-35: reautenticación en
+  las acciones destructivas).
 
 ## Hallazgos técnicos que deciden el diseño
 

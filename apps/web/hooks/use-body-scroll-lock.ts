@@ -24,29 +24,48 @@ import { useEffect } from "react";
  * del propio body: un `touch-action: none` ahi dejaria sin desplazamiento el
  * contenido del sheet, que es justo lo que hay que poder mover. La contencion
  * de cada panel vive en su `overscroll-contain`.
+ *
+ * Es REENTRANTE: dos overlays encadenados (el cajon de cuenta con la hoja
+ * "Cuentas" encima) comparten un contador a nivel de modulo. Los estilos se
+ * ponen al pasar de 0 a 1 y se quitan al volver de 1 a 0; antes, cerrar el
+ * segundo overlay liberaba la pagina mientras el primero seguia abierto, y
+ * los gestos de pestana volvian a vivir por debajo.
  */
+
+let bloqueos = 0;
+
+function adquirir(): void {
+  bloqueos += 1;
+  if (bloqueos > 1) return;
+  const raiz = document.documentElement;
+  // Con la barra de desplazamiento clasica de Windows, fijar la raiz la hace
+  // desaparecer y el contenido se ensancha 15 px de golpe al abrir cualquier
+  // modal (medido: clientWidth 1265 -> 1280). `scrollbar-gutter: stable` no
+  // lo evita, porque no aplica a una caja con overflow clip ni hidden. Se
+  // mide el hueco ANTES de fijar y se devuelve como relleno. Donde la barra
+  // flota (iPadOS, macOS) la medida es 0 y no se toca nada.
+  const hueco = window.innerWidth - raiz.clientWidth;
+  raiz.style.overflow = "hidden";
+  if (hueco > 0) raiz.style.paddingRight = `${hueco}px`;
+  document.body.style.overflow = "hidden";
+}
+
+function liberar(): void {
+  if (bloqueos === 0) return;
+  bloqueos -= 1;
+  if (bloqueos > 0) return;
+  // Se limpia a vacio en vez de restaurar lo que habia: el contador ya
+  // garantiza que solo se limpia cuando no queda ningun overlay abierto.
+  const raiz = document.documentElement;
+  raiz.style.overflow = "";
+  raiz.style.paddingRight = "";
+  document.body.style.overflow = "";
+}
+
 export function useBodyScrollLock(active: boolean): void {
   useEffect(() => {
     if (!active) return;
-    const raiz = document.documentElement;
-    // Con la barra de desplazamiento clasica de Windows, fijar la raiz la hace
-    // desaparecer y el contenido se ensancha 15 px de golpe al abrir cualquier
-    // modal (medido: clientWidth 1265 -> 1280). `scrollbar-gutter: stable` no
-    // lo evita, porque no aplica a una caja con overflow clip ni hidden. Se
-    // mide el hueco ANTES de fijar y se devuelve como relleno. Donde la barra
-    // flota (iPadOS, macOS) la medida es 0 y no se toca nada.
-    const hueco = window.innerWidth - raiz.clientWidth;
-    raiz.style.overflow = "hidden";
-    if (hueco > 0) raiz.style.paddingRight = `${hueco}px`;
-    document.body.style.overflow = "hidden";
-    return () => {
-      // Se limpia a vacio en vez de restaurar lo que habia, igual que antes:
-      // con dos overlays encadenados, restaurar el valor capturado por el
-      // segundo devolveria el "hidden" del primero y dejaria la pagina fijada
-      // para siempre.
-      raiz.style.overflow = "";
-      raiz.style.paddingRight = "";
-      document.body.style.overflow = "";
-    };
+    adquirir();
+    return liberar;
   }, [active]);
 }

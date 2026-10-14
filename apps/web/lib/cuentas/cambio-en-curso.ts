@@ -7,16 +7,18 @@
  * cookie caduco), pero durante un cambio de cuenta la navegacion la pone quien
  * cambia, y tiene que ser blanda por la carrera de la cookie en iOS
  * (components/auth/oauth-url-listener.tsx). Mientras la marca este puesta, el
- * proveedor solo vacia su memoria.
+ * proveedor no navega.
  *
  * Vive en sessionStorage (muere con la pestaña, no puede quedar pegada entre
  * arranques) con un respaldo en memoria para WebViews sin almacenamiento, y
- * caduca sola a los 10 s: si algo se queda a medias, el comportamiento de
- * siempre vuelve solo.
+ * caduca sola: si algo se queda a medias, el comportamiento de siempre vuelve
+ * solo. La vigencia cubre con holgura el tope de 20 s de cada llamada de auth
+ * (lib/auth/con-tope.ts): una marca mas corta que una peticion colgada dejaba
+ * que el SIGNED_OUT tardio de un /logout lento navegara a mitad del cambio.
  */
 
 const CLAVE = "vicino_cambio_cuenta";
-export const VIGENCIA_CAMBIO_MS = 10_000;
+export const VIGENCIA_CAMBIO_MS = 60_000;
 
 interface Marca {
   userId: string;

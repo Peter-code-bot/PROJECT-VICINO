@@ -93,11 +93,13 @@
       `console.log` del módulo imprime tokens. Sentry no adjunta
       `localStorage` por sí solo, así que no hay lista que ampliar.
 - [x] T-22 — Delta `specs/auth-session/spec.md` revisado contra lo implementado.
-- [x] T-23 — CODEX Adversarial Review Loop: 5 auditores por dimensión (auth,
-      seguridad, React/Next, fallos y concurrencia, pruebas/spec) y 2
-      refutadores por hallazgo. Resultado en el reporte final del commit.
+- [x] T-23 — CODEX Adversarial Review Loop, iteración 1: 5 auditores por
+      dimensión (auth, seguridad, React/Next, fallos y concurrencia,
+      pruebas/spec), 39 hallazgos, 16 correcciones (lista en `design.md`,
+      "Lo que cambió tras el CODEX"). Iteración 2 sobre el código corregido:
+      ver el reporte final.
 - [x] T-24 — `pnpm build` verde (14-oct), `tsc --noEmit` en 0, lint sin
-      errores nuevos, 32 pruebas unitarias en verde. El recorrido manual a
+      errores nuevos, 46 pruebas unitarias en verde. El recorrido manual a
       375×812 claro/oscuro queda para Pedro (T-44): el contenedor no tiene
       cuenta de pruebas ni `.env.local`.
 
@@ -118,6 +120,14 @@
       migración, grants por columna y RLS.
 - [ ] T-34 — CSP a modo de bloqueo (`next.config.ts`). Change propio; aquí
       solo se anota que es la mitigación real del riesgo de la bóveda.
+- [ ] T-35 — **Reautenticación para acciones destructivas.** Con el cambio de
+      cuenta, una dormida queda a un toque y con todos sus privilegios: quien
+      tenga el teléfono desbloqueado puede borrar la cuenta de otra persona o
+      cerrar su sesión en todos los dispositivos. Instagram pide la contraseña
+      para borrar la cuenta. Pedir la contraseña actual (o un OTP vía
+      `supabase.auth.reauthenticate()`) en `/api/account/delete` y en los
+      cambios de contraseña y correo. Hallazgo de seguridad del CODEX,
+      aceptado como riesgo de la fase 1 por Pedro.
 
 ## FASE 3 — E2E y verificación en dispositivo (Pedro)
 

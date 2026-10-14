@@ -4,26 +4,31 @@
  * El orden importa; cada paso esta donde esta por un fallo concreto que evita
  * (ver openspec/changes/2026-10-13-cambio-de-cuenta/design.md):
  *
- *   1. getSession() de la cuenta activa (A): refresca si caduco, asi que lo que
- *      se guarda es el token MAS NUEVO. Guardar uno viejo y usarlo despues es
- *      "Already Used" = sesion de A revocada entera.
+ *   1. refreshSession() de la cuenta activa (A) en el cliente principal. No
+ *      getSession(): esa solo refresca si quedan menos de 90 s, y un refresh
+ *      token guardado con minutos de vida lo puede rotar despues el ticker del
+ *      cliente o el proxy sin que la boveda se entere; al volver a A seria
+ *      "Already Used" y la sesion de A quedaria revocada entera. Con un
+ *      refresh forzado, el token guardado nace con una hora por delante.
  *   2. A a la boveda. Si el almacenamiento no escribe se aborta aqui: sin A
  *      guardada, cambiar a B seria cerrar sesion de A con otro nombre.
- *   3. Probar B en el cliente AISLADO (lib/cuentas/sesion-aislada.ts). Si el
- *      token de B no vale, B sale de la boveda y la persona sigue en A, con la
- *      cookie intacta. Si es red, B se queda y la persona sigue en A.
- *   4. B a la boveda con los tokens que devolvio la prueba: si hubo refresh,
- *      los viejos ya se gastaron y perderlos seria perder B.
- *   5. fcm_token de A a NULL (mejor esfuerzo). El token de push es del
+ *   3. Probar B en el cliente AISLADO (lib/cuentas/sesion-aislada.ts) y
+ *      guardar en el acto los tokens que devuelve: si hubo refresh, son los
+ *      unicos validos de B. Fallo de credencial: B sale de la boveda y la
+ *      persona sigue en A, con la cookie intacta. Fallo de red: B se queda.
+ *   4. fcm_token de A a NULL (mejor esfuerzo). El token de push es del
  *      telefono, no de la persona (mismo motivo que hooks/use-logout.ts). Va
- *      ANTES de setSession porque despues ya no hay permiso de escribir en A,
- *      y DESPUES de probar B para no dejar a A sin push por un cambio que no
- *      iba a ocurrir.
- *   6. Marca de cambio en curso, para que session-data-provider no haga su
+ *      DESPUES de probar B (para no dejar a A sin push por un cambio que no
+ *      iba a ocurrir) y ANTES de setSession (despues ya no hay permiso de
+ *      escribir en A).
+ *   5. Marca de cambio en curso, para que session-data-provider no haga su
  *      navegacion dura al ver otra cuenta.
- *   7. setSession(B vigente) en el cliente principal: escribe la cookie. Con el
- *      access token vigente auth-js solo llama a /user y guarda; si falla, no
- *      toca la cookie de A.
+ *   6. setSession(B vigente) en el cliente principal: escribe la cookie. Con el
+ *      access token vigente auth-js llama a /user y guarda. Si /user contesta
+ *      que esa sesion ya no existe (B revocada entre el paso 3 y este), auth-js
+ *      BORRA el storage, o sea la cookie de A: por eso, tras un fallo, se
+ *      comprueba que la cookie siga siendo de A y si no se restaura con los
+ *      tokens frescos del paso 1.
  *
  * La navegacion (router.refresh + router.replace("/perfil")) la hace quien
  * llama: necesita el router y es la unica parte que no se puede probar aqui.
@@ -33,12 +38,12 @@ import type { Cuenta, DatosCuenta, ResultadoGuardar } from "./boveda";
 import { clasificarErrorAuth } from "./clasificar-error-auth";
 import type { ResultadoProbar, Tokens } from "./sesion-aislada";
 
+type RespuestaSesion = Promise<{ data: { session: Session | null }; error: AuthError | null }>;
+
 export interface PuertoAuthPrincipal {
-  getSession(): Promise<{ data: { session: Session | null }; error: AuthError | null }>;
-  setSession(tokens: { access_token: string; refresh_token: string }): Promise<{
-    data: { session: Session | null };
-    error: AuthError | null;
-  }>;
+  getSession(): RespuestaSesion;
+  refreshSession(): RespuestaSesion;
+  setSession(tokens: { access_token: string; refresh_token: string }): RespuestaSesion;
 }
 
 export interface PuertoBoveda {
@@ -65,6 +70,8 @@ export type ResultadoCambio =
   | { ok: true; userId: string; nombre: string }
   | { ok: false; motivo: MotivoFallo; mensaje: string };
 
+type Fallo = Extract<ResultadoCambio, { ok: false }>;
+
 let enCurso = false;
 
 export function nombreVisible(cuenta: { nombre: string; username: string | null; email: string }): string {
@@ -90,46 +97,39 @@ export function datosDeSesion(sesion: Session, previa: DatosCuenta | null): Dato
   };
 }
 
-function fallo(motivo: MotivoFallo, mensaje: string): ResultadoCambio {
+function fallo(motivo: MotivoFallo, mensaje: string): Fallo {
   return { ok: false, motivo, mensaje };
 }
 
-function sinConexion(actualNombre?: string): ResultadoCambio {
+function sinConexion(actualNombre?: string): Fallo {
   return fallo("red", actualNombre ? `Sin conexión. Sigues en ${actualNombre}.` : "Sin conexión. Inténtalo de nuevo.");
 }
 
-function vencida(destino: Cuenta, puerto: PuertoCambio): ResultadoCambio {
+function vencida(destino: Cuenta, puerto: PuertoCambio): Fallo {
   puerto.boveda.quitar(destino.userId);
   return fallo("vencida", `La sesión de ${nombreVisible(destino)} venció. Vuelve a entrar.`);
 }
 
-type Fallo = Extract<ResultadoCambio, { ok: false }>;
-
-/** Paso 3. */
-async function probarDestino(destino: Cuenta, puerto: PuertoCambio, actualNombre?: string): Promise<{ sesion: Session } | Fallo> {
+/** Paso 3: probar B en el aislado y guardar sus tokens vigentes en el acto. */
+async function probarYGuardar(destino: Cuenta, puerto: PuertoCambio, actualNombre?: string): Promise<{ sesion: Session } | Fallo> {
   const prueba: ResultadoProbar = await puerto.probar({ accessToken: destino.accessToken, refreshToken: destino.refreshToken });
-  if (prueba.ok) return { sesion: prueba.sesion };
-  if (prueba.clase === "credencial") return vencida(destino, puerto) as Fallo;
-  puerto.reportar("probar", prueba.error, "warning");
-  return sinConexion(actualNombre) as Fallo;
+  if (!prueba.ok) {
+    if (prueba.clase === "credencial") return vencida(destino, puerto);
+    puerto.reportar("probar", prueba.error, "warning");
+    return sinConexion(actualNombre);
+  }
+  const guardado = puerto.boveda.guardar({
+    ...destino,
+    email: destino.email || prueba.sesion.user.email || "",
+    accessToken: prueba.sesion.access_token,
+    refreshToken: prueba.sesion.refresh_token,
+  });
+  if (guardado !== "guardada") puerto.reportar("guardar_destino", new Error(guardado), "warning");
+  return { sesion: prueba.sesion };
 }
 
-/** Pasos 4, 6 y 7, con una sesion de B ya probada y vigente. */
-async function aplicarSesionProbada(
-  destino: Cuenta,
-  sesion: Session,
-  puerto: PuertoCambio,
-  actualNombre?: string,
-): Promise<ResultadoCambio> {
-  // Paso 4 antes de nada: si el refresh roto, estos son los unicos tokens validos de B.
-  const guardadoB = puerto.boveda.guardar({
-    ...destino,
-    email: destino.email || sesion.user.email || "",
-    accessToken: sesion.access_token,
-    refreshToken: sesion.refresh_token,
-  });
-  if (guardadoB !== "guardada") puerto.reportar("guardar_destino", new Error(guardadoB), "warning");
-
+/** Pasos 5 y 6, con una sesion de B ya probada, vigente y guardada. */
+async function aplicarSesionProbada(destino: Cuenta, sesion: Session, puerto: PuertoCambio, actualNombre?: string): Promise<ResultadoCambio> {
   puerto.marcar(destino.userId);
   let error: AuthError | null = null;
   try {
@@ -152,12 +152,32 @@ async function aplicarSesionProbada(
 }
 
 /**
- * Pasos 3 a 7 sin cuenta activa que guardar: lo usa use-logout.ts tras cerrar
- * la sesion activa, y RegistroCuentaActiva para reintentar un cambio que
- * aterrizo en la cuenta equivocada.
+ * Tras un fallo del paso 6: si auth-js borro la cookie de A (el /user de B
+ * contesto session_not_found), se vuelve a poner con los tokens frescos del
+ * paso 1. Mejor esfuerzo: si tampoco se puede, se reporta y la persona vera
+ * la pantalla de entrada, que es la verdad.
+ */
+async function restaurarSiHaceFalta(actual: Session, puerto: PuertoCambio): Promise<void> {
+  try {
+    const { data } = await puerto.principal.getSession();
+    if (data.session?.user.id === actual.user.id) return;
+    const { error } = await puerto.principal.setSession({
+      access_token: actual.access_token,
+      refresh_token: actual.refresh_token,
+    });
+    if (error) puerto.reportar("restaurar_actual", error);
+  } catch (excepcion) {
+    puerto.reportar("restaurar_actual", excepcion);
+  }
+}
+
+/**
+ * Pasos 3, 5 y 6 sin cuenta activa que guardar: lo usa use-logout.ts tras
+ * cerrar la sesion activa, y RegistroCuentaActiva para reintentar un cambio
+ * que aterrizo en la cuenta equivocada.
  */
 export async function aplicarCuenta(destino: Cuenta, puerto: PuertoCambio): Promise<ResultadoCambio> {
-  const prueba = await probarDestino(destino, puerto);
+  const prueba = await probarYGuardar(destino, puerto);
   if (!("sesion" in prueba)) return prueba;
   return aplicarSesionProbada(destino, prueba.sesion, puerto);
 }
@@ -168,11 +188,25 @@ export async function cambiarACuenta(destino: Cuenta, puerto: PuertoCambio): Pro
   enCurso = true;
   try {
     // Paso 1.
-    const { data, error } = await puerto.principal.getSession();
+    let data: { session: Session | null };
+    let error: AuthError | null;
+    try {
+      ({ data, error } = await puerto.principal.refreshSession());
+    } catch (excepcion) {
+      // Tope de tiempo o fetch roto: la cookie de A no cambio, nada que deshacer.
+      puerto.reportar("refresh_actual", excepcion, "warning");
+      return sinConexion();
+    }
     const actual = data.session;
     if (error || !actual) {
-      if (error) puerto.reportar("get_session", error, "warning");
-      return fallo("sin_sesion", "No encontramos tu sesión actual. Vuelve a entrar.");
+      if (error && clasificarErrorAuth(error) === "red") {
+        puerto.reportar("refresh_actual", error, "warning");
+        return sinConexion();
+      }
+      // La sesion de A ya no vale (revocada desde otro sitio): no hay nada que
+      // conservar. Se pasa a B como tras un cierre de sesion.
+      if (error) puerto.reportar("refresh_actual", error, "warning");
+      return await aplicarCuenta(destino, puerto);
     }
     if (actual.user.id === destino.userId) return { ok: true, userId: destino.userId, nombre: nombreVisible(destino) };
 
@@ -186,18 +220,20 @@ export async function cambiarACuenta(destino: Cuenta, puerto: PuertoCambio): Pro
     const nombreA = nombreVisible(datosA);
 
     // Paso 3.
-    const prueba = await probarDestino(destino, puerto, nombreA);
+    const prueba = await probarYGuardar(destino, puerto, nombreA);
     if (!("sesion" in prueba)) return prueba;
 
-    // Paso 5: con B ya validada y A todavia con permiso de escribir en su perfil.
+    // Paso 4: con B ya validada y guardada, y A todavia con permiso de escribir en su perfil.
     try {
       await puerto.soltarTokenPush(actual.user.id);
     } catch (excepcion) {
       puerto.reportar("soltar_token_push", excepcion, "warning");
     }
 
-    // Pasos 4, 6 y 7.
-    return await aplicarSesionProbada(destino, prueba.sesion, puerto, nombreA);
+    // Pasos 5 y 6.
+    const resultado = await aplicarSesionProbada(destino, prueba.sesion, puerto, nombreA);
+    if (!resultado.ok) await restaurarSiHaceFalta(actual, puerto);
+    return resultado;
   } finally {
     enCurso = false;
   }

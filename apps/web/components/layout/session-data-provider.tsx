@@ -52,6 +52,7 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
   useEffect(() => {
     const generation = ++lifecycle.current;
     const supabase = createClient();
+    let cierreDiferido: ReturnType<typeof setTimeout> | undefined;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const sessionUser = session?.user.id ?? "";
       if (sessionUser === userId) return;
@@ -61,15 +62,34 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
       // el bucle no acabaria nunca. Solo un cambio REAL de sesion (entrar,
       // salir, otra cuenta en otra pestaña) justifica tirar la pagina.
       if (event === "INITIAL_SESSION") return;
-      cache.clear();
       // Cambio de cuenta intencional (lib/cuentas/cambio.ts): la navegacion es
       // BLANDA y la pone quien cambia, por la carrera de la cookie en iOS
-      // (components/auth/oauth-url-listener.tsx). Aqui solo se vacia la memoria.
-      // La marca caduca sola a los 10 s, y entonces vuelve lo de siempre.
+      // (components/auth/oauth-url-listener.tsx). Aqui no se toca nada: si el
+      // cambio cuaja, el layout remonta este proveedor con memoria nueva; si
+      // no cuaja, la memoria de la cuenta que sigue tiene que seguir viva (la
+      // guarda `result.userId !== this.userId` de load() ya impide datos
+      // ajenos). La marca caduca sola, y entonces vuelve lo de siempre.
       if (hayCambioEnCurso()) return;
+      cache.clear();
       // A hard navigation also discards private RSC entries held by Next.
-      if (!sessionUser) window.location.replace("/login");
-      else if (!userId) window.location.reload();
+      if (!sessionUser) {
+        // Un SIGNED_OUT puede ser el primer acto de un cambio de cuenta en OTRA
+        // pestaña (auth-js lo reenvia por BroadcastChannel, y la marca es por
+        // pestaña): un instante despues la cookie es de otra cuenta. Se relee
+        // la cookie tras un compas y se va a donde diga, fuera del callback
+        // porque dentro el cliente tiene tomado su cerrojo.
+        cierreDiferido = setTimeout(() => {
+          cierreDiferido = undefined;
+          void supabase.auth.getSession().then(({ data }) => {
+            const ahora = data.session?.user.id;
+            if (!ahora) window.location.replace("/login");
+            else if (ahora === userId) window.location.reload();
+            else window.location.replace("/");
+          }).catch(() => window.location.replace("/login"));
+        }, 1500);
+        return;
+      }
+      if (!userId) window.location.reload();
       else window.location.replace("/");
     });
     const resume = () => { if (document.visibilityState === "visible" && navigator.onLine) cache.refreshActive(); };
@@ -90,6 +110,9 @@ export function SessionDataProvider({ userId, revision, children }: { userId: st
     document.addEventListener("visibilitychange", resume);
     return () => {
       queueMicrotask(() => { if (lifecycle.current === generation) cache.clear(); });
+      // Si este proveedor se va (cierre de sesion ya navegado, o remontaje
+      // por cambio de cuenta), la navegacion diferida ya no es suya.
+      if (cierreDiferido) clearTimeout(cierreDiferido);
       subscription.unsubscribe();
       window.removeEventListener("vicino:data-invalidated", invalidate);
       window.removeEventListener("vicino_location_updated", zone);
