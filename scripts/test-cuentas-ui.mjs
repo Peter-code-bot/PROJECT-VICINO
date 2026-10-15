@@ -229,6 +229,7 @@ try {
         await expect(sheet).toBeVisible();
         await sheet.getByRole('button', { name: 'Cambiar a Persona 2', exact: true }).click();
         await expect(page.getByRole('heading', { name: 'Persona 2', exact: true })).toBeVisible();
+        await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
         assert.equal(await page.locator('[data-cromo-menu]').count(), 0);
         await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
       });
@@ -282,10 +283,12 @@ try {
       await run('switch-and-return', engine, async page => {
         let sheet = await openWeb(page); await sheet.getByRole('button', { name: 'Cambiar a Persona 2', exact: true }).click();
         await expect(page.getByRole('heading', { name: 'Persona 2', exact: true })).toBeVisible();
+        await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
         await expect(page).toHaveURL(/\/perfil$/); sheet = await openWeb(page);
         await expect(sheet.getByRole('button', { name: /^Cuenta activa: Persona 2/ })).toHaveAttribute('aria-current', 'true');
         await sheet.getByRole('button', { name: 'Cambiar a Persona 1', exact: true }).click();
         await expect(page.getByRole('heading', { name: 'Persona 1', exact: true })).toBeVisible();
+        await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
         assert.equal(await page.evaluate(() => window.__events.some(e => e.href?.includes('/login'))), false);
       });
       await run('selector-safe-actions', engine, async (page, api) => {
@@ -339,6 +342,16 @@ try {
         assert.equal(await page.evaluate(() => window.__read().length), 2);
         assert.equal(api.some(r => r.path.endsWith('/logout') && r.user === sessions[0].user.id), false);
         await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
+      });
+      await run('logout-active-switch-silent', engine, async (page, api) => {
+        await openSettings(page);
+        await page.getByRole('button', {name:'Cerrar sesión',exact:true}).click();
+        await page.getByRole('button', {name:'Sí, pasar a Persona 2',exact:true}).click();
+        await expect(page.getByRole('heading', {name:'Persona 2',exact:true})).toBeVisible();
+        await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
+        await expect(page).toHaveURL(/\/perfil$/);
+        assert.equal(await page.evaluate(()=>window.__read().some(c=>c.userId===window.__sessions[0].user.id)),false);
+        assert.deepEqual(api.filter(r=>r.path.endsWith('/logout')).map(r=>[r.user,r.scope]),[[sessions[0].user.id,'global']]);
       });
       await run('logout-every-account', engine, async (page, api) => {
         await openSettings(page);

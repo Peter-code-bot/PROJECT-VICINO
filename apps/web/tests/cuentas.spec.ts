@@ -109,9 +109,9 @@ test.describe("con dos cuentas", () => {
       if (frame === page.mainFrame() && frame.url().includes("/login")) visitasALogin.push(frame.url());
     });
     await hoja.getByRole("button", { name: `Cambiar a ${nombreA}`, exact: true }).click();
-    await expect(page.getByText(`Ahora estás en ${nombreA}`)).toBeVisible({ timeout: 30_000 });
     await expect(page).toHaveURL(/\/perfil/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText(nombreA, { timeout: 30_000 });
+    await expect(page.getByText(`Ahora estás en ${nombreA}`, { exact: true })).toHaveCount(0);
     expect(visitasALogin).toEqual([]);
 
     // La hoja de uso frecuente no ofrece acciones de salida.

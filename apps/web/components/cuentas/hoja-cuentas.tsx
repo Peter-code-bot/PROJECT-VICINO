@@ -38,7 +38,7 @@ type Ocupado =
  * Mientras una accion esta en vuelo las filas se deshabilitan, pero la hoja
  * SE PUEDE CERRAR (Escape, Atras, el fondo): una peticion colgada no puede
  * dejar a nadie atrapado en un modal. Si se cierra con la accion en vuelo, el
- * resultado llega por toast.
+ * error llega por toast; el cambio exitoso se refleja en el perfil.
  */
 export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasProps) {
   const router = useRouter();
@@ -104,7 +104,6 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
         }
         return;
       }
-      toast.success(`Ahora estás en ${resultado.nombre}`);
       onNavegar();
       // Navegacion BLANDA: el router lee document.cookie en JS. Una navegacion
       // completa podria salir sin la cookie nueva en iOS (ver
