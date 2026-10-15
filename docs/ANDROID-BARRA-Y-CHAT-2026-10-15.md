@@ -4,8 +4,8 @@ Para Alejandro. Tres fallos que Pedro reportó con capturas desde su Android y s
 Los tres se arreglan **solo por la web**: no hace falta un AAB nuevo ni pasar otra vez
 por la revisión de Google. Llegan a la app instalada en cuanto se despliegue `master`.
 
-Rama: `fix/barra-sistema-android-20261015`. Estado al escribir esto: **en rama, sin
-desplegar**. Falta probar en el teléfono de Pedro después del despliegue.
+Rama: `fix/barra-sistema-android-20261015`. Estado: **desplegado en producción el
+15-oct-2026** (PR #68, merge `3bfe90d`). Falta probar en el teléfono de Pedro.
 
 ## 1. Botones de Android casi invisibles
 
