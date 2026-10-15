@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES, type CategorySlug } from "../constants/categories";
+import { containsCoordinatePair } from "../utils/public-location-label";
 
 // Type predicate refine sobre cada slug del array: cumple dos objetivos a la vez.
 //   (1) Runtime: rechaza cualquier slug que no sea uno de los 35 canonicos
@@ -65,7 +66,9 @@ const baseProductSchema = z.object({
       (arr) => new Set(arr.map((c) => c.slug)).size === arr.length,
       { message: "No puedes repetir la misma categoría" },
     ),
-  ubicacion: z.string().optional(),
+  ubicacion: z.string().refine((value) => !containsCoordinatePair(value), {
+    message: "Elige una ubicación en el mapa para guardar una etiqueta pública sin coordenadas",
+  }).optional(),
   tipo_entrega: z.enum(deliveryValues).default("punto_encuentro"),
   estado: z.enum(PRODUCT_CONDITION_VALUES).optional().nullable(),
   color: z.string().trim().max(40).optional().nullable(),
