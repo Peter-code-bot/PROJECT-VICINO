@@ -704,44 +704,62 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
 
   return (
     <>
-      <div className="mb-6 flex items-center gap-3">
-        <BotonRegresar
-          onClick={handleVolver}
-          data-testid="volver-vender-btn"
-          aria-label={isEdit ? "Volver a mis publicaciones" : "Volver"}
-        />
-        <h1 className="flex-1 font-heading text-xl font-bold text-[color:var(--fg)]">
-          {isEdit ? "Editar publicación" : "Publicar producto"}
-        </h1>
-        <button
-          type="button"
-          onClick={() => {
-            const form = formRef.current;
-            if (!form) return;
-            if (!form.reportValidity()) return;
-            const err = validarAntesDeEnviar();
-            if (err) {
-              setError(err);
-              return;
-            }
-            setError("");
-            setLoading(true);
-            form.requestSubmit();
-          }}
-          disabled={loading || uploading}
-          className="min-w-[8rem] justify-center shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
-        >
-          {loading || uploading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {isEdit ? "Guardando…" : "Publicando…"}
-            </>
-          ) : isEdit ? (
-            "Guardar"
-          ) : (
-            "Publicar"
-          )}
-        </button>
+      <div
+        data-testid="publicar-header"
+        className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 -mx-4 mb-6 bg-[color:var(--bg)] px-4 py-3 md:top-0"
+      >
+        <div className="flex items-center gap-3">
+          <BotonRegresar
+            onClick={handleVolver}
+            data-testid="volver-vender-btn"
+            aria-label={isEdit ? "Volver a mis publicaciones" : "Volver"}
+          />
+          <h1 className="min-w-0 flex-1 font-heading text-xl font-bold text-[color:var(--fg)]">
+            {isEdit ? "Editar publicación" : "Publicar producto"}
+          </h1>
+          <button
+            type="button"
+            onClick={() => {
+              const form = formRef.current;
+              if (!form) return;
+              if (!form.reportValidity()) {
+                // WebKit puede dejar el campo inválido detrás de la cabecera fija.
+                requestAnimationFrame(() => {
+                  form.querySelector<HTMLElement>(":invalid")?.scrollIntoView({ block: "center", behavior: "instant" });
+                });
+                return;
+              }
+              const err = validarAntesDeEnviar();
+              if (err) {
+                setError(err);
+                return;
+              }
+              setError("");
+              setLoading(true);
+              form.requestSubmit();
+            }}
+            disabled={loading || uploading}
+            className="min-h-12 min-w-[8rem] justify-center shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
+          >
+            {loading || uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isEdit ? "Guardando…" : "Publicando…"}
+              </>
+            ) : isEdit ? (
+              "Guardar"
+            ) : (
+              "Publicar"
+            )}
+          </button>
+        </div>
+        {error && (
+          <div role="alert" className="mt-3 rounded-xl bg-[rgba(255,59,48,0.10)] p-4 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.30)]">
+            <p className="flex items-center gap-2 font-semibold">
+              <span aria-hidden="true" className="text-lg">⚠️</span> {error}
+            </p>
+          </div>
+        )}
       </div>
 
       {sellerInactive && (
@@ -769,14 +787,6 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         action={handleSubmit}
         className="rounded-3xl product-card-custom p-6 md:p-8 space-y-6 animate-scale-in"
       >
-      {error && (
-        <div className="rounded-xl bg-[rgba(255,59,48,0.10)] p-4 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.30)]">
-          <p className="flex items-center gap-2 font-semibold">
-            <span className="text-lg">⚠️</span> {error}
-          </p>
-        </div>
-      )}
-
       {/* Tipo Toggle / Locked Display */}
       {isEdit ? (
         <div className="space-y-3 pb-4 border-b border-border/40">
