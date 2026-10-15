@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useLogout } from "@/hooks/use-logout";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
 import { nombreVisible } from "@/lib/cuentas/cambio";
-import { LogOut, Users } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * "Cerrar sesion" pasa a la mas reciente (decision D3), y el dialogo tiene que
  * decirlo: prometer "tendras que volver a iniciar sesion" y dejar abierta la
  * cuenta del negocio es justo lo contrario de lo que alguien espera al prestar
- * el telefono. Por eso aqui tambien esta "Salir de todas las cuentas".
+ * el telefono. Salir de todas vive en su propia fila y confirmacion.
  */
 export function LogoutSection({ agrupado = false, userId }: { agrupado?: boolean; userId?: string }) {
   const [confirming, setConfirming] = useState(false);
@@ -44,6 +44,7 @@ export function LogoutSection({ agrupado = false, userId }: { agrupado?: boolean
           {siguiente
             ? `Saldrás de esta cuenta y pasarás a ${nombreVisible(siguiente)}, que sigue guardada en este teléfono.`
             : "Tendrás que volver a iniciar sesión la próxima vez."}
+          {" Se cerrarán también las sesiones de esta cuenta en tus otros dispositivos."}
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -56,17 +57,6 @@ export function LogoutSection({ agrupado = false, userId }: { agrupado?: boolean
             <LogOut className="h-4 w-4" />
             {loading === "una" ? "Cerrando..." : siguiente ? `Sí, pasar a ${nombreVisible(siguiente)}` : "Sí, cerrar sesión"}
           </button>
-          {siguiente && (
-            <button
-              onClick={() => void handleConfirm(true)}
-              disabled={loading !== null}
-              aria-label="Salir de todas las cuentas"
-              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.45)] transition-colors hover:bg-[rgba(255,59,48,0.08)] disabled:opacity-50"
-            >
-              <Users className="h-4 w-4" />
-              {loading === "todas" ? "Saliendo..." : "Salir de todas las cuentas"}
-            </button>
-          )}
           <button
             onClick={() => setConfirming(false)}
             disabled={loading !== null}

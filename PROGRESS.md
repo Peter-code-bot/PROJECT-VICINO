@@ -1,3 +1,9 @@
+## 15-oct-2026 — Cuentas: selector sin acciones de salida accidental
+
+- CUENTAS-UX-02 autorizado por Javier hasta master. Selector dedicado a cambiar/agregar; Quitar se traslada a Cuentas guardadas en Configuración y Salir de todas queda allí con confirmación independiente. Se conserva revocación local de dormidas y cierre global histórico de la activa, explicado antes de confirmar.
+- Límite5 y activaSinSitio dirigen a gestión, sin expulsión automática. Confirmaciones con Cancelar inicial, Escape antes de confirmar, bloqueo durante la operación y foco restaurado incluso tras fallo parcial. Puente iOS y portal compatible sin cambios.
+- Workflow Advisor: implementación/QA por coordinador y revisión independiente gpt-6.1-sol/medium. Pruebas, límites, SHA/PR/CI y estado real de publicación en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), CUENTAS-UX-02. Auth real/OAuth/push y aceptación instalada conservan seguimiento en [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c).
+
 ## 14-oct-2026 — Selector de cuentas compatible con el menú nativo de iOS
 
 - CUENTAS-IOS-01: fallo reproducido con el JS exacto de CromoNativo.swift y componentes reales. El puente instalado buscaba el primer enlace /perfil, pero la nueva fila era un botón: recibía perfil vacío y no abría Cuentas. Regresión inicial 0/4 en Chromium/WebKit; la lógica aislada existente sí pasaba 56/56.
