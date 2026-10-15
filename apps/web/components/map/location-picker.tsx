@@ -12,6 +12,7 @@ import {
 import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { useMapKit } from "@/hooks/use-mapkit";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
+import { publicLocationLabel } from "@vicino/shared";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
   ssr: false,
@@ -96,11 +97,11 @@ export default function LocationPicker({
 
       setShowMap(true);
       setLocationError(null);
-      // Provisional con las coordenadas, como hacia DeliveryMap: si la
-      // geocodificacion inversa no llega (o se publica antes de los 800 ms)
-      // lo que se guarda es un dato, no un texto de interfaz ("Zona
-      // seleccionada") que la ficha pintaria como si fuera una direccion.
-      onChange({ lat, lng, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+      // La etiqueta se publica; las coordenadas siguen su campo privado.
+      // Permitir guardar el punto aunque la dirección tarde o no esté disponible.
+      const fallback = publicLocationLabel();
+      setSearchQuery(fallback);
+      onChange({ lat, lng, address: fallback });
 
       if (inversaRef.current) clearTimeout(inversaRef.current);
       inversaAbortRef.current?.abort();
@@ -111,7 +112,11 @@ export default function LocationPicker({
         reverseGeocodeWithApple(lat, lng, control.signal)
           .then((data) => {
             if (control.signal.aborted) return;
-            if (data?.fullName) { setSearchQuery(data.fullName); onChange({ lat, lng, address: data.fullName }); }
+            if (data?.fullName) {
+              const address = publicLocationLabel(data.fullName);
+              setSearchQuery(address);
+              onChange({ lat, lng, address });
+            }
           })
           .catch(() => {});
       }, 800);
@@ -208,7 +213,9 @@ export default function LocationPicker({
     setView([resolved.lat, resolved.lng]);
     setShowMap(true);
     setLocationError(null);
-    onChange({ lat: resolved.lat, lng: resolved.lng, address: resolved.fullName });
+    const address = publicLocationLabel(resolved.fullName);
+    setSearchQuery(address);
+    onChange({ lat: resolved.lat, lng: resolved.lng, address });
     } catch {
       if (sequence === searchSeqRef.current) setLocationError("No se pudo elegir esa ubicación. Intenta de nuevo.");
     } finally {

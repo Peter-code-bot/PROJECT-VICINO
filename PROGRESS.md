@@ -1,3 +1,11 @@
+## 15-oct-2026 — MCS: primer checkpoint de chat y privacidad
+
+- F01 separa reconciliación rutinaria y recuperación visible: enviar, cambiar producto y crear una propuesta sana ya no muestran «Recuperando conversación…». Se conservan avisos/reintentos ante desconexión, fallo o intervalo incompleto. Chrome con transporte sintético: 28/28; recuperación: 4/4.
+- S03 evita publicar pares de coordenadas como etiqueta de ubicación. El selector muestra «Zona seleccionada en el mapa» mientras resuelve la dirección; creación/edición validan el texto sin alterar el punto privado ni la proyección pública del mapa. Pruebas: 3/3, selector en dos viewports y regresión geo 18/18.
+- F00 versiona la protección auth.uid del recibo de lectura que ya existe en PROD y añade guard de UPDATE de estado personal del chat; conserva efectos internos y S04. PostgreSQL/PGlite: 29/29. Ensayo en Supabase staging por navegador con un único BEGIN/ROLLBACK: PASS; catálogo posterior confirmó guard/fixture ausentes, triggers INVOKER restaurados y migraciones intactas. No se aplicó migración persistente remota.
+- Workflow Advisor: tres implementadores gpt-6.1-sol/high por áreas y un revisor independiente gpt-6.1-sol/high, sin bloqueos. Tipos web/shared, lint focalizado, diff y build web: exit0; dos avisos previos de lint conservados. Evidencia literal, rama/PR/SHA y estado real de entrega en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), MCS-20261015.
+- Continúan abiertos INSERT directo de chats, limpieza de chat-media, rotación histórica de secretos, cuentas/dispositivos/Realtime/push reales y fases F02–F07. Confirmación de venta permanece como propuestas. [Plan por fases](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) y [aceptación pendiente](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+
 ## 15-oct-2026 — Cambio de cuenta sin aviso verde inferior
 
 - CUENTAS-UX-03: retirar el toast de éxito «Ahora estás en…» al cambiar desde Cuentas y al pasar a la siguiente guardada tras cerrar la activa. Perfil, navegación y errores conservados; no se desactiva Sonner globalmente ni el aviso de quitar una cuenta.

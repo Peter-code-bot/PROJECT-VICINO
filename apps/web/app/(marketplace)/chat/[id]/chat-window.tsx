@@ -214,6 +214,7 @@ export function ChatWindow({
   const recoveredCursorRef = useRef<Cursor | null>(ultimoConfirmado(initialMessages));
   const incompleteRef = useRef<Intervalo | null>(null);
   const inFlightSendsRef = useRef(new Set<string>());
+  const syncChatRef = useRef<() => void>(() => {});
   const retryRecoveryRef = useRef<() => void>(() => {});
   const preserveRecoveryScrollRef = useRef(false);
   const recoveryAnchorRef = useRef<{ id: string; top: number } | null>(null);
@@ -268,7 +269,7 @@ export function ChatWindow({
         releaseTempId(text, tempId);
         fotosPorTempRef.current.delete(tempId);
         inFlightSendsRef.current.delete(tempId);
-        retryRecoveryRef.current();
+        syncChatRef.current();
         if (!realId) return;
         setMessages((prev) =>
           prev.some((m) => m.id === realId)
@@ -322,7 +323,19 @@ export function ChatWindow({
   useEffect(() => {
     let disposed = false;
     const controller = canalesGestionados(supabase);
-    const pending = () => { if (!disposed) { setRecovery("pending"); salesFailed(); } };
+    // Una escritura sana tambien necesita reconciliar, pero no abre un incidente
+    // de conexion. La revision evita que una lectura anterior cierre una
+    // recuperacion solicitada mientras esa lectura estaba en vuelo.
+    let needsRecovery = true;
+    let recoveryRevision = 0;
+    const pending = () => {
+      if (!disposed) {
+        needsRecovery = true;
+        recoveryRevision++;
+        setRecovery("pending");
+        salesFailed();
+      }
+    };
     let cancelRefresh = () => {};
     let recover = () => {};
     const connection = recuperacionConexion({
@@ -342,7 +355,8 @@ export function ChatWindow({
       const refresh = refrescoCoalescido(async () => {
         if (!vigente() || !subscribed) return;
         const subscription = subscriptionGeneration;
-        setRecovery("recovering");
+        const revision = recoveryRevision;
+        if (needsRecovery) setRecovery("recovering");
         changedMessages.clear();
         changedSales.clear();
         const result = await reconciliarChat(supabase, {
@@ -354,7 +368,7 @@ export function ChatWindow({
         if (result.denied) {
           setMessages([]);
           setSaleConfirmations([]);
-          setRecovery("pending");
+          pending();
           router.refresh();
           return;
         }
@@ -385,10 +399,22 @@ export function ChatWindow({
         }
         applyProduct(result.activeProduct);
         connection.confirmada();
-        setRecovery(sending ? "pending" : result.intervalo ? "more" : "synced");
+        if (revision !== recoveryRevision) return;
+        if (result.intervalo) needsRecovery = true;
+        if (needsRecovery) setRecovery(sending ? "pending" : result.intervalo ? "more" : "synced");
+        // Un envio sin UUID final retiene el cursor, sin convertir una
+        // sincronizacion rutinaria en un aviso de conexion pendiente.
+        if (!sending && !result.intervalo) needsRecovery = false;
       }, () => { if (vigente()) connection.falloConsulta(); });
       cancelRefresh = () => refresh.cancelar();
-      recover = () => { if (vigente()) refresh.solicitar(); };
+      syncChatRef.current = () => { if (vigente()) refresh.solicitar(); };
+      recover = () => {
+        if (!vigente()) return;
+        needsRecovery = true;
+        recoveryRevision++;
+        setRecovery("recovering");
+        refresh.solicitar();
+      };
       return supabase.channel(`chat:${chatId}`)
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats", filter: `id=eq.${chatId}` }, () => {
           if (vigente()) refresh.solicitar();
@@ -444,6 +470,7 @@ export function ChatWindow({
       window.removeEventListener("focus", resume);
       window.removeEventListener("offline", offline);
       document.removeEventListener("visibilitychange", resume);
+      syncChatRef.current = () => {};
       retryRecoveryRef.current = () => {};
       cancelRefresh();
       unregister();
@@ -690,7 +717,7 @@ export function ChatWindow({
       </div>
       {showProductSelector && <ChatProductSelector key={activeProduct.revision} chatId={chatId} currentUserId={currentUserId} active={activeProduct}
         onRefresh={() => retryRecoveryRef.current()}
-        onSelected={(next) => { applyProduct(next); setSaleDraft(null); setShowProductSelector(false); retryRecoveryRef.current(); }} />}
+        onSelected={(next) => { applyProduct(next); setSaleDraft(null); setShowProductSelector(false); syncChatRef.current(); }} />}
       {saleDraft && !showSaleForm && <p role="status" className="mx-4 text-xs text-muted-foreground">
         El producto cambió o dejó de estar disponible. Revisa la selección y abre una nueva confirmación.
       </p>}
@@ -702,7 +729,7 @@ export function ChatWindow({
           product={product}
           productRevision={activeProduct.revision}
           onClose={() => setSaleDraft(null)}
-          onCreated={() => retryRecoveryRef.current()}
+          onCreated={() => syncChatRef.current()}
         />
       )}
 

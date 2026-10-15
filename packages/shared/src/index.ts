@@ -25,6 +25,7 @@ export * from "./utils/format";
 export * from "./utils/slugify";
 export * from "./utils/category";
 export * from "./utils/profile-name";
+export * from "./utils/public-location-label";
 
 // Types
 export * from "./types/media";
