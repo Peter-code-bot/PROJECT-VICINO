@@ -209,7 +209,15 @@ export function CapacitorInit() {
       // --- Status bar: fallo aislado; el teclado aun debe inicializarse. ---
       try {
         const { StatusBar, Style } = await import("@capacitor/status-bar");
+        const { SystemBars, SystemBarsStyle, SystemBarType } = await import("@capacitor/core");
         if (state.cancelled) return;
+        // La barra de ABAJO de Android (botones o rayita de gestos) no es de
+        // @capacitor/status-bar: la gobierna SystemBars, del nucleo de
+        // Capacitor 8, que sin instrucciones sigue el modo del TELEFONO. Con el
+        // telefono en oscuro y la app en claro salian botones blancos sobre el
+        // crema (captura de Pedro, 15-oct-2026). Solo Android: en iOS su
+        // setStyle ignora `bar` y pisaria la barra de estado.
+        const esAndroid = Capacitor.getPlatform() === "android";
         let requested = false;
         let applying = false;
         const updateStatusBarTheme = () => {
@@ -227,6 +235,12 @@ export function CapacitorInit() {
               const results = await Promise.allSettled([
                 StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }),
                 StatusBar.setBackgroundColor({ color }),
+                ...(esAndroid
+                  ? [SystemBars.setStyle({
+                      bar: SystemBarType.NavigationBar,
+                      style: isDark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
+                    })]
+                  : []),
               ]);
               if (results.some((result) => result.status === "rejected")) {
                 console.warn("[status-bar] no se pudo aplicar el tema");
