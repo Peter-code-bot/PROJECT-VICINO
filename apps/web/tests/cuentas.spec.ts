@@ -76,7 +76,7 @@ test("la fila de perfil abre la hoja; el botón Atrás (Escape) cierra la hoja y
 test.describe("con dos cuentas", () => {
   test.skip(!EMAIL_2 || !PASSWORD_2, "Hace falta VICINO_TEST_EMAIL_2 y VICINO_TEST_PASSWORD_2 en apps/web/.env.local");
 
-  test("agregar, cambiar y quitar una cuenta desde el cajón", async ({ page, isMobile }) => {
+  test("agregar y cambiar desde el cajón; quitar desde Configuración", async ({ page, isMobile }) => {
     test.skip(!isMobile, "El cajon de hamburguesa es solo movil (md:hidden)");
     test.setTimeout(120_000);
 
@@ -114,11 +114,23 @@ test.describe("con dos cuentas", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText(nombreA, { timeout: 30_000 });
     expect(visitasALogin).toEqual([]);
 
-    // Quitar B revoca su sesion y la saca de la lista.
+    // La hoja de uso frecuente no ofrece acciones de salida.
     hoja = await abrirHojaCuentas(page);
-    await hoja.getByRole("button", { name: `Quitar ${nombreB}`, exact: true }).click();
-    await hoja.getByRole("button", { name: `Confirmar quitar ${nombreB}`, exact: true }).click();
-    await expect(hoja.getByRole("button", { name: `Cambiar a ${nombreB}`, exact: true })).toHaveCount(0, { timeout: 30_000 });
+    await expect(hoja.getByRole("button", { name: /Quitar|Salir de todas/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.goto("/configuracion#cuentas-guardadas");
+    const gestion = page.getByRole("region", { name: "Cuentas guardadas en este teléfono" });
+    const quitar = gestion.getByRole("button", { name: `Quitar ${nombreB} de este teléfono`, exact: true });
+    await quitar.click();
+    const confirmacion = page.getByRole("dialog", { name: `¿Quitar ${nombreB}?`, exact: true });
+    await confirmacion.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(quitar).toBeVisible();
+    await quitar.click();
+    await confirmacion.getByRole("button", { name: `Confirmar quitar ${nombreB}`, exact: true }).click();
+    await expect(quitar).toHaveCount(0, { timeout: 30_000 });
+    await expect(gestion.getByText("Cuenta activa", { exact: true })).toBeVisible();
+    hoja = await abrirHojaCuentas(page);
+    await expect(hoja.getByRole("button", { name: `Cambiar a ${nombreB}`, exact: true })).toHaveCount(0);
     await expect(hoja.getByRole("button", { name: `Cuenta activa: ${nombreA}. Ver perfil`, exact: true })).toHaveAttribute("aria-current", "true");
   });
 });

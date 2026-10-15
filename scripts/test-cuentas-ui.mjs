@@ -58,6 +58,8 @@ import {AccountMenuDrawer} from './components/profile/account-menu-drawer';
 import {AvisoAgregandoCuenta} from './components/cuentas/aviso-agregando-cuenta';
 import {RegistroCuentaActiva} from './components/cuentas/registro-cuenta-activa';
 import {SalirDeTodasSection} from './components/cuentas/salir-de-todas-section';
+import {CuentasGuardadasSection} from './components/cuentas/cuentas-guardadas-section';
+import {LogoutSection} from './app/(marketplace)/configuracion/logout-section';
 import {useLogout} from './hooks/use-logout';
 import {createClient} from './lib/supabase/client';
 import {guardarCuenta,leerCuentas} from './lib/cuentas/boveda';
@@ -66,7 +68,8 @@ window.__sessions=${JSON.stringify(sessions)};
 const client=createClient();window.__client=client;window.__read=leerCuentas;
 const count=Number(new URLSearchParams(location.search).get('count')||2);
 function data(s){return {userId:s.user.id,email:s.user.email,nombre:s.user.user_metadata.full_name,username:'qa'+(window.__sessions.indexOf(s)+1),foto:null,accessToken:s.access_token,refreshToken:s.refresh_token};}
-for(const s of window.__sessions.slice(0,count))guardarCuenta(data(s));
+const omitActive=new URLSearchParams(location.search).has('omitActive');
+for(const s of window.__sessions.slice(omitActive?1:0,omitActive?count+1:count))guardarCuenta(data(s));
 const app=createRoot(document.getElementById('root'));
 function Logout(){const logout=useLogout();return <button onClick={()=>void logout()}>Cerrar sesión de prueba</button>;}
 window.__render=async()=>{
@@ -76,7 +79,7 @@ window.__render=async()=>{
  app.render(<ThemeProvider attribute="class" defaultTheme="light"><Toaster/>
  {location.pathname==='/login'?<main><h1>Acceso de prueba</h1>{location.search.includes('agregar=1')&&<AvisoAgregandoCuenta/>}</main>:
  <><header>{account&&<AccountMenuDrawer userId={account.userId} userName={account.nombre} username={account.username} userIsVendedor trigger={<button aria-label="Menú de cuenta">Menú de cuenta</button>}/>}</header>
- <main style={{minHeight:'150vh'}}><h1>{account?.nombre||'Sin sesión'}</h1>{account&&<><Logout/><SalirDeTodasSection/><RegistroCuentaActiva key={account.userId} cuenta={account} renderId={account.userId}/></>}</main></>}
+ <main style={{minHeight:'150vh'}} className="mx-auto max-w-lg space-y-6 px-4 py-8"><h1>{location.pathname==='/configuracion'?'Configuración':account?.nombre||'Sin sesión'}</h1>{account&&<>{location.pathname==='/configuracion'&&<><CuentasGuardadasSection userId={account.userId}/><h2 id="sesion-configuracion-titulo" tabIndex={-1}>Sesión</h2><LogoutSection userId={account.userId}/><SalirDeTodasSection/></>}<RegistroCuentaActiva key={account.userId} cuenta={account} renderId={account.userId}/></>}</main></>}
  </ThemeProvider>);
 };
 await client.auth.setSession({access_token:window.__sessions[0].access_token,refresh_token:window.__sessions[0].refresh_token});
@@ -126,6 +129,8 @@ async function run(name, engine, fn, options = {}) {
       api.push({ method: request.method(), path: url.pathname, user: session?.user.id, scope: url.searchParams.get('scope') });
       if (mode === 'offline' && session?.user.id === sessions[1].user.id) return route.abort();
       if (url.pathname.endsWith('/logout')) {
+        if ((mode === 'logout-failure' && session?.user.id === sessions[1].user.id) || (mode === 'active-logout-failure' && session?.user.id === sessions[0].user.id)) return route.fulfill({ status: 503, json: { message: 'Controlled network failure' } });
+        if (mode === 'pending-logout') await page.waitForFunction(() => window.__releaseLogout, { }, { timeout: 10000 });
         if (session) revoked.add(session.user.id);
         return route.fulfill({ status: 204, body: '' });
       }
@@ -147,7 +152,7 @@ async function run(name, engine, fn, options = {}) {
   });
   let result = { name, engine, viewport: options.viewport || { width: 375, height: 812 } };
   try {
-    await page.goto(base + '/?count=' + (options.count || 2));
+    await page.goto(base + '/?count=' + (options.count || 2) + (options.omitActive ? '&omitActive=1' : ''));
     await page.waitForFunction(() => window.__ready);
     await expect(page.getByRole('heading', { name: 'Persona 1', exact: true })).toBeVisible();
     await page.evaluate(theme => document.documentElement.classList.toggle('dark', theme === 'dark'), options.theme);
@@ -165,6 +170,12 @@ async function nativeMenu(page) {
   await page.evaluate(() => window.__vicinoCromo.cabecera(0));
   await page.waitForFunction(() => window.__nativeMessages.some(m => m.menu));
   return page.evaluate(() => window.__nativeMessages.find(m => m.menu).menu);
+}
+async function openSettings(page) {
+  await page.getByRole('button', { name: 'Menú de cuenta', exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Configuración', exact: true })).toBeVisible();
+  return page.getByRole('region', { name: 'Cuentas guardadas en este teléfono', exact: true });
 }
 async function openWeb(page) {
   await page.getByRole('button', { name: 'Menú de cuenta', exact: true }).click();
@@ -244,6 +255,19 @@ try {
           await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
         }, { theme, viewport });
       }
+      for (const theme of ['light', 'dark']) for (const viewport of [{width:375,height:812},{width:390,height:844},{width:768,height:1024},{width:1280,height:800}]) {
+        await run('settings-layout-' + theme + '-' + viewport.width, engine, async page => {
+          const settings=await openSettings(page);
+          await expect(settings.getByText('Cuenta activa', {exact:true})).toBeVisible();
+          await expect(settings.getByRole('button', {name:'Quitar Persona 1 de este teléfono',exact:true})).toHaveCount(0);
+          await settings.getByRole('button', {name:'Quitar Persona 2 de este teléfono',exact:true}).click();
+          const dialog=page.getByRole('dialog', {name:'¿Quitar Persona 2?',exact:true});
+          await expect(dialog).toBeVisible();
+          const box=await dialog.boundingBox(); assert.ok(box.x>=0&&box.x+box.width<=viewport.width+1);
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+          await expect(dialog.getByRole('button', {name:'Cancelar',exact:true})).toBeFocused();
+        },{theme,viewport});
+      }
       await run('add-and-cancel', engine, async (page, api) => {
         const sheet = await openWeb(page); await sheet.getByRole('button', { name: 'Agregar cuenta', exact: true }).click();
         await expect(page).toHaveURL(/\/login\?next=%2Fperfil&agregar=1/);
@@ -264,25 +288,121 @@ try {
         await expect(page.getByRole('heading', { name: 'Persona 1', exact: true })).toBeVisible();
         assert.equal(await page.evaluate(() => window.__events.some(e => e.href?.includes('/login'))), false);
       });
+      await run('selector-safe-actions', engine, async (page, api) => {
+        const sheet = await openWeb(page);
+        await expect(sheet.getByRole('button', { name: /Quitar|Salir de todas/ })).toHaveCount(0);
+        await expect(sheet.getByRole('link', { name: /Gestionar cuentas/ })).toHaveCount(0);
+        await page.screenshot({path:resolve(out,engine+'-selector-clean.png')});
+        await page.keyboard.press('Escape'); await expect(sheet).toBeHidden();
+        assert.equal(api.some(r => r.path.endsWith('/logout')), false);
+      });
       await run('remove-one-session', engine, async (page, api) => {
-        const sheet = await openWeb(page); await sheet.getByRole('button', { name: 'Quitar Persona 2', exact: true }).click();
-        await sheet.getByRole('button', { name: 'Confirmar quitar Persona 2', exact: true }).click();
-        await expect(sheet.getByRole('button', { name: 'Cambiar a Persona 2', exact: true })).toHaveCount(0);
+        const settings = await openSettings(page);
+        const trigger = settings.getByRole('button', { name: 'Quitar Persona 2 de este teléfono', exact: true });
+        await trigger.click();
+        let dialog = page.getByRole('dialog', { name: '¿Quitar Persona 2?', exact: true });
+        await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toBeFocused();
+        assert.equal(api.some(r => r.path.endsWith('/logout')), false);
+        await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+        await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
+        await trigger.click(); await expect(dialog).toBeVisible(); await page.keyboard.press('Escape');
+        await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
+        assert.equal(api.some(r => r.path.endsWith('/logout')), false);
+        await trigger.click(); await dialog.getByRole('button', { name: 'Confirmar quitar Persona 2', exact: true }).click();
+        await expect(trigger).toHaveCount(0);
+        await expect(settings.getByRole('heading')).toBeFocused();
         assert.deepEqual(api.filter(r => r.path.endsWith('/logout')).map(r => [r.user, r.scope]), [[sessions[1].user.id, 'local']]);
-        await expect(sheet.getByRole('button', { name: /^Cuenta activa: Persona 1/ })).toBeVisible();
+        await expect(settings.getByText('Cuenta activa', { exact: true })).toBeVisible();
+        assert.equal(await page.evaluate(async () => (await window.__client.auth.getSession()).data.session.user.id), sessions[0].user.id);
+      });
+      await run('pending-confirmation', engine, async (page, api) => {
+        const settings = await openSettings(page);
+        await settings.getByRole('button', { name: 'Quitar Persona 2 de este teléfono', exact: true }).click();
+        await page.evaluate(() => { window.__mode='pending-logout'; window.__releaseLogout=false; });
+        const dialog = page.getByRole('dialog', { name: '¿Quitar Persona 2?', exact: true });
+        await dialog.getByRole('button', { name: 'Confirmar quitar Persona 2', exact: true }).click();
+        await expect.poll(() => api.filter(r => r.path.endsWith('/logout')).length).toBe(1);
+        await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toBeDisabled();
+        await page.keyboard.press('Escape'); await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Cerrar', exact: true })).toHaveCount(0);
+        await page.evaluate(() => { window.__releaseLogout=true; });
+        await expect(dialog).toBeHidden();
+        await expect(settings.getByText('Persona 2', { exact: true })).toHaveCount(0);
+      });
+      await run('remove-network-failure', engine, async (page, api) => {
+        const settings = await openSettings(page);
+        await settings.getByRole('button', { name: 'Quitar Persona 2 de este teléfono', exact: true }).click();
+        await page.evaluate(() => { window.__mode = 'logout-failure'; });
+        const dialog = page.getByRole('dialog', { name: '¿Quitar Persona 2?', exact: true });
+        await dialog.getByRole('button', { name: 'Confirmar quitar Persona 2', exact: true }).click();
+        await expect(dialog.getByRole('alert')).toContainText('No se pudo quitar');
+        assert.equal(await page.evaluate(() => window.__read().length), 2);
+        assert.equal(api.some(r => r.path.endsWith('/logout') && r.user === sessions[0].user.id), false);
+        await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
       });
       await run('logout-every-account', engine, async (page, api) => {
-        const sheet = await openWeb(page); await sheet.getByRole('button', { name: 'Salir de todas las cuentas', exact: true }).click();
+        await openSettings(page);
+        const trigger = page.getByRole('button', { name: 'Salir de todas las cuentas', exact: true });
+        await trigger.click();
+        const dialog = page.getByRole('dialog', { name: '¿Salir de todas las cuentas?', exact: true });
+        await expect(dialog).toContainText('otros dispositivos');
+        await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toBeFocused();
+        await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+        await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
+        await trigger.click(); await expect(dialog).toBeVisible(); await page.keyboard.press('Escape');
+        await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
+        assert.equal(api.some(r => r.path.endsWith('/logout')), false);
+        await trigger.click(); await dialog.getByRole('button', { name: 'Confirmar salir de todas las cuentas', exact: true }).click();
         await expect(page).toHaveURL(/\/login$/);
         assert.equal(await page.evaluate(() => window.__read().length), 0);
-        assert.deepEqual(api.filter(r => r.path.endsWith('/logout')).map(r => r.user), [sessions[1].user.id, sessions[0].user.id]);
+        assert.deepEqual(api.filter(r => r.path.endsWith('/logout')).map(r => [r.user, r.scope]), [[sessions[1].user.id, 'local'], [sessions[0].user.id, 'global']]);
+      });
+      await run('logout-partial-failure', engine, async (page, api) => {
+        await openSettings(page);
+        await page.getByRole('button', { name: 'Salir de todas las cuentas', exact: true }).click();
+        await page.evaluate(() => { window.__mode = 'logout-failure'; });
+        await page.getByRole('button', { name: 'Confirmar salir de todas las cuentas', exact: true }).click();
+        await expect(page.getByText(/No se pudo salir de Persona 2/)).toBeVisible();
+        assert.deepEqual((await page.evaluate(() => window.__read().map(c => c.userId))).sort(), [sessions[0].user.id,sessions[1].user.id].sort());
+        assert.equal(api.some(r => r.path.endsWith('/logout') && r.user === sessions[0].user.id), false);
+        await page.keyboard.press('Escape');
+      }, { count: 3 });
+      await run('active-logout-failure-focus', engine, async page => {
+        await openSettings(page);
+        await page.getByRole('button', {name:'Salir de todas las cuentas',exact:true}).click();
+        await page.evaluate(()=>{window.__mode='active-logout-failure';});
+        const dialog=page.getByRole('dialog', {name:'¿Salir de todas las cuentas?',exact:true});
+        await dialog.getByRole('button', {name:'Confirmar salir de todas las cuentas',exact:true}).click();
+        await expect(page.getByText(/No se pudo cerrar tu sesión/)).toBeVisible();
+        assert.equal(await page.evaluate(()=>window.__read().length),1);
+        await dialog.getByRole('button', {name:'Cancelar',exact:true}).click();
+        await expect(dialog).toBeHidden();
+        await expect(page.getByRole('heading', {name:'Sesión',exact:true})).toBeFocused();
       });
       await run('limit-five', engine, async page => {
         const sheet = await openWeb(page); await sheet.getByRole('button', { name: 'Agregar cuenta', exact: true }).click();
-        await expect(sheet.getByRole('alert')).toContainText('Quita una cuenta');
+        await expect(sheet.getByRole('alert')).toContainText('Configuración');
         assert.equal(await page.evaluate(() => window.__read().length), 5);
-        await expect(page).not.toHaveURL(/\/login/);
+        await sheet.getByRole('link', { name: 'Gestionar cuentas en Configuración', exact: true }).click();
+        await expect(page).toHaveURL(/\/configuracion#cuentas-guardadas$/);
+        await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
+        const settings = page.getByRole('region', { name: 'Cuentas guardadas en este teléfono' });
+        await settings.getByRole('button', { name: 'Quitar Persona 2 de este teléfono', exact: true }).click();
+        await page.getByRole('button', { name: 'Confirmar quitar Persona 2', exact: true }).click();
+        await expect(settings.getByText('Persona 2', { exact: true })).toHaveCount(0);
+        const again = await openWeb(page); await again.getByRole('button', { name: 'Agregar cuenta', exact: true }).click();
+        await expect(page).toHaveURL(/\/login\?.*agregar=1/);
+        await page.evaluate(async () => { const s=window.__sessions[5]; await window.__client.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}); history.pushState({},'', '/perfil'); await window.__render(); });
+        await expect(page.getByRole('heading', { name: 'Persona 6', exact: true })).toBeVisible();
+        await expect.poll(() => page.evaluate(() => window.__read().length)).toBe(5);
       }, { count: 5 });
+      await run('active-without-room', engine, async page => {
+        const sheet = await openWeb(page);
+        await expect(sheet).toContainText('Tu cuenta actual no cabe');
+        await expect(sheet.getByRole('link', { name: 'Gestionar cuentas en Configuración', exact: true })).toBeVisible();
+        await expect(sheet.getByRole('button', { name: /Quitar|Salir de todas/ })).toHaveCount(0);
+        assert.equal(await page.evaluate(() => window.__read().length), 5);
+      }, { count: 5, omitActive: true });
       await run('invalid-target-preserves-current', engine, async page => {
         const sheet = await openWeb(page); await page.evaluate(() => { window.__mode = 'expired'; });
         await sheet.getByRole('button', { name: 'Cambiar a Persona 2', exact: true }).click();

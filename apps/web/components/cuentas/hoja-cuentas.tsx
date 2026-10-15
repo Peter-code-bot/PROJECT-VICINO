@@ -2,17 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, LogOut, Plus } from "lucide-react";
+import Link from "next/link";
+import { Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { BottomSheet } from "@/components/product/bottom-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { useLogout } from "@/hooks/use-logout";
 import { cn } from "@/lib/utils";
-import { actualizarTokens, buscarCuenta, guardarCuenta, quitarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
+import { buscarCuenta, guardarCuenta, MAX_CUENTAS, type Cuenta } from "@/lib/cuentas/boveda";
 import { useCuentas } from "@/lib/cuentas/use-cuentas";
 import { cambiarACuenta, datosDeSesion, nombreVisible, sesionActivaParaGuardar } from "@/lib/cuentas/cambio";
-import { puertoCambioReal, reportarCuentas } from "@/lib/cuentas/puertos";
-import { revocarSesion } from "@/lib/cuentas/sesion-aislada";
+import { puertoCambioReal } from "@/lib/cuentas/puertos";
 import { DESTINO_TRAS_AGREGAR, hrefAgregarCuenta, marcarAgregandoCuenta } from "@/lib/cuentas/agregando-cuenta";
 import { desmarcarCambioEnCurso, marcarCambioEnCurso } from "@/lib/cuentas/cambio-en-curso";
 import { pedirRegistroPush } from "@/lib/push/registro";
@@ -27,9 +26,8 @@ interface HojaCuentasProps {
 }
 
 type Ocupado =
-  | { tipo: "cambiar" | "quitar"; userId: string }
+  | { tipo: "cambiar"; userId: string }
   | { tipo: "agregar" }
-  | { tipo: "salir" }
   | null;
 
 /**
@@ -45,9 +43,7 @@ type Ocupado =
 export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasProps) {
   const router = useRouter();
   const cuentas = useCuentas();
-  const logout = useLogout();
   const [ocupado, setOcupado] = useState<Ocupado>(null);
-  const [confirmarQuitar, setConfirmarQuitar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abiertaRef = useRef(open);
   useEffect(() => {
@@ -61,7 +57,6 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     setAbiertaAntes(open);
     if (open) {
       setError(null);
-      setConfirmarQuitar(null);
     }
   }
 
@@ -74,7 +69,6 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
 
   const cerrar = useCallback(() => {
     setError(null);
-    setConfirmarQuitar(null);
     onClose();
   }, [onClose]);
 
@@ -91,7 +85,6 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
   async function cambiar(cuenta: Cuenta) {
     if (ocupado) return;
     setError(null);
-    setConfirmarQuitar(null);
     setOcupado({ tipo: "cambiar", userId: cuenta.userId });
     try {
       const resultado = await cambiarACuenta(cuenta, puertoCambioReal());
@@ -123,38 +116,11 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
     }
   }
 
-  async function quitar(cuenta: Cuenta) {
-    if (ocupado) return;
-    setError(null);
-    setOcupado({ tipo: "quitar", userId: cuenta.userId });
-    try {
-      // Si cargar la sesion roto el refresh token y el /logout falla despues,
-      // la boveda se queda con los tokens que SI valen (alRotar). Solo los
-      // tokens: subir `ultimoUso` convertiria a la cuenta que se intento
-      // quitar en "la mas reciente" y el cierre de sesion la elegiria.
-      const resultado = await revocarSesion(cuenta, (sesion) => {
-        const tokens = { accessToken: sesion.access_token, refreshToken: sesion.refresh_token };
-        if (!actualizarTokens(cuenta.userId, tokens)) guardarCuenta({ ...cuenta, ...tokens });
-      });
-      if (!resultado.ok) {
-        reportarCuentas("revocar", resultado.error, "warning");
-        avisar("No se pudo quitar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
-        return;
-      }
-      quitarCuenta(cuenta.userId);
-      setConfirmarQuitar(null);
-      toast.success(`${nombreVisible(cuenta)} ya no está en este teléfono`);
-    } finally {
-      setOcupado(null);
-    }
-  }
-
   async function agregar() {
     if (ocupado) return;
     setError(null);
-    setConfirmarQuitar(null);
     if (llena) {
-      avisar(activaSinSitio ? "Tu cuenta actual no cabe en la lista. Quita una cuenta." : "Quita una cuenta para agregar otra.");
+      avisar(activaSinSitio ? "Tu cuenta actual no cabe en la lista. Gestiona tus cuentas en Configuración." : "Gestiona tus cuentas en Configuración para agregar otra.");
       return;
     }
     setOcupado({ tipo: "agregar" });
@@ -190,7 +156,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
       const sesion = activa.sesion;
       const guardado = guardarCuenta(datosDeSesion(sesion, buscarCuenta(sesion.user.id)));
       if (guardado === "llena") {
-        avisar("Quita una cuenta para agregar otra.");
+        avisar("Gestiona tus cuentas en Configuración para agregar otra.");
         return;
       }
       if (guardado === "sin_almacenamiento") {
@@ -206,18 +172,6 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
       marcarAgregandoCuenta();
       onNavegar();
       router.push(hrefAgregarCuenta("/login"));
-    } finally {
-      setOcupado(null);
-    }
-  }
-
-  async function salirDeTodas() {
-    if (ocupado) return;
-    setError(null);
-    setOcupado({ tipo: "salir" });
-    try {
-      const resultado = await logout({ todas: true });
-      if (resultado.error) avisar(resultado.error);
     } finally {
       setOcupado(null);
     }
@@ -245,14 +199,12 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
         )}
         {activaSinSitio && (
           <li className="px-4 py-3 text-xs text-muted-foreground">
-            Tu cuenta actual no cabe en la lista (máximo {MAX_CUENTAS}). Quita una de las guardadas para que aparezca.
+            Tu cuenta actual no cabe en la lista (máximo {MAX_CUENTAS}). Gestiona las cuentas guardadas en Configuración.
           </li>
         )}
         {dormidas.map((cuenta) => {
           const nombre = nombreVisible(cuenta);
           const cambiando = ocupado?.tipo === "cambiar" && ocupado.userId === cuenta.userId;
-          const quitando = ocupado?.tipo === "quitar" && ocupado.userId === cuenta.userId;
-          const confirmando = confirmarQuitar === cuenta.userId;
           return (
             <li key={cuenta.userId} className="border-t border-border/15">
               <div className="flex items-stretch">
@@ -271,48 +223,7 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
                   )}
                   <FilaTexto cuenta={cuenta} />
                 </button>
-                {!confirmando && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setConfirmarQuitar(cuenta.userId);
-                    }}
-                    disabled={!!ocupado}
-                    aria-label={`Quitar ${nombre}`}
-                    className="px-4 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
-                  >
-                    Quitar
-                  </button>
-                )}
               </div>
-              {confirmando && (
-                <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-xs">
-                  <span className="flex-1 min-w-0 text-muted-foreground">
-                    ¿Quitar {nombre} de este teléfono? Tendrás que volver a entrar para usarla aquí.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void quitar(cuenta)}
-                    disabled={!!ocupado}
-                    // El boton "Quitar" que tenia el foco acaba de desmontarse: el foco sigue aqui.
-                    autoFocus
-                    aria-label={`Confirmar quitar ${nombre}`}
-                    className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--danger)] px-3 py-1.5 font-semibold text-white disabled:opacity-60"
-                  >
-                    {quitando && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-                    Quitar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmarQuitar(null)}
-                    disabled={!!ocupado}
-                    className="rounded-lg px-3 py-1.5 font-medium text-foreground shadow-[inset_0_0_0_1px_var(--border)] disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
             </li>
           );
         })}
@@ -335,24 +246,13 @@ export function HojaCuentas({ open, onClose, userId, onNavegar }: HojaCuentasPro
             </span>
           </button>
         </li>
-        {dormidas.length > 0 && (
-          <li className="border-t border-border/15">
-            <button
-              type="button"
-              onClick={() => void salirDeTodas()}
-              disabled={!!ocupado}
-              className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-sm font-medium text-[color:var(--danger)] transition-colors hover:bg-[rgba(255,59,48,0.08)] disabled:opacity-60"
-            >
-              {ocupado?.tipo === "salir" ? (
-                <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-              ) : (
-                <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-              )}
-              Salir de todas las cuentas
-            </button>
-          </li>
-        )}
       </ul>
+      {llena && (
+        <Link href="/configuracion#cuentas-guardadas" prefetch={false} onClick={onNavegar}
+          className="mt-3 inline-flex min-h-12 items-center text-sm font-semibold text-[color:var(--brand)] underline underline-offset-4">
+          Gestionar cuentas en Configuración
+        </Link>
+      )}
       {error && (
         <p role="alert" className="mt-3 rounded-xl bg-[rgba(255,59,48,0.08)] p-3 text-sm text-[color:var(--danger)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.25)]">
           {error}
