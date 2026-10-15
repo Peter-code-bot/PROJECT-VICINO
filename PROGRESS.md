@@ -1,3 +1,10 @@
+## 14-oct-2026 — Selector de cuentas compatible con el menú nativo de iOS
+
+- CUENTAS-IOS-01: fallo reproducido con el JS exacto de CromoNativo.swift y componentes reales. El puente instalado buscaba el primer enlace /perfil, pero la nueva fila era un botón: recibía perfil vacío y no abría Cuentas. Regresión inicial 0/4 en Chromium/WebKit; la lógica aislada existente sí pasaba 56/56.
+- Se conserva el enlace /perfil como disparador del selector; Cuentas tiene portal independiente del drawer que iOS oculta. Al elegir desde la hoja nativa se retira el drawer invisible; en web se conservan cierre por capas y foco. Mi perfil usa /perfil?origen=menu para distinguir ambos destinos en el puente legado.
+- Workflow Advisor aplicado; revisión independiente gpt-6.1-sol/medium detectó la colisión Mi perfil, reproducida 0/2 y corregida. Matriz final local 40/40 con SDK real y HTTP/framework controlados; 56/56 unitarias. No acredita UIKit, OAuth, push físico ni Auth de producción; no hay credenciales E2E de prueba configuradas. El icono de Mi perfil usa el círculo genérico del binario iOS antiguo hasta actualizar su mapa de símbolos.
+- Evidencia, compilación final, PR/SHA y estado de entrega en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd). Aceptación con cuentas reales/Android/iPhone y riesgos T-33/T-35 permanecen abiertos en [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c).
+
 ## 14-oct-2026 — Publicar: Regresar y Publicar visibles durante el formulario
 
 - PUB-HDR-20261014 solicitado por Javier con captura. Workflow Advisor aplicado; plan y tiempos de inicio/reanudación en el [plan de Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Rama fix/publicar-cabecera-fija-20261014 sobre ef3c295.

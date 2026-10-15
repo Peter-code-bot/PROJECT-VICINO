@@ -83,9 +83,25 @@ export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, usern
                 hoja, tocar la cuenta activa lleva a /perfil; y "Mi perfil" sigue
                 a un toque en la seccion de abajo. */}
             {userName && (userId ? (
-              <button
-                type="button"
-                onClick={() => setHojaAbierta(true)}
+              <Link
+                href="/perfil"
+                role="button"
+                prefetch={false}
+                onClick={(event) => {
+                  event.preventDefault();
+                  // Los iPhone ya instalados leen y pulsan el primer enlace
+                  // /perfil desde CromoNativo.swift. Conservar ese contrato
+                  // permite abrir el selector sin actualizar el binario.
+                  // La hoja nativa se cierra al elegir: retirar tambien su
+                  // drawer web oculto, para no dejar un bloqueo invisible.
+                  if (event.currentTarget.closest("[data-cromo-menu]")) setOpen(false);
+                  setHojaAbierta(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== " ") return;
+                  event.preventDefault();
+                  event.currentTarget.click();
+                }}
                 aria-haspopup="dialog"
                 aria-expanded={hojaAbierta}
                 aria-label={`Cuentas: ${userName}. Cambiar de cuenta`}
@@ -106,7 +122,7 @@ export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, usern
                   {username && <p className="text-xs text-muted-foreground">@{username}</p>}
                 </div>
                 <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-              </button>
+              </Link>
             ) : (
               <Link href="/perfil" onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-5 py-4 hover:bg-muted transition-colors border-b border-border/15">
@@ -128,7 +144,10 @@ export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, usern
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_5rem)]">
               <Section label="Cuenta">
-                {userId && <Item href="/perfil" icon={User} label="Mi perfil" onClose={() => setOpen(false)} />}
+                {/* El binario iOS distingue las filas por href. /perfil queda
+                    reservado al resumen que abre Cuentas; esta variante lleva
+                    al mismo perfil sin confundirse con el selector. */}
+                {userId && <Item href="/perfil?origen=menu" icon={User} label="Mi perfil" onClose={() => setOpen(false)} />}
                 {userIsVendedor ? (
                   <>
                     <Item href="/seller" icon={Store} label="Mi tienda" onClose={() => setOpen(false)} />
@@ -172,15 +191,19 @@ export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, usern
             </div>
 
           </div>
-          {userId && (
-            <HojaCuentas
-              open={hojaAbierta}
-              onClose={() => setHojaAbierta(false)}
-              userId={userId}
-              onNavegar={cerrarTodo}
-            />
-          )}
         </div>,
+        document.body
+      )}
+      {/* El puente de iOS oculta el drawer con visibility:hidden. La hoja de
+          cuentas necesita su propio portal: dentro de ese drawer heredaba la
+          invisibilidad y desaparecia al cerrar el menu nativo. */}
+      {mounted && userId && createPortal(
+        <HojaCuentas
+          open={hojaAbierta}
+          onClose={() => setHojaAbierta(false)}
+          userId={userId}
+          onNavegar={cerrarTodo}
+        />,
         document.body
       )}
     </>
