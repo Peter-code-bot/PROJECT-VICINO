@@ -90,7 +90,6 @@ export function useLogout() {
       router.refresh();
       return {};
     }
-    toast.success(`Ahora estás en ${resultado.siguiente.nombre}`);
     // Navegacion blanda, como en la hoja de cuentas (carrera de la cookie en iOS).
     router.refresh();
     setTimeout(() => router.replace(DESTINO_TRAS_AGREGAR), 50);

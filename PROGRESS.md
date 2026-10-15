@@ -1,3 +1,8 @@
+## 15-oct-2026 — Cambio de cuenta sin aviso verde inferior
+
+- CUENTAS-UX-03: retirar el toast de éxito «Ahora estás en…» al cambiar desde Cuentas y al pasar a la siguiente guardada tras cerrar la activa. Perfil, navegación y errores conservados; no se desactiva Sonner globalmente ni el aviso de quitar una cuenta.
+- Plan, verificación, SHA/PR/CI y publicación real en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), CUENTAS-UX-03. Aceptación instalada/Auth real permanece en el seguimiento de cuentas existente.
+
 ## 15-oct-2026 — Cuentas: selector sin acciones de salida accidental
 
 - CUENTAS-UX-02 autorizado por Javier hasta master. Selector dedicado a cambiar/agregar; Quitar se traslada a Cuentas guardadas en Configuración y Salir de todas queda allí con confirmación independiente. Se conserva revocación local de dormidas y cierre global histórico de la activa, explicado antes de confirmar.
