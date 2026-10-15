@@ -104,9 +104,22 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
     messagesQuery.gt("created_at", deletedAt);
   }
 
+  // ¿Alguno de los dos tiene algo publicado y disponible? Sin eso no hay venta
+  // que confirmar, y el boton "Confirmar Venta" solo llevaba a "Ningun
+  // participante tiene productos disponibles" (reporte de Pedro, 15-oct-2026).
+  // Mismo filtro que loadChatCatalog, con el mismo cliente RLS, para que el
+  // boton y el selector no se contradigan. Sale en paralelo con los mensajes.
+  const catalogoQuery = supabase
+    .from("products_services")
+    .select("id")
+    .in("creador_id", [chat.comprador_id, chat.vendedor_id])
+    .eq("estatus", "disponible")
+    .eq("is_hidden", false)
+    .limit(1);
+
   // Rendering and prefetch are read-only. The visible ChatWindow sends its
   // acknowledgement separately, without blocking this response or the send queue.
-  const { data: messagesDesc, error: messagesError } = await messagesQuery;
+  const [{ data: messagesDesc, error: messagesError }, catalogo] = await Promise.all([messagesQuery, catalogoQuery]);
   if (messagesError) throw new Error("No se pudieron cargar los mensajes. Intenta de nuevo.");
   const messages = (messagesDesc ?? []).slice().reverse();
 
@@ -134,6 +147,8 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
       readinessToken={crypto.randomUUID()}
       buyIntentFailed={intentFailed === "1"}
       missingPurchaseIntent={sinIntencion === "1"}
+      // null = no se pudo saber: se deja el boton como estaba antes.
+      hayProductosDisponibles={catalogo.error ? null : (catalogo.data?.length ?? 0) > 0}
     />
   );
 }
