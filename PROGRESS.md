@@ -1,3 +1,9 @@
+## 14-oct-2026 — Publicar: Regresar y Publicar visibles durante el formulario
+
+- PUB-HDR-20261014 solicitado por Javier con captura. Workflow Advisor aplicado; plan y tiempos de inicio/reanudación en el [plan de Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Rama fix/publicar-cabecera-fija-20261014 sobre ef3c295.
+- Cabecera de ProductForm fija bajo la barra global y safe-area en móvil, arriba en escritorio; fondo sólido, título flexible, Publicar48px y errores accesibles en la zona fija. El primer campo inválido se centra tras la validación nativa para mantenerlo visible en WebKit. Crear/editar comparten el ajuste y conservan validación, guardado y retorno.
+- Evidencia, revisión, checks y SHA/PR/estado de publicación en la [Bitácora de Notion](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9). Aceptación instalada y teclado/safe-area físicos continúa en SC-AND-01/SC-IOS-01 de [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c).
+
 ## 14-oct-2026 — Fluidez de ubicación y Solicitudes
 
 - LU01 y FL01–FL04 implementados por autorización de Javier de ejecutar el plan y hacer push tras verificar. Palomita blanca sin texto; GPS aplica el punto antes de resolver el nombre, con enriquecimiento sin repetir la consulta del feed. Búsqueda distingue demora, error recuperable y ausencia de resultados.
