@@ -2,12 +2,12 @@
 
 import { publicProfileName } from "@vicino/shared";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { createClient } from "@/lib/supabase/client";
 import { canalesGestionados, refrescoCoalescido } from "@/lib/realtime/canales-gestionados";
 import { recuperacionConexion } from "@/lib/realtime/recuperacion-conexion";
-import { reconciliarChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
+import { reconciliarChat, recuperarVentasChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
 import { Send, Handshake, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
@@ -90,6 +90,7 @@ export function ChatWindow({
   deletedAt,
   hayProductosDisponibles = null,
 }: ChatWindowProps) {
+  const chatAccessRef = useRef({ allowed: true });
   // A5.1: cursor-based load-older via the shared hook. The hook owns
   // the messages buffer; setItems is exposed for the FIFO temp-id
   // reclaim (Realtime INSERT echo) and the mark-as-read UPDATE handler
@@ -106,9 +107,12 @@ export function ChatWindow({
     setItems: setMessages,
   } = useInfiniteCursor<Message, string>({
     action: async ({ cursor, limit }) => {
+      const access = chatAccessRef.current;
+      if (!access.allowed) return { items: [], nextCursor: null };
       // The hook only invokes the action when cursor !== null (gated by
       // hasMore). The non-null assertion is safe.
       const result = await getMessagesBefore(chatId, cursor as string, limit);
+      if (!access.allowed || access !== chatAccessRef.current) return { items: [], nextCursor: null };
       return { items: result.items as Message[], nextCursor: result.nextCursor, error: result.error };
     },
     initialItems: initialMessages,
@@ -122,7 +126,7 @@ export function ChatWindow({
 
   const { sales: saleConfirmations, status: salesStatus, updateLive: setSaleConfirmations,
     applySnapshot: applySalesSnapshot, failed: salesFailed } = useDeferredSales(initialSaleConfirmations, salesSeed);
-  const [retryingSales, startSalesRetry] = useTransition();
+  const [retryingSales, setRetryingSales] = useState(false);
   const lastIncomingId = messages.findLast((message) => message.autor_id !== currentUserId)?.id ?? "";
   useVisibleChatRead(chatId, currentUserId, lastIncomingId);
   const [input, setInput] = useState("");
@@ -158,7 +162,7 @@ export function ChatWindow({
   // decian "Ningun participante tiene productos disponibles". Si no se pudo
   // saber (null) se muestran como antes.
   const hayQueVender = eligibleProduct || hayProductosDisponibles !== false;
-  const showSaleForm = !!saleDraft && saleDraft.revision === activeProduct.revision && saleDraft.productId === product?.id && eligibleProduct;
+  const showSaleForm = salesStatus === "ready" && !!saleDraft && saleDraft.revision === activeProduct.revision && saleDraft.productId === product?.id && eligibleProduct;
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // A5.1: refs for the load-older flow.
@@ -225,9 +229,12 @@ export function ChatWindow({
   const inFlightSendsRef = useRef(new Set<string>());
   const syncChatRef = useRef<() => void>(() => {});
   const retryRecoveryRef = useRef<() => void>(() => {});
+  const retrySalesRef = useRef<() => void>(() => {});
   const preserveRecoveryScrollRef = useRef(false);
   const recoveryAnchorRef = useRef<{ id: string; top: number } | null>(null);
-  const [recovery, setRecovery] = useState<"recovering" | "pending" | "more" | "synced">("recovering");
+  // SSR ya entrego una lectura autorizada. La primera conciliacion es silenciosa.
+  const [recovery, setRecovery] = useState<"recovering" | "pending" | "more" | "synced" | "denied">("synced");
+  const [liveConnection, setLiveConnection] = useState<"connecting" | "connected" | "pending">("connecting");
   useLayoutEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const sendMutation = useOptimisticMutation(
@@ -331,53 +338,80 @@ export function ChatWindow({
   // Un canal por montaje y generacion; las referencias no reconstruyen el canal.
   useEffect(() => {
     let disposed = false;
+    let authorized = true;
+    const access = { allowed: true };
+    chatAccessRef.current = access;
     const controller = canalesGestionados(supabase);
     // Una escritura sana tambien necesita reconciliar, pero no abre un incidente
     // de conexion. La revision evita que una lectura anterior cierre una
     // recuperacion solicitada mientras esa lectura estaba en vuelo.
-    let needsRecovery = true;
+    let needsRecovery = false;
     let recoveryRevision = 0;
     const pending = () => {
-      if (!disposed) {
+      if (!disposed && authorized) {
         needsRecovery = true;
         recoveryRevision++;
         setRecovery("pending");
-        salesFailed();
       }
     };
-    let cancelRefresh = () => {};
     let recover = () => {};
     const connection = recuperacionConexion({
       reconectar: () => controller.reintentar(`chat:${chatId}`),
       recuperar: () => recover(),
       pendiente: pending,
-      disponible: () => !disposed && navigator.onLine && document.visibilityState !== "hidden",
+      disponible: () => !disposed && authorized && navigator.onLine && document.visibilityState !== "hidden",
+      conexion: (status) => { if (!disposed && authorized) setLiveConnection(previous => status === "connecting" && previous === "pending" ? previous : status); },
     });
-    retryRecoveryRef.current = () => connection.reintentar();
-    const unregister = controller.registrar(`chat:${chatId}`, ({ vigente }) => {
-      cancelRefresh();
-      connection.esperando();
+    retryRecoveryRef.current = () => {
+      if (disposed || !authorized) return;
+      if (!navigator.onLine || document.visibilityState === "hidden") return;
+      needsRecovery = true;
+      recoveryRevision++;
+      if (!disposed) setRecovery("recovering");
+      connection.reintentar();
+    };
+    // Los HTTP sobreviven a una sustitucion del canal, pero nunca al montaje
+    // ni a su identidad. Solo los eventos WS usan la generacion de su canal.
       const changedMessages = new Map<string, Message>();
       const changedSales = new Map<string, Omit<SaleConfirmation, "products_services"> | null>();
-      let subscribed = false;
-      let subscriptionGeneration = 0;
+      const refreshSales = refrescoCoalescido(async () => {
+        if (disposed || !authorized) return;
+        setRetryingSales(true);
+        changedSales.clear();
+        const snapshot = await recuperarVentasChat(supabase, chatId)
+          .finally(() => { if (!disposed) setRetryingSales(false); });
+        if (disposed || !authorized) return;
+        const salesChanges = new Map(changedSales);
+        applySalesSnapshot(() => {
+          const sales = new Map(snapshot.map((sc) => [sc.id, sc as SaleConfirmation]));
+          for (const [id, sc] of salesChanges) {
+            if (!sc || !["pending_confirmation", "completed"].includes(sc.status)) sales.delete(id);
+            else sales.set(id, { ...sales.get(id), ...sc, products_services: sales.get(id)?.products_services ?? null });
+          }
+          return [...sales.values()].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id.localeCompare(a.id)).slice(0, 5);
+        });
+      }, () => { if (!disposed && authorized) salesFailed(); });
+      retrySalesRef.current = () => refreshSales.solicitar();
       const refresh = refrescoCoalescido(async () => {
-        if (!vigente() || !subscribed) return;
-        const subscription = subscriptionGeneration;
+        if (disposed || !authorized || !navigator.onLine || document.visibilityState === "hidden") return;
         const revision = recoveryRevision;
         if (needsRecovery) setRecovery("recovering");
         changedMessages.clear();
-        changedSales.clear();
         const result = await reconciliarChat(supabase, {
           chatId, userId: currentUserId, deletedAt,
           loadedIds: messagesRef.current.map((m) => m.id),
           cursor: recoveredCursorRef.current, intervalo: incompleteRef.current,
         });
-        if (!vigente() || subscription !== subscriptionGeneration) return;
+        if (disposed) return;
         if (result.denied) {
+          authorized = false;
+          access.allowed = false;
+          connection.cancelar();
+          refreshSales.cancelar();
           setMessages([]);
           setSaleConfirmations([]);
-          pending();
+          salesFailed();
+          setRecovery("denied");
           router.refresh();
           return;
         }
@@ -393,15 +427,7 @@ export function ChatWindow({
           .find((node) => node.getBoundingClientRect().bottom >= container.getBoundingClientRect().top);
         recoveryAnchorRef.current = anchor ? { id: anchor.dataset.messageId!, top: anchor.getBoundingClientRect().top } : null;
         setMessages((prev) => fusionarMensajes(prev, recovered, changed, result.deletedAt));
-        const salesChanges = new Map(changedSales);
-        applySalesSnapshot(() => {
-          const sales = new Map(result.sales.map((sc) => [sc.id, sc as SaleConfirmation]));
-          for (const [id, sc] of salesChanges) {
-            if (!sc || !["pending_confirmation", "completed"].includes(sc.status)) sales.delete(id);
-            else sales.set(id, { ...sales.get(id), ...sc, products_services: sales.get(id)?.products_services ?? null });
-          }
-          return [...sales.values()].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id.localeCompare(a.id)).slice(0, 5);
-        });
+        refreshSales.solicitar();
         if (!sending) {
           recoveredCursorRef.current = result.cursor;
           incompleteRef.current = result.intervalo;
@@ -414,35 +440,33 @@ export function ChatWindow({
         // Un envio sin UUID final retiene el cursor, sin convertir una
         // sincronizacion rutinaria en un aviso de conexion pendiente.
         if (!sending && !result.intervalo) needsRecovery = false;
-      }, () => { if (vigente()) connection.falloConsulta(); });
-      cancelRefresh = () => refresh.cancelar();
-      syncChatRef.current = () => { if (vigente()) refresh.solicitar(); };
+      }, () => { if (!disposed && authorized) connection.falloConsulta(); });
+      syncChatRef.current = () => { if (!disposed && authorized) refresh.solicitar(); };
       recover = () => {
-        if (!vigente()) return;
-        needsRecovery = true;
-        recoveryRevision++;
-        setRecovery("recovering");
+        if (disposed || !authorized) return;
         refresh.solicitar();
       };
+    const unregister = controller.registrar(`chat:${chatId}`, ({ vigente }) => {
+      connection.esperando();
       return supabase.channel(`chat:${chatId}`)
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats", filter: `id=eq.${chatId}` }, () => {
-          if (vigente()) refresh.solicitar();
+          if (vigente() && authorized) refresh.solicitar();
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
-          if (!vigente()) return;
+          if (!vigente() || !authorized) return;
           const message = payload.new as Message;
           changedMessages.set(message.id, message);
           if (message.autor_id === currentUserId && inFlightSendsRef.current.size > 0) return;
           setMessages((prev) => fusionarMensajes(prev, [message], new Map(), deletedAtRef.current));
         })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
-          if (!vigente()) return;
+          if (!vigente() || !authorized) return;
           const message = payload.new as Message;
           changedMessages.set(message.id, message);
           setMessages((prev) => prev.map((m) => m.id === message.id ? message : m));
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "sale_confirmations", filter: `chat_id=eq.${chatId}` }, (payload) => {
-          if (!vigente()) return;
+          if (!vigente() || !authorized) return;
           if (payload.eventType !== "DELETE") {
             const sale = payload.new as Omit<SaleConfirmation, "products_services">;
             changedSales.set(sale.id, sale);
@@ -457,15 +481,14 @@ export function ChatWindow({
               setSaleConfirmations(prev => prev.filter(sale => sale.id !== id));
             }
           }
-          refresh.solicitar();
+          refreshSales.solicitar();
         })
         .subscribe((status) => {
-          if (!vigente()) return;
-          subscriptionGeneration++;
-          subscribed = status === "SUBSCRIBED";
+          if (!vigente() || !authorized) return;
           connection.estado(status);
         });
     }, () => connection.pausar());
+    refresh.solicitar();
     const resume = () => { if (document.visibilityState !== "hidden") connection.reintentar(); };
     const offline = () => { connection.pausar(); controller.reintentar(`chat:${chatId}`); };
     window.addEventListener("online", resume);
@@ -474,6 +497,7 @@ export function ChatWindow({
     document.addEventListener("visibilitychange", resume);
     return () => {
       disposed = true;
+      access.allowed = false;
       connection.cancelar();
       window.removeEventListener("online", resume);
       window.removeEventListener("focus", resume);
@@ -481,7 +505,9 @@ export function ChatWindow({
       document.removeEventListener("visibilitychange", resume);
       syncChatRef.current = () => {};
       retryRecoveryRef.current = () => {};
-      cancelRefresh();
+      retrySalesRef.current = () => {};
+      refresh.cancelar();
+      refreshSales.cancelar();
       unregister();
     };
   }, [chatId, currentUserId, deletedAt, supabase, router, setMessages, setSaleConfirmations, applySalesSnapshot, salesFailed, applyProduct]);
@@ -606,6 +632,7 @@ export function ChatWindow({
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    if (recovery === "denied") return;
     if (subiendo) return;
     // Una foto sola ya es un mensaje. El texto deja de ser obligatorio.
     if (!input.trim() && fotos.length === 0) return;
@@ -712,7 +739,7 @@ export function ChatWindow({
       {salesStatus !== "ready" && <div className="mx-4 shrink-0 text-xs text-fg-muted" role="status">
         {salesStatus === "loading" ? "Cargando confirmaciones…" : <>
           No se pudieron actualizar las confirmaciones. <button type="button" className="min-h-11 font-semibold text-brand"
-            disabled={retryingSales} onClick={() => { retryRecoveryRef.current(); startSalesRetry(() => router.refresh()); }}>{retryingSales ? "Reintentando…" : "Reintentar"}</button>
+            disabled={retryingSales || recovery === "denied"} onClick={() => retrySalesRef.current()}>{retryingSales ? "Reintentando…" : "Reintentar"}</button>
         </>}
       </div>}
 
@@ -727,7 +754,7 @@ export function ChatWindow({
       {showProductSelector && <ChatProductSelector key={activeProduct.revision} chatId={chatId} currentUserId={currentUserId} active={activeProduct}
         onRefresh={() => retryRecoveryRef.current()}
         onSelected={(next) => { applyProduct(next); setSaleDraft(null); setShowProductSelector(false); syncChatRef.current(); }} />}
-      {saleDraft && !showSaleForm && <p role="status" className="mx-4 text-xs text-muted-foreground">
+      {saleDraft && !showSaleForm && salesStatus === "ready" && <p role="status" className="mx-4 text-xs text-muted-foreground">
         El producto cambió o dejó de estar disponible. Revisa la selección y abre una nueva confirmación.
       </p>}
       {showSaleForm && (
@@ -934,10 +961,10 @@ export function ChatWindow({
             </div>
           );
         })}
-        {recovery !== "synced" && (
+        {(recovery !== "synced" || liveConnection === "pending") && (
           <div className="px-4 py-2 text-sm text-muted-foreground">
-            <p role="status" aria-live="polite">{recovery === "recovering" ? "Recuperando conversación…" : recovery === "more" ? "Hay mensajes pendientes de recuperar." : "Sincronización pendiente. Tus mensajes se conservan."}</p>
-            {recovery !== "recovering" && <button type="button" className="mt-2 min-h-12 rounded-lg border border-border px-3 text-fg focus-visible:outline-2 focus-visible:outline-primary" onClick={() => retryRecoveryRef.current()}>
+            <p role="status" aria-live="polite">{recovery === "denied" ? "Esta conversación ya no está disponible para tu cuenta." : recovery === "recovering" ? "Actualizando mensajes…" : recovery === "more" ? "Hay mensajes pendientes de recuperar." : recovery === "pending" ? "No se pudieron actualizar los mensajes. Reintenta." : "Conexión en vivo pendiente. Puedes enviar mensajes y reintentar."}</p>
+            {recovery !== "recovering" && recovery !== "denied" && <button type="button" className="mt-2 min-h-12 rounded-lg border border-border px-3 text-fg focus-visible:outline-2 focus-visible:outline-primary" onClick={() => retryRecoveryRef.current()}>
               {recovery === "more" ? "Cargar mensajes pendientes" : "Reintentar"}
             </button>}
           </div>
@@ -965,11 +992,12 @@ export function ChatWindow({
         <PhotoPickerButton
           onElegir={elegirFotos}
           restantes={MAX_ADJUNTOS_POR_MENSAJE - fotos.length}
-          disabled={subiendo}
+          disabled={subiendo || recovery === "denied"}
         />
         <input
           type="text"
           value={input}
+          disabled={recovery === "denied"}
           onChange={(e) => setInput(e.target.value)}
           maxLength={2000}
           placeholder="Escribe un mensaje..."
@@ -977,7 +1005,7 @@ export function ChatWindow({
         />
         <button
           type="submit"
-          disabled={(!input.trim() && fotos.length === 0) || subiendo}
+          disabled={(!input.trim() && fotos.length === 0) || subiendo || recovery === "denied"}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
         >
           {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
