@@ -44,7 +44,7 @@ async function main() {
     "@/hooks/use-firmas-adjuntos": "export const useFirmasAdjuntos=()=>new Map();",
     "@/components/moderation/report-menu-button": "export const ReportMenuButton=()=>null;",
     "@/components/ui/user-avatar": "export const UserAvatar=()=>null;",
-    "./sale-confirmation-card": "export const SaleConfirmationCard=()=>null;export const StatusPill=()=>null;export const ConfirmationStatus=()=>null;",
+    "./sale-confirmation-card": "export const SaleConfirmationCard=()=>null;export const SaleConfirmationBanner=()=>null;export const StatusPill=()=>null;export const ConfirmationStatus=()=>null;",
     "./message-photos": "export const MessagePhotos=()=>null;",
     "./photo-tray": "export const PhotoPickerButton=()=>null;export const PhotoTray=()=>null;export const admitirFotos=()=>({fotos:[],aviso:''});",
     "@/lib/chat/attachments": "export const CHAT_BUCKET='synthetic';export const leerAdjuntos=()=>[];export const subirAdjuntos=async()=>[];",

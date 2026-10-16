@@ -10,7 +10,7 @@ import { recuperacionConexion } from "@/lib/realtime/recuperacion-conexion";
 import { reconciliarChat, recuperarVentasChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
-import { Send, Handshake, Check, CheckCheck, ChevronDown, Loader2 } from "lucide-react";
+import { Send, Handshake, Check, CheckCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage, getMessagesBefore } from "../actions";
 import { hapticMedium } from "@/lib/haptics";
@@ -18,7 +18,7 @@ import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { useDeferredSales, type SalesSeed } from "@/hooks/use-deferred-sales";
 import { useVisibleChatRead } from "@/hooks/use-visible-chat-read";
-import { SaleConfirmationCard, StatusPill, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
+import { SaleConfirmationCard, SaleConfirmationBanner, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ChatProductSelector } from "./chat-product-selector";
 import { productoElegible, reconciliarProducto, type ProductoActivoChat, type ProductoChat } from "@/lib/chat/producto-activo";
@@ -826,25 +826,13 @@ export function ChatWindow({
 
         return (
           <div className="mx-3 my-1">
-            <button
-              onClick={() => setShowSaleDetails(!showSaleDetails)}
-              className="dark flex w-full items-center gap-2.5 px-3 py-2.5 text-left rounded-xl bg-[#121212] text-white transition-colors hover:bg-black"
-            >
-              <div className="w-7 h-7 rounded-[9px] bg-[#222222] text-white flex items-center justify-center shrink-0">
-                <Handshake className="h-3.5 w-3.5" strokeWidth={2.2} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-[color:var(--fg)]">Confirmación de venta</div>
-                <StatusPill status={scStatus} label={scLabel} />
-              </div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[color:var(--fg-muted)]">
-                {showSaleDetails ? "Ocultar" : "Ver detalles"}
-                <ChevronDown className={cn("h-3 w-3 transition-transform", showSaleDetails && "rotate-180")} strokeWidth={2.4} />
-              </span>
-            </button>
-            {showSaleDetails && (
-              <div className="mt-1 space-y-1 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
-                {saleConfirmations.map((sc) => (
+            <SaleConfirmationBanner
+              status={scStatus} label={scLabel} expanded={showSaleDetails}
+              controlsId={"sale-confirmation-details-" + primarySc.id}
+              onToggle={() => setShowSaleDetails(!showSaleDetails)}
+            />
+              <div id={"sale-confirmation-details-" + primarySc.id} hidden={!showSaleDetails} className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
+                {showSaleDetails && saleConfirmations.map((sc) => (
                   <SaleConfirmationCard 
                     key={sc.id} 
                     confirmation={sc} 
@@ -870,7 +858,6 @@ export function ChatWindow({
                   />
                 ))}
               </div>
-            )}
           </div>
         );
       })()}

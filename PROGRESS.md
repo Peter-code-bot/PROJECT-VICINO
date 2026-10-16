@@ -4,6 +4,12 @@
 - La sustitución de capas de 300 marcadores respeta también el límite simultáneo de 300, conservando instancias y listeners compartidos. Se mantiene la caché existente, sin volver a consultar el catálogo por cada gesto dentro de cobertura.
 - Workflow Advisor: QA independiente gpt-6.1-sol/medium y revisión gpt-6.1-sol/high. Se corrigió pérdida de foco al refinar grupos y se verificó texto al 200% en 320px. Marcadores14/14, componente28/28, mapa79/79, agrupación/encuadre7/7 y caché17/17:145/145, todos sintéticos; lint final exit0. Evidencia literal, build y estado real de publicación en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), MCS-F02. MapKit/dispositivos reales pendientes.
 
+## 16-oct-2026 — VENTA-CLARO-01: confirmación de venta acorde al tema
+
+- Barra y tarjeta heredan el tema de la app: superficies blancas/arena, texto carbón, acentos verdes y estados suaves con icono/texto. Outfit en títulos/producto/precio e Inter en datos/controles; etiquetas de 12 px y acciones de al menos 48 px. Se conservan acciones, precio, reglas y sincronización del chat.
+- Workflow Advisor aplicado al plan; implementación directa en rama aislada, integrada con master 961adc2. Matriz de componentes/CSS/hook reales: 96/96 en Chromium y WebKit, ambos temas, cinco anchos, 200% de texto, acordeón y confirmación/rechazo con rollback. Contraste mínimo activo medido 5.37:1. Regresión de chat tras integrar PR69: 46/46; selector/propuestas: 18/18. Transporte y acciones controlados, sin ventas remotas.
+- [Plan, paleta por elemento y captura de implementación](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Evidencia literal, compilación, PR/SHA y estado real de publicación en la [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), VENTA-CLARO-01. La aceptación con cuentas/dispositivos reales sigue abierta; verificar grosor de Outfit/Inter en Safari/iPhone, ya que WebKit Windows mostró diferencias frente a Chromium.
+
 ## 15-oct-2026 — MCS-CHAT-02: mensajes independientes de ventas y Realtime
 
 - Publicado mediante PR69/master961adc2; CI PR/master y Production7111221017 SUCCESS. Dominio público, 41 assets y marcador SHA verificados el16-oct, exit0. Aceptación física pendiente.

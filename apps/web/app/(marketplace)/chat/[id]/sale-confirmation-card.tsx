@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { hapticMedium } from "@/lib/haptics";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { posterUrl } from "@/lib/video-thumbnail";
+import styles from "./sale-confirmation.module.css";
 
 export type ConfirmationStatus = "pendiente" | "esperando" | "completado" | "rechazado";
 
@@ -47,124 +48,82 @@ interface SaleConfirmationCardProps {
   onPropose?: () => void;
 }
 
-export function StatusPill({ status, label }: { status: ConfirmationStatus, label?: string }) {
-  if (status === "pendiente") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-400">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-        </span>
-        {label || "Pendiente"}
-      </span>
-    );
-  }
-  if (status === "esperando") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-400">
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-        {label || "Esperando respuesta"}
-      </span>
-    );
-  }
-  if (status === "completado") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[color:var(--trust-emerald)]">
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-[color:var(--trust-emerald)]"></span>
-        {label || "Completado"}
-      </span>
-    );
-  }
-  if (status === "rechazado") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[color:var(--danger)]">
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-[color:var(--danger)]"></span>
-        {label || "Rechazado"}
-      </span>
-    );
-  }
-  return null;
+const statusLabels: Record<ConfirmationStatus, string> = {
+  pendiente: "Pendiente",
+  esperando: "Esperando respuesta",
+  completado: "Completado",
+  rechazado: "Rechazado",
+};
+
+export function StatusPill({ status, label }: { status: ConfirmationStatus; label?: string }) {
+  const Icon = status === "completado" ? Check : status === "rechazado" ? X : Clock;
+  return (
+    <span className={styles.status} data-status={status}>
+      <Icon size={14} aria-hidden="true" />
+      <span>{label || statusLabels[status]}</span>
+    </span>
+  );
 }
 
-function MetaCell({ icon: Icon, label, value, dim = false }: { icon: LucideIcon, label: string, value: string, dim?: boolean }) {
+export function SaleConfirmationBanner({
+  status, label, expanded, controlsId, onToggle,
+}: {
+  status: ConfirmationStatus;
+  label: string;
+  expanded: boolean;
+  controlsId: string;
+  onToggle: () => void;
+}) {
   return (
-    <div className={cn("flex items-center gap-2", dim && "opacity-55")}>
-      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand-tint)] text-[color:var(--brand-hi)]">
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[9px] font-bold uppercase tracking-wider text-[color:var(--fg-dim)]">{label}</div>
-        <div className="truncate text-xs font-semibold text-[color:var(--fg)]">{value}</div>
+    <button type="button" className={cn(styles.surface, styles.banner)}
+      aria-expanded={expanded} aria-controls={controlsId} onClick={onToggle}>
+      <span className={styles.icon}><Handshake size={18} aria-hidden="true" /></span>
+      <span className={styles.bannerContent}>
+        <span className={styles.bannerTitle}>Confirmación de venta</span>
+        <StatusPill status={status} label={label} />
+      </span>
+      <span className={styles.toggle}>
+        {expanded ? "Ocultar" : "Ver detalles"}
+        <ChevronDown size={16} aria-hidden="true" className={cn(expanded && styles.expanded)} />
+      </span>
+    </button>
+  );
+}
+
+function MetaCell({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className={styles.metaCell}>
+      <Icon size={18} aria-hidden="true" className={styles.accent} />
+      <div className={styles.flexContent}>
+        <div className={styles.label}>{label}</div>
+        <div className={styles.metaValue}>{value}</div>
       </div>
     </div>
   );
 }
 
-function ConfirmStep({
-  stepState,
-  avatarUrl,
-  initial,
-  label,
-  isRejected
-}: {
+function ConfirmStep({ stepState, avatarUrl, initial, label }: {
   stepState: "done" | "pending" | "rejected";
   avatarUrl?: string | null;
   initial?: string;
   label: string;
-  isRejected?: boolean;
 }) {
+  const status = stepState === "done" ? "completado" : stepState === "pending" ? "pendiente" : "rechazado";
   return (
-    <div className="relative flex items-center gap-3">
-      <div className={cn(
-        "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_2px_currentColor]",
-        stepState === "done" && "bg-[color:var(--brand)] text-white shadow-[inset_0_0_0_2px_var(--brand-hi)]",
-        stepState === "pending" && "bg-amber-400/15 text-amber-400 shadow-[inset_0_0_0_2px_transparent]",
-        stepState === "rejected" && "bg-[rgba(255,59,48,0.18)] text-[color:var(--danger)] shadow-[inset_0_0_0_2px_transparent]"
-      )}>
-        {stepState === "done" && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-        {stepState === "pending" && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
-        {stepState === "rejected" && <X className="h-3.5 w-3.5" strokeWidth={3} />}
-      </div>
-      <div className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 rounded-xl p-1.5 shadow-[inset_0_0_0_1px_currentColor]",
-        stepState === "done" && "bg-[rgba(46,135,115,0.08)] text-[color:var(--brand-tint-strong)]",
-        stepState === "pending" && "bg-white/[0.025] text-[color:var(--border)]",
-        stepState === "rejected" && "bg-[rgba(255,59,48,0.06)] text-[rgba(255,59,48,0.22)]"
-      )}>
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="h-6 w-6 shrink-0 rounded-[8px] object-cover" />
-        ) : (
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--card-2)] text-[10px] font-bold text-[color:var(--fg-muted)]">
-            {initial}
-          </div>
-        )}
-        <span className="truncate text-xs font-semibold text-[color:var(--fg)]">{label}</span>
-        <span className={cn(
-          "ml-auto text-[9px] font-bold uppercase tracking-wider",
-          stepState === "done" && "text-[color:var(--brand-hi)]",
-          stepState === "pending" && "text-amber-400",
-          stepState === "rejected" && "text-[color:var(--danger)]"
-        )}>
-          {stepState === "done" ? "CONFIRMADO" : stepState === "pending" ? "PENDIENTE" : "RECHAZADO"}
-        </span>
-      </div>
+    <div className={styles.step}>
+      {avatarUrl ? <img src={avatarUrl} alt="" className={styles.avatar} /> :
+        <span className={styles.avatar}>{initial}</span>}
+      <span className={styles.person}>{label}</span>
+      <StatusPill status={status} label={stepState === "done" ? "Confirmado" : undefined} />
     </div>
   );
 }
 
-function ProductThumb({ url, fallback, rejected }: { url?: string | null, fallback: string, rejected?: boolean }) {
+function ProductThumb({ url, fallback, rejected }: { url?: string | null; fallback: string; rejected?: boolean }) {
   return (
-    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[color:var(--bg-elev-2)] shadow-[inset_0_0_0_1px_var(--border)]">
-      {url ? (
-        <img src={posterUrl(url)} alt="" className={cn("h-full w-full object-cover", rejected && "opacity-50 grayscale")} />
-      ) : (
-        <span className="text-xl font-bold text-[color:var(--fg-muted)]">{fallback[0]}</span>
-      )}
-      {rejected && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/45">
-          <X className="h-6 w-6 text-[color:var(--danger)]" strokeWidth={3} />
-        </div>
-      )}
+    <div className={styles.thumb}>
+      {url ? <img src={posterUrl(url)} alt="" className={cn(rejected && styles.rejectedImage)} /> :
+        <span>{fallback[0]}</span>}
     </div>
   );
 }
@@ -281,9 +240,6 @@ export function SaleConfirmationCard({
   const rejected = effectiveStatus === "rechazado";
   const done = effectiveStatus === "completado";
 
-  const myRole = isBuyer ? "comprador" : "vendedor";
-  const otherRole = isBuyer ? "vendedor" : "comprador";
-
   // Step indicators reflect the OPTIMISTIC view: when the user taps
   // Confirm, their own step flips to "done" within the same frame
   // (myConfirmed-OR-optimistic-confirm). Cancel flips to "rejected"
@@ -317,180 +273,88 @@ export function SaleConfirmationCard({
   const paymentMethodStr = sc.metodo_pago ? sc.metodo_pago.charAt(0).toUpperCase() + sc.metodo_pago.slice(1) : "Acordar";
 
   return (
-    <div className={cn(
-      "dark rounded-[var(--r-xl)] overflow-hidden transition-all duration-300 relative",
-      done && "bg-gradient-to-b from-[rgba(45,143,111,0.10)] to-[color:var(--card)] shadow-[inset_0_0_0_1px_rgba(45,143,111,0.32),0_0_40px_rgba(45,143,111,0.15)]",
-      rejected && "bg-gradient-to-b from-[rgba(255,59,48,0.08)] to-[color:var(--card)] shadow-[inset_0_0_0_1px_rgba(255,59,48,0.28),0_0_40px_rgba(255,59,48,0.10)]",
-      !done && !rejected && "bg-[#121212]"
-    )}>
-      {/* A. Header del módulo */}
-      <div className={cn(
-        "flex items-center gap-3 px-4 py-3 shadow-[inset_0_-1px_0_0_currentColor]",
-        done && "text-[rgba(45,143,111,0.15)]",
-        rejected && "text-[rgba(255,59,48,0.15)]",
-        !done && !rejected && "text-[color:var(--fg)]"
-      )}>
-        <div className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] text-[color:var(--bg)]",
-          done && "bg-[color:var(--trust-emerald)] text-white",
-          rejected && "bg-[color:var(--danger)] text-white",
-          !done && !rejected && "bg-[color:var(--fg)]"
-        )}>
-          {done ? <CheckCheck className="h-4 w-4" /> : rejected ? <X className="h-4 w-4" /> : <Handshake className="h-4 w-4" />}
+    <section className={cn(styles.surface, styles.card)} aria-label="Detalle de confirmación de venta">
+      <header className={styles.header}>
+        <span className={styles.icon}>
+          {done ? <CheckCheck size={20} aria-hidden="true" /> : rejected ?
+            <X size={20} aria-hidden="true" /> : <Handshake size={20} aria-hidden="true" />}
+        </span>
+        <div className={styles.flexContent}>
+          <h3 className={styles.title}>{done ? "Venta confirmada" : rejected ? "Venta rechazada" : "Confirmación de venta"}</h3>
+          <div role="status" aria-live="polite"><StatusPill status={effectiveStatus} /></div>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className={cn(
-            "text-sm font-bold truncate",
-            done ? "text-[color:var(--trust-emerald)]" : rejected ? "text-[color:var(--danger)]" : "text-[color:var(--fg)]"
-          )}>
-            {done ? "Venta confirmada" : rejected ? "Venta rechazada" : "Confirmación de venta"}
-          </div>
-          <StatusPill status={effectiveStatus} />
-        </div>
-      </div>
+      </header>
 
-      {/* B. Sumario producto + precio */}
-      <div className="px-3.5 pt-3.5 pb-2.5 flex items-start gap-3">
+      <div className={styles.product}>
         <ProductThumb url={productImg} fallback={productTitle} rejected={rejected} />
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-wider font-semibold text-[color:var(--fg-dim)]">Producto</div>
-          <div className={cn("text-sm font-semibold mt-0.5 truncate",
-            rejected ? "text-[color:var(--fg-muted)] line-through" : "text-[color:var(--fg)]")}>
-            {productTitle}
-          </div>
-          <div className={cn("font-display text-[22px] font-bold tracking-tight mt-1 leading-none",
-            rejected ? "text-[color:var(--fg-muted)] line-through" : "text-[color:var(--fg)]")}>
-            {/* formatPrice ya estaba importado pero sin usar, mientras el precio
-                se formateaba a mano justo aqui. Dos formatos divergentes para lo
-                mismo, y el manual no maneja un importe invalido: Number(null)
-                da 0 y pintaba "$0" en la tarjeta de una venta. */}
-            {formatPrice(sc.precio_acordado) ?? "Sin precio"}{" "}
-            <span className="text-[11px] font-medium text-[color:var(--fg-muted)] tracking-normal no-underline">
-              MXN
-            </span>
+        <div className={styles.flexContent}>
+          <div className={styles.label}>Producto</div>
+          <div className={cn(styles.productTitle, rejected && styles.struck)}>{productTitle}</div>
+          <div className={cn(styles.price, rejected && styles.struck)}>
+            {formatPrice(sc.precio_acordado) ?? "Sin precio"} <span>MXN</span>
           </div>
         </div>
       </div>
 
-      {/* C. Bloque meta */}
-      <div className="px-4 py-2 grid grid-cols-2 gap-3">
-        <MetaCell icon={sc.tipo_entrega === "pickup" ? Footprints : MapPin} label="Entrega" value={sc.tipo_entrega === "pickup" ? "Recoger en persona" : "Envío a domicilio"} dim={rejected} />
-        <MetaCell icon={Wallet} label="Pago" value={paymentMethodStr} dim={rejected} />
+      <div className={styles.meta}>
+        <MetaCell icon={sc.tipo_entrega === "pickup" ? Footprints : MapPin} label="Entrega"
+          value={sc.tipo_entrega === "pickup" ? "Recoger en persona" : "Envío a domicilio"} />
+        <MetaCell icon={Wallet} label="Pago" value={paymentMethodStr} />
       </div>
 
-      {/* D. Stepper vertical de confirmación */}
-      <div className="px-4 py-3">
-        <div className="text-[11px] font-semibold text-[color:var(--fg-muted)] mb-3">
-          {done ? "Ambos confirmaron" : rejected ? "Estado de la confirmación" : "Ambos deben confirmar"}
-        </div>
-        <div className="relative pl-1">
-          <div className={cn(
-            "absolute left-[14px] top-4 bottom-4 w-0.5 rounded-full",
-            done && "bg-[color:var(--trust-emerald)]",
-            rejected && "bg-gradient-to-b from-[color:var(--brand-hi)] to-[rgba(255,59,48,0.5)]",
-            !done && !rejected && "bg-gradient-to-b from-[color:var(--brand-hi)] to-[color:var(--border)]"
-          )} />
-          
-          <div className="space-y-4">
-            <ConfirmStep
-              stepState={myStepState}
-              initial={myInitial}
-              label="Tú"
-              isRejected={rejected}
-            />
-            <ConfirmStep
-              stepState={otherStepState}
-              avatarUrl={counterpart?.avatarUrl}
-              initial={otherName[0]}
-              label={otherName}
-              isRejected={rejected}
-            />
-          </div>
-        </div>
+      <div className={styles.steps}>
+        <p className={styles.stepTitle}>{done ? "Ambos confirmaron" : rejected ? "Estado de la confirmación" : "Ambos deben confirmar"}</p>
+        <ConfirmStep stepState={myStepState} initial={myInitial} label="Tú" />
+        <ConfirmStep stepState={otherStepState} avatarUrl={counterpart?.avatarUrl} initial={otherName[0]} label={otherName} />
       </div>
 
-      {/* E. Trust strip permanente */}
-      <div className={cn(
-        "px-4 py-3 flex gap-3 text-xs leading-relaxed border-t",
-        done && "bg-[rgba(45,143,111,0.10)] border-[rgba(45,143,111,0.15)]",
-        rejected && "bg-white/[0.03] border-white/5",
-        !done && !rejected && "bg-[rgba(46,135,115,0.08)] border-[rgba(46,135,115,0.12)]"
-      )}>
-        <div className="shrink-0 mt-0.5">
-          {done ? <Star className="h-4 w-4 text-[color:var(--trust-gold)] fill-[color:var(--trust-gold)]" /> : 
-           rejected ? <MessageSquare className="h-4 w-4 text-[color:var(--fg-muted)]" /> : 
-           <ShieldCheck className="h-4 w-4 text-[color:var(--brand-hi)]" />}
-        </div>
-        <div className="text-[color:var(--fg-dim)]">
+      <div className={styles.trust}>
+        {done ? <Star size={18} aria-hidden="true" /> : rejected ?
+          <MessageSquare size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
+        <div>
           {done ? (
-            <>Trato cerrado · <strong className="text-[color:var(--fg)]">deja una reseña a {otherName}</strong> para sumar trust score.</>
+            <>Trato cerrado · <strong>deja una reseña a {otherName}</strong> para sumar trust score.</>
           ) : rejected ? (
-            <>Esta confirmación fue cancelada. Pueden <strong className="text-[color:var(--fg)]">seguir negociando</strong> en este chat o cerrar la conversación.</>
+            <>Esta confirmación fue cancelada. Pueden <strong>seguir negociando</strong> en este chat o cerrar la conversación.</>
           ) : (
             <>VICINO sólo conecta. El pago se acuerda en persona — confirma sólo cuando hayas recibido el trato.</>
           )}
         </div>
       </div>
 
-      {/* F. CTAs por estado */}
-      <div className="p-4 pt-2">
-        {error && <p className="text-[11px] text-[color:var(--danger)] mb-2 px-1">{error}</p>}
-        
+      <div className={styles.footer}>
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        {isPending && <p className={styles.waiting} role="status">Guardando respuesta…</p>}
         {effectiveStatus === "pendiente" && (
-          <div className="flex gap-2">
-            <button
-              onClick={handleConfirm}
-              disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--brand)] text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:bg-[color:var(--brand-dark)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check className="h-4 w-4" />
-              Confirmar venta
+          <div className={styles.actions}>
+            <button type="button" onClick={handleConfirm} disabled={isPending} aria-busy={isPending}
+              className={cn(styles.action, styles.primary)}>
+              <Check size={18} aria-hidden="true" /><span>Confirmar venta</span>
             </button>
-            <button
-              onClick={handleCancel}
-              disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] text-sm font-semibold border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <X className="h-4 w-4" />
-              Rechazar
+            <button type="button" onClick={handleCancel} disabled={isPending} className={cn(styles.action, styles.secondary)}>
+              <X size={18} aria-hidden="true" /><span>Rechazar</span>
             </button>
           </div>
         )}
-
         {effectiveStatus === "esperando" && (
-          <div className="h-11 flex items-center justify-center text-xs font-medium text-[color:var(--fg-dim)]">
-            Ya confirmaste tu parte. Esperando a <strong className="text-[color:var(--fg)] ml-1">{otherName}</strong>...
-          </div>
+          <p className={styles.waiting}>Ya confirmaste tu parte. Esperando a <strong>{otherName}</strong>...</p>
         )}
-
         {effectiveStatus === "completado" && (
-          <button
-            onClick={onRate}
-            className="w-full flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--card-2)] text-[color:var(--fg)] text-sm font-semibold border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] transition-all"
-          >
-            <Star className="h-4 w-4 text-[color:var(--trust-gold)] fill-[color:var(--trust-gold)]" />
-            Calificar a {otherName}
+          <button type="button" onClick={onRate} className={cn(styles.action, styles.secondary)}>
+            <Star size={18} aria-hidden="true" /><span>Calificar a {otherName}</span>
           </button>
         )}
-
         {effectiveStatus === "rechazado" && (
-          <div className="flex gap-2">
-            <button
-              onClick={onPropose}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--brand)] text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:bg-[color:var(--brand-dark)] transition-all"
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Nueva propuesta
+          <div className={styles.actions}>
+            <button type="button" onClick={onPropose} disabled={isPending} className={cn(styles.action, styles.primary)}>
+              <ArrowLeftRight size={18} aria-hidden="true" /><span>Nueva propuesta</span>
             </button>
-            <button
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-[color:var(--card-2)] text-[color:var(--fg-muted)] text-sm font-semibold border border-[color:var(--border)] hover:bg-[color:var(--bg-elev-2)] hover:text-[color:var(--fg)] transition-all"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Seguir chat
+            <button type="button" disabled={isPending} className={cn(styles.action, styles.secondary)}>
+              <MessageSquare size={18} aria-hidden="true" /><span>Seguir chat</span>
             </button>
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
