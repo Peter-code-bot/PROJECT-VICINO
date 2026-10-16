@@ -99,7 +99,7 @@ async function main() {
     "@/hooks/use-firmas-adjuntos": "export const useFirmasAdjuntos=()=>new Map();",
     "@/components/moderation/report-menu-button": "export const ReportMenuButton=()=>null;",
     "@/components/ui/user-avatar": "export const UserAvatar=()=>null;",
-    "./sale-confirmation-card": "import React from 'react';export const SaleConfirmationCard=p=>React.createElement('div',{'data-sale-id':p.confirmation.id},'Venta '+p.confirmation.id);export const StatusPill=()=>null;export const ConfirmationStatus=()=>null;",
+    "./sale-confirmation-card": "import React from 'react';export const SaleConfirmationCard=p=>React.createElement('div',{'data-sale-id':p.confirmation.id},'Venta '+p.confirmation.id);export const SaleConfirmationBanner=p=>React.createElement('button',{onClick:p.onToggle,'aria-expanded':p.expanded,'aria-controls':p.controlsId},'Confirmación de venta');export const StatusPill=()=>null;export const ConfirmationStatus=()=>null;",
     "./sale-confirmation-form": `import React from 'react';export const SaleConfirmationForm=p=>React.createElement('button',{
       onClick:()=>{window.s04.sales=[{id:'created-sale',status:'pending_confirmation',created_at:'2026-09-25T10:00:01Z'}];p.onCreated();}
     },'Crear venta sintética');`,
