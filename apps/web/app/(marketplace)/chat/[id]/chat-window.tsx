@@ -69,6 +69,9 @@ interface ChatWindowProps {
   buyIntentFailed?: boolean;
   missingPurchaseIntent?: boolean;
   deletedAt: string | null;
+  /** Si algun participante tiene productos disponibles al cargar el chat.
+   *  null = desconocido (fallo la consulta). */
+  hayProductosDisponibles?: boolean | null;
 }
 
 export function ChatWindow({
@@ -85,6 +88,7 @@ export function ChatWindow({
   buyIntentFailed = false,
   missingPurchaseIntent = false,
   deletedAt,
+  hayProductosDisponibles = null,
 }: ChatWindowProps) {
   const chatAccessRef = useRef({ allowed: true });
   // A5.1: cursor-based load-older via the shared hook. The hook owns
@@ -153,6 +157,11 @@ export function ChatWindow({
   const [saleDraft, setSaleDraft] = useState<{ productId: string; revision: number } | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
   const eligibleProduct = productoElegible(product, [currentUserId, otherUser?.id ?? ""]);
+  // Sin producto elegible y sin nada publicado por ninguno de los dos, no hay
+  // venta posible: se ocultan "Confirmar Venta" y el selector, que solo
+  // decian "Ningun participante tiene productos disponibles". Si no se pudo
+  // saber (null) se muestran como antes.
+  const hayQueVender = eligibleProduct || hayProductosDisponibles !== false;
   const showSaleForm = salesStatus === "ready" && !!saleDraft && saleDraft.revision === activeProduct.revision && saleDraft.productId === product?.id && eligibleProduct;
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -694,7 +703,7 @@ export function ChatWindow({
             )}
           </div>
         </Link>
-        {salesStatus === "ready" && saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
+        {hayQueVender && salesStatus === "ready" && saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
           <button
             onClick={() => {
               if (!eligibleProduct || !product) { setShowProductSelector(true); return; }
@@ -736,10 +745,10 @@ export function ChatWindow({
 
       {/* Sale confirmation form */}
       <div className="mx-4 flex shrink-0 items-center gap-2 text-xs">
-        <button type="button" className="min-h-12 rounded-lg px-2 font-semibold text-brand"
+        {(hayQueVender || showProductSelector) && <button type="button" className="min-h-12 rounded-lg px-2 font-semibold text-brand"
           onClick={() => setShowProductSelector(value => !value)}>
           {showProductSelector ? "Cerrar selección" : product ? "Cambiar producto" : "Elegir producto"}
-        </button>
+        </button>}
         {product && !eligibleProduct && <span className="text-muted-foreground">Este producto ya no está disponible para confirmar una venta.</span>}
       </div>
       {showProductSelector && <ChatProductSelector key={activeProduct.revision} chatId={chatId} currentUserId={currentUserId} active={activeProduct}
@@ -978,7 +987,7 @@ export function ChatWindow({
       />
       <form
         onSubmit={handleSend}
-        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-3 bg-card supports-[-webkit-touch-callout:none]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] [.keyboard-open_&]:!pb-3"
+        className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-card [.keyboard-open_&]:!pb-3"
       >
         <PhotoPickerButton
           onElegir={elegirFotos}
