@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
-import { reconciliarChat, fusionarMensajes, comparar, ultimoConfirmado, type Mensaje } from '../apps/web/lib/realtime/reconciliar-chat';
+import { reconciliarChat, recuperarVentasChat, fusionarMensajes, comparar, ultimoConfirmado, type Mensaje } from '../apps/web/lib/realtime/reconciliar-chat';
 import type { Database } from '../apps/web/types/database.types';
 const require = createRequire(new URL('../apps/web/package.json', import.meta.url));
 const { createClient } = require('@supabase/supabase-js') as typeof import('../apps/web/node_modules/@supabase/supabase-js');
@@ -14,13 +14,14 @@ function fixture(rows: Mensaje[], cutoff: string | null = null) {
   const queries: URL[] = [];
   let fail = false;
   let denied = false;
+  let failSales = false;
   const client = createClient<Database>('https://synthetic.invalid', 'synthetic-key', { accessToken: async () => 'synthetic', global: {
     fetch: async (input) => {
       const url = new URL(String(input)); queries.push(url);
       if (fail) return new Response('{"message":"synthetic"}', { status: 500 });
       const table = url.pathname.split('/').at(-1);
       if (table === 'chats') return Response.json(denied ? null : { comprador_id: 'user', vendedor_id: 'other', deleted_at_comprador: cutoff, deleted_at_vendedor: null, producto_revision: 3, ultimo_producto: null });
-      if (table === 'sale_confirmations') return Response.json([]);
+      if (table === 'sale_confirmations') return failSales ? Response.json({message:'synthetic sales failure'}, {status:503}) : Response.json([]);
       assert.equal(table, 'messages');
       let data = [...rows];
       for (const filter of url.searchParams.getAll('created_at')) {
@@ -42,9 +43,19 @@ function fixture(rows: Mensaje[], cutoff: string | null = null) {
       return Response.json(data);
     },
   } });
-  return { client, queries, fail: () => { fail = true; }, deny: () => { denied = true; } };
+  return { client, queries, fail: () => { fail = true; }, failSales: () => { failSales = true; }, deny: () => { denied = true; } };
 }
 const args = { chatId: 'chat', userId: 'user', deletedAt: null, loadedIds: [], cursor: null, intervalo: null };
+
+test('mensajes autorizados se recuperan aunque fallen las confirmaciones de venta', async () => {
+  const f = fixture([message(1)]); f.failSales();
+  const result = await reconciliarChat(f.client, args);
+  if (result.denied) assert.fail('denied');
+  assert.equal(result.messages.length, 1);
+  assert.equal(result.intervalo, null);
+  assert.ok(!f.queries.some(url => url.pathname.endsWith('/sale_confirmations')));
+  await assert.rejects(recuperarVentasChat(f.client, args.chatId), /VICINO_CHAT_SALES_PENDING/);
+});
 
 test('chat vacio, primer mensaje y propios de otro dispositivo', async () => {
   const rows: Mensaje[] = [];

@@ -86,12 +86,17 @@ export async function reconciliarChat(client: SupabaseClient<Database>, args: {
     if (receipts.error) throw new Error("VICINO_CHAT_RECOVERY_PENDING");
     for (const row of receipts.data ?? []) messages.set(row.id, row);
   }
-  const sales = await client.from("sale_confirmations").select(CAMPOS_VENTA).eq("chat_id", args.chatId)
+  const activeProduct: ProductoActivoChat = { product: chat.ultimo_producto ?? null, revision: chat.producto_revision };
+  return { denied: false, messages: [...messages.values()], cursor, intervalo: interval, deletedAt, activeProduct } as const;
+}
+
+/** Las ventas tienen su propio estado: una demora o fallo no invalida mensajes. */
+export async function recuperarVentasChat(client: SupabaseClient<Database>, chatId: string) {
+  const sales = await client.from("sale_confirmations").select(CAMPOS_VENTA).eq("chat_id", chatId)
     .in("status", ["pending_confirmation", "completed"])
     .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(5);
-  if (sales.error) throw new Error("VICINO_CHAT_RECOVERY_PENDING");
-  const activeProduct: ProductoActivoChat = { product: chat.ultimo_producto ?? null, revision: chat.producto_revision };
-  return { denied: false, messages: [...messages.values()], sales: sales.data ?? [], cursor, intervalo: interval, deletedAt, activeProduct } as const;
+  if (sales.error) throw new Error("VICINO_CHAT_SALES_PENDING");
+  return sales.data ?? [];
 }
 
 export function fusionarMensajes<T extends { id: string; created_at: string | null }>(

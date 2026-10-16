@@ -17,7 +17,7 @@ test('SUBSCRIBED solicita una lectura; reintentar cerrado reconstruye transporte
   assert.equal(f.reads(), 1);
   f.connection.confirmada(); f.connection.reintentar(); assert.equal(f.reads(), 2);
   f.connection.estado('CLOSED'); f.connection.reintentar();
-  assert.equal(f.reconnect(), 1); assert.equal(f.reads(), 2);
+  assert.equal(f.reconnect(), 1); assert.equal(f.reads(), 3);
   f.connection.cancelar();
 });
 
@@ -41,7 +41,7 @@ test('conexion sin estado vence; SUBSCRIBED no borra fallos de consulta', (t) =>
   assert.equal(f.reconnect(), 1);
   f.connection.estado('SUBSCRIBED');
   f.connection.falloConsulta(); t.mock.timers.tick(3000);
-  assert.equal(f.reads(), 2);
+  assert.equal(f.reads(), 3);
   f.connection.falloConsulta(); t.mock.timers.tick(10000);
   f.connection.estado('SUBSCRIBED'); f.connection.falloConsulta(); t.mock.timers.tick(60000);
   assert.equal(f.reads(), 4);
@@ -57,7 +57,40 @@ test('offline, pausa y desmontaje no consultan ni reactivan canales', (t) => {
   assert.equal(f.reconnect(), 0);
   f.available(true); f.connection.reintentar(); assert.equal(f.reconnect(), 1);
   f.connection.estado('SUBSCRIBED'); f.connection.falloConsulta(); f.connection.pausar();
-  t.mock.timers.tick(60000); assert.equal(f.reads(), 1);
+  t.mock.timers.tick(60000); assert.equal(f.reads(), 2);
   f.connection.estado('CLOSED'); f.connection.cancelar(); t.mock.timers.tick(60000);
   f.connection.reintentar(); assert.equal(f.reconnect(), 1);
+});
+
+test('HTTP sano con WS caido no cancela ni renueva el presupuesto de reconexion', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture();
+  for (const delay of [1000, 3000, 10000]) {
+    f.connection.estado('CHANNEL_ERROR');
+    t.mock.timers.tick(delay);
+    f.connection.confirmada();
+  }
+  f.connection.estado('TIMED_OUT'); t.mock.timers.tick(60000);
+  assert.equal(f.reconnect(), 3);
+  assert.equal(f.reads(), 3);
+  f.connection.reintentar();
+  assert.equal(f.reconnect(), 4);
+  assert.equal(f.reads(), 4);
+  f.connection.estado('SUBSCRIBED');
+  assert.equal(f.reads(), 5);
+  f.connection.estado('SUBSCRIBED');
+  assert.equal(f.reads(), 5, 'Un estado repetido no provoca otra consulta');
+  f.connection.cancelar();
+});
+
+test('SUBSCRIBED duplicado conserva el reintento de una lectura fallida', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture();
+  f.connection.estado('SUBSCRIBED');
+  f.connection.falloConsulta();
+  f.connection.estado('SUBSCRIBED');
+  t.mock.timers.tick(1000);
+  assert.equal(f.reads(), 2);
+  assert.equal(f.reconnect(), 0);
+  f.connection.cancelar();
 });

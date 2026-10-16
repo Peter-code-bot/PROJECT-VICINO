@@ -30,6 +30,9 @@ export function useDeferredSales(initial: SaleConfirmation[], seed?: Promise<Sal
     setSales(update);
     setStatus("ready");
   }, []);
-  const failed = useCallback(() => setStatus(previous => previous === "ready" ? previous : "error"), []);
+  const failed = useCallback(() => {
+    revision.current++;
+    setStatus("error");
+  }, []);
   return { sales, status, updateLive, applySnapshot, failed };
 }
