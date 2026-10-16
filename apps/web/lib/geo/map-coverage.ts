@@ -15,6 +15,14 @@ export function publicDistance(a:{lat:number;lng:number},b:{lat:number;lng:numbe
   return 6371008.8*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
 }
 export interface MapCellLayer { features: MapFeature[]; stride: number }
+/** Frame whole public 0.01° cells, never a more precise seller location. */
+export function publicZoneBounds(bounds: MapBounds): MapBounds {
+  const cell = { west: bounds.west - .005, east: bounds.east + .005, south: bounds.south - .005, north: bounds.north + .005 };
+  const longitudeMargin = (cell.east - cell.west) * .15;
+  const latitudeMargin = (cell.north - cell.south) * .15;
+  return intersectMapBounds({ west: cell.west - longitudeMargin, east: cell.east + longitudeMargin,
+    south: cell.south - latitudeMargin, north: cell.north + latitudeMargin }) ?? MAP_AREA;
+}
 /** Only public cells; count each entire node before clipping to the camera. */
 function featuresAtStride(cells:MapCell[],viewport:MapBounds,stride:number):MapFeature[] {
     const groups=new Map<string,{count:number;lat:number;lng:number;bounds:MapBounds}>();

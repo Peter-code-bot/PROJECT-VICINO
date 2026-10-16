@@ -29,7 +29,7 @@ export function PublicationResultsDrawer({ feature, data, pending, error, onClos
   // Not framer-motion's useReducedMotion: it reads the setting once and this drawer stays mounted.
   const reducedMotion = usePrefersReducedMotion();
   const close = useRef<HTMLButtonElement>(null);
-  const title = feature && feature.count > 1 ? "Publicaciones en este grupo" : "Publicaciones en este punto";
+  const title = feature && feature.count > 1 ? "Publicaciones en esta zona" : "Publicación en esta zona";
 
   return <Dialog.Root open={feature !== null} onOpenChange={open => { if (!open) onClose(); }}>
     <AnimatePresence>
@@ -62,7 +62,7 @@ export function PublicationResultsDrawer({ feature, data, pending, error, onClos
             <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-6" aria-busy={pending}>
               {pending && !data?.listings.length && <p role="status" className="flex items-center gap-2 py-8 text-sm"><Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />Buscando publicaciones…</p>}
               {error && <div role="alert" className="space-y-3 py-5 text-sm"><p>{error}</p><button type="button" onClick={onRetry} className="discovery-control">Reintentar</button></div>}
-              {data && !data.listings.length && !pending && !error && <div className="space-y-2 py-6"><Store className="h-7 w-7" /><p className="font-semibold">Ya no hay publicaciones en este punto</p><p className="text-sm">Prueba otro punto o cambia los filtros.</p></div>}
+              {data && !data.listings.length && !pending && !error && <div className="space-y-2 py-6"><Store className="h-7 w-7" /><p className="font-semibold">Ya no hay publicaciones en esta zona</p><p className="text-sm">Prueba otra zona o cambia los filtros.</p></div>}
               <div className="space-y-4">{data?.listings.map(item => <article key={item.id} className="product-card-custom rounded-2xl p-4">
                 <Link href={item.slug ? `/${encodeURIComponent(item.categoria)}/${encodeURIComponent(item.slug)}` : `/vendedor/${item.creador_id}`} className="flex gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-[color:var(--fg)]">
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[color:var(--sidebar-bg)]">{item.imagen_principal ? <Image src={item.imagen_principal} alt="" fill sizes="80px" className="object-cover" /> : <Store className="m-6 h-8 w-8" />}</div>
