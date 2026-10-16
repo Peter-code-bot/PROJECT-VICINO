@@ -113,7 +113,7 @@ async function main() {
       window.s04=fixture();const root=createRoot(document.getElementById('root'));window.s04.unmount=()=>root.unmount();
       window.s04.render=(identity='buyer')=>root.render(React.createElement(ChatWindow,{key:identity,chatId:'chat',currentUserId:identity,isBuyer:true,
         otherUser:{id:'seller',nombre:'Vendedor sintético',foto:null,trust_level:'new'},product:null,
-        initialMessages:window.s04.rows.slice(0,window.s04.initialCount??1),initialSaleConfirmations:window.s04.initialSales??[],productRevision:0,deletedAt:null}));window.s04.render();`,
+        initialMessages:window.s04.rows.slice(0,window.s04.initialCount??1),initialSaleConfirmations:window.s04.initialSales??[],productRevision:0,deletedAt:null,hayProductosDisponibles:window.s04.availableProducts??null}));window.s04.render();`,
       resolveDir: web, loader: "tsx" },
     bundle: true, platform: "browser", format: "iife", write: false, jsx: "automatic",
     tsconfig: path.join(web, "tsconfig.json"), define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
@@ -197,6 +197,16 @@ async function main() {
       await mount();
       assert.equal(await channelCount(), 1);
       assert.ok(await page.evaluate(() => (window as any).s04.queries.length >= 4));
+      passed++;
+
+      // Preserve PR68: a chat with no available products still sends normally.
+      await mount({ availableProducts: false });
+      await expect(page.getByRole("button", { name: "Confirmar Venta", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Elegir producto", exact: true })).toHaveCount(0);
+      await send("Chat sin catálogo disponible");
+      await page.evaluate(() => { (window as any).s04.finishSend(0); });
+      await synced();
+      await expect(page.getByText("Chat sin catálogo disponible", { exact: true })).toHaveCount(1);
       passed++;
 
       // Healthy sends still reconcile. Delay the actual query to expose the old
