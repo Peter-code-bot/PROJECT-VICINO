@@ -1,7 +1,7 @@
 /** Public synthetic cells; grouping stability and SQL membership, no DB/SDK. */
 import assert from 'node:assert/strict';
-import { clusterMapLayer } from '../apps/web/lib/geo/map-coverage';
-import { mapCoverageRequestSchema, mapQuerySchema, type MapCell } from '../packages/shared/src/validators/publications-map';
+import { clusterMapLayer, publicZoneBounds } from '../apps/web/lib/geo/map-coverage';
+import { MAP_AREA, mapBoundsSchema, mapCoverageRequestSchema, mapQuerySchema, type MapCell } from '../packages/shared/src/validators/publications-map';
 
 let passed=0;
 function check(name:string,run:()=>void){run();passed++;console.log('PASS '+name);}
@@ -42,5 +42,27 @@ check('invalid previous levels recover and dense layers respect the hard limit',
     assert.ok(layer.features.length<=300);assert.equal(layer.features.reduce((n,f)=>n+f.count,0),10000);
   }
   assert.deepEqual(clusterMapLayer([],bounds,8),{features:[],stride:1});
+});
+check('a single public cell frames its entire approximate area with a margin',()=>{
+  const center={west:-98.21,east:-98.21,south:19.04,north:19.04};
+  const framed=publicZoneBounds(center);
+  assert.ok(mapBoundsSchema.safeParse(framed).success);
+  assert.ok(framed.west < center.west-.005 && framed.east > center.east+.005);
+  assert.ok(framed.south < center.south-.005 && framed.north > center.north+.005);
+  assert.ok(framed.east-framed.west >= .01 && framed.north-framed.south >= .01);
+});
+check('a group frames all public member cells instead of zooming to its weighted pin',()=>{
+  const group={west:-98.25,east:-98.20,south:19.02,north:19.05};
+  const framed=publicZoneBounds(group);
+  assert.ok(framed.west < group.west-.005 && framed.east > group.east+.005);
+  assert.ok(framed.south < group.south-.005 && framed.north > group.north+.005);
+});
+check('public area framing stays valid at every Mexico coverage edge',()=>{
+  for(const lng of [MAP_AREA.west,MAP_AREA.east])for(const lat of [MAP_AREA.south,MAP_AREA.north]){
+    const framed=publicZoneBounds({west:lng,east:lng,south:lat,north:lat});
+    assert.ok(mapBoundsSchema.safeParse(framed).success);
+    assert.ok(framed.west<=lng&&framed.east>=lng&&framed.south<=lat&&framed.north>=lat);
+  }
+  assert.deepEqual(publicZoneBounds(MAP_AREA),MAP_AREA);
 });
 console.log(`S12 map clusters: ${passed}/${passed} PASS; synthetic public cells`);

@@ -10,8 +10,8 @@ interface Entry { marker: Marker; feature: MapFeature | null; appearance: Appear
 function appearance(feature: MapFeature, selected: string | null, brand?: string, active?: string): Appearance {
   return {
     lat: feature.public_lat, lng: feature.public_lng, color: selected === feature.id ? active : brand,
-    label: `${feature.count} ${feature.count === 1 ? 'publicación' : 'publicaciones'}${feature.seller_count > 0 ? ` · ${feature.seller_count} ${feature.seller_count === 1 ? 'vendedor' : 'vendedores'}` : ''} · ubicación aproximada${selected === feature.id ? ' · seleccionado' : ''}`,
-    glyph: feature.count > 99 ? '99+' : String(feature.count),
+    label: `${feature.count === 1 ? 'Zona' : 'Grupo'} · ${feature.count} ${feature.count === 1 ? 'publicación' : 'publicaciones'}${feature.seller_count > 0 ? ` · ${feature.seller_count} ${feature.seller_count === 1 ? 'vendedor' : 'vendedores'}` : ''} · ubicación aproximada${selected === feature.id ? ' · seleccionado' : ''}`,
+    glyph: feature.count === 1 ? '•' : feature.count > 99 ? '99+' : String(feature.count),
     selected: selected === feature.id,
   };
 }
@@ -23,9 +23,9 @@ export class PublicationMarkerLayer {
   constructor(private readonly map: AnnotationMap, private readonly sdk: MarkerSDK, private readonly onSelect: (feature: MapFeature) => void) {}
 
   update(features: MapFeature[], selected: string | null, brand?: string, active?: string) {
-    const wanted = new Set<string>();
+    const wanted = new Set(features.map(feature => feature.id));
+    const obsolete = [...this.entries].filter(([id]) => !wanted.has(id))[Symbol.iterator]();
     for (const feature of features) {
-      wanted.add(feature.id);
       const next = appearance(feature, selected, brand, active);
       const entry = this.entries.get(feature.id);
       if (entry) {
@@ -45,6 +45,16 @@ export class PublicationMarkerLayer {
         if (entry.marker.selected !== next.selected) entry.marker.selected = next.selected;
         continue;
       }
+      // Validated layers contain at most 300 groups. Reclaim one obsolete slot
+      // before adding when full, rather than briefly attaching two full layers.
+      // Common IDs keep their annotation and listener throughout the regroup.
+      if (this.entries.size >= 300) {
+        const retired = obsolete.next().value;
+        if (retired) {
+          this.remove(retired[1]);
+          this.entries.delete(retired[0]);
+        }
+      }
       const marker = new this.sdk.MarkerAnnotation(new this.sdk.Coordinate(next.lat, next.lng), {
         color: next.color, draggable: false, calloutEnabled: false, selected: next.selected,
         title: next.label, accessibilityLabel: next.label, titleVisibility: this.sdk.FeatureVisibility.Hidden,
@@ -57,7 +67,7 @@ export class PublicationMarkerLayer {
       this.entries.set(feature.id, created);
       this.map.addAnnotation(marker);
     }
-    // Add incoming groups first so a legitimate regroup never empties the layer.
+    // Below the cap, add first to keep a small regroup from emptying the layer.
     for (const [id, entry] of this.entries) {
       if (!wanted.has(id)) {
         this.remove(entry);

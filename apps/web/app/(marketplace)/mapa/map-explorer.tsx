@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, ArrowRight } from "lucide-react";
 import { MAP_AREA, type MapBounds, type MapFeature, type MapQuery } from "@vicino/shared";
@@ -12,7 +12,7 @@ import { useSessionUI } from "@/components/layout/session-data-provider";
 import { usePublicationCoverage } from "@/hooks/use-publication-coverage";
 import { useCoverageListings } from "@/hooks/use-coverage-listings";
 import { boundsAround, intersectMapBounds, queryFromMapParams } from "@/lib/geo/publication-map";
-import { clusterMapLayer, publicDistance } from "@/lib/geo/map-coverage";
+import { clusterMapLayer, publicDistance, publicZoneBounds } from "@/lib/geo/map-coverage";
 
 type Center = { lat: number; lng: number };
 interface SelectedGroup { feature: MapFeature; query: MapQuery; center: Center | null; revision: string }
@@ -36,6 +36,9 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
   });
   const [focus, setFocus] = useState<{ bounds: MapBounds; revision: number } | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [zonesOpen, setZonesOpen] = useState(false);
+  const zonesId = useId();
+  const zonesToggle = useRef<HTMLButtonElement>(null);
   const latest = useRef(ui);
   const input = useRef<HTMLInputElement>(null);
   const fallbackFocus = useRef<HTMLDivElement>(null);
@@ -145,7 +148,24 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
       {mapFailed && <Link href={searchHref(ui.query)} className="discovery-control absolute bottom-8 inset-x-4 text-center">Ver publicaciones de esta zona<ArrowRight className="h-4 w-4" /></Link>}
     </div>
     {error && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm">{error}<button type="button" onClick={retry} className="discovery-control">Reintentar publicaciones</button></p>}
-    {features.length > 0 && <div aria-label="Seleccionar puntos con teclado" className="sr-only focus-within:not-sr-only focus-within:rounded-2xl focus-within:bg-[color:var(--bg)] focus-within:p-3"><p className="mb-2 text-sm">Selecciona un punto para ver sus publicaciones.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-3">{features.map((feature, index) => <button key={feature.id} type="button" onClick={() => select(feature)} className="discovery-control justify-start text-left">Punto {index + 1} · {feature.count} {feature.count === 1 ? "publicación" : "publicaciones"}</button>)}</div></div>}
+    {features.length > 0 && <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-[color:var(--fg)]">Punto: una publicación. Número: publicaciones agrupadas.</p>
+        <button ref={zonesToggle} type="button" aria-expanded={zonesOpen} aria-controls={zonesId} onClick={() => setZonesOpen(open => !open)} className="discovery-control">{zonesOpen ? "Ocultar zonas" : "Ver zonas"} ({features.length})</button>
+      </div>
+      <div id={zonesId} role="region" aria-label="Zonas del mapa" className={zonesOpen ? "rounded-2xl bg-[color:var(--bg)] p-3" : "sr-only focus-within:not-sr-only focus-within:rounded-2xl focus-within:bg-[color:var(--bg)] focus-within:p-3"}>
+        <p className="mb-2 text-sm">Elige una zona aproximada para ver sus publicaciones.</p>
+        <div className="grid max-h-64 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2">{features.map((feature, index) => <div key={feature.id} className="flex flex-wrap items-stretch gap-2">
+          <button type="button" onClick={() => select(feature)} className="discovery-control min-w-0 flex-1 basis-48 justify-start text-left [overflow-wrap:anywhere]">Zona {index + 1} · {feature.count} {feature.count === 1 ? "publicación" : "publicaciones"}</button>
+          <button type="button" aria-label={`Ver área de la zona ${index + 1}`} onClick={() => {
+            // Zoom can replace this group's ID with finer cells and unmount
+            // the row. Keep keyboard focus on a control that survives it.
+            zonesToggle.current?.focus({ preventScroll: true });
+            setFocus(previous => ({ bounds: publicZoneBounds(feature.bounds), revision: (previous?.revision ?? 0) + 1 }));
+          }} className="discovery-control shrink-0 grow sm:grow-0">Ver área</button>
+        </div>)}</div>
+      </div>
+    </>}
     {!pending && data?.total === 0 && <p role="status" className="text-sm">Aún no hay publicaciones aquí. Mueve el mapa o prueba otros filtros.</p>}
     <p className="text-xs text-[color:var(--fg)]">Ubicaciones aproximadas. {ui.query.mode === "nearby" ? "Resultados dentro de " + ui.query.radius_meters / 1000 + " km de la ubicación elegida." : ui.center ? "Puedes moverte por la zona y tocar un punto para ver sus publicaciones." : "Vista de México; acércate a una zona para explorar sus puntos."}</p>
     <PublicationResultsDrawer feature={ui.selected?.feature ?? null} data={detail.data ?? null} pending={detail.pending} error={detail.error ?? null} onClose={closeDrawer} onRetry={detail.retry} onLoadMore={detail.loadMore} returnFocus={returnFocus} fallbackFocus={fallbackFocus} />

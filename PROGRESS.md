@@ -1,4 +1,12 @@
+## 16-oct-2026 — MCS-F02: selección de zonas y marcadores acotados
+
+- Distingue publicación única (punto) y grupos (número, 99+ sólo visual). La lista de zonas es opcional; selección conserva consulta/centro/revisión y Ver área encuadra únicamente celdas públicas aproximadas, sin nueva precisión ni SQL.
+- La sustitución de capas de 300 marcadores respeta también el límite simultáneo de 300, conservando instancias y listeners compartidos. Se mantiene la caché existente, sin volver a consultar el catálogo por cada gesto dentro de cobertura.
+- Workflow Advisor: QA independiente gpt-6.1-sol/medium y revisión gpt-6.1-sol/high. Se corrigió pérdida de foco al refinar grupos y se verificó texto al 200% en 320px. Marcadores14/14, componente28/28, mapa79/79, agrupación/encuadre7/7 y caché17/17:145/145, todos sintéticos; lint final exit0. Evidencia literal, build y estado real de publicación en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), MCS-F02. MapKit/dispositivos reales pendientes.
+
 ## 15-oct-2026 — MCS-CHAT-02: mensajes independientes de ventas y Realtime
+
+- Publicado mediante PR69/master961adc2; CI PR/master y Production7111221017 SUCCESS. Dominio público, 41 assets y marcador SHA verificados el16-oct, exit0. Aceptación física pendiente.
 
 - Nuevas capturas de Javier muestran recuperación seguida de sincronización pendiente en iPhone; no identifican build ni causa del teléfono. Se reprodujeron dos bloqueos del cliente: esperar SUBSCRIBED antes de leer por HTTP y descartar mensajes recuperados cuando falla ventas.
 - HTTP se reconcilia por montaje/chat/usuario; ventas tiene lectura y reintento propios. La lectura inicial es silenciosa, la conexión en vivo pendiente tiene aviso independiente y HTTP sano no cancela los reintentos acotados del transporte.

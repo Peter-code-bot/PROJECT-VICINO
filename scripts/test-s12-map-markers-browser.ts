@@ -85,7 +85,7 @@ async function main() {
         await page.addScriptTag({ content: bundle.outputFiles[0].text }); await expect(page.locator('[data-marker]')).toHaveCount(3);
       }
       const snapshot = async () => { await expect.poll(() => page.evaluate(() => { const f = (window as any).f; return f.version === f.committed; })).toBe(true); return page.evaluate(() => { const f = (window as any).f; return { maps: f.maps.length, instances: f.instances.length, operations: f.operations, writes: f.writes, ids: f.map().markers.map((m: any) => m.id) }; }); };
-      await mount(); assert.equal((await snapshot()).maps, 1); pass('one map and one marker per group after initial effect');
+      await mount(); await expect(page.locator('[data-marker]').first()).toHaveText('•'); await expect(page.locator('[data-marker]').last()).toHaveText('99+'); await expect(page.locator('[data-marker]').first()).toHaveAccessibleName(/Zona.*ubicación aproximada/i); assert.equal((await snapshot()).maps, 1); pass('one map and one marker per group after initial effect');
       const original = (await snapshot()).ids;
       await page.evaluate(() => { const f = (window as any).f; f.clear(); f.camera(.15); });
       await expect.poll(() => page.evaluate(() => (window as any).f.map().region.span.longitudeDelta)).toBe(.15);
@@ -109,6 +109,20 @@ async function main() {
       const before = await page.evaluate(() => (window as any).f.selections.length); await page.evaluate(() => (window as any).f.retiredCallback()); assert.equal(await page.evaluate(() => (window as any).f.selections.length), before); pass('partial replacement adds before removal and retired callbacks are inert');
       await page.evaluate(() => { const f = (window as any).f; f.clear(); f.features = [{ ...f.features[0], id: 'cell:2:-4910:952' }]; f.redraw(); });
       await expect(page.locator('[data-marker]')).toHaveCount(1); state = await snapshot(); assert.deepEqual(state.operations.map((o: any) => o.kind), ['add', 'remove', 'remove', 'remove']); assert.ok(state.operations.every((o: any) => o.size > 0)); pass('legitimate complete regroup never empties the annotation layer');
+      // Exercise real component effects at the SDK's strict attachment budget.
+      await page.evaluate(() => { const f=(window as any).f, seed=f.features[0]; f.features=Array.from({length:300},(_,i)=>({...seed,id:'budget:'+i,count:i+1})); f.redraw(); });
+      await expect(page.locator('[data-marker]')).toHaveCount(300);
+      await page.evaluate(() => { const f=(window as any).f; f.clear(); f.features=f.features.map((feature:any,index:number)=>({...feature,id:'replacement:'+index})); f.redraw(); });
+      await expect.poll(async()=> (await snapshot()).operations.length).toBe(600);
+      state=await snapshot(); assert.equal(state.ids.length,300); assert.ok(state.operations.every((operation:any)=>operation.size<=300 && operation.size>0));
+      pass('300 to 300 disjoint regroup never exceeds the simultaneous SDK attachment budget');
+      await page.evaluate(() => { const f=(window as any).f; f.common=f.map().markers.slice(200); f.commonListeners=f.common.map((marker:any)=>[...marker.events.get('select')][0]); f.clear(); const seed=f.features[0]; f.features=Array.from({length:300},(_,index)=>{const i=index+200;return {...seed,id:'replacement:'+i,count:i+1};});f.redraw(); });
+      await expect.poll(async()=> (await snapshot()).operations.length).toBe(400);
+      state=await snapshot(); assert.ok(state.operations.every((operation:any)=>operation.size<=300));
+      assert.equal(await page.evaluate(()=>{const f=(window as any).f;return f.common.every((marker:any,index:number)=>f.map().markers.includes(marker)&&marker.events.get('select').size===1&&[...marker.events.get('select')][0]===f.commonListeners[index]);}),true);
+      pass('shared IDs preserve native annotation identity and exactly one listener during bounded replacement');
+      await page.evaluate(() => { const f=(window as any).f; f.features=f.features.slice(0,1);f.redraw(); });
+      await expect(page.locator('[data-marker]')).toHaveCount(1);
       await page.evaluate(() => { const f = (window as any).f; f.oldMap = f.map(); f.oldMarker = f.map().markers[0]; f.clear(); f.sdk = { ...f.sdk }; f.redraw(); });
       await expect.poll(() => page.evaluate(() => (window as any).f.maps.length)).toBe(2);
       assert.equal(await page.evaluate(() => (window as any).f.oldMap.destroyed), true); assert.equal(await page.evaluate(() => (window as any).f.oldMarker.events.get('select').size), 0); assert.notEqual((await snapshot()).ids[0], state.ids[0]); pass('SDK replacement disposes listeners and annotates the new map only');

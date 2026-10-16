@@ -61,8 +61,8 @@ const [a, b] = [...attached]; assert.ok(a && b);
 check('first render creates one annotation and one listener per public group', () => {
   assert.equal(instances.length, 2); assert.equal(operations.length, 2); assert.equal(writes.length, 0);
   assert.equal(a.listeners.get('select')?.size, 1); assert.equal(b.listeners.get('select')?.size, 1);
-  assert.equal(a.glyphText, '1'); assert.equal(b.glyphText, '99+');
-  assert.match(a.accessibilityLabel!, /1 publicación · 1 vendedor/); assert.doesNotMatch(b.accessibilityLabel!, /vendedores/);
+  assert.equal(a.glyphText, '•'); assert.equal(b.glyphText, '99+'); assert.match(b.accessibilityLabel!, /^Grupo · 120 publicaciones/);
+  assert.match(a.accessibilityLabel!, /1 publicación · 1 vendedor/); assert.match(a.accessibilityLabel!, /Zona.*ubicación aproximada/i); assert.doesNotMatch(b.accessibilityLabel!, /vendedores/);
 });
 check('fresh arrays, reordering and normalized SDK getters preserve identity with zero writes', () => {
   reset();
@@ -87,7 +87,7 @@ const revised = { ...first, count: 2, public_lat: 19.05, bounds: { ...first.boun
 check('changed coordinate and count update only their attributes on the same object', () => {
   reset(); layer.update([revised, second], null, 'teal', 'black');
   assert.deepEqual(writes.map(w => w.property), ['coordinate', 'title', 'accessibilityLabel', 'glyphText']);
-  assert.equal(operations.length, 0); assert.equal(instances.length, 2); assert.equal(a.coordinate.latitude, 19.05);
+  assert.equal(operations.length, 0); assert.equal(instances.length, 2); assert.equal(a.coordinate.latitude, 19.05); assert.equal(a.glyphText, '2');
 });
 const metadata = { ...revised, bounds: { ...revised.bounds, east: -98.20 } };
 check('the single selection listener reads the newest feature even without visible changes', () => {
@@ -113,6 +113,24 @@ check('300 groups across 50 camera-like updates retain all objects with no SDK m
   layer.update(batch, null, 'teal', 'black'); const original = [...attached]; const count = instances.length;
   reset(); for (let i = 0; i < 50; i++) layer.update(batch.map(f => ({ ...f })), null, 'teal', 'black');
   assert.deepEqual([...attached], original); assert.equal(instances.length, count); assert.equal(operations.length, 0); assert.equal(writes.length, 0);
+});
+check('300 to 300 disjoint groups never exceeds 300 simultaneously attached annotations', () => {
+  const retired = [...attached]; const callbacks = retired.map(marker => [...marker.listeners.get('select')!][0]!);
+  reset(); layer.update(Array.from({ length: 300 }, (_, i) => feature('replacement:' + i, i + 1)), null, 'teal', 'black');
+  assert.equal(attached.size, 300); assert.equal(operations.length, 600);
+  assert.ok(operations.every(operation => operation.attached <= 300), 'SDK peak must remain within the public marker budget even during replacement');
+  assert.ok(operations.every(operation => operation.attached > 0), 'bounded replacement must still retain a visible layer');
+  assert.ok(retired.every(marker => marker.listeners.get('select')?.size === 0));
+  const prior = selected.length; callbacks.forEach(callback => callback()); assert.equal(selected.length, prior);
+});
+check('300-group replacement retains shared instances and their single listener', () => {
+  const common = [...attached].slice(200); const listeners = common.map(marker => [...marker.listeners.get('select')!][0]);
+  const count = instances.length;
+  reset(); layer.update(Array.from({ length: 300 }, (_, index) => { const i=index+200; return feature('replacement:' + i, i + 1); }), null, 'teal', 'black');
+  assert.equal(attached.size, 300); assert.equal(instances.length-count, 200); assert.equal(operations.length, 400);
+  assert.ok(operations.every(operation => operation.attached <= 300));
+  assert.ok(common.every((marker,index) => attached.has(marker) && marker.listeners.get('select')?.size === 1 && [...marker.listeners.get('select')!][0] === listeners[index]));
+  assert.ok(writes.every(write => !common.includes(write.marker)), 'unchanged common IDs require no SDK writes');
 });
 check('empty results remove every annotation and its listener exactly once', () => {
   reset(); const current = [...attached]; layer.update([], null, 'teal', 'black');
