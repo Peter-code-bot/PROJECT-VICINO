@@ -25,6 +25,13 @@ const LAUNCH_URL_CONSUMIDA = "vicino:launch-url-consumida";
 
 const TOAST_GRACE_MS = 2000;
 
+/**
+ * Re-aplicaciones del tema de las barras despues del arranque, en ms. El
+ * emulador (mucho mas lento que un telefono) tardo 1.5 s entre hide() y la
+ * salida real del splash; 5 s deja margen de sobra.
+ */
+const REAPLICAR_BARRAS_MS = [1000, 2500, 5000];
+
 // Module-level state para el double-tap-exit. Persiste a traves del lifecycle
 // del componente; se resetea en el cleanup del useEffect para evitar arrastrar
 // estado a un remount.
@@ -209,7 +216,7 @@ export function CapacitorInit() {
       // --- Status bar: fallo aislado; el teclado aun debe inicializarse. ---
       try {
         const { StatusBar, Style } = await import("@capacitor/status-bar");
-        const { SystemBars, SystemBarsStyle, SystemBarType } = await import("@capacitor/core");
+        const { SystemBars, SystemBarsStyle } = await import("@capacitor/core");
         if (state.cancelled) return;
         // La barra de ABAJO de Android (botones o rayita de gestos) no es de
         // @capacitor/status-bar: la gobierna SystemBars, del nucleo de
@@ -217,6 +224,13 @@ export function CapacitorInit() {
         // telefono en oscuro y la app en claro salian botones blancos sobre el
         // crema (captura de Pedro, 15-oct-2026). Solo Android: en iOS su
         // setStyle ignora `bar` y pisaria la barra de estado.
+        //
+        // Sin `bar` a proposito: en Android toca las dos barras con el mismo
+        // estilo que StatusBar.setStyle, y SystemBars 8.4 GUARDA el estilo por
+        // barra y lo re-aplica en cada cambio de configuracion (el telefono
+        // cambia de modo con la app abierta). Con solo NavigationBar, la de
+        // arriba se quedaba con el del arranque, y el Bridge recorre los plugins
+        // en un HashMap, asi que no hay garantia de que StatusBar corrija despues.
         const esAndroid = Capacitor.getPlatform() === "android";
         let requested = false;
         let applying = false;
@@ -237,7 +251,6 @@ export function CapacitorInit() {
                 StatusBar.setBackgroundColor({ color }),
                 ...(esAndroid
                   ? [SystemBars.setStyle({
-                      bar: SystemBarType.NavigationBar,
                       style: isDark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
                     })]
                   : []),
@@ -256,6 +269,19 @@ export function CapacitorInit() {
           });
         };
         updateStatusBarTheme();
+        // Android 12/12L (API 31-32): cuando por fin sale el splash del sistema,
+        // androidx core-splashscreen 1.2.0 vuelve a pintar las barras con el
+        // TEMA nativo (applyAppSystemUiTheme, solo si SDK_INT < 33): barra
+        // transparente sobre el fondo del decor, que en modo oscuro es #303030,
+        // e iconos segun el modo del telefono. Esa salida llega despues de que
+        // hide() resuelve y, en la practica, despues de este bloque (logcat
+        // 15-oct-2026: tema aplicado a los 28.74 s, salida del splash a los
+        // 28.91 s). Ningun evento la marca, asi que se re-aplica unas veces;
+        // aplicar el mismo tema es idempotente.
+        if (esAndroid) {
+          const timers = REAPLICAR_BARRAS_MS.map((ms) => window.setTimeout(updateStatusBarTheme, ms));
+          state.handles.push({ remove: async () => { timers.forEach((t) => window.clearTimeout(t)); } });
+        }
         const observer = new MutationObserver(updateStatusBarTheme);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
         state.handles.push({ remove: async () => { observer.disconnect(); } });
