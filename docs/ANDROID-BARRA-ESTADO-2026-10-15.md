@@ -83,7 +83,13 @@ la app es claro (`defaultTheme="light"` en `app/layout.tsx`).
 
 - Android 12/12L y 15+: sin imagen de emulador que arranque (la de 37 no tiene
   kernel). Lo de esas versiones sale de leer el codigo y el bytecode.
-- Aparte, no investigado: sin red el APK de prueba muestra la pagina generica
-  "Webpage not available" (`net::ERR_FAILED`) aunque `offline.html` esta en los assets
-  y `errorPath` en la config. Conviene revisarlo antes del AAB 10, que es justo el que
-  debia arreglar eso.
+- Punto 4 (cambio de modo con la app abierta): sale de leer SystemBars 8.4.3 y
+  `Bridge.onConfigurationChanged`; la prueba en el emulador se quedo sin red.
+- El re-aplicado tras el splash de la web no cambia nada visible en Android 13/14 (ahi
+  el splash no toca las barras): solo se comprobo con type-check, lint y build.
+- Aparte, no investigado a fondo: sin red el APK (8.3.0 y 8.4.3) muestra la pagina
+  generica "Webpage not available" (`net::ERR_FAILED`) aunque `offline.html` esta en
+  los assets y `errorPath` en la config. Pista: el logcat muestra que la navegacion la
+  atiende el service worker (`FetchEvent ... network error`, `workbox ... no-response`),
+  asi que el WebView no ve el fallo de red que `errorPath` espera. Conviene revisarlo
+  antes del AAB 10, que es justo el que debia arreglar eso.
