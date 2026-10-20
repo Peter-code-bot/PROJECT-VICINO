@@ -153,15 +153,13 @@ export const config = {
      *     usa CRON_SECRET. Ninguno depende de que el proxy refresque la cookie.
      *   - sentry-tunnel, sw.js, workbox-*.js, theme-init.js, manifest.json,
      *     icons/ y los estaticos de _next.
-     *   - fallback-*.js y offline.html (`fallbacks` en next.config.ts), y aqui
-     *     no es solo ahorro: requiereSesion() las trata como rutas privadas y a
-     *     un invitado se le redirige a /login.
-     *       · fallback-*.js lo carga sw.js con importScripts, que NO sigue
-     *         redirects: el script del SW se cae entero y se queda sin precache
-     *         ni rutas. Visto el 19-oct-2026 con el build en verde.
-     *       · offline.html la precachea el SW siguiendo el redirect: guardaria
-     *         la pagina de login como pagina sin red.
+     *   - offline.html (regla "pages" en next.config.ts), y aqui no es solo
+     *     ahorro: requiereSesion() la trata como ruta privada, a un invitado se
+     *     le redirige a /login, y el service worker la precachea siguiendo el
+     *     redirect. Guardaria la pagina de login como pagina sin red. Cualquier
+     *     archivo nuevo que pida el SW (un importScripts, sobre todo, que NO
+     *     sigue redirects y tumba el SW entero) tiene que ir en esta lista.
      */
-    "/((?!api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|fallback-[^/]*\\.js|theme-init\\.js|manifest\\.json|offline\\.html$|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|theme-init\\.js|manifest\\.json|offline\\.html$|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

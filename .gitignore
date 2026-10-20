@@ -8,9 +8,6 @@ out/
 apps/web/public/sw.js
 apps/web/public/sw.js.map
 apps/web/public/workbox-*.js
-# Lo genera next-pwa por `fallbacks` (next.config.ts) en cada build.
-apps/web/public/fallback-*.js
-apps/web/public/fallback-*.js.map
 
 # Build
 dist/

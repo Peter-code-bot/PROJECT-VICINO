@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
   Pagina que el SERVICE WORKER sirve cuando una navegacion falla por red (abrir la app
-  o recargar sin conexion). La configura `fallbacks.document` en next.config.ts; el SW
-  la guarda en el precache al instalarse y la devuelve en lugar de la pagina pedida,
-  con la misma URL en la barra.
+  o recargar sin conexion). La devuelve el handlerDidError de la regla "pages" de
+  next.config.ts: el SW la guarda en el precache al instalarse y la sirve en lugar de
+  la pagina pedida, con la misma URL en la barra.
 
   Es la hermana de dist/offline.html, NO un duplicado por descuido: aquella la sirve
   Capacitor desde los assets del APK (server.errorPath) y solo aparece cuando no hay

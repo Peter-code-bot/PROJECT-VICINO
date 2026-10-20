@@ -79,7 +79,7 @@ const VERSION_MOVIL = leerVersionAndroid();
 // porque la app ya avisa de la falta de red por su cuenta (OfflineDetector en
 // app/layout.tsx). Los estaticos —JS, CSS, imagenes, fuentes— siguen cacheados
 // igual: aqui solo se toca el documento. El "error honesto" es public/offline.html
-// (ver `fallbacks` abajo), no la pagina de error del navegador.
+// (ver la regla "pages" abajo), no la pagina de error del navegador.
 //
 // extendDefaultRuntimeCaching: true es OBLIGATORIO, no cosmetico. Su valor por
 // defecto es false, y con false pasar `runtimeCaching` REEMPLAZA la lista
@@ -116,34 +116,6 @@ const withPWA = withPWAInit({
   // vuelta de la red y ya ofrece un boton de reintentar: la recarga automatica
   // es redundante y destructiva.
   reloadOnOnline: false,
-  // Navegacion que falla por red -> public/offline.html, desde el precache.
-  //
-  // Sin esto, abrir la app Android sin red daba "Webpage not available —
-  // net::ERR_FAILED" aunque capacitor.config.ts tiene server.errorPath. Con el
-  // SW instalado, la navegacion la contesta la regla "pages" (NetworkOnly) de
-  // abajo; su fetch falla, el respondWith se rechaza y el WebView pinta su
-  // pagina de error SIN llamar a WebViewClient.onReceivedError, que es lo unico
-  // que dispara errorPath en Capacitor (BridgeWebViewClient). Comprobado el
-  // 19-oct-2026 en el emulador: misma instalacion y sin red, saltandose el SW
-  // por CDP si salta errorPath. Detalle en docs/ANDROID-SIN-RED-2026-10-19.md.
-  //
-  // Este arreglo es web y llega con el deploy, sin AAB nuevo: next-pwa le pone
-  // a cada regla de runtimeCaching un handlerDidError que, para un documento,
-  // devuelve esta pagina. Solo actua cuando el fetch FALLA; un 404 o un 500 del
-  // servidor siguen llegando tal cual. errorPath queda para cuando no hay SW
-  // que conteste (primer arranque sin red, datos de la app borrados).
-  //
-  // Es la UNICA pagina HTML del precache, a proposito: es autocontenida, sin
-  // chunks de Next, asi que no le aplica lo de "HTML viejo que apunta a JS
-  // borrado" de arriba.
-  //
-  // OJO: proxy.ts tiene que excluir de su matcher esta pagina Y el
-  // fallback-<hash>.js que next-pwa genera para servirla. Sin eso, a un
-  // invitado se le redirige a /login: el precache guardaria la pagina de
-  // login, y el importScripts del fallback, que no sigue redirects, tumba el
-  // SW entero (sin precache ni rutas). El build sale verde y el sw.js
-  // generado se ve correcto; solo se nota dentro del navegador.
-  fallbacks: { document: "/offline.html" },
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
       runtimeCaching: [
@@ -193,7 +165,40 @@ const withPWA = withPWAInit({
         urlPattern: ({ request, sameOrigin }) =>
           request.mode === "navigate" && sameOrigin,
         handler: "NetworkOnly",
-        options: { cacheName: "pages" },
+        options: {
+          cacheName: "pages",
+          plugins: [
+            {
+              // Navegacion que falla por red -> public/offline.html, del precache
+              // (next-pwa precachea todo public/). Solo actua cuando el fetch
+              // FALLA; un 404 o un 500 del servidor siguen llegando tal cual.
+              // Es la UNICA HTML del precache, a proposito: autocontenida, sin
+              // chunks de Next, asi que no le aplica lo del HTML viejo de arriba.
+              //
+              // Sin esto, abrir la app Android sin red daba "Webpage not
+              // available — net::ERR_FAILED" aunque capacitor.config.ts tiene
+              // server.errorPath: esta regla contesta la navegacion, su fetch
+              // falla y el WebView pinta su error SIN llamar a onReceivedError,
+              // que es lo unico que dispara errorPath en Capacitor. Es web y llega
+              // con el deploy, con cualquier AAB. errorPath queda para cuando no
+              // hay SW (primer arranque sin red, datos de la app borrados).
+              // Detalle en docs/ANDROID-SIN-RED-2026-10-19.md.
+              //
+              // NO usar `fallbacks` de next-pwa para esto. Mete un
+              // fallback-<hash>.js que sw.js carga con importScripts, y en el
+              // WebView 113 del emulador el registro del SW se BORRABA en cada
+              // arranque en frio de la app (con el SW de antes no pasaba). Aqui
+              // todo va dentro de sw.js. Ademas, ese script lo redirigia
+              // proxy.ts a /login y tumbaba el SW entero con el build en verde.
+              //
+              // En crudo y sin nada de este archivo: workbox serializa la funcion
+              // con toString() dentro de sw.js (ver la nota de arriba).
+              handlerDidError: async () =>
+                (await caches.match("/offline.html", { ignoreSearch: true })) ||
+                Response.error(),
+            },
+          ],
+        },
       },
       {
         // Las respuestas REST y de Auth de Supabase NUNCA se cachean.
