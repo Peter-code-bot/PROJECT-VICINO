@@ -3,7 +3,7 @@
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
-import { usernameSchema } from "@vicino/shared";
+import { onboardingUsernameSchema } from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { PASOS_ONBOARDING, type PasoOnboarding } from "@/lib/onboarding/steps";
@@ -36,7 +36,7 @@ const guardarPasoSchema = z.object({
     (paso) => paso === "perfil" || paso === "activar" || PASOS_ONBOARDING.some((actual) => actual === paso),
     "Paso de onboarding inválido.",
   ).optional(),
-  username: usernameSchema.optional(),
+  username: onboardingUsernameSchema.optional(),
   nombre: z.string().trim().min(2, "Escribe al menos 2 caracteres.").max(60, "Máximo 60 caracteres.").optional(),
   bio: z.string().trim().min(1, "Escribe una descripción o elige Omitir.").max(160, "Máximo 160 caracteres.").optional(),
   foto: z.string().url("Esa foto no es válida.").regex(/^https?:\/\/\S+$/, "Esa foto no es válida.").max(500).optional(),

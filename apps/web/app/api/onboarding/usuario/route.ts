@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { onboardingUsernameSchema } from "@vicino/shared";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { enforce, readHeavyRateLimit } from "@/lib/rate-limit";
@@ -18,10 +19,14 @@ export async function GET(request: Request) {
   const rate = await enforce(readHeavyRateLimit, `onboarding-username:${user.id}`);
   if (!rate.ok) return Response.json({ error: rate.error }, { status: 429, headers: NO_CACHE });
 
-  const username = new URL(request.url).searchParams.get("username")?.trim() ?? "";
+  const username = new URL(request.url).searchParams.get("username") ?? "";
   // No mandar entradas ilimitadas a la base ni capturarlas en diagnósticos.
   if (username.length > 100) {
     return Response.json({ username: "", status: "invalid", message: "Máximo 30 caracteres.", suggestions: [] }, { headers: NO_CACHE });
+  }
+  const format = onboardingUsernameSchema.safeParse(username);
+  if (username && !format.success) {
+    return Response.json({ username, status: "invalid", message: format.error.errors[0]!.message, suggestions: [] }, { headers: NO_CACHE });
   }
 
   const { data: profile, error: profileError } = await supabase.from("profiles")

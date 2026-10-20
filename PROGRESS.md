@@ -1,3 +1,7 @@
+## 20-oct-2026 — ONB-ID-01
+
+- Validación del ID y Workflow Advisor añadidos al proyecto. Plan, procedimiento, pruebas, estado de publicación y aceptación en app instalada en [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).
+
 ## 16-oct-2026 — MCS-F02: selección de zonas y marcadores acotados
 
 - Distingue publicación única (punto) y grupos (número, 99+ sólo visual). La lista de zonas es opcional; selección conserva consulta/centro/revisión y Ver área encuadra únicamente celdas públicas aproximadas, sin nueva precisión ni SQL.

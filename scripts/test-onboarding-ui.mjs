@@ -91,7 +91,7 @@ const bundle = await build({
  const savedConfig=sessionStorage.getItem('test-only-onboarding-config');
  if(savedConfig)for(const [key,value] of new URLSearchParams(savedConfig))if(!params.has(key))params.set(key,value);
  if(params.get('resumeFixture')==='1')sessionStorage.setItem('test-only-onboarding-config',params.toString());
- window.__fixture={trace:[],metricAware:true,receipts:{},userId:'fixture-user',ackDelay:Number(params.get('ackDelay')||0),lostAck:Number(params.get('lostAck')||0),finalFailures:Number(params.get('finalFail')||0),pushMode:params.get('push')||'prompt',saveFailures:Number(params.get('saveFail')||0),profile:{id:'fixture-user',username:'javier_actual',nombre:'Javier',foto:null,bio:null,intereses:[],has_seen_onboarding:false,onboarding_revision:0,onboarding_camino:params.get('camino')||'explorar',onboarding_paso:null,es_vendedor:params.get('active')==='1',categoria_negocio:params.get('noCategory')==='1'?null:CATEGORIES[0].slug,seller_type:params.get('tipo')==='business'?'business':'casual',nombre_negocio:'Tienda de prueba',descripcion_negocio:null,metodos_pago_aceptados:null}};
+ window.__fixture={trace:[],metricAware:true,receipts:{},userId:'fixture-user',ackDelay:Number(params.get('ackDelay')||0),lostAck:Number(params.get('lostAck')||0),finalFailures:Number(params.get('finalFail')||0),pushMode:params.get('push')||'prompt',saveFailures:Number(params.get('saveFail')||0),profile:{id:'fixture-user',username:params.get('initialUsername')??'javier_actual',nombre:'Javier',foto:null,bio:null,intereses:[],has_seen_onboarding:false,onboarding_revision:0,onboarding_camino:params.get('camino')||'explorar',onboarding_paso:null,es_vendedor:params.get('active')==='1',categoria_negocio:params.get('noCategory')==='1'?null:CATEGORIES[0].slug,seller_type:params.get('tipo')==='business'?'business':'casual',nombre_negocio:'Tienda de prueba',descripcion_negocio:null,metodos_pago_aceptados:null}};
  window.__fixture.finalLostAck=Number(params.get('finalLostAck')||0);
  window.__fixture.hangingSave=params.get('hangingSave')==='1';
  const fixtureKey='test-only-onboarding-server';
@@ -198,6 +198,7 @@ async function metrics(page){
  });
 }
 async function runCase(name,viewport,path,fn,{theme='light',scale=1,clock=false}={}){
+ if(onlyUsername&&!name.startsWith('username-'))return;
  const page=await browser.newPage({viewport,hasTouch:viewport.width<600});page.setDefaultTimeout(12000);
  const pageErrors=[];const external=[];const blockedHostInjection=[];
  page.on('pageerror',e=>pageErrors.push(e.message));
@@ -224,7 +225,8 @@ const mobile={width:375,height:812};
 const onlyKeyboardFocus=process.argv[2]==='keyboard-focus';
 const onlyCanonicalCaptures=process.argv[2]==='canonical-captures';
 const onlyJourneys=process.argv[2]==='journeys';
-const resultFile=onlyKeyboardFocus?'results-keyboard-focus.json':onlyCanonicalCaptures?'results-captures.json':onlyJourneys?'results-journeys.json':'results.json';
+const onlyUsername=process.argv[2]==='username';
+const resultFile=onlyUsername?'results-username.json':onlyKeyboardFocus?'results-keyboard-focus.json':onlyCanonicalCaptures?'results-captures.json':onlyJourneys?'results-journeys.json':'results.json';
 async function availableUsername(page){
  await page.getByText('Este ID está disponible.',{exact:true}).waitFor();
  await page.waitForFunction(()=>{const button=document.querySelector('footer button');return button?.disabled===false&&getComputedStyle(button).opacity==='1';});
@@ -271,6 +273,74 @@ try{
  }
  for(const step of ['usuario','descripcion','activar'])await runCase(`mobile-large-text-${step}`,mobile,`/completar-perfil/${step}?camino=vender&push=prompt`,async page=>{if(step==='usuario')await availableUsername(page);},{scale:2});
  for(const step of ['nombre','descripcion'])await runCase(`mobile-light-explore-${step}`,mobile,`/completar-perfil/${step}?camino=explorar`,async()=>{});
+ for(const viewport of [mobile,{width:1280,height:800}])for(const theme of ['light','dark'])await runCase(`username-format-${viewport.width}-${theme}`,viewport,'/completar-perfil/usuario',async page=>{
+  await availableUsername(page);
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  const requests=[];
+  page.on('request',request=>{if(request.url().includes('/api/onboarding/usuario'))requests.push(request.url());});
+  for(const [value,message]of [
+   ['', 'Escribe un ID o elige Omitir.'],
+   ['ab', 'Usa al menos 3 caracteres.'],
+   ['a'.repeat(31), 'Usa como máximo 30 caracteres.'],
+   ['Ana_123', 'Usa solo letras minúsculas (a–z).'],
+   ['ana 123', 'El ID no puede tener espacios. Usa guion bajo (_) para separar palabras.'],
+   [' ana_123 ', 'El ID no puede tener espacios. Usa guion bajo (_) para separar palabras.'],
+   ['ana\u00a0123', 'El ID no puede tener espacios. Usa guion bajo (_) para separar palabras.'],
+   ['áña', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
+   ['ana-123', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
+   ['@ana', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
+   ['ana😀', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
+  ]){
+   await input.fill(value);
+   assert.equal(await page.locator('#username-status').innerText(),message,'Format feedback is synchronous');
+   assert.equal(await input.inputValue(),value,'Invalid text stays editable');
+   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+   assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
+   if(value)assert.equal(await input.getAttribute('aria-invalid'),'true');
+   assert.equal(await page.locator('#username-count').innerText(),`${value.length}/30 caracteres`);
+   await page.waitForTimeout(400);
+   assert.deepEqual((await metrics(page)).failures,[],'Error text and controls fit the viewport');
+   if(value==='ana 123')await page.screenshot({path:resolve(out,`username-error-${viewport.width}-${theme}.png`),fullPage:true});
+  }
+  assert.equal(requests.length,0,'No availability calls for invalid format');
+  assert.equal(await page.getByRole('button',{name:'@javier_1001',exact:true}).isVisible(),true,'Keep suggestions while correcting');
+  for(const value of ['abc','a'.repeat(30)]){
+   await input.fill(value);assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+   await availableUsername(page);assert.equal(await input.getAttribute('aria-invalid'),null);
+  }
+  await input.fill('admin');await page.getByText('Este ID no se puede usar.',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+  await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
+ },{theme});
+ await runCase('username-initial-uppercase-suggestions',mobile,'/completar-perfil/usuario?initialUsername=U0000123',async page=>{
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  assert.equal(await input.inputValue(),'U0000123');
+  await page.getByRole('button',{name:'@javier_1001',exact:true}).waitFor();
+  assert.equal(await input.getAttribute('aria-invalid'),'true');
+  const lookups=await page.evaluate(()=>performance.getEntriesByType('resource').map(entry=>entry.name).filter(name=>name.includes('/api/onboarding/usuario')));
+  assert(lookups.length>0);
+  assert(lookups.every(name=>!new URL(name).searchParams.has('username')),'Initial suggestions never submit the invalid draft');
+  await page.getByRole('button',{name:'Ver otras opciones',exact:true}).click();
+  await page.getByRole('button',{name:'@javier_1001',exact:true}).waitFor();
+  await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
+ });
+ await runCase('username-initial-suggestions-retry',mobile,'/completar-perfil/usuario?initialUsername=U0000123',async page=>{
+  let fail=true;
+  await page.route('**/api/onboarding/usuario',route=>fail?route.fulfill({status:503,json:{error:'Fixture failure'}}):route.continue());
+  await page.reload();
+  await page.getByText('No pudimos cargar tus opciones. Intenta de nuevo.',{exact:true}).waitFor();
+  fail=false;await page.getByRole('button',{name:'Reintentar',exact:true}).click();
+  await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
+  assert.equal(await page.getByText('No pudimos cargar tus opciones. Intenta de nuevo.',{exact:true}).count(),0);
+ });
+ await runCase('username-legacy-uppercase-omit',mobile,'/completar-perfil/usuario',async page=>{
+  await page.evaluate(()=>{window.__fixture.profile.username='U0000123';window.__render();});
+  await page.getByLabel('ID de usuario',{exact:true}).fill('INVALID');
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByLabel('Tu nombre',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.profile.username),'U0000123');
+  const saves=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save'));
+  assert.equal(saves.some(x=>'username'in (x.input.fields||{})),false,'Skip never submits a replacement ID');
+ });
  await runCase('username-taken-suggestion',mobile,'/completar-perfil/usuario',async page=>{
   await page.getByLabel('ID de usuario',{exact:true}).fill('ocupado');await page.getByText('Este ID ya está en uso.',{exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
@@ -281,7 +351,7 @@ try{
   assert.equal(await page.evaluate(()=>window.__fixture.profile.username),'javier_1001');
  });
  await runCase('username-invalid-omit',mobile,'/completar-perfil/usuario',async page=>{
-  await page.getByLabel('ID de usuario',{exact:true}).fill('?');await page.getByText('Usa de 3 a 30 letras, números o guiones bajos.',{exact:true}).waitFor();
+  await page.getByLabel('ID de usuario',{exact:true}).fill('?');await page.getByText('Usa solo letras sin acentos (a–z), números y guion bajo (_).',{exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByLabel('Tu nombre',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.__fixture.profile.username),'javier_actual');assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').some(x=>'username'in x.input)),false);
  });
