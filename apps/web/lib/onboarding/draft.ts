@@ -51,7 +51,7 @@ export function fieldsForOnboardingStep(step: PasoOnboardingActual, draft: Onboa
   switch (step) {
     case "categoria": return draft.categoria ? { categoria_negocio: draft.categoria } : {};
     case "tipo": return { seller_type: draft.tipo };
-    case "usuario": return { username: draft.username.trim() };
+    case "usuario": return { username: draft.username };
     case "nombre": return negocio ? { nombre_negocio: draft.nombreNegocio.trim() } : { nombre: draft.nombre.trim() };
     case "foto": return { foto: draft.foto };
     case "descripcion": return negocio ? { descripcion_negocio: draft.descripcionNegocio.trim() } : { bio: draft.bio.trim() };
