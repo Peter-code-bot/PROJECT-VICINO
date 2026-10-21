@@ -16,6 +16,7 @@
     }
   ],
   "crons": [
-    { "path": "/api/cron/recompute-rankings", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/recompute-rankings", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/wallet-sync", "schedule": "15 9 * * *" }
   ]
 }

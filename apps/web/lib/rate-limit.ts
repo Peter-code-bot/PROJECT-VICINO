@@ -208,6 +208,19 @@ export const mapkitTokenRateLimit = makeLimiter("5 m", 60, "rl:mapkit");
 // holgado, y ahi lo frena la cuota, no la lista de origenes.
 export const mapkitTokenAnonRateLimit = makeLimiter("5 m", 15, "rl:mapkit-anon");
 
+// Emision de pases de Wallet (descarga del .pkpass y enlace de Google). Cada
+// peticion firma un archivo o hace hasta cuatro llamadas a la API de Google
+// con la cuota del proyecto, asi que no comparte el cubo de escrituras: cinco
+// por minuto y por cuenta cubren a alguien añadiendo su tarjeta en dos
+// telefonos y cortan un bucle.
+export const walletEmitRateLimit = makeLimiter("1 m", 5, "rl:wallet-emitir");
+
+// Web service de Apple (/api/wallet/apple/v1/*). Lo llaman los telefonos, no
+// personas, y tres de sus rutas no llevan sesion: por IP, holgado para un NAT
+// de barrio y suficiente para cortar la enumeracion de tokens o el spam al
+// registro de dispositivos.
+export const walletWebServiceRateLimit = makeLimiter("1 m", 60, "rl:wallet-apple");
+
 type EnforceResult = { ok: true } | { ok: false; error: string };
 
 /**
