@@ -41,6 +41,8 @@ export const onboardingUsernameSchema = z.string().superRefine((value, ctx) => {
   const message = !value ? "Escribe un ID o elige Omitir."
     : /\s/u.test(value) ? "El ID no puede tener espacios. Usa guion bajo (_) para separar palabras."
       : /[A-Z]/.test(value) ? "Usa solo letras minúsculas (a–z)."
+        : /\./.test(value) ? "El ID no admite puntos (.). Usa guion bajo (_), por ejemplo: ana_lopez."
+          : /[-\u2010-\u2015\u2212\uff0d]/u.test(value) ? "El ID no admite guiones (-). Usa guion bajo (_), por ejemplo: ana_lopez."
         : /[^a-z0-9_]/.test(value) ? "Usa solo letras sin acentos (a–z), números y guion bajo (_)."
           : value.length < 3 ? "Usa al menos 3 caracteres."
             : value.length > 30 ? "Usa como máximo 30 caracteres." : null;
