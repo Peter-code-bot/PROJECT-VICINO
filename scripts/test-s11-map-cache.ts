@@ -232,7 +232,8 @@ async function main() {
     await check("negative world-grid floor and entire-node counts match the server membership equation", () => {
       const occupied = Array.from({ length: 600 }, (_, index) => ({ x: -9810 + index % 30, y: 1900 + Math.floor(index / 30), count: index % 3 + 1, seller_count: 2 }));
       const full = { west: -98.10, east: -97.81, south: 19.00, north: 19.19 };
-      const features = clusterMapCells(occupied, full);
+      // Projection 1 fixture (hundredths of a degree): the route's RPC v2 fallback still serves it.
+      const features = clusterMapCells(occupied, full, 100);
       assert.ok(features.length <= 300);
       assert.ok(features.every(feature => feature.id.startsWith("cell:2:")));
       for (const feature of features) {
@@ -245,9 +246,9 @@ async function main() {
         assert.ok(feature.public_lng >= feature.bounds.west && feature.public_lng <= feature.bounds.east);
       }
       assert.ok(features.some(feature => feature.id.startsWith("cell:2:-4905:")));
-      const cut = clusterMapCells(occupied, { ...full, west: -98.095 });
+      const cut = clusterMapCells(occupied, { ...full, west: -98.095 }, 100);
       assert.deepEqual(cut.map(feature => [feature.id, feature.count]), features.map(feature => [feature.id, feature.count]));
-      assert.deepEqual(clusterMapCells([], full), []);
+      assert.deepEqual(clusterMapCells([], full, 100), []);
     });
 
     await check("nearby buyer center/radius and filters stay fixed while camera bounds change", () => {

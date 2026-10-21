@@ -12,7 +12,7 @@ import { useSessionUI } from "@/components/layout/session-data-provider";
 import { usePublicationCoverage } from "@/hooks/use-publication-coverage";
 import { useCoverageListings } from "@/hooks/use-coverage-listings";
 import { boundsAround, intersectMapBounds, queryFromMapParams } from "@/lib/geo/publication-map";
-import { clusterMapLayer, publicDistance, publicZoneBounds } from "@/lib/geo/map-coverage";
+import { cellUnits, clusterMapLayer, publicDistance, publicZoneBounds } from "@/lib/geo/map-coverage";
 
 type Center = { lat: number; lng: number };
 interface SelectedGroup { feature: MapFeature; query: MapQuery; center: Center | null; revision: string }
@@ -49,7 +49,9 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
   const detail = useCoverageListings(ui.selected?.query ?? ui.query, ui.selected ? ui.selected.center : ui.center, ui.selected?.feature.id ?? null, ui.selected?.revision ?? null);
   const [level, setLevel] = useState({ contextKey: "", stride: 1 });
   const layer = useMemo(() => area && data?.complete
-    ? clusterMapLayer(data.cells, area, level.contextKey === contextKey ? level.stride : 1)
+    // The response says which cell size its cells use (projection 1: ~1 km,
+    // projection 2: ~110 m); the camera layer never assumes one.
+    ? clusterMapLayer(data.cells, area, level.contextKey === contextKey ? level.stride : 1, cellUnits(data.projection_version))
     : null, [data, area, contextKey, level]);
   // Adjust before committing the new camera layer; an effect would paint an
   // intermediate level and refs are not render state.
@@ -161,7 +163,8 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
             // Zoom can replace this group's ID with finer cells and unmount
             // the row. Keep keyboard focus on a control that survives it.
             zonesToggle.current?.focus({ preventScroll: true });
-            setFocus(previous => ({ bounds: publicZoneBounds(feature.bounds), revision: (previous?.revision ?? 0) + 1 }));
+            // `features` only renders with data; the fallback is the coarser projection on purpose.
+            setFocus(previous => ({ bounds: publicZoneBounds(feature.bounds, cellUnits(data?.projection_version ?? 1)), revision: (previous?.revision ?? 0) + 1 }));
           }} className="discovery-control shrink-0 grow sm:grow-0">Ver área</button>
         </div>)}</div>
       </div>

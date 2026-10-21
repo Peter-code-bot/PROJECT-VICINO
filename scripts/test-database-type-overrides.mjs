@@ -28,4 +28,16 @@ assert.ok(protectedSource.includes('other_table: {\n          ubicacion_mapa?: u
 assert.equal(protectGeneratedMapColumn(protectedSource), protectedSource);
 assert.throws(() => protectGeneratedMapColumn(source.replace('products_services', 'unexpected_table')));
 assert.throws(() => protectGeneratedMapColumn(source.replace('ubicacion_mapa?: unknown', 'ubicacion_mapa?: string')));
-console.log('PASS generated map column is read-only; new schema, RPCs and other tables preserved; idempotent; unexpected schema rejected');
+
+// After migration 20261020150000 the generator also emits ubicacion_publica (S13).
+const withPublica = source
+  .replace('          ubicacion_mapa: unknown\n', '          ubicacion_mapa: unknown\n          ubicacion_publica: unknown\n')
+  .replace(/^        (Insert|Update): \{\n          ubicacion_mapa\?: unknown\n/gm, '        $1: {\n          ubicacion_mapa?: unknown\n          ubicacion_publica?: unknown\n');
+const protectedBoth = protectGeneratedMapColumn(withPublica);
+assert.equal((protectedBoth.match(/ubicacion_publica\?: never/g) ?? []).length, 2);
+assert.equal((protectedBoth.match(/ubicacion_mapa\?: never/g) ?? []).length, 2);
+assert.ok(protectedBoth.includes('ubicacion_publica: unknown'), 'Row stays readable');
+assert.equal(protectGeneratedMapColumn(protectedBoth), protectedBoth);
+// Only one of Insert/Update carrying the new column is a generator shape we do not know.
+assert.throws(() => protectGeneratedMapColumn(withPublica.replace('ubicacion_publica?: unknown\n', '')));
+console.log('PASS generated map columns are read-only (ubicacion_mapa required, ubicacion_publica optional); new schema, RPCs and other tables preserved; idempotent; unexpected schema rejected');
