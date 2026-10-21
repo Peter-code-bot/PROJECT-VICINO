@@ -9,7 +9,8 @@ async function main(){
   const out=path.join(web,'test-results/s11');mkdirSync(out,{recursive:true});
   const mocks:Record<string,string>={
     'server-only':'',
-    '@/lib/supabase/server':`export async function createClient(){globalThis.mapTest.clients++;return {auth:{getUser:async()=>globalThis.mapTest.auth},rpc:(name,args)=>{globalThis.mapTest.calls.push({name,args});return {abortSignal:async()=>globalThis.mapTest.rpc};}};}`,
+    '@/lib/supabase/server':`export async function createClient(){globalThis.mapTest.clients++;return {auth:{getUser:async()=>globalThis.mapTest.auth},rpc:(name,args)=>{globalThis.mapTest.calls.push({name,args});return {abortSignal:async()=>globalThis.mapTest.rpcByName?.[name]??globalThis.mapTest.rpc};}};}`,
+    '@sentry/nextjs':`export function captureMessage(message,options){(globalThis.mapTest.sentry??=[]).push({message,options});}export function captureException(){}`,
     '@/lib/rate-limit':`export const readHeavyRateLimit=null;export const getClientIp=h=>h.get('x-real-ip')||'unknown';export const enforce=async()=>({ok:!globalThis.mapTest.limited});`,
   };
   const bundle=await esbuild.build({entryPoints:[path.join(web,'app/api/publications/map/coverage/route.ts')],bundle:true,write:false,platform:'node',format:'cjs',tsconfig:path.join(web,'tsconfig.json'),external:['next/*','@supabase/supabase-js'],plugins:[{name:'seams',setup(b:any){b.onResolve({filter:/.*/},(a:any)=>Object.hasOwn(mocks,a.path)?{path:a.path,namespace:'mock'}:undefined);b.onLoad({filter:/.*/,namespace:'mock'},(a:any)=>({contents:mocks[a.path],loader:'ts',resolveDir:web}));}}]});
@@ -30,7 +31,25 @@ async function main(){
   await test('authenticated response strips private fields and passes canonical filters',async()=>{
     f.rpc={error:null,data:{query_key:'a'.repeat(32),projection_version:1,as_of:'2026-09-30',features:[],listings:[],total:0,seller_total:0,list_total:0,next_cursor:null,list_seller_total:0,revision:'b'.repeat(32),cells:[],next_cell_cursor:null,complete:false,ubicacion_geo:'private'}};
     const r=await send({...base,query:{...q,q:' cafe ',center:{lat:19,lng:-98}}});assert.equal(r.status,200);assert.equal(r.headers.get('vary'),'Cookie');assert.ok(!JSON.stringify(await r.json()).includes('private'));
-    assert.equal(f.calls.at(-1).name,'search_map_publications_v2');assert.equal(f.calls.at(-1).args.p_request.query.q,'cafe');assert.equal(f.calls.at(-1).args.p_request.query.center,null);
+    assert.equal(f.calls.at(-1).name,'search_map_publications_v3');assert.equal(f.calls.at(-1).args.p_request.query.q,'cafe');assert.equal(f.calls.at(-1).args.p_request.query.center,null);
+  });
+  await test('v3 missing from the schema cache falls back to v2 once per process and still strips private fields',async()=>{
+    const ok={error:null,data:{query_key:'a'.repeat(32),projection_version:1,as_of:'2026-09-30',features:[],listings:[],total:0,seller_total:0,list_total:0,next_cursor:null,list_seller_total:0,revision:'b'.repeat(32),cells:[],next_cell_cursor:null,complete:false,ubicacion_geo:'private'}};
+    f.rpcByName={search_map_publications_v3:{data:null,error:{code:'PGRST202',message:'Could not find the function public.search_map_publications_v3'}},search_map_publications_v2:ok};
+    const before=f.calls.length;const r=await send();assert.equal(r.status,200);assert.ok(!JSON.stringify(await r.json()).includes('private'));
+    assert.deepEqual(f.calls.slice(before).map((c:any)=>c.name),['search_map_publications_v3','search_map_publications_v2']);
+    assert.equal((f.sentry??[]).length,1);assert.equal(f.sentry[0].options.level,'warning');
+    assert.equal((await send()).status,200);assert.equal(f.sentry.length,1,'the warning is logged once per process');
+    // Any other SQL error on v3 is not retried on v2.
+    f.rpcByName={search_map_publications_v3:{data:null,error:{code:'XX000',message:'boom'}},search_map_publications_v2:ok};
+    const start=f.calls.length;assert.equal((await send()).status,503);assert.deepEqual(f.calls.slice(start).map((c:any)=>c.name),['search_map_publications_v3']);
+    f.rpcByName=undefined;
+  });
+  await test('VICINO_MAPA_RPC=v2 pins the route to the 1 km projection without touching the database',async()=>{
+    process.env.VICINO_MAPA_RPC='v2';const start=f.calls.length;
+    assert.equal((await send()).status,200);assert.deepEqual(f.calls.slice(start).map((c:any)=>c.name),['search_map_publications_v2']);
+    delete process.env.VICINO_MAPA_RPC;const again=f.calls.length;
+    assert.equal((await send()).status,200);assert.equal(f.calls.at(-1).name,'search_map_publications_v3');assert.equal(f.calls.length-again,1);
   });
   await test('production release is enabled when the optional flag is absent',async()=>{
     delete process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED;
