@@ -9,6 +9,7 @@ import {
   Star,
   BarChart3,
   ShieldCheck,
+  Stamp,
   Settings,
   ChevronRight,
   type LucideIcon,
@@ -29,6 +30,7 @@ export const SELLER_NAV_ITEMS: readonly SellerNavItem[] = [
   { href: "/seller/reviews", label: "Reseñas", icon: Star },
   { href: "/seller/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/seller/verificacion", label: "Verificación", icon: ShieldCheck },
+  { href: "/seller/lealtad", label: "Lealtad", icon: Stamp },
   // Cupones se esconde del panel, NO se borra.
   //
   // La tabla `coupons` tiene 0 filas (consultado el 5-sep-2026), asi que no hay

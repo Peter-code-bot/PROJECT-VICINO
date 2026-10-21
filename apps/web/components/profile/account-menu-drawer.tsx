@@ -7,6 +7,7 @@ import {
   User, Store, BadgeCheck, ShoppingBag, Calendar, Heart, Star,
   Bell, Lock, Sun, Moon, HelpCircle, MessageCircle, FileText,
   Shield, Info, Settings, ChevronRight, ChevronDown, Users, X, Loader2, Pencil,
+  Stamp,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -163,6 +164,7 @@ export function AccountMenuDrawer({ trigger, userId, userName, userAvatar, usern
                 <Item href="/historial" icon={ShoppingBag} label="Compras y ventas" onClose={() => setOpen(false)} />
                 <Item href="/citas" icon={Calendar} label="Mis citas" onClose={() => setOpen(false)} />
                 <Item href="/favoritos" icon={Heart} label="Favoritos" onClose={() => setOpen(false)} />
+                <Item href="/tarjetas" icon={Stamp} label="Tarjetas de lealtad" onClose={() => setOpen(false)} />
               </Section>
 
               <Section label="Configuración">

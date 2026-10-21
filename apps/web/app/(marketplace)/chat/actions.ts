@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "@/lib/revalidate-session";
+import { drenarColaWallet } from "@/lib/wallet/sincronizar";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductoChat } from "@/lib/chat/producto-activo";
@@ -563,6 +565,9 @@ export async function confirmSale(saleConfirmationId: string) {
     const result = data as { success: boolean; alreadyConfirmed: boolean; chat_id: string | null } | null;
     if (!result?.success) return chatContractError(null);
     if (result.chat_id) await revalidatePath(`/chat/${result.chat_id}`);
+    // Lealtad: si la venta se completo, el sello ya esta puesto por el
+    // disparador; los pases de Wallet se actualizan ahora y no en el cron diario.
+    if (!result.alreadyConfirmed) after(() => drenarColaWallet());
     return { success: true, alreadyConfirmed: result.alreadyConfirmed };
   } catch {
     return chatContractError(null);
