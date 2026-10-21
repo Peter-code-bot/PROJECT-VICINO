@@ -23,6 +23,8 @@ async function main(){
   async function test(name:string,run:()=>Promise<void>){await run();passed++;console.log('PASS '+name);}
   await test('feature flag refuses before contacting auth or RPC',async()=>{process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED='false';const r=await send();assert.equal(r.status,503);assert.equal(f.clients,0);assert.equal(r.headers.get('cache-control'),'private, no-store');});
   process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED='true';
+  // The ~110 m projection is opt-in (fail closed); most cases below exercise it.
+  process.env.VICINO_MAPA_RPC='v3';
   await test('invalid and oversized body never query database',async()=>{assert.equal((await send({...base,unknown:1})).status,400);assert.equal((await send({...base,query:{...q,q:'x'.repeat(9000)}})).status,413);assert.equal(f.clients,0);});
   await test('transient auth failure is not downgraded to guest',async()=>{f.auth={data:{user:null},error:{name:'AuthRetryableFetchError',status:503}};assert.equal((await send()).status,503);assert.equal(f.calls.length,0);});
   f.auth={data:{user:null},error:{name:'AuthSessionMissingError'}};
@@ -45,11 +47,13 @@ async function main(){
     const start=f.calls.length;assert.equal((await send()).status,503);assert.deepEqual(f.calls.slice(start).map((c:any)=>c.name),['search_map_publications_v3']);
     f.rpcByName=undefined;
   });
-  await test('VICINO_MAPA_RPC=v2 pins the route to the 1 km projection without touching the database',async()=>{
-    process.env.VICINO_MAPA_RPC='v2';const start=f.calls.length;
-    assert.equal((await send()).status,200);assert.deepEqual(f.calls.slice(start).map((c:any)=>c.name),['search_map_publications_v2']);
-    delete process.env.VICINO_MAPA_RPC;const again=f.calls.length;
-    assert.equal((await send()).status,200);assert.equal(f.calls.at(-1).name,'search_map_publications_v3');assert.equal(f.calls.length-again,1);
+  await test('the 110 m projection is opt-in: only VICINO_MAPA_RPC=v3 (normalized) selects v3; unset, v2 or typos stay on 1 km',async()=>{
+    for(const [valor,esperado] of [[undefined,'search_map_publications_v2'],['v2','search_map_publications_v2'],['V3 ','search_map_publications_v3'],['v3','search_map_publications_v3'],['v33','search_map_publications_v2'],['','search_map_publications_v2']] as const){
+      if(valor===undefined)delete process.env.VICINO_MAPA_RPC;else process.env.VICINO_MAPA_RPC=valor;
+      const start=f.calls.length;assert.equal((await send()).status,200);
+      assert.deepEqual(f.calls.slice(start).map((c:any)=>c.name),[esperado],`VICINO_MAPA_RPC=${JSON.stringify(valor)}`);
+    }
+    process.env.VICINO_MAPA_RPC='v3';
   });
   await test('production release is enabled when the optional flag is absent',async()=>{
     delete process.env.NEXT_PUBLIC_VICINO_MAP_ENABLED;

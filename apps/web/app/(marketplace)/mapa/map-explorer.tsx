@@ -163,7 +163,8 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
             // Zoom can replace this group's ID with finer cells and unmount
             // the row. Keep keyboard focus on a control that survives it.
             zonesToggle.current?.focus({ preventScroll: true });
-            setFocus(previous => ({ bounds: publicZoneBounds(feature.bounds, data ? cellUnits(data.projection_version) : undefined), revision: (previous?.revision ?? 0) + 1 }));
+            // `features` only renders with data; the fallback is the coarser projection on purpose.
+            setFocus(previous => ({ bounds: publicZoneBounds(feature.bounds, cellUnits(data?.projection_version ?? 1)), revision: (previous?.revision ?? 0) + 1 }));
           }} className="discovery-control shrink-0 grow sm:grow-0">Ver área</button>
         </div>)}</div>
       </div>

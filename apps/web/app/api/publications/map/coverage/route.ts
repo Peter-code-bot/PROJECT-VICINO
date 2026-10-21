@@ -15,28 +15,33 @@ function reply(body: unknown, status: number, extra = {}) {
 }
 
 /**
- * Proyección pública v2 (celdas de ~110 m, migración 20261020150000) con caída
- * a la v1 (~1 km). El tipo generado de la base aún no conoce v3 hasta que la
- * migración se aplique y se regeneren los tipos (node scripts/gen-types.mjs);
- * las dos funciones comparten firma y contrato, así que el nombre se tipa con
- * el de v2 en UN solo sitio. `projection_version` en la respuesta le dice al
- * cliente en qué unidades vienen las celdas.
+ * Proyección pública v2 (celdas de ~110 m, migración 20261020150000) o la v1
+ * (~1 km), según `VICINO_MAPA_RPC`. El tipo generado de la base aún no conoce
+ * v3 hasta que la migración se aplique y se regeneren los tipos
+ * (node scripts/gen-types.mjs); las dos funciones comparten firma y contrato,
+ * así que el nombre se tipa con el de v2 en UN solo sitio. `projection_version`
+ * en la respuesta le dice al cliente en qué unidades vienen las celdas.
  */
-const RPC_ACTUAL = "search_map_publications_v3";
-const RPC_RESPALDO = "search_map_publications_v2";
-type RpcMapa = typeof RPC_RESPALDO;
+const RPC_PRECISA = "search_map_publications_v3";
+const RPC_BASE = "search_map_publications_v2";
+type RpcMapa = typeof RPC_BASE;
 // PostgREST: la función no está en la caché de esquema (migración sin aplicar o
 // sin `notify pgrst`). Cualquier otro error se devuelve tal cual.
 const CODIGO_FUNCION_AUSENTE = "PGRST202";
 let avisadaCaida = false;
 
 /**
- * Camino de vuelta sin tocar la base ni el código: `VICINO_MAPA_RPC=v2` en el
- * entorno (Vercel) devuelve el mapa a la proyección de ~1 km. Se lee por
- * petición, no al cargar el módulo, para que un cambio de variable baste.
+ * Falla CERRADO: la proyección de ~110 m solo se usa con `VICINO_MAPA_RPC=v3`
+ * explícito en el entorno (Vercel). Sin la variable, con otro valor o con una
+ * errata, el mapa sigue en la proyección de ~1 km aunque la migración ya esté
+ * aplicada. Así la precisión es una decisión de producto (S10 la fijó en 1 km)
+ * tomada a propósito, no un efecto colateral del orden de despliegue. Se lee
+ * por petición, no al cargar el módulo (en Vercel un cambio de variable exige
+ * redeploy de todos modos; en local basta reiniciar).
  */
 function rpcPreferida(): string {
-  return process.env.VICINO_MAPA_RPC === "v2" ? RPC_RESPALDO : RPC_ACTUAL;
+  const valor = (process.env.VICINO_MAPA_RPC ?? "").trim().toLowerCase();
+  return valor === "v3" ? RPC_PRECISA : RPC_BASE;
 }
 
 async function consultarMapa(supabase: Awaited<ReturnType<typeof createClient>>, request: MapCoverageRequest) {
@@ -44,14 +49,14 @@ async function consultarMapa(supabase: Awaited<ReturnType<typeof createClient>>,
     supabase.rpc(nombre as RpcMapa, { p_request: request }).abortSignal(AbortSignal.timeout(10_000));
   const preferida = rpcPreferida();
   const actual = await llamar(preferida);
-  if (preferida === RPC_RESPALDO || !actual.error || actual.error.code !== CODIGO_FUNCION_AUSENTE) return actual;
+  if (preferida === RPC_BASE || !actual.error || actual.error.code !== CODIGO_FUNCION_AUSENTE) return actual;
   if (!avisadaCaida) {
     avisadaCaida = true;
     Sentry.captureMessage("mapa: search_map_publications_v3 no existe en la base; se usa v2 (~1 km)", {
-      level: "warning", tags: { surface: "map", rpc: RPC_ACTUAL },
+      level: "warning", tags: { surface: "map", rpc: RPC_PRECISA },
     });
   }
-  return llamar(RPC_RESPALDO);
+  return llamar(RPC_BASE);
 }
 
 /** Read-only POST: the viewer's search center stays out of URLs and caches. */

@@ -87,9 +87,10 @@ colonia en un número.
   filtros) pero sobre la nueva columna y con la rejilla en **milésimas de grado**.
   `projection_version: 2` en la respuesta.
 - `v1`, `v2` y `ubicacion_mapa` **no se tocan**: la ruta `/api/publications/map/coverage`
-  llama a v3 y, si la base aún no tiene la función (migración sin aplicar),
-  **cae a v2** y avisa a Sentry una vez. Eso hace el despliegue seguro en
-  cualquier orden y deja un camino de vuelta sin tocar la base.
+  llama a v3 **solo si `VICINO_MAPA_RPC=v3`** está en el entorno (falla cerrado) y,
+  si la base aún no tiene la función, **cae a v2** y avisa a Sentry una vez. Eso
+  hace el despliegue seguro en cualquier orden, convierte la precisión en una
+  decisión explícita y deja un camino de vuelta sin tocar la base.
 - El cliente lee `projection_version` para saber en qué unidades vienen las
   celdas (100 o 1000 por grado); así una respuesta de v2 sigue pintándose bien.
 - Mismos topes: 300 marcadores, refinar bajo 180, paginación de celdas de 300,
@@ -131,7 +132,7 @@ para negocios con local (`seller_type = business`).
 | Archivo | Cambio |
 |---------|--------|
 | `supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql` | **Nueva.** Columna generada `ubicacion_publica` (3 decimales), índice GiST parcial, `search_map_publications_v3(jsonb)` (mismo contrato que v2, rejilla ×1000, `projection_version: 2`), permisos solo `authenticated`/`service_role`, bloque de verificación de privilegios y de funciones duplicadas. **No aplicada en producción.** |
-| `apps/web/app/api/publications/map/coverage/route.ts` | Llama a v3; si la base responde `PGRST202` (función ausente) cae a v2 y avisa a Sentry una vez por proceso. `VICINO_MAPA_RPC=v2` fuerza la proyección de 1 km sin tocar la base (camino de vuelta). |
+| `apps/web/app/api/publications/map/coverage/route.ts` | Con `VICINO_MAPA_RPC=v3` llama a v3; si la base responde `PGRST202` (función ausente) cae a v2 y avisa a Sentry una vez por proceso. Sin la variable (o con cualquier otro valor) usa v2: la proyección de 1 km sigue siendo la de siempre hasta que alguien la cambie a propósito. |
 | `packages/shared/src/validators/publications-map.ts` | `projection_version` admite 1 ó 2; constantes `MAP_CELL_UNITS_V1/V2`; rangos de cursores y grupos válidos en las dos unidades. |
 | `apps/web/lib/geo/map-coverage.ts` | `cellUnits(projection_version)`; `clusterMapLayer`/`publicZoneBounds` reciben las unidades; encuadre mínimo de 0.006° para que «Ver área» de una celda de 110 m sea legible. |
 | `apps/web/app/(marketplace)/mapa/map-explorer.tsx` | Pasa las unidades de la respuesta al agrupado y al encuadre. Sin cambios visuales ni de copy. |
@@ -184,22 +185,61 @@ sus manzanas; los dos vendedores a menos de 60 m siguen compartiendo un «3».
   v2 y v3 (un cursor viejo cae como caduco → 409 → el cliente reinicia),
   encuadre de «Ver área» idéntico al anterior para respuestas v2, y que la
   columna nueva nace sin privilegios (verificado en staging por PostgREST).
-  Los agentes revisores externos (código y seguridad) no pudieron terminar por
-  un límite de uso del modelo auxiliar; sus hallazgos, si los hay, van en un
-  commit posterior.
+  La auditoría de seguridad externa se resume más abajo; el agente revisor de
+  código no pudo terminar por un límite de uso del modelo auxiliar.
 
 ### Cómo se despliega (y cómo se deshace)
 
-1. Mergear la rama a `master` (Vercel despliega). Desde ese momento el mapa
-   sigue en ~1 km: la ruta cae a v2 porque v3 aún no existe (un aviso en Sentry).
+La precisión nueva **falla cerrada**: ni el merge ni la migración la encienden.
+Solo la variable `VICINO_MAPA_RPC=v3` en Vercel la activa (recomendación de la
+auditoría de seguridad, abajo, para que la decisión de privacidad sea explícita).
+
+1. Mergear la rama a `master` (Vercel despliega). El mapa sigue en ~1 km.
 2. Aplicar la migración en producción: `node scripts/apply-migration.mjs supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql`.
-   El cambio es aditivo (columna + índice + función); con el catálogo actual
-   (decenas de publicaciones) tarda segundos. A partir de ahí el mapa usa ~110 m
-   sin redeploy.
+   Aditiva (columna generada + índice + función). Reescribe `products_services`
+   con bloqueo exclusivo durante segundos (decenas de filas): hacerlo en un
+   momento tranquilo. El mapa sigue en ~1 km.
 3. Regenerar tipos: `node scripts/gen-types.mjs` y commitear.
-4. Deshacer: poner `VICINO_MAPA_RPC=v2` en Vercel (vuelve a ~1 km sin tocar la
-   base). Si además se quiere retirar la función, un `DROP FUNCTION
-   public.search_map_publications_v3(jsonb)` en una migración.
+4. **Encender:** `VICINO_MAPA_RPC=v3` en Vercel (producción) y redeploy, una
+   vez que el deploy del PR ya se propagó (los bundles anteriores no aceptan
+   `projection_version: 2` hasta recargar). Si la función no existiera aún, la
+   ruta cae sola a v2 y lo avisa en Sentry. Si Preview comparte base, probar
+   primero con la variable solo en Preview.
+5. Deshacer: quitar la variable (o ponerla en `v2`). La base no se toca. Si se
+   quiere retirar la función, `DROP FUNCTION public.search_map_publications_v3(jsonb)`
+   en una migración.
+
+### Auditoría de seguridad y privacidad (21-oct, agente revisor)
+
+Veredicto: **sin críticos** en el cambio. Ninguna respuesta de v3 puede traer la
+coordenada exacta, la dirección ni datos de perfil más allá del nombre público;
+todos los predicados (área, radio, cobertura, revisión, cursores) operan sobre
+la proyección; la columna nace sin privilegios; sin SQL dinámico. Hallazgos y
+qué se hizo con cada uno:
+
+| Nivel | Hallazgo | Estado |
+|-------|----------|--------|
+| ALTO | 110 m + nombre completo + `creador_id` para quien publica desde casa señala la manzana (1–5 viviendas en zonas poco densas); S10 fijó 1 km. | **Decisión de producto, no se activa sola.** La ruta falla cerrada (`VICINO_MAPA_RPC=v3` explícito). Alternativas en «Lo que queda por decidir». |
+| ALTO (preexistente, fuera de este cambio) | Dos observaciones sobre funciones ya existentes del feed y del mapa, anteriores a este cambio. El detalle se entregó a Pedro por el canal privado (este repositorio es público). | **Pendiente para Pedro:** comprobar en staging antes de encender v3. |
+| MEDIO | Sin la variable, aplicar la migración habría encendido 110 m al instante (y una errata en la variable seleccionaba v3). | **Corregido:** default v2; solo `v3` normalizado activa v3. |
+| MEDIO | Un vendedor con varias publicaciones en celdas contiguas acota su posición a la franja entre ellas (irrelevante a 1 km, útil a 110 m). | Documentado; lo elimina el desplazamiento por vendedor (alternativa 1). |
+| MEDIO | Transparencia: el aviso de privacidad dice «ciudad, colonia o zona»; la ficha de producto sigue en ~1 km; el formulario no avisa de la precisión del mapa. | Pendiente de producto/legal antes de encender v3. |
+| BAJO | Cursores de listado mal formados daban 503 en vez de 409. | **Corregido** en v3 (22023). |
+| BAJO | Cruzar la celda de 1 km (v1/v2) con la de 110 m reduce la incertidumbre en los bordes (~19 % de los casos). | Documentado; se resuelve al retirar v1/v2 cuando v3 sea definitiva. |
+| BAJO | `ADD COLUMN … GENERATED … STORED` reescribe la tabla con bloqueo exclusivo. | Documentado en los pasos de despliegue. |
+
+**Revisión de código (agente revisor, 21-oct):** sin críticos; cuatro
+importantes atendidos (el interruptor fail-closed va en el mismo PR; nada de
+detalle de debilidades en el repo público; el cuerpo de v3 se contrastó con la
+definición de v2 instalada; v3 rechaza un `cell_id` en unidades de v2 en vez de
+devolver una lista vacía). Sugerencias aplicadas: `units` obligatorio en el
+agrupado del cliente (sin default silencioso), `preloadCoverage` no mezcla
+proyecciones aunque coincida la revisión, excepción de cursores acotada a los
+tres códigos de formato. Dos notas para después: con v3 hay casi una celda por
+publicación, así que al crecer hacia miles de publicaciones en 50 km conviene
+bajar el tope de celdas o subir el tamaño de página (hoy no se nota); y
+encender `VICINO_MAPA_RPC=v3` solo cuando el deploy ya se propagó, porque un
+bundle anterior al PR rechaza `projection_version: 2` hasta recargar.
 
 ### Lo que queda por decidir (Javier / Alejandro)
 

@@ -52,6 +52,26 @@ const asegurarMigracion = async () => {
   return 'aplicada en esta corrida';
 };
 
+/**
+ * Convierte el fixture en vendedor por el camino que exige la base desde
+ * 20261011120000: el trigger profiles_seller_confirmation solo acepta el cambio
+ * del propio usuario (auth.uid() = id), con los documentos legales vigentes
+ * aceptados y la visibilidad de vendedor confirmada. Se hace en una transacción
+ * con el claim JWT fijado, como lo haría la app.
+ */
+const habilitarVendedor = async (userId) => {
+  const vigente = (doc) => `(select version from public.legal_documents where documento = '${doc}' and vigente_desde <= now() order by vigente_desde desc, publicado_en desc limit 1)`;
+  await sql(
+    cfg.ref,
+    `begin;
+     select set_config('request.jwt.claims', '{"sub":"${userId}","role":"authenticated"}', true);
+     select public.confirmar_documentos_cuenta(${vigente('terminos')}, ${vigente('aviso')}, true, true);
+     update public.profiles set es_vendedor = true, seller_visibility_confirmed_at = now(), seller_visibility_version = 'vendedor-v1'
+       where id = ${q(userId)};
+     commit;`
+  );
+};
+
 const crearProductoEn = async (creadorId, titulo, { lat, lng }) => {
   const [cat] = await sql(cfg.ref, 'select slug from public.categories order by slug limit 1');
   const [row] = await sql(
@@ -72,7 +92,7 @@ const main = async () => {
   const bruno = await crearUsuario(cfg, 'mapa-bruno');
   const carla = await crearUsuario(cfg, 'mapa-carla');
   const visitante = await crearUsuario(cfg, 'mapa-visitante');
-  await sql(cfg.ref, `update public.profiles set es_vendedor = true where id in (${[ana, bruno, carla].map((u) => q(u.id)).join(',')})`);
+  for (const u of [ana, bruno, carla]) await habilitarVendedor(u.id);
   const ids = {
     A1: await crearProductoEn(ana.id, 'Strudel de manzana', PUNTOS.A1),
     A2: await crearProductoEn(ana.id, 'Pan de la casa', PUNTOS.A2),

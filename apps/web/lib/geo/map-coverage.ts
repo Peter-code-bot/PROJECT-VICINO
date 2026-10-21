@@ -6,12 +6,13 @@ export const COVERAGE_TTL = 30_000;
 export const MIN_ZONE_SPAN = 0.006;
 /**
  * Units per degree of the public cells a response carries.
- * Projection v1 (RPC v1/v2) rounds to 0.01° (100 per degree); projection v2
+ * Projection 1 (RPC v1/v2) rounds to 0.01° (100 per degree); projection 2
  * (RPC v3) rounds to 0.001° (1000 per degree). The server says which one it
- * used in `projection_version`; the camera layer must not assume.
+ * used in `projection_version`; the camera layer must not assume. Anything
+ * unknown is treated as the coarser projection, never the finer one.
  */
 export function cellUnits(projectionVersion: number): number {
-  return projectionVersion >= 2 ? MAP_CELL_UNITS_V2 : MAP_CELL_UNITS_V1;
+  return projectionVersion === 2 ? MAP_CELL_UNITS_V2 : MAP_CELL_UNITS_V1;
 }
 export function coverageBounds(center: {lat:number;lng:number}|null): MapBounds {
   return center ? intersectMapBounds(boundsAround(center,COVERAGE_RADIUS)) ?? MAP_AREA : MAP_AREA;
@@ -27,8 +28,9 @@ export function publicDistance(a:{lat:number;lng:number},b:{lat:number;lng:numbe
 }
 export interface MapCellLayer { features: MapFeature[]; stride: number }
 /** Frame whole public cells (never a more precise seller location), with a
- * margin and a readable minimum span. `units` is the response's cell size. */
-export function publicZoneBounds(bounds: MapBounds, units = MAP_CELL_UNITS_V2): MapBounds {
+ * margin and a readable minimum span. `units` is the response's cell size
+ * (see cellUnits); it is required so a caller cannot silently assume one. */
+export function publicZoneBounds(bounds: MapBounds, units: number): MapBounds {
   const half = .5 / units;
   const cell = { west: bounds.west - half, east: bounds.east + half, south: bounds.south - half, north: bounds.north + half };
   const longitudeMargin = Math.max((cell.east - cell.west) * .15, (MIN_ZONE_SPAN - (cell.east - cell.west)) / 2, 0);
@@ -54,7 +56,7 @@ function featuresAtStride(cells:MapCell[],viewport:MapBounds,stride:number,units
 /** Keep a level until a finer one has room to spare; a small pan cannot toggle
  * between 299 and 301 markers on every camera event. The hard cap stays 300.
  * `units` must match the projection that produced `cells` (see cellUnits). */
-export function clusterMapLayer(cells:MapCell[],viewport:MapBounds,previousStride=1,units=MAP_CELL_UNITS_V2):MapCellLayer {
+export function clusterMapLayer(cells:MapCell[],viewport:MapBounds,previousStride:number,units:number):MapCellLayer {
   let stride=Number.isInteger(previousStride)&&previousStride>=1&&previousStride<=8192&&(previousStride&(previousStride-1))===0?previousStride:1;
   let features=featuresAtStride(cells,viewport,stride,units);
   while(features.length>300){stride*=2;features=featuresAtStride(cells,viewport,stride,units);}
@@ -65,7 +67,7 @@ export function clusterMapLayer(cells:MapCell[],viewport:MapBounds,previousStrid
   }
   return {features,stride};
 }
-export function clusterMapCells(cells:MapCell[],viewport:MapBounds,units=MAP_CELL_UNITS_V2):MapFeature[] {
+export function clusterMapCells(cells:MapCell[],viewport:MapBounds,units:number):MapFeature[] {
   return clusterMapLayer(cells,viewport,1,units).features;
 }
 export function coverageQuery(query:MapQuery, center:{lat:number;lng:number}|null):MapQuery {

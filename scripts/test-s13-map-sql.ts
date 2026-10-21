@@ -120,8 +120,13 @@ async function main(){
   await test('cursors and groups from the old units or outside Mexico are rejected with 22023',async()=>{
     for(const request of [req('cells',base,{cell_cursor:{x:-9823,y:1904}}),req('cells',base,{cell_cursor:{x:-98230.5,y:19040}}),
       req('overview',{...base,cell_id:'cell:3:-98206:19041'}),req('overview',{...base,cell_id:'cell:1:-200000:19041'}),req('overview',{...base,cell_id:'cell:1:-98206:40000'}),
+      // A v2 group id (hundredths of a degree) is outside Mexico in thousandths: rejected, not an empty list.
+      req('listings',{...base,cell_id:'cell:1:-9821:1904'}),req('listings',{...base,cell_id:'cell:8:-1228:238'}),
       req('unknown'),req('cells',base,{revision:123})])
       await assert.rejects(()=>query(request,viewer),(e:any)=>code(e)==='22023');
+    // Malformed listing cursors are invalid input (22023), not internal errors (22P02/22007).
+    for(const cursor of [{key:'a'.repeat(32),created_at:'ayer',id:id(1)},{key:'a'.repeat(32),created_at:null,id:'no-es-uuid'}])
+      await assert.rejects(()=>query(req('listings',{...base,cell_id:'cell:1:-98206:19041',cursor}),viewer),(e:any)=>code(e)==='22023');
     assert.equal(mapCoverageRequestSchema.safeParse(req('cells',base,{cell_cursor:{x:1e25,y:19}})).success,false);
     assert.equal(mapCoverageRequestSchema.safeParse(req('cells',base,{cell_cursor:{x:-98230,y:19040}})).success,true);
     assert.equal(mapCoverageRequestSchema.safeParse(req('overview',{...base,cell_id:'cell:1:-98206:19041'})).success,true);

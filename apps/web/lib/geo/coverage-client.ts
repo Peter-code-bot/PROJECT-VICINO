@@ -53,7 +53,8 @@ export async function preloadCoverage(
   const cursors = new Set<string>();
   while (!signal.aborted && mayContinue()) {
     const page = await requestCoverage({ action: 'cells', query: coverageQuery(query, center), coverage_center: center, revision: first.revision, cell_cursor: cursor }, signal);
-    if (page.revision !== first.revision) throw new CoverageError('La zona cambió. Actualiza el mapa.', 409);
+    // The revision already embeds the projection, but never mix cell units on faith.
+    if (page.revision !== first.revision || page.projection_version !== first.projection_version) throw new CoverageError('La zona cambió. Actualiza el mapa.', 409);
     for (const cell of page.cells) {
       const key = `${cell.x}:${cell.y}`;
       if (seen.has(key)) throw new CoverageError('No pudimos completar los puntos del mapa.');

@@ -13,16 +13,20 @@
 -- listings / check, revision, cursores, 50 km, bloqueos, filtros, topes de 300)
 -- se conserva integro; solo cambian la columna, las unidades y la version.
 --
--- QUE NO CAMBIA. ubicacion_mapa, v1 y v2 quedan como estan: la ruta
--- /api/publications/map/coverage usa v3 y cae a v2 si esta funcion no existe,
--- asi que el orden de despliegue (web antes o despues de la migracion) no rompe
--- nada y el camino de vuelta es solo de codigo.
+-- QUE NO CAMBIA. ubicacion_mapa, v1 y v2 quedan como estan. La ruta
+-- /api/publications/map/coverage solo usa v3 con VICINO_MAPA_RPC=v3 en el
+-- entorno (falla cerrado) y cae a v2 si esta funcion no existe, asi que aplicar
+-- esta migracion NO cambia por si solo lo que ve el usuario: encender los
+-- ~110 m es una decision aparte (S10 fijo ~1 km por privacidad).
 --
--- PRIVACIDAD. Sigue siendo redondeo, no ruido: irreversible con mas consultas.
--- El punto publico queda a lo sumo ~78 m del real y no senala una casa dentro
--- de una manzana. La columna nace SIN privilegio de SELECT para anon ni
--- authenticated (products_services concede por columna) y el DO del final lo
--- comprueba. Ver docs/MAPA-PUNTOS-PRECISOS-2026-10-20.md.
+-- PRIVACIDAD. Es redondeo, no ruido: repetir consultas AL MAPA no acerca al
+-- punto exacto, porque todo (celdas, radio, cobertura, revision) se calcula
+-- sobre la proyeccion. El punto publico queda a lo sumo ~78 m del real: senala
+-- la manzana, no la casa, y para un vendedor que publica desde su domicilio eso
+-- es mas de lo que S10 prometio; la auditoria del 21-oct lo deja como decision
+-- de producto (docs/MAPA-PUNTOS-PRECISOS-2026-10-20.md, seccion 5). La columna
+-- nace SIN privilegio de SELECT para anon ni authenticated (products_services
+-- concede por columna) y el DO del final lo comprueba.
 --
 -- Aplicar: node scripts/apply-migration.mjs supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql
 -- (el script envuelve en BEGIN/COMMIT; por eso este archivo no los trae).
@@ -159,13 +163,26 @@ BEGIN
     IF split_part(v_cell,':',2)::numeric>8192 OR split_part(v_cell,':',3)::numeric NOT BETWEEN -118500 AND -1 OR split_part(v_cell,':',4)::numeric NOT BETWEEN 0 AND 32800 THEN RAISE EXCEPTION 'Invalid group' USING ERRCODE='22023';END IF;
     v_node_stride:=split_part(v_cell,':',2)::integer;v_node_x:=split_part(v_cell,':',3)::integer;v_node_y:=split_part(v_cell,':',4)::integer;
     IF v_node_stride>8192 OR (v_node_stride & (v_node_stride-1))<>0 THEN RAISE EXCEPTION 'Invalid group' USING ERRCODE='22023';END IF;
+    -- El nodo tiene que caer dentro de Mexico EN LAS UNIDADES DE ESTA
+    -- proyeccion y de su stride: un grupo emitido por v2 (centesimas, p. ej.
+    -- cell:1:-9821:1904) es invalido aqui, no una lista vacia.
+    IF v_node_x NOT BETWEEN floor(-118500.0/v_node_stride) AND floor(-86500.0/v_node_stride)
+      OR v_node_y NOT BETWEEN floor(14500.0/v_node_stride) AND floor(32800.0/v_node_stride) THEN
+      RAISE EXCEPTION 'Invalid group' USING ERRCODE='22023';
+    END IF;
   END IF;
   v_cursor:=p_query->'cursor';
   IF v_cursor IS NOT NULL AND v_cursor<>'null'::jsonb THEN
     IF jsonb_typeof(v_cursor)<>'object' OR v_cursor-ARRAY['key','created_at','id']<>'{}'::jsonb
       OR jsonb_typeof(v_cursor->'id') IS DISTINCT FROM 'string' OR jsonb_typeof(v_cursor->'created_at') NOT IN ('string','null')
       OR NOT(v_cursor?'created_at') THEN RAISE EXCEPTION 'Invalid cursor' USING ERRCODE='22023';END IF;
-    v_time:=(v_cursor->>'created_at')::timestamptz;v_id:=(v_cursor->>'id')::uuid;
+    -- Un id o una fecha mal formados son un cursor invalido (22023 -> 409 en la
+    -- ruta), no un error interno (22P02/22007 -> 503) como en v2.
+    BEGIN
+      v_time:=(v_cursor->>'created_at')::timestamptz;v_id:=(v_cursor->>'id')::uuid;
+    EXCEPTION WHEN invalid_text_representation OR invalid_datetime_format OR datetime_field_overflow THEN
+      RAISE EXCEPTION 'Invalid cursor' USING ERRCODE='22023';
+    END;
   END IF;
   IF p_request->'cell_cursor' IS NOT NULL AND p_request->'cell_cursor'<>'null'::jsonb THEN
     IF jsonb_typeof(p_request->'cell_cursor')<>'object' OR (p_request->'cell_cursor')-ARRAY['x','y']<>'{}'::jsonb
