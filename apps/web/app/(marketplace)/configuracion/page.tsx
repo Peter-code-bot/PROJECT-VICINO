@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { User, Shield, Bell } from "lucide-react";
+import { User, Shield, Bell, Stamp } from "lucide-react";
 import { LogoutSection } from "./logout-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { SalirDeTodasSection } from "@/components/cuentas/salir-de-todas-section";
@@ -44,6 +44,13 @@ export default async function ConfiguracionPage() {
           >
             <User className="h-4 w-4 shrink-0 text-[color:var(--fg)]" />
             <span className="flex-1">Editar perfil</span>
+          </Link>
+          <Link
+            href="/tarjetas"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-[color:var(--fg)] transition-colors shadow-[inset_0_-1px_0_0_var(--border)] hover:bg-[color:var(--bg-elev-2)]/60"
+          >
+            <Stamp className="h-4 w-4 shrink-0 text-[color:var(--fg)]" />
+            <span className="flex-1">Mis tarjetas de lealtad</span>
           </Link>
           <Link
             href="/privacidad"

@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileHeader } from "../../perfil/profile-header";
 import { ProfileTabs } from "../../perfil/profile-tabs";
+import { OfertaLealtad } from "@/components/lealtad/oferta-lealtad";
+import { membresiaPropiaEn, programaActivoDe } from "@/lib/lealtad/datos";
+import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 
 interface Props {
@@ -114,6 +117,21 @@ export default async function VendedorPage({ params }: Props) {
     .select("id", { count: "exact", head: true })
     .eq("follower_id", id);
 
+  // Tarjeta de lealtad del negocio (solo si esta publicada; RLS filtra). Un
+  // fallo aqui no tumba el perfil: se reporta y la seccion no se pinta.
+  let programaLealtad = null;
+  let membresiaLealtad = null;
+  if (publicProfile.es_vendedor) {
+    try {
+      programaLealtad = await programaActivoDe(supabase, id);
+      if (programaLealtad && currentUserId && currentUserId !== id) {
+        membresiaLealtad = await membresiaPropiaEn(supabase, programaLealtad.id, currentUserId);
+      }
+    } catch (error) {
+      Sentry.captureException(error, { tags: { surface: "vendedor", query: "loyalty_programs" } });
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-8 animate-fade-in-up">
       <ProfileHeader
@@ -126,6 +144,15 @@ export default async function VendedorPage({ params }: Props) {
         followersCount={followersCount ?? 0}
         followingCount={followingCount ?? 0}
       />
+      {programaLealtad ? (
+        <OfertaLealtad
+          programa={programaLealtad}
+          sellerId={id}
+          sesion={currentUserId !== null}
+          esDueno={currentUserId === id}
+          membresia={membresiaLealtad}
+        />
+      ) : null}
       <ProfileTabs
         products={products ?? []}
         reviewsAsSeller={reviewsAsSeller ?? []}
