@@ -1,0 +1,19 @@
+diff --git a/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java b/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
+index fd71370945b645c9e9cb7ed1a5030c30bd08b8b7..7b5be4e8b6e94dd2818953c8070d08359a59596f 100644
+--- a/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
++++ b/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
+@@ -205,7 +205,13 @@ public class SystemBars extends Plugin {
+ 
+             if (shouldPassthroughInsets) {
+                 // We need to correct for a possible shown IME
+-                v.setPadding(0, 0, 0, keyboardVisible ? imeInsets.bottom : 0);
++                // VICINO (docs/ANDROID-TECLADO-2026-10-20.md): por debajo de API 30 el sistema
++                // ya encoge la ventana por adjustResize y WindowInsetsCompat solo aproxima el
++                // inset del IME con el marco visible, asi que rellenar aqui tambien encogia el
++                // WebView DOS veces y la app quedaba en blanco al escribir en Android 10 o
++                // anterior. Misma guarda que el PR ionic-team/capacitor#8606 (issue #8601).
++                boolean padForIme = keyboardVisible && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
++                v.setPadding(0, 0, 0, padForIme ? imeInsets.bottom : 0);
+ 
+                 Insets safeAreaInsets = calcSafeAreaInsets(insets);
+                 injectSafeAreaCSS(safeAreaInsets.top, safeAreaInsets.right, safeAreaInsets.bottom, safeAreaInsets.left);

@@ -102,9 +102,15 @@ const config: CapacitorConfig = {
       backgroundColor: '#FFF8F0',
       overlaysWebView: false,
     },
-    Keyboard: {
-      resizeOnFullScreen: true,
-    },
+    // Sin bloque Keyboard a proposito. Aqui habia `resizeOnFullScreen: true`,
+    // que con Capacitor 8 es letra muerta: Keyboard.java salta su propio
+    // redimensionado en cuanto existe la clase SystemBars del nucleo
+    // ("SystemBars handles the inset sizing"), y la 8.5 ya avisa en logcat de
+    // que hay que omitirlo. Quien hace sitio al teclado es SystemBars, y en
+    // Android 10 o anterior lo hacia DOS veces (el sistema ya encoge la
+    // ventana por adjustResize): la app quedaba en blanco al escribir. El
+    // arreglo vive en patches/@capacitor__android@8.4.3.patch; ver
+    // docs/ANDROID-TECLADO-2026-10-20.md.
   },
 };
 

@@ -33,6 +33,9 @@ overrides:
 packageExtensionsChecksum: df4b83182fbd8698646ca031516e35ba
 
 patchedDependencies:
+  '@capacitor/android@8.4.3':
+    hash: 6wbpskj5xv6pnbxi3ajvokqojy
+    path: patches/@capacitor__android@8.4.3.patch
   '@ducanh2912/next-pwa@10.2.9':
     hash: cxumc2u2xe44hzvxxhxsqmvho4
     path: patches/@ducanh2912__next-pwa@10.2.9.patch
@@ -67,7 +70,7 @@ importers:
         version: 8.1.0(@capacitor/core@8.4.3)
       '@capacitor/android':
         specifier: 8.4.3
-        version: 8.4.3(@capacitor/core@8.4.3)
+        version: 8.4.3(patch_hash=6wbpskj5xv6pnbxi3ajvokqojy)(@capacitor/core@8.4.3)
       '@capacitor/app':
         specifier: ^8.1.0
         version: 8.1.0(@capacitor/core@8.4.3)
@@ -6584,7 +6587,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.4.3
 
-  '@capacitor/android@8.4.3(@capacitor/core@8.4.3)':
+  '@capacitor/android@8.4.3(patch_hash=6wbpskj5xv6pnbxi3ajvokqojy)(@capacitor/core@8.4.3)':
     dependencies:
       '@capacitor/core': 8.4.3
 
