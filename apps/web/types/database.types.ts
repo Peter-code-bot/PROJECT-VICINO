@@ -63,6 +63,35 @@ export type Database = {
         }
         Relationships: []
       }
+      apple_device_registrations: {
+        Row: {
+          created_at: string
+          device_library_identifier: string
+          pass_id: string
+          push_token: string
+        }
+        Insert: {
+          created_at?: string
+          device_library_identifier: string
+          pass_id: string
+          push_token: string
+        }
+        Update: {
+          created_at?: string
+          device_library_identifier?: string
+          pass_id?: string
+          push_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apple_device_registrations_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_passes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -933,6 +962,339 @@ export type Database = {
           vigente_desde?: string
         }
         Relationships: []
+      }
+      loyalty_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          membership_id: string
+          motivo: string | null
+          origen_id: string | null
+          origen_tipo: string | null
+          program_id: string
+          sellos: number
+          tipo: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          membership_id: string
+          motivo?: string | null
+          origen_id?: string | null
+          origen_tipo?: string | null
+          program_id: string
+          sellos: number
+          tipo: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          membership_id?: string
+          motivo?: string | null
+          origen_id?: string | null
+          origen_tipo?: string | null
+          program_id?: string
+          sellos?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_events_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_events_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_memberships: {
+        Row: {
+          created_at: string
+          customer_profile_id: string
+          id: string
+          premios_canjeados: number
+          program_id: string
+          public_id: string
+          sellos_disponibles: number
+          sellos_totales: number
+          status: string
+          updated_at: string
+          version_aceptada: number
+          wallet_version: number
+        }
+        Insert: {
+          created_at?: string
+          customer_profile_id: string
+          id?: string
+          premios_canjeados?: number
+          program_id: string
+          public_id?: string
+          sellos_disponibles?: number
+          sellos_totales?: number
+          status?: string
+          updated_at?: string
+          version_aceptada: number
+          wallet_version?: number
+        }
+        Update: {
+          created_at?: string
+          customer_profile_id?: string
+          id?: string
+          premios_canjeados?: number
+          program_id?: string
+          public_id?: string
+          sellos_disponibles?: number
+          sellos_totales?: number
+          status?: string
+          updated_at?: string
+          version_aceptada?: number
+          wallet_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_memberships_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_memberships_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_program_versions: {
+        Row: {
+          condiciones: string | null
+          id: string
+          meta_sellos: number
+          nombre: string
+          premio: string
+          program_id: string
+          publicado_at: string
+          version: number
+        }
+        Insert: {
+          condiciones?: string | null
+          id?: string
+          meta_sellos: number
+          nombre: string
+          premio: string
+          program_id: string
+          publicado_at?: string
+          version: number
+        }
+        Update: {
+          condiciones?: string | null
+          id?: string
+          meta_sellos?: number
+          nombre?: string
+          premio?: string
+          program_id?: string
+          publicado_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_program_versions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          color: string
+          condiciones: string | null
+          created_at: string
+          id: string
+          meta_sellos: number
+          nombre: string
+          plantilla: string
+          premio: string
+          publicado_at: string | null
+          seller_id: string
+          status: string
+          updated_at: string
+          version_actual: number
+        }
+        Insert: {
+          color?: string
+          condiciones?: string | null
+          created_at?: string
+          id?: string
+          meta_sellos?: number
+          nombre: string
+          plantilla?: string
+          premio: string
+          publicado_at?: string | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+          version_actual?: number
+        }
+        Update: {
+          color?: string
+          condiciones?: string | null
+          created_at?: string
+          id?: string
+          meta_sellos?: number
+          nombre?: string
+          plantilla?: string
+          premio?: string
+          publicado_at?: string | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+          version_actual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_redemptions: {
+        Row: {
+          clave_idempotencia: string
+          codigo: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          costo_sellos: number
+          created_at: string
+          event_id: string | null
+          expires_at: string
+          id: string
+          membership_id: string
+          premio: string
+          program_id: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          clave_idempotencia: string
+          codigo: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          costo_sellos: number
+          created_at?: string
+          event_id?: string | null
+          expires_at: string
+          id?: string
+          membership_id: string
+          premio: string
+          program_id: string
+          status?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          clave_idempotencia?: string
+          codigo?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          costo_sellos?: number
+          created_at?: string
+          event_id?: string | null
+          expires_at?: string
+          id?: string
+          membership_id?: string
+          premio?: string
+          program_id?: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_redemptions_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_sellos_fallidos: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          error: string | null
+          sale_id: string
+          seller_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          error?: string | null
+          sale_id: string
+          seller_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          error?: string | null
+          sale_id?: string
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_sellos_fallidos_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "sale_confirmations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       media_assets: {
         Row: {
@@ -2401,6 +2763,112 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_passes: {
+        Row: {
+          authentication_token: string | null
+          class_id: string | null
+          created_at: string
+          emitido_at: string | null
+          guardado_at: string | null
+          id: string
+          membership_id: string
+          object_id: string | null
+          proveedor: string
+          serial_number: string
+          ultimo_error: string | null
+          ultimo_error_at: string | null
+          updated_at: string
+          version_deseada: number
+          version_sincronizada: number
+        }
+        Insert: {
+          authentication_token?: string | null
+          class_id?: string | null
+          created_at?: string
+          emitido_at?: string | null
+          guardado_at?: string | null
+          id?: string
+          membership_id: string
+          object_id?: string | null
+          proveedor: string
+          serial_number: string
+          ultimo_error?: string | null
+          ultimo_error_at?: string | null
+          updated_at?: string
+          version_deseada?: number
+          version_sincronizada?: number
+        }
+        Update: {
+          authentication_token?: string | null
+          class_id?: string | null
+          created_at?: string
+          emitido_at?: string | null
+          guardado_at?: string | null
+          id?: string
+          membership_id?: string
+          object_id?: string | null
+          proveedor?: string
+          serial_number?: string
+          ultimo_error?: string | null
+          ultimo_error_at?: string | null
+          updated_at?: string
+          version_deseada?: number
+          version_sincronizada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_passes_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_update_jobs: {
+        Row: {
+          created_at: string
+          id: number
+          intentos: number
+          membership_id: string
+          siguiente_intento_at: string
+          status: string
+          ultimo_error: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          intentos?: number
+          membership_id: string
+          siguiente_intento_at?: string
+          status?: string
+          ultimo_error?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          intentos?: number
+          membership_id?: string
+          siguiente_intento_at?: string
+          status?: string
+          ultimo_error?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_update_jobs_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       geography_columns: {
@@ -3439,6 +3907,85 @@ export type Database = {
         Returns: Json
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      loyalty_actor: { Args: never; Returns: string }
+      loyalty_aplicar_evento: {
+        Args: {
+          p_actor: string
+          p_membership_id: string
+          p_motivo: string
+          p_origen_id: string
+          p_origen_tipo: string
+          p_sellos: number
+          p_tipo: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          membership_id: string
+          motivo: string | null
+          origen_id: string | null
+          origen_tipo: string | null
+          program_id: string
+          sellos: number
+          tipo: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "loyalty_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      loyalty_canje_cancelar: {
+        Args: { p_redemption_id: string }
+        Returns: Json
+      }
+      loyalty_canje_confirmar: { Args: { p_codigo: string }; Returns: Json }
+      loyalty_canje_iniciar: {
+        Args: { p_clave: string; p_membership_id: string }
+        Returns: Json
+      }
+      loyalty_encolar_wallet: {
+        Args: { p_membership_id: string }
+        Returns: undefined
+      }
+      loyalty_inscribirse: { Args: { p_program_id: string }; Returns: Json }
+      loyalty_meta_canje: {
+        Args: {
+          p_membership: Database["public"]["Tables"]["loyalty_memberships"]["Row"]
+          p_program: Database["public"]["Tables"]["loyalty_programs"]["Row"]
+        }
+        Returns: number
+      }
+      loyalty_mi_tarjeta: { Args: { p_membership_id: string }; Returns: Json }
+      loyalty_mis_tarjetas: { Args: never; Returns: Json }
+      loyalty_nombre_corto: { Args: { p_nombre: string }; Returns: string }
+      loyalty_programa_estado: { Args: { p_estado: string }; Returns: Json }
+      loyalty_programa_guardar: {
+        Args: {
+          p_color?: string
+          p_condiciones?: string
+          p_meta_sellos: number
+          p_nombre: string
+          p_plantilla?: string
+          p_premio: string
+        }
+        Returns: Json
+      }
+      loyalty_registrar_venta_interna: {
+        Args: {
+          p_actor: string
+          p_venta: Database["public"]["Tables"]["sale_confirmations"]["Row"]
+        }
+        Returns: Json
+      }
+      loyalty_resumen_negocio: { Args: never; Returns: Json }
+      loyalty_revertir_evento: {
+        Args: { p_event_id: string; p_motivo?: string }
+        Returns: Json
+      }
+      loyalty_sello_desde_venta: { Args: { p_sale_id: string }; Returns: Json }
       make_admin: { Args: { p_email: string }; Returns: undefined }
       manage_user_role: {
         Args: {
@@ -4369,6 +4916,48 @@ export type Database = {
       username_validation_status: {
         Args: { p_username: string }
         Returns: string
+      }
+      wallet_job_terminar: {
+        Args: {
+          p_error?: string
+          p_id: number
+          p_ok: boolean
+          p_version_procesada: number
+        }
+        Returns: undefined
+      }
+      wallet_jobs_tomar: {
+        Args: { p_limite?: number }
+        Returns: {
+          created_at: string
+          id: number
+          intentos: number
+          membership_id: string
+          siguiente_intento_at: string
+          status: string
+          ultimo_error: string | null
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wallet_update_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      wallet_pase_preparar: {
+        Args: {
+          p_class_id?: string
+          p_membership_id: string
+          p_object_id?: string
+          p_proveedor: string
+        }
+        Returns: Json
+      }
+      wallet_snapshot_membresia: {
+        Args: { p_membership_id: string }
+        Returns: Json
       }
     }
     Enums: {
