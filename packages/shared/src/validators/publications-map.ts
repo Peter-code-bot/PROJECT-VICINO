@@ -2,6 +2,14 @@ import { z } from "zod";
 import { CATEGORIES } from "../constants/categories";
 
 export const MAP_AREA = { west: -118.5, south: 14.5, east: -86.5, north: 32.8 } as const;
+/**
+ * Public cell size of each map projection, in cells per degree.
+ * v1 (RPC v1/v2, 20260930220000): 0.01° ≈ 1 km. v2 (RPC v3, 20261020150000):
+ * 0.001° ≈ 110 m. `projection_version` in a response says which one applies to
+ * its `cells` x/y and to its `cell_id`s; clients must not assume either.
+ */
+export const MAP_CELL_UNITS_V1 = 100;
+export const MAP_CELL_UNITS_V2 = 1000;
 export const mapBoundsSchema = z.object({
   west: z.number().finite().min(MAP_AREA.west).max(MAP_AREA.east),
   south: z.number().finite().min(MAP_AREA.south).max(MAP_AREA.north),
@@ -43,8 +51,11 @@ const listingSchema = z.object({
   creador_id: z.string().uuid(), vendedor_nombre: z.string(),
   cell_id: z.string(), seller_listing_count: z.number().int().positive(), created_at: z.string().nullable(),
 });
+// Both projections are valid responses: the coverage route falls back to RPC v2
+// (projection 1) while the v3 migration is not applied yet.
+const projectionVersionSchema = z.union([z.literal(1), z.literal(2)]);
 export const mapResultSchema = z.object({
-  query_key: z.string().regex(/^[a-f0-9]{32}$/), projection_version: z.literal(1),
+  query_key: z.string().regex(/^[a-f0-9]{32}$/), projection_version: projectionVersionSchema,
   as_of: z.string(), features: z.array(featureSchema).max(300),
   listings: z.array(listingSchema).max(30), total: z.number().int().nonnegative(),
   seller_total: z.number().int().nonnegative(), list_total: z.number().int().nonnegative(),
@@ -61,7 +72,13 @@ const coverageCenterSchema = z.object({
   lat: z.number().finite().min(MAP_AREA.south).max(MAP_AREA.north),
   lng: z.number().finite().min(MAP_AREA.west).max(MAP_AREA.east),
 }).strict();
-export const mapCellCursorSchema = z.object({ x: z.number().int().min(-11850).max(-8650), y: z.number().int().min(1450).max(3280) }).strict();
+// Cell cursors are whole public cells inside Mexico in EITHER projection's
+// units (v1: -11850..-8650 / 1450..3280; v2: -118500..-86500 / 14500..32800).
+// The RPC that issued the cursor enforces its own exact range.
+export const mapCellCursorSchema = z.object({
+  x: z.number().int().min(MAP_AREA.west * MAP_CELL_UNITS_V2).max(MAP_AREA.east * MAP_CELL_UNITS_V1),
+  y: z.number().int().min(MAP_AREA.south * MAP_CELL_UNITS_V1).max(MAP_AREA.north * MAP_CELL_UNITS_V2),
+}).strict();
 export const mapCoverageRequestSchema = z.object({
   action: z.enum(["overview", "cells", "listings", "check"]),
   query: mapQuerySchema,
@@ -73,7 +90,7 @@ export const mapCoverageRequestSchema = z.object({
   if (r.query.cell_id) {
     const [, level, x, y] = r.query.cell_id.split(":");
     const stride = Number(level);
-    if (stride > 8192 || (stride & (stride - 1)) !== 0 || !Number.isSafeInteger(Number(x)) || !Number.isSafeInteger(Number(y)) || Number(x) < -11850 || Number(x) > -1 || Number(y) < 0 || Number(y) > 3280) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Grupo inválido" });
+    if (stride > 8192 || (stride & (stride - 1)) !== 0 || !Number.isSafeInteger(Number(x)) || !Number.isSafeInteger(Number(y)) || Number(x) < MAP_AREA.west * MAP_CELL_UNITS_V2 || Number(x) > -1 || Number(y) < 0 || Number(y) > MAP_AREA.north * MAP_CELL_UNITS_V2) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Grupo inválido" });
   }
 });
 export const mapCoverageResultSchema = mapResultSchema.extend({
