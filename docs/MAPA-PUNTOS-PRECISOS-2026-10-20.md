@@ -131,7 +131,7 @@ para negocios con local (`seller_type = business`).
 
 | Archivo | Cambio |
 |---------|--------|
-| `supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql` | **Nueva.** Columna generada `ubicacion_publica` (3 decimales), índice GiST parcial, `search_map_publications_v3(jsonb)` (mismo contrato que v2, rejilla ×1000, `projection_version: 2`), permisos solo `authenticated`/`service_role`, bloque de verificación de privilegios y de funciones duplicadas. **No aplicada en producción.** |
+| `supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql` | **Nueva.** Columna generada `ubicacion_publica` (3 decimales), índice GiST parcial, `search_map_publications_v3(jsonb)` (mismo contrato que v2, rejilla ×1000, `projection_version: 2`), permisos solo `authenticated`/`service_role`, bloque de verificación de privilegios y de funciones duplicadas. **Aplicada en producción el 21-oct-2026** (autorizó Pedro); ver «Producción» abajo. |
 | `apps/web/app/api/publications/map/coverage/route.ts` | Con `VICINO_MAPA_RPC=v3` llama a v3; si la base responde `PGRST202` (función ausente) cae a v2 y avisa a Sentry una vez por proceso. Sin la variable (o con cualquier otro valor) usa v2: la proyección de 1 km sigue siendo la de siempre hasta que alguien la cambie a propósito. |
 | `packages/shared/src/validators/publications-map.ts` | `projection_version` admite 1 ó 2; constantes `MAP_CELL_UNITS_V1/V2`; rangos de cursores y grupos válidos en las dos unidades. |
 | `apps/web/lib/geo/map-coverage.ts` | `cellUnits(projection_version)`; `clusterMapLayer`/`publicZoneBounds` reciben las unidades; encuadre mínimo de 0.006° para que «Ver área» de una celda de 110 m sea legible. |
@@ -188,6 +188,18 @@ sus manzanas; los dos vendedores a menos de 60 m siguen compartiendo un «3».
   La auditoría de seguridad externa se resume más abajo; el agente revisor de
   código no pudo terminar por un límite de uso del modelo auxiliar.
 
+### Producción (21-oct-2026)
+
+Migración aplicada con `scripts/apply-migration.mjs` (ledger `20261020150000`).
+Comprobado con consultas de solo lectura: v1, v2 y v3 existen una vez;
+`ubicacion_publica` sin SELECT para `anon` ni `authenticated`; v3 ejecutable
+solo con sesión; los dos índices presentes; las 56 publicaciones con punto
+tienen proyección. En el catálogo real (51 publicaciones visibles de 38
+vendedores): **12 celdas de 1 km → 38 celdas de 110 m**, y el grupo más grande
+baja de **12 a 7** publicaciones. Tipos regenerados en el mismo PR. El mapa
+sigue en ~1 km hasta que `VICINO_MAPA_RPC=v3` esté en Vercel (lo pone Pedro
+cuando el PR esté desplegado).
+
 ### Cómo se despliega (y cómo se deshace)
 
 La precisión nueva **falla cerrada**: ni el merge ni la migración la encienden.
@@ -195,11 +207,8 @@ Solo la variable `VICINO_MAPA_RPC=v3` en Vercel la activa (recomendación de la
 auditoría de seguridad, abajo, para que la decisión de privacidad sea explícita).
 
 1. Mergear la rama a `master` (Vercel despliega). El mapa sigue en ~1 km.
-2. Aplicar la migración en producción: `node scripts/apply-migration.mjs supabase/migrations/20261020150000_mapa_puntos_precisos_v3.sql`.
-   Aditiva (columna generada + índice + función). Reescribe `products_services`
-   con bloqueo exclusivo durante segundos (decenas de filas): hacerlo en un
-   momento tranquilo. El mapa sigue en ~1 km.
-3. Regenerar tipos: `node scripts/gen-types.mjs` y commitear.
+2. ~~Aplicar la migración en producción~~ **Hecho el 21-oct** (ver arriba).
+3. ~~Regenerar tipos~~ **Hecho**, en el mismo PR.
 4. **Encender:** `VICINO_MAPA_RPC=v3` en Vercel (producción) y redeploy, una
    vez que el deploy del PR ya se propagó (los bundles anteriores no aceptan
    `projection_version: 2` hasta recargar). Si la función no existiera aún, la
@@ -261,5 +270,6 @@ bundle anterior al PR rechaza `projection_version: 2` hasta recargar.
 
 - Teselas reales de Apple Maps con la proyección nueva (sin claves en local).
 - Teléfono físico (iPhone/Android) y gestos de pinza.
-- Producción: la migración **no** está aplicada; el staging la tiene desde el
-  21-oct.
+- Producción con `VICINO_MAPA_RPC=v3` encendido: la migración está aplicada y
+  verificada, pero el mapa real con la proyección nueva solo se verá cuando el
+  PR esté desplegado y Pedro ponga la variable.

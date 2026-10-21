@@ -15,16 +15,14 @@ function reply(body: unknown, status: number, extra = {}) {
 }
 
 /**
- * Proyección pública v2 (celdas de ~110 m, migración 20261020150000) o la v1
- * (~1 km), según `VICINO_MAPA_RPC`. El tipo generado de la base aún no conoce
- * v3 hasta que la migración se aplique y se regeneren los tipos
- * (node scripts/gen-types.mjs); las dos funciones comparten firma y contrato,
- * así que el nombre se tipa con el de v2 en UN solo sitio. `projection_version`
- * en la respuesta le dice al cliente en qué unidades vienen las celdas.
+ * Proyección pública v2 (celdas de ~110 m, migración 20261020150000, aplicada
+ * en producción el 21-oct-2026) o la v1 (~1 km), según `VICINO_MAPA_RPC`. Las
+ * dos funciones comparten firma y contrato; `projection_version` en la
+ * respuesta le dice al cliente en qué unidades vienen las celdas.
  */
 const RPC_PRECISA = "search_map_publications_v3";
 const RPC_BASE = "search_map_publications_v2";
-type RpcMapa = typeof RPC_BASE;
+type RpcMapa = typeof RPC_PRECISA | typeof RPC_BASE;
 // PostgREST: la función no está en la caché de esquema (migración sin aplicar o
 // sin `notify pgrst`). Cualquier otro error se devuelve tal cual.
 const CODIGO_FUNCION_AUSENTE = "PGRST202";
@@ -39,14 +37,14 @@ let avisadaCaida = false;
  * por petición, no al cargar el módulo (en Vercel un cambio de variable exige
  * redeploy de todos modos; en local basta reiniciar).
  */
-function rpcPreferida(): string {
+function rpcPreferida(): RpcMapa {
   const valor = (process.env.VICINO_MAPA_RPC ?? "").trim().toLowerCase();
   return valor === "v3" ? RPC_PRECISA : RPC_BASE;
 }
 
 async function consultarMapa(supabase: Awaited<ReturnType<typeof createClient>>, request: MapCoverageRequest) {
-  const llamar = (nombre: string) =>
-    supabase.rpc(nombre as RpcMapa, { p_request: request }).abortSignal(AbortSignal.timeout(10_000));
+  const llamar = (nombre: RpcMapa) =>
+    supabase.rpc(nombre, { p_request: request }).abortSignal(AbortSignal.timeout(10_000));
   const preferida = rpcPreferida();
   const actual = await llamar(preferida);
   if (preferida === RPC_BASE || !actual.error || actual.error.code !== CODIGO_FUNCION_AUSENTE) return actual;
