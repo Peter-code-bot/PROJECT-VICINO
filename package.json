@@ -57,7 +57,8 @@
     },
     "patchedDependencies": {
       "@ducanh2912/next-pwa@10.2.9": "patches/@ducanh2912__next-pwa@10.2.9.patch",
-      "@next/eslint-plugin-next@16.3.6": "patches/@next__eslint-plugin-next@16.3.6.patch"
+      "@next/eslint-plugin-next@16.3.6": "patches/@next__eslint-plugin-next@16.3.6.patch",
+      "@capacitor/android@8.4.3": "patches/@capacitor__android@8.4.3.patch"
     }
   }
 }
