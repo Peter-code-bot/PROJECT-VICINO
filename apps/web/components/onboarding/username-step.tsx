@@ -6,10 +6,18 @@ import { onboardingUsernameSchema } from "@vicino/shared";
 import { usernameLookupSchema, type UsernameLookupResult } from "@/lib/onboarding/username-suggestions";
 import { onboardingInputClassName } from "./onboarding-shell";
 
-export function UsernameStep({ value, onChange, onValidityChange, refreshToken = 0 }: {
+export interface UsernameFeedback { username: string; valid: boolean; message: string }
+const CHECKING_MESSAGE = "Comprobando disponibilidad…";
+function lookupFailure(status: number): string {
+  if (status === 401) return "Tu sesión venció. Inicia sesión de nuevo para comprobar el ID.";
+  if (status === 429) return "Hiciste varios intentos seguidos. Espera un minuto y vuelve a comprobar el ID.";
+  return "La comprobación no está disponible. Conservamos tu ID para que reintentes.";
+}
+
+export function UsernameStep({ value, onChange, onFeedbackChange, refreshToken = 0 }: {
   value: string;
   onChange: (value: string) => void;
-  onValidityChange: (valid: boolean) => void;
+  onFeedbackChange: (feedback: UsernameFeedback) => void;
   refreshToken?: number;
 }) {
   const [lookup, setLookup] = useState<UsernameLookupResult | null>(null);
@@ -52,7 +60,7 @@ export function UsernameStep({ value, onChange, onValidityChange, refreshToken =
 
   useEffect(() => {
     const controller = new AbortController();
-    startTransition(() => { setLookup(null); setChecking(validFormat); setError(""); onValidityChange(false); });
+    startTransition(() => { setLookup(null); setChecking(validFormat); setError(""); });
     if (!validFormat) return () => controller.abort();
     const timer = setTimeout(async () => {
       const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -60,15 +68,21 @@ export function UsernameStep({ value, onChange, onValidityChange, refreshToken =
         const response = await fetch(`/api/onboarding/usuario?username=${encodeURIComponent(value)}`, {
           signal: controller.signal, cache: "no-store",
         });
-        const result = usernameLookupSchema.safeParse(await response.json());
-        if (!response.ok || !result.success) throw new Error("lookup-failed");
         if (cancelled || controller.signal.aborted) return;
+        if (!response.ok) { setError(lookupFailure(response.status)); return; }
+        const result = usernameLookupSchema.safeParse(await response.json().catch(() => null));
+        if (cancelled || controller.signal.aborted) return;
+        if (!result.success || result.data.username !== value) {
+          setError("No pudimos confirmar la respuesta para este ID. Vuelve a comprobarlo.");
+          return;
+        }
         setLookup(result.data);
         setSuggestions(result.data.suggestions);
-        onValidityChange(result.data.status === "available" && result.data.username === value);
       } catch {
         // Cleanup cancels obsolete requests; a timeout allows a manual retry.
-        if (!cancelled) setError("No pudimos comprobar este ID. Intenta de nuevo.");
+        if (!cancelled) setError(controller.signal.aborted
+          ? "La comprobación tardó demasiado. Reintenta para continuar."
+          : "No pudimos comprobar este ID. Revisa tu conexión y vuelve a intentarlo.");
       } finally {
         clearTimeout(timeout);
         if (!cancelled) setChecking(false);
@@ -76,9 +90,26 @@ export function UsernameStep({ value, onChange, onValidityChange, refreshToken =
     }, 350);
     let cancelled = false;
     return () => { cancelled = true; clearTimeout(timer); controller.abort(); };
-  }, [value, validFormat, retry, refreshToken, onValidityChange]);
+  }, [value, validFormat, retry, refreshToken]);
 
   const current = validFormat && lookup?.username === value ? lookup : null;
+  const messages: Record<UsernameLookupResult["status"], string> = {
+    empty: "Escribe un ID de 3 a 30 caracteres o elige Omitir.",
+    invalid: "Revisa el formato del ID antes de continuar.",
+    reserved: "Este ID está reservado. Elige otro o una de las sugerencias.",
+    taken: "Este ID ya está en uso. Elige otro o una de las sugerencias.",
+    available: "Este ID está disponible.",
+  };
+  const message = formatError || (checking ? CHECKING_MESSAGE : error || (current ? messages[current.status] : CHECKING_MESSAGE));
+  const available = validFormat && !checking && !error && current?.status === "available";
+  useEffect(() => {
+    onFeedbackChange({ username: value, valid: !!available, message });
+  }, [value, available, message, onFeedbackChange]);
+
+  function invalidate(nextValue: string) {
+    const parsed = onboardingUsernameSchema.safeParse(nextValue);
+    onFeedbackChange({ username: nextValue, valid: false, message: parsed.success ? CHECKING_MESSAGE : parsed.error.errors[0]!.message });
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -89,17 +120,17 @@ export function UsernameStep({ value, onChange, onValidityChange, refreshToken =
             autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username"
             aria-describedby="username-help username-count username-status"
             aria-invalid={(!validFormat && value.length > 0) || (current && ["invalid", "reserved", "taken"].includes(current.status)) ? true : undefined}
-            onChange={(event) => { onValidityChange(false); onChange(event.target.value); }}
+            onChange={(event) => { invalidate(event.target.value); onChange(event.target.value); }}
             className={`${onboardingInputClassName} pl-9`} />
         </div>
-        <p id="username-help" className="mt-2 text-sm text-fg-muted">Usa de 3 a 30 caracteres: letras minúsculas (a–z), números y guion bajo (_). Sin espacios ni acentos. Por ejemplo: ana_123. Este ID aparecerá en tu perfil.</p>
+        <p id="username-help" className="mt-2 text-sm text-fg-muted">De 3 a 30 caracteres: letras minúsculas (a–z), números y guion bajo (_). Sin puntos (.), guiones (-), espacios ni acentos. Ejemplo: ana_lopez.</p>
         <p id="username-count" className="mt-1 text-sm text-fg-muted">{value.length}/30 caracteres</p>
         <div id="username-status" role="status" aria-live="polite" className="mt-3 min-h-6 text-sm">
           {formatError ? <span>{formatError}</span>
             : checking ? <span className="inline-flex items-center gap-2 text-fg-muted"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Comprobando disponibilidad…</span>
             : error ? <span>{error}</span>
-              : current?.status === "available" ? <span className="inline-flex items-center gap-2 text-brand dark:text-fg"><Check className="h-4 w-4" aria-hidden="true" />Este ID está disponible.</span>
-                : current?.message}
+              : available ? <span className="inline-flex items-center gap-2 text-brand dark:text-fg"><Check className="h-4 w-4" aria-hidden="true" />{message}</span>
+                : message}
         </div>
       </div>
       <div className="space-y-3">
@@ -108,13 +139,13 @@ export function UsernameStep({ value, onChange, onValidityChange, refreshToken =
         {(suggesting || suggestionsError) && <p role="status" className="text-sm text-fg-muted">{suggesting ? "Cargando opciones…" : suggestionsError}</p>}
         <div className="flex flex-wrap gap-2">
           {suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => {
-            onValidityChange(false);
+            invalidate(suggestion);
             onChange(suggestion);
             if (value === suggestion) setRetry((count) => count + 1);
           }}
             className="min-h-12 max-w-full break-all rounded-xl border border-brand-tint-strong bg-brand-tint px-3 py-2 text-left text-sm font-medium text-brand dark:border-brand-hi dark:text-fg">@{suggestion}</button>)}
         </div>
-        <button type="button" disabled={checking || suggesting} onClick={() => { onValidityChange(false); if (!validFormat) setSuggestions([]); setRetry((count) => count + 1); }}
+        <button type="button" disabled={checking || suggesting} onClick={() => { invalidate(value); if (!validFormat) setSuggestions([]); setRetry((count) => count + 1); }}
           className="inline-flex min-h-12 items-center gap-2 rounded-xl px-2 text-sm font-medium text-brand disabled:opacity-50 dark:text-fg">
           <RefreshCw className="h-4 w-4" aria-hidden="true" />{error || suggestionsError ? "Reintentar" : "Ver otras opciones"}
         </button>

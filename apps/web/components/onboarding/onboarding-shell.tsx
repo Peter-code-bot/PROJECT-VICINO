@@ -176,6 +176,8 @@ export function OnboardingShell({
 }
 
 export interface OnboardingActionsProps {
+  disabledReason?: string;
+  disabledReasonId?: string;
   continueLabel?: string;
   onContinue?: () => void;
   onSkip?: () => void;
@@ -188,6 +190,8 @@ export interface OnboardingActionsProps {
 }
 
 export function OnboardingActions({
+  disabledReason,
+  disabledReasonId,
   continueLabel = "Continuar",
   onContinue,
   onSkip,
@@ -198,8 +202,12 @@ export function OnboardingActions({
   form,
   type = "button",
 }: OnboardingActionsProps) {
+  const generatedHelpId = useId();
+  const helpId = disabledReasonId ?? generatedHelpId;
+  const showReason = !!disabledReason && (disabled || busy);
   return (
     <div className="flex flex-col gap-2">
+      {showReason && <p id={helpId} role="status" aria-live="polite" className="text-sm text-fg-muted">{disabledReason}</p>}
       <Button
         type={type}
         form={form}
@@ -207,6 +215,7 @@ export function OnboardingActions({
         disabled={disabled || busy}
         loading={busy}
         aria-busy={busy || undefined}
+        aria-describedby={showReason ? helpId : undefined}
         size="lg"
         className="h-auto min-h-12 w-full rounded-xl py-3 !shadow-none hover:bg-brand-dark motion-reduce:transition-none motion-reduce:active:scale-100 [&>span]:motion-reduce:animate-none"
       >

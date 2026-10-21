@@ -1,3 +1,7 @@
+## 20-oct-2026 — ONB-ID-02
+
+- Revisión funcional del ID tras el reporte de Javier: límites y reglas contrastados en Supabase por navegador; motivos de bloqueo junto a Continuar y pruebas ampliadas. Plan, evidencia, publicación y aceptación real en [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).
+
 ## 20-oct-2026 — ONB-ID-01
 
 - Validación del ID y Workflow Advisor añadidos al proyecto. Plan, procedimiento, pruebas, estado de publicación y aceptación en app instalada en [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).

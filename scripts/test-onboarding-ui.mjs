@@ -148,8 +148,8 @@ const server=createServer(async(r,s)=>{
  if(pathname==='/api/onboarding/usuario'){
   const username=new URL(r.url,'http://localhost').searchParams.get('username')||'';
   const collision=username==='racing_user'&&r.headers['x-fixture-race']==='1';
-  const status=!username?'empty':username==='ocupado'||collision?'taken':username==='admin'?'reserved':!/^[a-zA-Z0-9_]{3,30}$/.test(username)?'invalid':'available';
-  const message={empty:'Elige un ID.',taken:'Este ID ya está en uso.',reserved:'Este ID no se puede usar.',invalid:'Usa de 3 a 30 letras, números o guiones bajos.',available:null}[status];
+  const status=!username?'empty':username==='ocupado'||collision?'taken':['admin','api','www','root'].includes(username)?'reserved':!/^[a-zA-Z0-9_]{3,30}$/.test(username)?'invalid':'available';
+  const message={empty:'Elige un ID.',taken:'Este ID ya está en uso. Elige otro o una de las sugerencias.',reserved:'Este ID está reservado. Elige otro o una de las sugerencias.',invalid:'Revisa el formato del ID antes de continuar.',available:null}[status];
   s.setHeader('Content-Type','application/json');s.end(JSON.stringify({username,status,message,suggestions:collision?['vecino_2001','vecino_2002','vecino_2003']:['javier_1001','javier_1002','javier_1003']}));return;
  }
  if(pathname==='/bundle.js'){s.setHeader('Content-Type','text/javascript; charset=utf-8');s.end(bundle.outputFiles[0].text);return;}
@@ -231,6 +231,20 @@ async function availableUsername(page){
  await page.getByText('Este ID está disponible.',{exact:true}).waitFor();
  await page.waitForFunction(()=>{const button=document.querySelector('footer button');return button?.disabled===false&&getComputedStyle(button).opacity==='1';});
  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isEnabled(),true);
+ assert.equal(await page.locator('#username-continue-help').count(),0,'Available IDs do not show a disabled reason');
+ assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).getAttribute('aria-describedby'),null);
+}
+async function blockedUsername(page,message){
+ const status=page.locator('#username-status');
+ const footer=page.locator('#username-continue-help');
+ const button=page.getByRole('button',{name:'Continuar',exact:true});
+ await status.getByText(message,{exact:true}).waitFor();
+ await footer.getByText(message,{exact:true}).waitFor();
+ assert.equal(await status.innerText(),message,'Username field feedback is specific');
+ assert.equal(await footer.innerText(),message,'Footer explains why Continue is disabled');
+ assert.equal(await button.isDisabled(),true);
+ const describedBy=(await button.getAttribute('aria-describedby')||'').split(/\s+/);
+ assert(describedBy.includes('username-continue-help'),'Continue is associated with its reason');
 }
 async function choosePath(page,label,heading){
  await page.getByRole('heading',{name:'Bienvenido a VICINO',exact:true}).waitFor();
@@ -280,6 +294,7 @@ try{
   page.on('request',request=>{if(request.url().includes('/api/onboarding/usuario'))requests.push(request.url());});
   for(const [value,message]of [
    ['', 'Escribe un ID o elige Omitir.'],
+   ['a', 'Usa al menos 3 caracteres.'],
    ['ab', 'Usa al menos 3 caracteres.'],
    ['a'.repeat(31), 'Usa como máximo 30 caracteres.'],
    ['Ana_123', 'Usa solo letras minúsculas (a–z).'],
@@ -287,14 +302,15 @@ try{
    [' ana_123 ', 'El ID no puede tener espacios. Usa guion bajo (_) para separar palabras.'],
    ['ana\u00a0123', 'El ID no puede tener espacios. Usa guion bajo (_) para separar palabras.'],
    ['áña', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
-   ['ana-123', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
+   ['ana.123', 'El ID no admite puntos (.). Usa guion bajo (_), por ejemplo: ana_lopez.'],
+   ['ana-123', 'El ID no admite guiones (-). Usa guion bajo (_), por ejemplo: ana_lopez.'],
+   ['ana\u2011123', 'El ID no admite guiones (-). Usa guion bajo (_), por ejemplo: ana_lopez.'],
    ['@ana', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
    ['ana😀', 'Usa solo letras sin acentos (a–z), números y guion bajo (_).'],
   ]){
    await input.fill(value);
-   assert.equal(await page.locator('#username-status').innerText(),message,'Format feedback is synchronous');
+    await blockedUsername(page,message);
    assert.equal(await input.inputValue(),value,'Invalid text stays editable');
-   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
    assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
    if(value)assert.equal(await input.getAttribute('aria-invalid'),'true');
    assert.equal(await page.locator('#username-count').innerText(),`${value.length}/30 caracteres`);
@@ -304,17 +320,67 @@ try{
   }
   assert.equal(requests.length,0,'No availability calls for invalid format');
   assert.equal(await page.getByRole('button',{name:'@javier_1001',exact:true}).isVisible(),true,'Keep suggestions while correcting');
-  for(const value of ['abc','a'.repeat(30)]){
-   await input.fill(value);assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+  for(const value of ['abc','a'.repeat(30),'ana_123']){
+   await input.fill(value);
+   await page.locator('#username-continue-help').getByText('Comprobando disponibilidad…',{exact:true}).waitFor();
+   const pendingButton=page.getByRole('button',{name:'Continuar',exact:true});
+   assert.equal(await pendingButton.isDisabled(),true);
+   assert((await pendingButton.getAttribute('aria-describedby')||'').split(/\s+/).includes('username-continue-help'));
    await availableUsername(page);assert.equal(await input.getAttribute('aria-invalid'),null);
   }
-  await input.fill('admin');await page.getByText('Este ID no se puede usar.',{exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);
+  for(const reserved of ['admin','api','www','root']){
+   await input.fill(reserved);await blockedUsername(page,'Este ID está reservado. Elige otro o una de las sugerencias.');
+  }
   await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
  },{theme});
+ for(const [status,body] of [
+  [401,{error:'Unauthorized'}],
+  [429,{error:'Rate limited'}],
+  [503,{error:'Unavailable'}],
+ ])await runCase(`username-availability-http-${status}`,mobile,'/completar-perfil/usuario',async page=>{
+  await availableUsername(page);
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  await page.route('**/api/onboarding/usuario**',route=>route.fulfill({status,json:body}));
+  await input.fill(`lookup_${status}`);
+  const message=status===401?'Tu sesión venció. Inicia sesión de nuevo para comprobar el ID.'
+   :status===429?'Hiciste varios intentos seguidos. Espera un minuto y vuelve a comprobar el ID.'
+     :'La comprobación no está disponible. Conservamos tu ID para que reintentes.';
+  await blockedUsername(page,message);
+  assert.equal(await input.inputValue(),`lookup_${status}`);
+ });
+ await runCase('username-availability-network-failure',mobile,'/completar-perfil/usuario',async page=>{
+  await availableUsername(page);
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  await page.route('**/api/onboarding/usuario**',route=>route.abort('failed'));
+  await input.fill('lookup_network');
+  await blockedUsername(page,'No pudimos comprobar este ID. Revisa tu conexión y vuelve a intentarlo.');
+ });
+ await runCase('username-availability-response-mismatched-id',mobile,'/completar-perfil/usuario',async page=>{
+  await availableUsername(page);
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  await page.route('**/api/onboarding/usuario**',route=>route.fulfill({status:200,json:{
+   username:'different_id',status:'available',message:null,suggestions:['javier_1001','javier_1002','javier_1003'],
+  }}));
+  const response=page.waitForResponse(response=>response.url().includes('username=lookup_mismatch'));
+  await input.fill('lookup_mismatch');
+  await response;
+  await page.waitForFunction(()=>!document.querySelector('#username-status')?.innerText.includes('Comprobando disponibilidad'));
+  await blockedUsername(page,'No pudimos confirmar la respuesta para este ID. Vuelve a comprobarlo.');
+ });
+ await runCase('username-availability-timeout',mobile,'/completar-perfil/usuario',async page=>{
+  await availableUsername(page);
+  const input=page.getByLabel('ID de usuario',{exact:true});
+  await page.route('**/api/onboarding/usuario**',()=>new Promise(()=>{}));
+  await input.fill('lookup_timeout');
+  await page.clock.fastForward(351);
+  await page.waitForRequest(request=>request.url().includes('username=lookup_timeout'));
+  await page.clock.fastForward(10_001);
+  await blockedUsername(page,'La comprobación tardó demasiado. Reintenta para continuar.');
+ });
  await runCase('username-initial-uppercase-suggestions',mobile,'/completar-perfil/usuario?initialUsername=U0000123',async page=>{
   const input=page.getByLabel('ID de usuario',{exact:true});
   assert.equal(await input.inputValue(),'U0000123');
+  await blockedUsername(page,'Usa solo letras minúsculas (a–z).');
   await page.getByRole('button',{name:'@javier_1001',exact:true}).waitFor();
   assert.equal(await input.getAttribute('aria-invalid'),'true');
   const lookups=await page.evaluate(()=>performance.getEntriesByType('resource').map(entry=>entry.name).filter(name=>name.includes('/api/onboarding/usuario')));
@@ -341,9 +407,26 @@ try{
   const saves=await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save'));
   assert.equal(saves.some(x=>'username'in (x.input.fields||{})),false,'Skip never submits a replacement ID');
  });
+ await runCase('username-checkpoint-saves-minimum-and-maximum',mobile,'/completar-perfil/usuario',async page=>{
+  let input=page.getByLabel('ID de usuario',{exact:true});
+  for(const username of ['abc','a'.repeat(30)]){
+   await input.fill(username);await availableUsername(page);
+   await page.getByRole('button',{name:'Continuar',exact:true}).click();
+   await page.getByLabel('Tu nombre',{exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>window.__fixture.profile.username),username);
+   const saved=await page.evaluate(()=>window.__fixture.trace.filter(entry=>entry.action==='save').at(-1)?.input.fields);
+   assert.equal(saved.username,username,'The checkpoint saves the ID without changing it');
+   if(username.length===3){
+    await page.getByRole('button',{name:'Regresar',exact:true}).click();
+    await page.getByLabel('ID de usuario',{exact:true}).waitFor();
+    input=page.getByLabel('ID de usuario',{exact:true});
+    assert.equal(await input.inputValue(),'abc');
+   }
+  }
+ });
  await runCase('username-taken-suggestion',mobile,'/completar-perfil/usuario',async page=>{
-  await page.getByLabel('ID de usuario',{exact:true}).fill('ocupado');await page.getByText('Este ID ya está en uso.',{exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
+  await page.getByLabel('ID de usuario',{exact:true}).fill('ocupado');await blockedUsername(page,'Este ID ya está en uso. Elige otro o una de las sugerencias.');
+  assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);
   await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
   await page.getByRole('button',{name:'@javier_1001',exact:true}).click();await availableUsername(page);
   assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isEnabled(),true);
@@ -351,14 +434,14 @@ try{
   assert.equal(await page.evaluate(()=>window.__fixture.profile.username),'javier_1001');
  });
  await runCase('username-invalid-omit',mobile,'/completar-perfil/usuario',async page=>{
-  await page.getByLabel('ID de usuario',{exact:true}).fill('?');await page.getByText('Usa solo letras sin acentos (a–z), números y guion bajo (_).',{exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByLabel('Tu nombre',{exact:true}).waitFor();
+  await page.getByLabel('ID de usuario',{exact:true}).fill('?');await blockedUsername(page,'Usa solo letras sin acentos (a–z), números y guion bajo (_).');
+  await page.getByRole('button',{name:'Omitir',exact:true}).click();await page.getByLabel('Tu nombre',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.__fixture.profile.username),'javier_actual');assert.equal(await page.evaluate(()=>window.__fixture.trace.filter(x=>x.action==='save').some(x=>'username'in x.input)),false);
  });
  await runCase('username-write-race',mobile,'/completar-perfil/usuario',async page=>{
   await page.getByLabel('ID de usuario',{exact:true}).fill('racing_user');await availableUsername(page);await page.getByRole('button',{name:'Continuar',exact:true}).click();
-  await page.getByRole('alert').waitFor();await page.getByText('Este ID ya está en uso.',{exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Continuar',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'@vecino_2001',exact:true}).isVisible(),true);
+  await page.getByRole('alert').waitFor();await blockedUsername(page,'Este ID ya está en uso. Elige otro o una de las sugerencias.');
+  assert.equal(await page.getByRole('button',{name:'@vecino_2001',exact:true}).isVisible(),true);
   assert.equal(await page.getByRole('button',{name:'Omitir',exact:true}).isEnabled(),true);assert.equal(new URL(page.url()).pathname,'/completar-perfil/usuario');
  });
  await runCase('back-restores-name-draft',mobile,'/completar-perfil/nombre',async page=>{

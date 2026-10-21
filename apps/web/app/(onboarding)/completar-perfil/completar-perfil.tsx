@@ -9,7 +9,7 @@ import { iconoDeCategoria } from "@/lib/categories/icons";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { OnboardingActions, OnboardingShell, onboardingInputClassName } from "@/components/onboarding/onboarding-shell";
 import { OnboardingSaveStatus } from "@/components/onboarding/onboarding-save-status";
-import { UsernameStep } from "@/components/onboarding/username-step";
+import { UsernameStep, type UsernameFeedback } from "@/components/onboarding/username-step";
 import { Activar, Categoria, Pagos, Tipo } from "@/components/onboarding/seller-steps";
 import { esPasoOnboarding, pasoParaReanudar, pasosDelCamino, resolverCaminoOnboarding, rutaDePaso, siguientePaso, type PasoOnboardingActual } from "@/lib/onboarding/steps";
 import { fieldsForOnboardingStep } from "@/lib/onboarding/draft";
@@ -42,7 +42,8 @@ export function CompletarPerfil() {
   const index = steps.indexOf(paso);
   const negocio = camino === "vender" && context.tipo === "business";
   const [error, setError] = useState("");
-  const [usuarioDisponible, setUsuarioDisponible] = useState(false);
+  const [usernameFeedback, setUsernameFeedback] = useState<UsernameFeedback | null>(null);
+  const usuarioDisponible = usernameFeedback?.username === draft.username && usernameFeedback.valid;
   const [usernameLookupRevision, setUsernameLookupRevision] = useState(0);
   const [fotoBusy, setFotoBusy] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -54,7 +55,7 @@ export function CompletarPerfil() {
   useEffect(() => {
     if (!session.ready) return;
     if (rawStep !== paso) window.history.replaceState(null, "", rutaDePaso(paso, camino));
-    startTransition(() => { setError(""); setUsuarioDisponible(false); });
+    startTransition(() => { setError(""); });
     const cancelMetric = finishOnboardingNavigation(paso);
     const frame = requestAnimationFrame(() => {
       const scroll = document.querySelector<HTMLElement>("[data-onboarding-scroll]");
@@ -91,7 +92,7 @@ export function CompletarPerfil() {
     void (async () => {
       try { await operation(); }
       catch (failure) {
-        if (paso === "usuario") { setUsuarioDisponible(false); setUsernameLookupRevision((revision) => revision + 1); }
+        if (paso === "usuario") { setUsernameFeedback(null); setUsernameLookupRevision((revision) => revision + 1); }
         setError(failure instanceof Error ? failure.message : "No se pudo guardar. Intenta de nuevo.");
       } finally { running.current = false; setEnviando(false); }
     })();
@@ -103,7 +104,7 @@ export function CompletarPerfil() {
   const puedeActivar = !!profile.categoria_negocio && (!negocio || (profile.nombre_negocio?.trim().length ?? 0) >= 2);
   const finalVendedor = camino === "vender" && !profile.es_vendedor;
   const canContinue: Record<PasoOnboardingActual, boolean> = {
-    categoria: !!draft.categoria, tipo: true, usuario: usuarioDisponible,
+    categoria: !!draft.categoria, tipo: true, usuario: !!usuarioDisponible,
     nombre: nombreValue.trim().length >= 2, foto: !!draft.foto,
     descripcion: bioValue.trim().length > 0 && bioValue.length <= maxBio,
     pagos: draft.pagos.length > 0, intereses: draft.intereses.length > 0 && draft.intereses.length <= 5,
@@ -154,6 +155,10 @@ export function CompletarPerfil() {
   }
 
   const status = <OnboardingSaveStatus session={session} busy={ocupado} error={error} onRetry={() => run(async () => { await session.retry(); })} />;
+  const usernameContinueHelp = !session.ready ? "Recuperando tu avance…"
+    : ocupado ? "Guardando tu ID. Espera un momento…"
+      : session.blocked ? session.error || "Revisa el aviso de guardado para continuar."
+        : usernameFeedback?.username === draft.username ? usernameFeedback.message : "Comprobando disponibilidad…";
 
   if (paso === "notificaciones") return <PedirPermiso siguiente={rutaDePaso("listo", camino)} onBack={back} step={index + 1} totalSteps={steps.length}
     progressPending={session.pending > 0 || session.busy}
@@ -185,6 +190,7 @@ export function CompletarPerfil() {
     step={index + 1} totalSteps={steps.length} progressComplete={profile.has_seen_onboarding}
     progressPending={!profile.has_seen_onboarding && (session.pending > 0 || session.busy)} busy={ocupado}
     footer={<OnboardingActions type="submit" form="onboarding-question" busy={ocupado} disabled={!canContinue[paso] || session.blocked}
+      disabledReason={paso === "usuario" ? usernameContinueHelp : undefined} disabledReasonId={paso === "usuario" ? "username-continue-help" : undefined}
       continueLabel={paso === "listo" ? session.finalPending ? "Reintentar entrada" : finalVendedor ? "Activar y entrar" : "Entrar a VICINO" : "Continuar"}
       onSkip={omit} skipDisabled={session.blocked || session.finalPending} />}>
     {status}
@@ -192,7 +198,7 @@ export function CompletarPerfil() {
       <fieldset disabled={ocupado || session.finalPending} className="min-w-0 space-y-5">
         {paso === "categoria" && <Categoria value={draft.categoria} onChange={(value) => update("categoria", value)} />}
         {paso === "tipo" && <Tipo value={draft.tipo} onChange={(value) => update("tipo", value)} />}
-        {paso === "usuario" && <UsernameStep value={draft.username} onChange={(value) => update("username", value)} onValidityChange={setUsuarioDisponible} refreshToken={usernameLookupRevision} />}
+        {paso === "usuario" && <UsernameStep value={draft.username} onChange={(value) => update("username", value)} onFeedbackChange={setUsernameFeedback} refreshToken={usernameLookupRevision} />}
         {paso === "nombre" && <div><label htmlFor="onboarding-name" className="mb-2 block text-sm font-medium">{negocio ? "Nombre del negocio" : "Tu nombre"}</label>
           <input id="onboarding-name" name={negocio ? "nombre_negocio" : "nombre"} autoComplete={negocio ? "organization" : "name"} value={nombreValue} maxLength={negocio ? 100 : 60}
             className={onboardingInputClassName} onChange={(event) => update(negocio ? "nombreNegocio" : "nombre", event.target.value)} /></div>}
