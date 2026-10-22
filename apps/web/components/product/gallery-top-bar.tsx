@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/components/auth/auth-link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import {
   Pencil,
@@ -42,6 +42,7 @@ export function GalleryTopBar({
   estatus,
 }: GalleryTopBarProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -105,7 +106,9 @@ export function GalleryTopBar({
         <BotonRegresar
           variante="flotante"
           onClick={() => {
-            if (typeof window !== "undefined" && window.history.length > 1) {
+            if (isOwner && searchParams.get("from") === "publication") {
+              router.replace("/perfil?tab=products");
+            } else if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
             } else {
               router.push("/");

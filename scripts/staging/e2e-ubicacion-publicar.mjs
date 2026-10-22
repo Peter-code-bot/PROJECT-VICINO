@@ -93,7 +93,7 @@ const esperar = async (leer, ok, ms, que) => {
  * perder clics antes de hidratar.
  */
 const buscadorListo = async (raiz) => {
-  const input = raiz.getByPlaceholder('Busca tu zona de entrega…');
+  const input = raiz.getByPlaceholder('Busca una ubicación…');
   await input.waitFor({ timeout: 120_000 });
   await esperar(() => input.isEnabled(), Boolean, 60_000, 'el buscador de ubicacion no se habilito (MapKit falso sin cargar)');
   return input;

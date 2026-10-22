@@ -1295,7 +1295,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       {/* Ubicación con mapa */}
       <div className="space-y-2 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Zona de entrega / operación {!isEdit && <span className="text-[color:var(--brand)] font-medium text-xs ml-1">* obligatorio</span>}
+          Ubicación {!isEdit && <span className="text-[color:var(--brand)] font-medium text-xs ml-1">* obligatorio</span>}
         </label>
         {isEdit && (
           <p className="text-xs text-muted-foreground">
@@ -1307,10 +1307,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
         <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
         <input type="hidden" name="delivery_radius_km" value={locationData.radius} />
-        {/* El componente ya aceptaba estas tres props y NADIE se las pasaba.
-            initialLat/initialLng ademas destapan el mapa: su estado `showMap`
-            nace de `hasInitial`, asi que sin ellas el mapa quedaba oculto
-            hasta buscar una direccion, tambien al editar. */}
+        {!isEdit && <p className="text-xs text-muted-foreground">Elige en el mapa dónde realizarás la entrega.</p>}
         <DeliveryMap
           showRadiusControl={false}
           showRadiusPreview={false}

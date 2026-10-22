@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "@/components/auth/auth-link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { BotonRegresar } from "@/components/ui/boton-regresar";
 
 import { Edit3, Eye, MessageCircle, ShoppingBag } from "lucide-react";
 import { FavoriteButton } from "@/components/shared/favorite-button";
@@ -41,6 +42,7 @@ export function ProductDetailDesktop({
   categoryName,
 }: ProductDetailDesktopProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isVisitorPreview = searchParams.get("preview") === "visitor";
   const effectiveIsOwner = isOwner && !isVisitorPreview;
@@ -71,6 +73,9 @@ export function ProductDetailDesktop({
 
   return (
     <div className="flex flex-col gap-10">
+      {effectiveIsOwner && searchParams.get("from") === "publication" && (
+        <BotonRegresar aria-label="Volver a Mi perfil" onClick={() => router.replace("/perfil?tab=products")} />
+      )}
       <div className="sticky top-0 z-30 flex flex-col">
         <ListingStatusBanner isOwner={isOwner} estatus={product.estatus} />
         <PreviewBanner isOwner={isOwner} />

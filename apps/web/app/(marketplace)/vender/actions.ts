@@ -422,7 +422,8 @@ export async function createProduct(formData: FormData) {
   await revalidatePath("/");
 
   await revalidatePath("/seller/listings");
-  redirect(RETORNO_PUBLICACION, RedirectType.replace);
+  // Sustituye el formulario completado; la ficha conserva un regreso explícito al perfil.
+  redirect(`/${primaryCategoria}/${data.slug}?from=publication`, RedirectType.replace);
 }
 
 export async function updateProductFull(
@@ -673,7 +674,7 @@ export async function updateProductFull(
     .eq("id", id)
     .eq("creador_id", user.id)
     .neq("estatus", "eliminado")
-    .select("id, tipo, categoria")
+    .select("id, tipo, categoria, slug")
     .maybeSingle();
 
   if (updateErr) {
@@ -736,7 +737,8 @@ export async function updateProductFull(
   await revalidatePath("/perfil");
   await revalidatePath("/");
   await revalidatePath("/seller/listings");
-  redirect(RETORNO_PUBLICACION, RedirectType.replace);
+  const categoria = primarySlug(parsed.data.categories ?? []) ?? updated.categoria;
+  redirect(`/${categoria}/${updated.slug}?from=publication`, RedirectType.replace);
 }
 
 export async function deleteProduct(id: string) {

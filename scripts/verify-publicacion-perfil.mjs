@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requireWeb = createRequire(path.join(root, "apps/web/package.json"));
 const { chromium, webkit, expect } = requireWeb("@playwright/test");
-const output = path.resolve(root, "../../../reports/pub-perfil-20261022-integrado");
+const output = path.resolve(root, "../../../reports/pub-ficha-20261022");
 await fs.mkdir(output, { recursive: true });
 const results = [];
 const origin = "http://127.0.0.1:4318";
@@ -31,6 +31,12 @@ async function profile(page, count = 1) {
   await expect(page.getByTestId("profile-count")).toHaveText(`Publicaciones: ${count}`);
   await expect(page.getByText("Sin reseñas aún")).not.toBeVisible();
 }
+async function returnAfterSave(page, title = "Producto de prueba") {
+  await expect(page).toHaveURL(`${origin}/comida/producto-prueba?from=publication`);
+  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Volver", exact: true }).click();
+  await profile(page);
+}
 for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]) {
   const browser = await browserType.launch({ headless: true });
   try {
@@ -52,12 +58,14 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
           console.error(`FALLA ${engine}/${width}: ${name}: ${error.message}`);
         } finally { await page.close(); }
       }
-      await run("publicar desde Reseñas muestra la primera tarjeta; las pestañas siguen funcionando", async page => {
+      await run("publicar abre ficha; Regresar muestra perfil y primera tarjeta desde Reseñas", async page => {
         await setup(page, "success", true);
         await page.getByRole("button", { name: "Reseñas" }).click();
         await page.getByRole("button", { name: "Abrir formulario", exact: true }).click();
         await page.getByRole("button", { name: "Publicar", exact: true }).click();
-        await profile(page);
+        await expect(page).toHaveURL(`${origin}/comida/producto-prueba?from=publication`);
+        await page.reload();
+        await returnAfterSave(page);
         await expect(page.getByRole("img", { name: "Producto de prueba", exact: true })).toBeVisible();
         expect((await state(page)).writes).toHaveLength(1);
         await page.screenshot({ path: path.join(output, `${engine}-${width}-perfil.png`), fullPage: true });
@@ -68,14 +76,14 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         await page.goBack();
         await expect(page).not.toHaveURL(/\/vender/);
       });
-      await run("guardar desde Mi tienda actualiza la tarjeta y sustituye el formulario", async page => {
+      await run("guardar desde Mi tienda abre ficha actualizada; Regresar va al perfil sin formulario", async page => {
         await setup(page);
         await page.getByRole("button", { name: "Reseñas" }).click();
         await page.getByRole("button", { name: "Ir a Mi tienda", exact: true }).click();
         await page.getByRole("link", { name: "Editar publicación", exact: true }).click();
         await page.locator('input[name="titulo"]').fill("Titulo editado");
         await page.getByRole("button", { name: "Guardar", exact: true }).click();
-        await profile(page);
+        await returnAfterSave(page, "Titulo editado");
         await expect(page.getByRole("img", { name: "Titulo editado", exact: true })).toBeVisible();
         await page.goBack();
         await expect(page).not.toHaveURL(/\/vender/);
@@ -124,7 +132,7 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         expect(page.url()).toBe(url); expect((await state(page)).writes).toHaveLength(0);
         await confirm.click(); await profile(page, 0);
       });
-      await run("guardar fallido conserva datos y formulario; reintentar abre perfil", async page => {
+      await run("guardar fallido conserva datos; reintentar abre ficha con regreso al perfil", async page => {
         await setup(page, "error-once");
         await page.getByRole("button", { name: "Editar prueba", exact: true }).click();
         await page.locator('input[name="titulo"]').fill("Edicion recuperada");
@@ -133,7 +141,7 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         await expect(page.locator('input[name="titulo"]')).toHaveValue("Edicion recuperada");
         await expect(page).toHaveURL(/\/vender\/editar$/);
         await page.getByRole("button", { name: "Guardar", exact: true }).click();
-        await profile(page);
+        await returnAfterSave(page, "Edicion recuperada");
         await expect(page.getByRole("img", { name: "Edicion recuperada", exact: true })).toBeVisible();
       });
       await run("doble confirmacion durante peticion lenta ejecuta una eliminacion", async page => {
@@ -149,8 +157,25 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         await setup(page, "slow", true);
         await page.getByRole("button", { name: "Abrir formulario", exact: true }).click();
         await page.getByRole("button", { name: "Publicar", exact: true }).evaluate(button => { button.click(); button.click(); });
-        await profile(page);
+        await returnAfterSave(page);
         expect((await state(page)).requests).toBe(1); expect((await state(page)).writes).toHaveLength(1);
+      });
+      await run("Regresar normal conserva origen y un visitante ignora marcador de guardado", async page => {
+        await setup(page);
+        for (const suffix of ["", "?from=publication&visitor=1"]) {
+          await page.evaluate(() => window.__fixtureNavigate('/seller/listings'));
+          await page.evaluate(suffix => window.__fixtureNavigate('/comida/producto-prueba' + suffix), suffix);
+          await page.getByRole("button", { name: "Volver", exact: true }).click();
+          await expect(page).toHaveURL(`${origin}/seller/listings`);
+        }
+      });
+      await run("atrás del navegador tras publicar no revive el formulario", async page => {
+        await setup(page, "success", true);
+        await page.getByRole("button", { name: "Abrir formulario", exact: true }).click();
+        await page.getByRole("button", { name: "Publicar", exact: true }).click();
+        await expect(page).toHaveURL(`${origin}/comida/producto-prueba?from=publication`);
+        await page.goBack();
+        await expect(page).toHaveURL(`${origin}/perfil`);
       });
       await run("fallo al ocultar conserva estado y ficha; reintento recuperable", async page => {
         await setup(page, "error-once"); await detail(page); const url = page.url();

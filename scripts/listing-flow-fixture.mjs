@@ -62,7 +62,7 @@ import {SessionDataProvider} from './components/layout/session-data-provider';
 const initial={id:'${PRODUCT_ID}',titulo:'Producto de prueba',descripcion:'',precio:100,modo_precio:'precio',tipo:'producto',categories:[{slug:'comida',is_primary:true}],tipo_entrega:'punto_encuentro',estado:null,ubicacion_lat:19,ubicacion_lng:-98,galeria_imagenes:[]};
 function App(){
  const [route,setRoute]=useState(location.pathname==='/'?'/perfil':location.pathname+location.search);
- const [snapshot,setSnapshot]=useState({requests:0,record:{id:'${PRODUCT_ID}',titulo:'Producto de prueba',categoria:'comida',slug:'producto-prueba',estatus:'disponible',descripcion:'',estado:null},writes:[],revalidated:[]});
+ const [snapshot,setSnapshot]=useState(window.__fixtureInitialState);
  useEffect(()=>{const sync=()=>setRoute(location.pathname+location.search);window.addEventListener('popstate',sync);return()=>window.removeEventListener('popstate',sync);},[]);
  window.__fixtureUpdate=setSnapshot;
  window.__fixtureNavigate=(p,replace=false)=>{history[replace?'replaceState':'pushState']({},'',p);setRoute(p);};
@@ -81,7 +81,7 @@ function App(){
  {pathname==='/perfil'||pathname.startsWith('/vendedor/')?<><h1>Mi perfil</h1><p data-testid="profile-count">Publicaciones: {products.length}</p><ProfileTabs products={products} reviewsAsSeller={[]} reviewsAsBuyer={[]} isVendedor={true} currentUserId="fixture-user"/></>:
  pathname==='/seller/listings'?<><h1>Mi tienda</h1>{snapshot.record&&snapshot.record.estatus!=='eliminado'&&<ListingActions id="${PRODUCT_ID}" estatus={snapshot.record.estatus}/>}</>:
  pathname.startsWith('/vender')?<ProductForm key={route} userId="fixture-user" mode={pathname.endsWith('editar')?'edit':'create'} initialValues={pathname.endsWith('editar')?{...initial,descripcion:'Texto anterior',estado:'bueno'}:initial}/>:
- <><div className="relative" style={{height:240,background:'#1F5A4E',borderRadius:16}}><GalleryTopBar productId="${PRODUCT_ID}" productTitle="Producto de prueba" isFavorite={false} isOwner={true} estatus={snapshot.record?.estatus||'disponible'}/></div><h1>Producto de prueba</h1><SpecRow estado={snapshot.record?.estado} deliveryLabel="Punto de encuentro" createdAt="2026-10-14T12:00:00Z" tipo="producto"/><DescriptionBlock descripcion={snapshot.record?.descripcion}/></>}
+ <><div className="relative" style={{height:240,background:'#1F5A4E',borderRadius:16}}><GalleryTopBar productId="${PRODUCT_ID}" productTitle="Producto de prueba" isFavorite={false} isOwner={!route.includes('visitor=1')} estatus={snapshot.record?.estatus||'disponible'}/></div><h1>{snapshot.record?.titulo||'Producto de prueba'}</h1><SpecRow estado={snapshot.record?.estado} deliveryLabel="Punto de encuentro" createdAt="2026-10-14T12:00:00Z" tipo="producto"/><DescriptionBlock descripcion={snapshot.record?.descripcion}/></>}
  </main><output id="fixture-state" style={{display:'block',padding:16,overflowWrap:'anywhere'}}>{JSON.stringify(snapshot)}</output>
  </SessionDataProvider>;
 }
@@ -117,7 +117,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.url==='/bundle.js'){res.setHeader('content-type','text/javascript');res.end(result.outputFiles[0].text);return;}
     if(req.url==='/styles.css'){res.setHeader('content-type','text/css');res.end(cssFiles(cssDirectory).map(file=>fs.readFileSync(file,'utf8')).join('\n'));return;}
-    res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/styles.css"></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
+    res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/styles.css"></head><body><div id="root"></div><script>window.__fixtureInitialState='+JSON.stringify(summary()).replaceAll('<','\\u003c')+';</script><script src="/bundle.js"></script></body></html>');
   }catch(error){console.error(error);res.statusCode=500;res.end('Fixture error');}
 });
 server.listen(4318,'127.0.0.1',()=>console.log('Fixture listo: http://127.0.0.1:4318 (sin base de datos real)'));

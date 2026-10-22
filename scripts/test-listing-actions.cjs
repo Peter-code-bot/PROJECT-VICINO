@@ -135,23 +135,32 @@ async function test() {
     assert.equal((await invoke("deleteProduct", PRODUCT_ID, "https://example.com")).redirect, "/perfil?tab=products");
   });
   const base = { titulo: "Producto prueba", precio: 100, modo_precio: "precio", tipo: "producto", tipo_entrega: "punto_encuentro", categories: JSON.stringify([{ slug: "comida", is_primary: true }]), ubicacion_lat: 19, ubicacion_lng: -98 };
+  await run("un preview sin ubicación elegida no permite publicar ni escribe", async () => {
+    const result = await invoke("createProduct", form({ ...base, ubicacion_lat: "", ubicacion_lng: "" }));
+    assert.ok(result.error); assert.equal(result.redirect, undefined); assert.equal(state.writes.length, 0);
+  });
   for (const descripcion of [undefined, "", "ok"]) {
     await run(`crear con descripción ${JSON.stringify(descripcion)} y estado omitido`, async () => {
       const result = await invoke("createProduct", form({ ...base, ...(descripcion === undefined ? {} : { descripcion }) }));
-      assert.deepEqual(result, { redirect: "/perfil?tab=products", type: "replace" });
+      assert.deepEqual(result, { redirect: "/comida/producto-prueba?from=publication", type: "replace" });
       assert.deepEqual(state.revalidated, ["/perfil", "/", "/seller/listings"]);
       assert.equal(state.record.descripcion, descripcion ?? ""); assert.equal(state.record.estado, null);
     });
   }
   await run("editar vacíos limpia descripción y estado", async () => {
     const result = await invoke("updateProductFull", PRODUCT_ID, form({ descripcion: "", estado: "" }));
-    assert.deepEqual(result, { redirect: "/perfil?tab=products", type: "replace" });
+    assert.deepEqual(result, { redirect: "/comida/producto-prueba?from=publication", type: "replace" });
     assert.deepEqual(state.revalidated, ["/perfil", "/", "/seller/listings"]);
     assert.equal(state.record.descripcion, ""); assert.equal(state.record.estado, null);
   });
   await run("editar campos omitidos preserva valores", async () => {
     await invoke("updateProductFull", PRODUCT_ID, form({ titulo: "Otro titulo" }));
     assert.equal(state.record.descripcion, "Texto anterior"); assert.equal(state.record.estado, "bueno");
+  });
+  await run("editar usa el slug devuelto y la categoría principal elegida", async () => {
+    state.record.slug = "slug-vigente";
+    const result = await invoke("updateProductFull", PRODUCT_ID, form({ categories: JSON.stringify([{ slug: "ropa", is_primary: true }]) }));
+    assert.deepEqual(result, { redirect: "/ropa/slug-vigente?from=publication", type: "replace" });
   });
   for (const action of ["createProduct", "updateProductFull"]) {
     await run(`${action}: fallo no navega ni invalida`, async () => {

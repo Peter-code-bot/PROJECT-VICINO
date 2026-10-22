@@ -25,6 +25,9 @@ const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
 
 export interface LocationSelection { lat: number; lng: number; address: string }
 
+// Encuadre de Puebla y Cholula; nunca representa una selección del vendedor.
+const PUEBLA_OVERVIEW: [number, number] = [19.0414, -98.25];
+
 interface LocationPickerProps {
   onChange: (value: LocationSelection | null) => void;
   onRadiusChange?: (km: number) => void;
@@ -36,6 +39,7 @@ interface LocationPickerProps {
   showRadiusControl?: boolean;
   /** The selected point remains visible when the delivery-circle preview is hidden. */
   showRadiusPreview?: boolean;
+  showMapInitially?: boolean;
 }
 
 export default function LocationPicker({
@@ -48,16 +52,18 @@ export default function LocationPicker({
   initialRadius = 5,
   showRadiusControl = true,
   showRadiusPreview = true,
+  showMapInitially = false,
 }: LocationPickerProps) {
   const mapkit = useMapKit();
   const cobertura = useReglaCobertura();
   const hasInitial = initialLat !== undefined && initialLng !== undefined && Number.isFinite(initialLat) && Number.isFinite(initialLng);
-  const [position, setPosition] = useState<[number, number]>(
-    hasInitial ? [initialLat, initialLng] : [19.0414, -98.2063]
+  const [position, setPosition] = useState<[number, number] | null>(
+    hasInitial ? [initialLat, initialLng] : null
   );
   const [radius, setRadius] = useState(initialRadius);
   // El pin sigue la selección; el encuadre solo cambia con búsqueda o GPS.
-  const [view, setView] = useState(position);
+  const [view, setView] = useState<[number, number]>(position ?? PUEBLA_OVERVIEW);
+  const [viewZoom, setViewZoom] = useState(!hasInitial && showMapInitially ? 11 : 14);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<LocationSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -155,7 +161,7 @@ export default function LocationPicker({
 
       try {
         const results = await searchLocations(q, {
-          center: { lat: position[0], lng: position[1] },
+          center: { lat: (position ?? view)[0], lng: (position ?? view)[1] },
           limit: 5,
           signal: controller.signal,
           cobertura,
@@ -191,8 +197,8 @@ export default function LocationPicker({
 
     try {
     const resolved = await resolveLocationCoordinates(s, {
-      lat: position[0],
-      lng: position[1],
+      lat: (position ?? view)[0],
+      lng: (position ?? view)[1],
     }, undefined, cobertura);
     if (sequence !== searchSeqRef.current) return;
     setSearching(false);
@@ -211,6 +217,7 @@ export default function LocationPicker({
     setOutsideMexico(false);
     setPosition([resolved.lat, resolved.lng]);
     setView([resolved.lat, resolved.lng]);
+    setViewZoom(14);
     setShowMap(true);
     setLocationError(null);
     const address = publicLocationLabel(resolved.fullName);
@@ -242,6 +249,9 @@ export default function LocationPicker({
   function clearLocation() {
     clearSearch();
     setShowMap(false);
+    setPosition(null);
+    setView(PUEBLA_OVERVIEW);
+    setViewZoom(showMapInitially ? 11 : 14);
     onChange(null);
   }
 
@@ -255,6 +265,7 @@ export default function LocationPicker({
       if (sequence !== searchSeqRef.current) return;
       if (handleDrag(coords.latitude, coords.longitude)) {
         setView([coords.latitude, coords.longitude]);
+        setViewZoom(14);
       }
     }, () => {
       if (sequence !== searchSeqRef.current) return;
@@ -350,8 +361,8 @@ export default function LocationPicker({
         )}
       </div>
 
-      {/* Map + slider — only after selecting a location */}
-      {showMap && (
+      {/* La vista inicial no selecciona ni emite coordenadas al formulario. */}
+      {(showMapInitially || showMap) && (
         <>
           <div
             className="rounded-xl overflow-hidden product-card-custom"
@@ -360,16 +371,16 @@ export default function LocationPicker({
             <AppleMapContainer
               center={view}
               markerPosition={position}
-              zoom={14}
+              zoom={viewZoom}
               draggableMarker
               onMarkerDragEnd={handleDrag}
               onMapClick={handleDrag}
-              radiusKm={onRadiusChange && showRadiusPreview ? radius : undefined}
+              radiusKm={position && onRadiusChange && showRadiusPreview ? radius : undefined}
               height={250}
             />
           </div>
 
-          {onRadiusChange && showRadiusControl && <div className="flex items-center gap-3">
+          {position && onRadiusChange && showRadiusControl && <div className="flex items-center gap-3">
             <label className="text-xs text-muted-foreground shrink-0">Radio:</label>
             <input
               type="range"
@@ -387,13 +398,13 @@ export default function LocationPicker({
             <span className="text-sm font-medium w-12 text-right">{radius} km</span>
           </div>}
 
-          <button
+          {position && <button
             type="button"
             onClick={clearLocation}
             className="text-xs text-muted-foreground hover:text-red-400 transition-colors"
           >
             ✕ Quitar ubicación
-          </button>
+          </button>}
         </>
       )}
     </div>

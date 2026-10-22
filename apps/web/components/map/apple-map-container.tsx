@@ -79,6 +79,8 @@ export default function AppleMapContainer({
 
   const centerLat = center[0];
   const centerLng = center[1];
+  // undefined conserva el pin central de los consumidores existentes; null es vista sin selección.
+  const showMarker = markerPosition !== null;
   const markerLat = markerPosition ? markerPosition[0] : centerLat;
   const markerLng = markerPosition ? markerPosition[1] : centerLng;
   // Un array literal como dependencia cambia de identidad en cada render y
@@ -169,24 +171,26 @@ export default function AppleMapContainer({
       markerRef.current = null;
     }
 
-    const markerCoord = new mapkit.Coordinate(markerLat, markerLng);
-    const marker = new mapkit.MarkerAnnotation(markerCoord, {
-      color: "#1F5A4E",
-      title: "Ubicación",
-      draggable: draggableMarker && interactive,
-    });
-
-    if (draggableMarker) {
-      marker.addEventListener("drag-end", () => {
-        const c = marker.coordinate;
-        if (onMarkerDragEndRef.current?.(c.latitude, c.longitude) === false) {
-          marker.coordinate = new mapkit.Coordinate(markerLat, markerLng);
-        }
+    if (showMarker) {
+      const markerCoord = new mapkit.Coordinate(markerLat, markerLng);
+      const marker = new mapkit.MarkerAnnotation(markerCoord, {
+        color: "#1F5A4E",
+        title: "Ubicación",
+        draggable: draggableMarker && interactive,
       });
-    }
 
-    map.addAnnotation(marker);
-    markerRef.current = marker;
+      if (draggableMarker) {
+        marker.addEventListener("drag-end", () => {
+          const c = marker.coordinate;
+          if (onMarkerDragEndRef.current?.(c.latitude, c.longitude) === false) {
+            marker.coordinate = new mapkit.Coordinate(markerLat, markerLng);
+          }
+        });
+      }
+
+      map.addAnnotation(marker);
+      markerRef.current = marker;
+    }
 
     // Actualizar círculo de radio (delivery radius)
     if (circleRef.current) {
@@ -217,6 +221,7 @@ export default function AppleMapContainer({
     centerLng,
     markerLat,
     markerLng,
+    showMarker,
     zoom,
     interactive,
     draggableMarker,

@@ -15,5 +15,5 @@ export default function DeliveryMap({ onLocationChange, ...props }: DeliveryMapP
   const change = useCallback((value: LocationSelection | null) => {
     onLocationChange(value?.lat ?? 0, value?.lng ?? 0, value?.address ?? "");
   }, [onLocationChange]);
-  return <LocationPicker {...props} onChange={change} placeholder="Busca tu zona de entrega…" />;
+  return <LocationPicker {...props} showMapInitially onChange={change} placeholder="Busca una ubicación…" />;
 }
