@@ -293,7 +293,11 @@ export async function createProduct(formData: FormData) {
   try {
     galeriaImagenes = parseProductGallery(formData.get("galeria_imagenes"));
     await validateProductGallery({ urls: galeriaImagenes, ownerId: user.id, baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "" });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { action: "createProduct", step: "validate_gallery" },
+      contexts: { user: { id: user.id } },
+    });
     return { error: "No pudimos validar las fotos o videos. Revisa los archivos e inténtalo de nuevo." };
   }
   const imagenPrincipal = galeriaImagenes[0] ?? null;
@@ -531,7 +535,11 @@ export async function updateProductFull(
   try {
     galeriaImagenes = parseProductGallery(formData.get("galeria_imagenes"));
     await validateProductGallery({ urls: galeriaImagenes, ownerId: user.id, existing: existingGallery, baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "" });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { action: "updateProductFull", step: "validate_gallery" },
+      contexts: { product: { id }, user: { id: user.id } },
+    });
     return { error: "No pudimos validar las fotos o videos. Revisa los archivos e inténtalo de nuevo." };
   }
 

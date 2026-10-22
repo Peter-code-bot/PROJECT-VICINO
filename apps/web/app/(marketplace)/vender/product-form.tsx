@@ -335,6 +335,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     const controller = new AbortController();
     preparationRef.current = controller;
     const queueItems: CropQueueItem[] = [];
+    let lastPrepError = "";
     try {
       for (const original of files) {
         if (media.length + queueItems.length >= MAX_PRODUCT_MEDIA) {
@@ -353,11 +354,16 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           queueItems.push({ file, src: previewUrl(preview), isVideo: isVid });
         } catch (error) {
           if (controller.signal.aborted) break;
-          toast.error(`${original.name}: ${error instanceof Error ? error.message : "No pudimos preparar el archivo."}`, { duration: 5000 });
+          lastPrepError = `${original.name}: ${error instanceof Error ? error.message : "No pudimos preparar el archivo."}`;
+          toast.error(lastPrepError, { duration: 5000 });
         }
       }
       if (controller.signal.aborted) queueItems.forEach(item => releasePreview(item.src));
-      else { setError(""); setCropQueue(queueItems); setCropIndex(0); }
+      else {
+        setError(queueItems.length === 0 && lastPrepError ? lastPrepError : "");
+        setCropQueue(queueItems);
+        setCropIndex(0);
+      }
     } finally {
       if (!controller.signal.aborted) setPreparing(null);
       preparationRef.current = null;

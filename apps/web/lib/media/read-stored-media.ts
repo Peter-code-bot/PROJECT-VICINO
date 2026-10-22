@@ -19,7 +19,7 @@ export async function readStoredMedia(url: string, maxBytes: number, request: ty
       }
     } finally { reader.releaseLock(); }
     if (!size) throw new Error("Uno de los archivos está vacío.");
-    return new Blob(chunks, { type: (response.headers.get("content-type") ?? "").split(";")[0] });
+    return new Blob(chunks, { type: (response.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() });
   } finally { clearTimeout(timer); }
 }
 

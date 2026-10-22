@@ -22,12 +22,15 @@ function load(name) {
   return mod.exports;
 }
 const policy = load('lib/media/product-media-policy');
-assert.equal(policy.IMAGE_INPUT_MAX_BYTES, 25 * 1024 ** 2);
+assert.equal(policy.IMAGE_INPUT_MAX_BYTES, 150 * 1024 ** 2);
 assert.equal(policy.VIDEO_MAX_SECONDS, 10);
 const helpers = load('lib/media/prepare-product-image');
-assert.throws(() => helpers.checkImageDimensions(10000, 6000), /50 megap/);
+assert.throws(() => helpers.checkImageDimensions(12000, 10000), /100 megap/);
 assert.throws(() => helpers.readProductImageHeader(new Uint8Array([1, 2, 3])), /JPG/);
-console.log('PASS Node imports, shared limits, invalid header and >50MP rejection');
+const sampleWithApp1 = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0xff, 0xda, 0x00, 0x02, 0x11, 0xff, 0xd9]);
+const strippedSample = helpers.stripJpegMetadataSegments(sampleWithApp1);
+assert.equal(Buffer.from(strippedSample).includes(Buffer.from('Exif\0\0')), false);
+console.log('PASS Node imports, shared 150MB/100MP limits, iOS APP1 stripping, invalid header and >100MP rejection');
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
@@ -80,9 +83,12 @@ try {
     check(orientedSize.height > orientedSize.width, `EXIF orientation lost: ${JSON.stringify(orientedSize)}`);
     const encoded = new TextDecoder('latin1').decode(await oriented.arrayBuffer());
     check(!encoded.includes('Exif\0\0'), 'EXIF metadata retained');
+    const file90Mb = new File([original, new Uint8Array(90 * 1024 ** 2 - original.size)], 'photo-90mb.jpg', { type: 'image/jpeg' });
+    const prepared90Mb = await prepareProductImage(file90Mb);
+    check(prepared90Mb.type === 'image/jpeg' && prepared90Mb.size < 4 * 1024 ** 2, `90MB photo was not compressed: ${prepared90Mb.size}`);
     await rejects(() => prepareProductImage(new File([original], 'fake.png', {type:'image/png'})), /coincide/);
     await rejects(() => prepareProductImage(new File(['bad'], 'photo.heic', {type:'image/heic'})), /HEIC/);
-    await rejects(() => prepareProductImage(new File([new Uint8Array(25 * 1024 ** 2 + 1)], 'too-large.jpg', {type:'image/jpeg'})), /25 MB/);
+    await rejects(() => prepareProductImage(new File([new Uint8Array(150 * 1024 ** 2 + 1)], 'too-large.jpg', {type:'image/jpeg'})), /150 MB/);
     const abort = new AbortController(); abort.abort();
     await rejects(() => prepareProductImage(file, {signal:abort.signal}), /cancelada/);
     for (const type of ['image/png', 'image/webp']) {
