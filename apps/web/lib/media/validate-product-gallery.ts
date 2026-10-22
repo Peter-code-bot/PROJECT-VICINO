@@ -54,7 +54,9 @@ export async function validateProductGallery(args: {
       const metadata = await readProductImageMetadata(blob);
       const extension = path.split(".").pop()?.toLowerCase();
       const expected = metadata.type === "image/jpeg" ? ["jpg", "jpeg"] : [metadata.type.slice(6)];
-      if (!expected.includes(extension ?? "") || blob.type !== metadata.type) throw new Error("El formato de una foto no coincide con su contenido.");
+      const normalizedMime = blob.type.trim().toLowerCase();
+      const mimeMatches = !normalizedMime || normalizedMime === "application/octet-stream" || normalizedMime === metadata.type;
+      if (!expected.includes(extension ?? "") || !mimeMatches) throw new Error("El formato de una foto no coincide con su contenido.");
       await validateImageOutput(blob);
     }
   }

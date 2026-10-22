@@ -48,10 +48,15 @@ test('stored images are fully decoded and checked before accepting a URL', async
     await assert.rejects(() => validateProductGallery({ urls: [url], ownerId, baseUrl, request: async () => new Response(body, { headers: { 'content-type': mime } }) }));
   }
 });
-test('server rejects oversized pixels and retained EXIF even when bytes are small', async () => {
+test('server rejects oversized pixels and retained EXIF even when bytes are small, while accepting iOS Orientation=1 technical header', async () => {
   const large = await sharp({ create: { width: 2000, height: 1000, channels: 3, background: 'white' } }).jpeg().toBuffer();
-  const exif = await sharp(await fixture()).withMetadata({ orientation: 6 }).jpeg().toBuffer();
-  for (const bytes of [large, exif]) await assert.rejects(() => validateProductGallery({ urls: [url], ownerId, baseUrl, request: async () => new Response(bytes, { headers: { 'content-type': 'image/jpeg' } }) }));
+  const exifRotated = await sharp(await fixture()).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+  const exifCamera = await sharp(await fixture()).withMetadata({ exif: { IFD0: { Make: 'Apple', Model: 'iPhone' } } }).jpeg().toBuffer();
+  for (const bytes of [large, exifRotated, exifCamera]) {
+    await assert.rejects(() => validateProductGallery({ urls: [url], ownerId, baseUrl, request: async () => new Response(bytes, { headers: { 'content-type': 'image/jpeg' } }) }));
+  }
+  const iosTechnicalExif = await sharp(await fixture()).withMetadata({ orientation: 1 }).jpeg().toBuffer();
+  await validateProductGallery({ urls: [url], ownerId, baseUrl, request: async () => new Response(iosTechnicalExif, { headers: { 'content-type': 'image/jpeg' } }) });
 });
 test('owner legacy gallery is preserved; unowned new media is never fetched', async () => {
   let requests = 0;
