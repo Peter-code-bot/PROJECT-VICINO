@@ -30,6 +30,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(VicinoVideoPlugin.class);
         super.onCreate(savedInstanceState);
         // BridgeActivity crea el bridge dentro de super.onCreate (load()).
         if (bridge != null) {

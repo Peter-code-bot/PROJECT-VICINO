@@ -40,6 +40,7 @@ final class VicinoBridgeViewController: CAPBridgeViewController {
     // inyectando el mismo script al terminar de cargar.
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bridge?.registerPluginInstance(VicinoVideoPlugin())
         guard let webView else { return }
         cromo.instalar(en: webView.configuration.userContentController)
         cromo.montar(sobre: webView)

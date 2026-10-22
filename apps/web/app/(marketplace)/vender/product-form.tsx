@@ -1,7 +1,7 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { startTransition, useState, useRef, useId, useSyncExternalStore } from "react";
+import { startTransition, useState, useRef, useId, useSyncExternalStore, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
@@ -27,7 +27,10 @@ import {
 import { cn } from "@/lib/utils";
 import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
-import { fileToDataURL } from "@/lib/crop-image";
+import { prepareProductImage } from "@/lib/media/prepare-product-image";
+import { prepareProductVideo } from "@/lib/media/prepare-product-video";
+import { readStoredMedia } from "@/lib/media/read-stored-media";
+import { MAX_PRODUCT_MEDIA, IMAGE_OUTPUT_MAX_BYTES, VIDEO_OUTPUT_MAX_BYTES } from "@/lib/media/product-media-policy";
 import * as Sentry from "@sentry/nextjs";
 import { toast } from "sonner";
 import type { CropResult } from "@/components/product/product-media-cropper";
@@ -99,30 +102,6 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXT_RE.test(url.split("?")[0] ?? "");
 }
 
-/** Segundos de un video, leidos del metadata. */
-async function duracionDeVideo(file: File): Promise<number> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const v = document.createElement("video");
-    let listo = false;
-    // Si el metadata no llega, NO bloqueamos la subida: es preferible dejar
-    // pasar un video raro que impedirle publicar a alguien por un contenedor
-    // que el navegador no sabe medir.
-    const terminar = (segundos: number) => {
-      if (listo) return;
-      listo = true;
-      clearTimeout(reloj);
-      URL.revokeObjectURL(url);
-      resolve(segundos);
-    };
-    const reloj = setTimeout(() => terminar(NaN), 5000);
-    v.preload = "metadata";
-    v.onloadedmetadata = () => terminar(v.duration);
-    v.onerror = () => terminar(NaN);
-    v.src = url;
-  });
-}
-
 /** Postgres devuelve `time` como "HH:MM:SS"; el select usa "HH:MM". */
 function toHHMM(t: string | null | undefined, fallback: string): string {
   if (!t) return fallback;
@@ -135,10 +114,6 @@ type MediaItem = ExistingMedia | PendingMedia;
 
 /** Item queued for cropping before being added to media[] */
 type CropQueueItem = { file: File; src: string; isVideo: boolean };
-
-const MAX_VIDEO_SEGUNDOS = 10;
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-const MAX_IMAGEN_BYTES = 5 * 1024 * 1024;
 
 function SortableMediaItem({
   item,
@@ -295,6 +270,28 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   );
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preparing, setPreparing] = useState<string | null>(null);
+  const preparationRef = useRef<AbortController | null>(null);
+  const objectUrlsRef = useRef(new Set<string>());
+  const uploadPathsRef = useRef(new Map<File, string>());
+  const uploadedRef = useRef(new Map<File, string>());
+  const newPathsRef = useRef(new Set<string>());
+  const uncertainSavePathsRef = useRef(new Set<string>());
+  useEffect(() => () => {
+    preparationRef.current?.abort();
+    objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    objectUrlsRef.current.clear();
+  }, []);
+  function previewUrl(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    objectUrlsRef.current.add(url);
+    return url;
+  }
+  function releasePreview(url: string) {
+    URL.revokeObjectURL(url);
+    objectUrlsRef.current.delete(url);
+  }
+
   // In-flight thumbnail generations, keyed by source File. The upload path
   // awaits the matching promise before deciding whether to upload a thumb,
   // so a fast submit during background generation no longer silently drops
@@ -333,58 +330,44 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (media.length + files.length > 5) {
-      toast.error("Máximo 5 archivos", { duration: 2000 });
-      return;
-    }
-    for (const f of files) {
-      const isVid = f.type.startsWith("video/");
-      // 50 MB = file_size_limit del bucket product-media (migracion
-      // 20260521000010). Si se sube este numero hay que subir el bucket ANTES:
-      // al reves, el archivo viaja entero y muere al llegar.
-      // Toast y no setError: el banner de error vive al principio del formulario
-      // y aqui estamos junto al selector, muy por debajo. En el telefono el
-      // vendedor no llegaba a verlo nunca y el archivo parecia no entrar solo.
-      if (isVid && f.size > MAX_VIDEO_BYTES) {
-        toast.error(`${f.name} pesa demasiado. El maximo es 50 MB.`, { duration: 2000 });
-        return;
-      }
-      if (isVid) {
-        const segundos = await duracionDeVideo(f);
-        // Number.isFinite descarta NaN e Infinity de una vez. Un contenedor sin
-        // duracion medible pasa; el tope de 50MB sigue siendo el freno duro.
-        if (Number.isFinite(segundos) && segundos > MAX_VIDEO_SEGUNDOS) {
-          toast.error(
-            `Máx. ${MAX_VIDEO_SEGUNDOS} segundos`,
-            { duration: 2000 },
-          );
-          return;
+    e.target.value = "";
+    if (preparationRef.current || cropperOpen || submittingRef.current) return;
+    const controller = new AbortController();
+    preparationRef.current = controller;
+    const queueItems: CropQueueItem[] = [];
+    try {
+      for (const original of files) {
+        if (media.length + queueItems.length >= MAX_PRODUCT_MEDIA) {
+          toast.error("Máximo 5 archivos", { duration: 2000 });
+          break;
+        }
+        setPreparing(`Preparando ${original.name}`);
+        try {
+          const isVid = original.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(original.name);
+          const file = isVid ? await prepareProductVideo(original, {
+            signal: controller.signal,
+            onProgress: progress => setPreparing(`Preparando ${original.name}: ${Math.round(progress * 100)}%`),
+          }) : original;
+          const preview = isVid ? file : await prepareProductImage(file, { signal: controller.signal });
+          if (controller.signal.aborted) break;
+          queueItems.push({ file, src: previewUrl(preview), isVideo: isVid });
+        } catch (error) {
+          if (controller.signal.aborted) break;
+          toast.error(`${original.name}: ${error instanceof Error ? error.message : "No pudimos preparar el archivo."}`, { duration: 5000 });
         }
       }
-      if (!isVid && f.size > MAX_IMAGEN_BYTES) {
-        toast.error(`${f.name} pesa demasiado. El maximo es 5 MB.`, { duration: 2000 });
-        return;
-      }
+      if (controller.signal.aborted) queueItems.forEach(item => releasePreview(item.src));
+      else { setError(""); setCropQueue(queueItems); setCropIndex(0); }
+    } finally {
+      if (!controller.signal.aborted) setPreparing(null);
+      preparationRef.current = null;
     }
-    setError("");
-
-    // Build crop queue: convert each file to a previewable src
-    const queueItems: CropQueueItem[] = [];
-    for (const file of files) {
-      const isVid = file.type.startsWith("video/");
-      // Images need a data URL for the canvas-based crop;
-      // videos use an object URL that react-easy-crop plays inline.
-      const src = isVid ? URL.createObjectURL(file) : await fileToDataURL(file);
-      queueItems.push({ file, src, isVideo: isVid });
-    }
-    setCropQueue(queueItems);
-    setCropIndex(0);
   }
 
   /** Called when the user confirms crop on one item in the queue */
   function handleCropResult(result: CropResult) {
     if (result.type === "image") {
-      const preview = URL.createObjectURL(result.blob);
+      const preview = previewUrl(result.blob);
       // El discriminante sale del propio object URL, que ya lleva un uuid
       // dentro, en vez de Date.now(). Da lo mismo para la unicidad y ademas
       // quita la llamada impura que el compilador de React marcaba aqui: esta
@@ -395,8 +378,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       setMedia((prev) => [...prev, { id: preview, kind: "pending", file, preview, isVideo: false }]);
     } else {
       // Video: keep the original file, store crop area for thumbnail generation
-      const preview = URL.createObjectURL(result.file);
-      const coverPreview = result.portada ? URL.createObjectURL(result.portada) : undefined;
+      const preview = previewUrl(result.file);
+      const coverPreview = result.portada ? previewUrl(result.portada) : undefined;
       setMedia((prev) => [
         ...prev,
         {
@@ -427,14 +410,12 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
    * recortador para imagen, ahora que el recorte 1:1 es obligatorio.
    */
   function handleCropCancel() {
-    const item = cropQueue[cropIndex];
-    // Solo el video usa object URL; para imagen la src es un data URL y
-    // revocarla no aplica.
-    if (item?.isVideo) URL.revokeObjectURL(item.src);
     advanceCropQueue();
   }
 
   function advanceCropQueue() {
+    const current = cropQueue[cropIndex];
+    if (current) releasePreview(current.src);
     const nextIndex = cropIndex + 1;
     if (nextIndex >= cropQueue.length) {
       // Queue exhausted — clean up
@@ -449,8 +430,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     setMedia((prev) => {
       const item = prev[index];
       if (item && item.kind === "pending") {
-        URL.revokeObjectURL(item.preview);
-        if (item.coverPreview) URL.revokeObjectURL(item.coverPreview);
+        releasePreview(item.preview);
+        if (item.coverPreview) releasePreview(item.coverPreview);
         pendingThumbsRef.current.delete(item.file);
       }
       // Existing items: the actual Storage cleanup happens server-side AFTER
@@ -460,136 +441,80 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     });
   }
 
-  // Returns the final ordered gallery (existing URLs preserved + new uploads in their place).
+  // Only paths created by this form are eligible for cleanup. Existing gallery URLs never enter this set.
+  async function cleanupNewUploads() {
+    const paths = [...newPathsRef.current].filter(path => !uncertainSavePathsRef.current.has(path));
+    if (!paths.length) return;
+    const { error } = await createClient().storage.from("product-media").remove(paths);
+    if (error) { console.warn("Could not clean new media uploads", error.message); return; }
+    paths.forEach(path => newPathsRef.current.delete(path));
+    for (const file of uploadedRef.current.keys()) {
+      const path = uploadPathsRef.current.get(file);
+      if (path && paths.includes(path)) uploadedRef.current.delete(file);
+    }
+  }
+
   async function uploadMediaAndBuildGallery(): Promise<string[]> {
-    if (media.length === 0) return [];
     setUploading(true);
-    const supabase = createClient();
-    const timestamp = Date.now();
-    const finalUrls: string[] = new Array(media.length);
-    
-    // Preparar tareas síncronamente conservando orden y asignando posiciones
-    let pendingIdx = 0;
-    const uploadTasks: (() => Promise<void>)[] = [];
-
-    for (let i = 0; i < media.length; i++) {
-      const item = media[i]!;
-      if (item.kind === "existing") {
-        finalUrls[i] = item.url;
-        continue;
-      }
-
-      const ext = item.file.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/${timestamp}-${pendingIdx}.${ext}`;
-      const currentPendingIdx = pendingIdx;
-      pendingIdx++;
-      const itemIndex = i; // capturar el index de este loop
-
-      uploadTasks.push(async () => {
-        const { error: uploadErr } = await supabase.storage
-          .from("product-media")
-          .upload(path, item.file, { cacheControl: CACHE_INMUTABLE });
-
-        if (uploadErr) {
-          if (
-            uploadErr.status === 401 || uploadErr.status === 403 ||
-            uploadErr.statusCode === "401" || uploadErr.statusCode === "403"
-          ) {
-            throw new Error("Tu sesión expiró. Vuelve a iniciar sesión para subir imágenes.");
-          }
-          throw new Error(`Error subiendo imagen ${itemIndex + 1}: ${uploadErr.message}`);
+    const bucket = createClient().storage.from("product-media");
+    const finalUrls: string[] = [];
+    try {
+      // Sequential upload bounds memory/network pressure and lets cleanup wait for every completed write.
+      for (const item of media) {
+        if (item.kind === "existing") { finalUrls.push(item.url); continue; }
+        const cached = uploadedRef.current.get(item.file);
+        if (cached) { finalUrls.push(cached); continue; }
+        const limit = item.isVideo ? VIDEO_OUTPUT_MAX_BYTES : IMAGE_OUTPUT_MAX_BYTES;
+        if (item.file.size > limit) throw new Error("El archivo preparado supera el límite de publicación. Vuelve a seleccionarlo.");
+        let path = uploadPathsRef.current.get(item.file);
+        if (!path) {
+          const extension = item.isVideo ? (item.file.type === "video/webm" ? "webm" : item.file.type === "video/quicktime" ? "mov" : "mp4") : "jpg";
+          path = `${userId}/${crypto.randomUUID()}.${extension}`;
+          uploadPathsRef.current.set(item.file, path);
         }
-
-        const { data: urlData } = supabase.storage
-          .from("product-media")
-          .getPublicUrl(path);
-
-        finalUrls[itemIndex] = urlData.publicUrl;
-
-        // Best-effort thumbnail upload for videos. Path mirrors the
-        // derivedThumbnailUrl convention in lib/video-thumbnail.ts so the
-        // gallery can resolve thumbs without a DB lookup. We await any
-        // pending background generation here so a fast submit (before the
-        // canvas decode finishes) still ships the thumbnail when it
-        // ultimately resolves. A failure (rejection or upload error) is
-        // logged but does not abort the product upload — display falls
-        // back to <video #t=0.1> for missing thumbs.
+        // Storage deliberately grants no UPDATE. Recover a lost response by
+        // comparing bytes at this File's UUID; never overwrite an existing object.
+        const { error: uploadError } = await bucket.upload(path, item.file, { cacheControl: CACHE_INMUTABLE, contentType: item.file.type });
+        if (uploadError) {
+          const duplicate = uploadError.statusCode === "409" || uploadError.statusCode === "400" && /already exists/i.test(uploadError.message);
+          if (!duplicate) throw new Error("No pudimos subir uno de los archivos. Inténtalo de nuevo.");
+          const { data: previous } = bucket.getPublicUrl(path);
+          const stored = await readStoredMedia(previous.publicUrl, limit);
+          const [expected, actual] = await Promise.all([
+            crypto.subtle.digest("SHA-256", await item.file.arrayBuffer()),
+            crypto.subtle.digest("SHA-256", await stored.arrayBuffer()),
+          ]);
+          if (stored.size !== item.file.size || !new Uint8Array(expected).every((value, index) => value === new Uint8Array(actual)[index])) {
+            throw new Error("El archivo guardado no coincide. Vuelve a seleccionar la foto o video.");
+          }
+        }
+        newPathsRef.current.add(path);
+        const { data } = bucket.getPublicUrl(path);
+        uploadedRef.current.set(item.file, data.publicUrl);
+        finalUrls.push(data.publicUrl);
         if (item.isVideo) {
-          const pending = pendingThumbsRef.current.get(item.file);
-          let thumbBlob: Blob | null = null;
-          if (pending) {
-            // Race the pending generation against an 8s timeout. Canvas decode
-            // typically completes in <1s; 4K sources take ~2-3s. 8s is safe
-            // margin while bailing on hangs (e.g., WebView legacy Android,
-            // corrupted source, codecs that never fire loadeddata/seeked).
-            // Since thumbnails are best-effort, blocking submission is worse
-            // than skipping the thumb — display falls back to <video #t=0.1>.
-            const THUMB_GENERATION_TIMEOUT_MS = 8000;
-            try {
-              thumbBlob = await Promise.race([
-                pending,
-                new Promise<never>((_, reject) =>
-                  setTimeout(
-                    () => reject(new Error("thumbnail generation timed out")),
-                    THUMB_GENERATION_TIMEOUT_MS,
-                  ),
-                ),
-              ]);
-            } catch (thumbGenErr) {
-              // Se sigue sin miniatura a proposito: el video ya se subio y la
-              // capa de render cae a <video #t=0.1>. Lo que NO puede pasar es que
-              // el fallo desaparezca: sin esto, la miniatura queda en 404 y nadie
-              // se entera nunca de que la generacion viene fallando.
-              Sentry.captureException(thumbGenErr, {
-                tags: { action: "productForm", step: "video_thumbnail" },
-                level: "warning",
-              });
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            const thumb = await Promise.race([
+              pendingThumbsRef.current.get(item.file) ?? Promise.resolve(null),
+              new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 8000); }),
+            ]);
+            if (thumb) {
+              const thumbPath = path.replace(/\.[^.]+$/, "_thumb.jpg");
+              const { error: thumbError } = await bucket.upload(thumbPath, thumb, { contentType: "image/jpeg", cacheControl: CACHE_INMUTABLE });
+              if (!thumbError) newPathsRef.current.add(thumbPath);
+              else console.warn("Video thumbnail upload failed", thumbError.message);
             }
-          }
-          if (thumbBlob) {
-            const thumbPath = `${userId}/${timestamp}-${currentPendingIdx}_thumb.jpg`;
-            const { error: thumbErr } = await supabase.storage
-              .from("product-media")
-              .upload(thumbPath, thumbBlob, {
-                contentType: "image/jpeg",
-                cacheControl: CACHE_INMUTABLE,
-              });
-            if (thumbErr) {
-              // Diagnostic only — product upload already succeeded.
-              console.warn(`thumbnail upload failed for video ${itemIndex + 1}: ${thumbErr.message}`);
-            }
-          }
+          } catch (error) {
+            Sentry.captureException(error, { tags: { action: "productForm", step: "video_thumbnail" }, level: "warning" });
+          } finally { clearTimeout(timer); }
         }
-      });
-    }
-
-    // NOTA: Con la concurrencia, si una subida falla después de que otras
-    // ya completaron, quedarán archivos huérfanos en el bucket.
-    // Esto se tolera por ahora.
-    
-    // Ejecutar máximo 3 tareas a la vez para no saturar conexiones móviles
-    const results: Promise<void>[] = [];
-    const executing = new Set<Promise<void>>();
-    let hasError = false;
-
-    for (const task of uploadTasks) {
-      if (hasError) break; // abortar early submission loop
-      const p = task().catch((err) => {
-        hasError = true;
-        setUploading(false); // set to false on error fast path
-        throw err;
-      });
-      results.push(p);
-      const e = p.catch(() => {}).finally(() => executing.delete(e));
-      executing.add(e);
-      if (executing.size >= 3) {
-        await Promise.race(executing);
       }
-    }
-    await Promise.all(results);
-
-    setUploading(false);
-    return finalUrls;
+      return finalUrls;
+    } catch (error) {
+      await cleanupNewUploads();
+      throw error;
+    } finally { setUploading(false); }
   }
 
   function validarAntesDeEnviar(): string | null {
@@ -621,7 +546,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   }
 
   async function handleSubmit(formData: FormData) {
-    if (submittingRef.current) return;
+    if (submittingRef.current || preparationRef.current || cropperOpen) return;
     const validationError = validarAntesDeEnviar();
     if (validationError) {
       setError(validationError);
@@ -635,6 +560,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     submittingRef.current = true;
     setLoading(true);
     setError("");
+    let saveStarted = false;
     try {
       const finalUrls = await uploadMediaAndBuildGallery();
       formData.set("imagen_principal", finalUrls[0] ?? "");
@@ -650,16 +576,20 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         const removedUrls = originalUrls.filter((u) => !survivingExistingUrls.includes(u));
         formData.set("removed_urls", JSON.stringify(removedUrls));
 
+        saveStarted = true;
         const result = await updateProductFull(initialValues.id, formData);
         if (result?.error) {
+          await cleanupNewUploads();
           setError(result.error);
           setLoading(false);
           submittingRef.current = false;
         }
         // El guardado confirmado vuelve al perfil con la cuadricula visible.
       } else {
+        saveStarted = true;
         const result = await createProduct(formData);
         if (result?.error) {
+          await cleanupNewUploads();
           setError(result.error);
           setLoading(false);
           submittingRef.current = false;
@@ -667,6 +597,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       }
     } catch (err) {
       if (esNavegacionDeNext(err)) throw err;
+      // A lost action response may hide a committed row. Preserve its files across later retries too.
+      if (saveStarted) newPathsRef.current.forEach(path => uncertainSavePathsRef.current.add(path));
       setError(err instanceof Error ? err.message : "Error al subir imágenes");
       setLoading(false);
       submittingRef.current = false;
@@ -745,7 +677,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
               setLoading(true);
               form.requestSubmit();
             }}
-            disabled={loading || uploading}
+            disabled={loading || uploading || !!preparing || cropperOpen}
             className="min-h-12 min-w-[8rem] justify-center shrink-0 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand)] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[color:var(--brand-dark)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)]"
           >
             {loading || uploading ? (
@@ -1369,6 +1301,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             {media.length < 5 && (
               <button
                 type="button"
+                disabled={!!preparing || cropperOpen || loading || uploading}
                 onClick={() => fileInputRef.current?.click()}
                 className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
               >
@@ -1378,10 +1311,11 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
             )}
           </div>
         </DndContext>
+        {preparing && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{preparing}</p>}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/mp4,video/webm,video/quicktime"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
           multiple
           className="hidden"
           onChange={handleImageSelect}

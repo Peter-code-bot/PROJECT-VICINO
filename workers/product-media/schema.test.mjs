@@ -1,0 +1,94 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+let PGlite;
+try { ({ PGlite } = require('@electric-sql/pglite')); } catch {}
+
+test('SQL contract executes against PostgreSQL WASM: RLS, quotas, leases, GC and grants', { skip: !PGlite && 'Install repository dependencies for PGlite SQL verification' }, async () => {
+  const db = new PGlite();
+  const users = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333', '44444444-4444-4444-8444-444444444444'];
+  await db.exec(`
+    create role anon; create role authenticated; create role service_role bypassrls;
+    create schema auth; create schema storage;
+    create table auth.users(id uuid primary key);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    grant usage on schema auth,storage to authenticated,service_role;
+    grant execute on function auth.uid() to authenticated;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,metadata jsonb,unique(bucket_id,name));
+    create function storage.foldername(text) returns text[] language sql immutable as $$ select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1] $$;
+    alter table storage.objects enable row level security;
+    grant select,insert,delete,update on storage.objects to authenticated;
+    create policy final_insert on storage.objects for insert to authenticated with check(bucket_id='product-media' and (storage.foldername(name))[1]=auth.uid()::text);
+    create policy final_select on storage.objects for select using(bucket_id='product-media');
+    create table public.products_services(id uuid primary key default gen_random_uuid(),imagen_principal text,galeria_imagenes text[] default '{}');
+  `);
+  for (const user of users) await db.query('insert into auth.users values ($1)', [user]);
+  await db.exec(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
+  const role = async (name, user = '') => { await db.exec(`reset role; set role ${name}`); await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]); };
+  const reserve = async (key, size=10, mime='video/mp4') => (await db.query('select public.reserve_product_video_job($1,$2,$3) as job', [key,size,mime])).rows[0].job;
+  const key = suffix => `aaaaaaaa-aaaa-4aaa-8aaa-${String(suffix).padStart(12,'0')}`;
+  await role('authenticated', users[0]);
+  const first = await reserve(key(1));
+  assert.equal((await reserve(key(1))).id, first.id);
+  await assert.rejects(reserve(key(1),11), /IDEMPOTENCY_MISMATCH/);
+  await assert.rejects(db.query('insert into public.media_processing_jobs(id) values(gen_random_uuid())'), /permission denied/);
+  await assert.rejects(db.query("select public.claim_product_video_job()"), /permission denied/);
+  await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('product-media',$1)", [`${users[0]}/processed/fake.mp4`]), /row-level security/);
+  await db.query("insert into storage.objects(bucket_id,name) values('product-media',$1)", [`${users[0]}/normal.mp4`]);
+  await assert.rejects(db.query("insert into storage.objects(bucket_id,name,metadata) values('media-processing',$1,'{}')", [`${users[1]}/${first.id}/source`]), /row-level security/);
+  await db.query("insert into storage.objects(bucket_id,name,metadata) values('media-processing',$1,$2)", [first.input_path,{size:9}]);
+  await assert.rejects(db.query('select public.mark_product_video_uploaded($1)',[first.id]), /INPUT_OBJECT_MISMATCH/);
+  await db.exec('reset role');
+  await db.query("update storage.objects set metadata = '{\"size\":10}' where name=$1",[first.input_path]);
+  await role('authenticated',users[0]);
+  assert.equal((await db.query('select public.mark_product_video_uploaded($1) as job',[first.id])).rows[0].job.status,'queued');
+  await role('authenticated',users[1]);
+  assert.equal((await db.query('select * from public.media_processing_jobs where id=$1',[first.id])).rows.length,0);
+  await assert.rejects(db.query('select public.cancel_product_video_job($1)',[first.id]),/JOB_NOT_FOUND/);
+  await role('service_role');
+  const claimed = (await db.query('select public.claim_product_video_job() as job')).rows[0].job;
+  assert.equal(claimed.id,first.id); assert.equal(claimed.attempts,1);
+  assert.equal((await db.query('select public.claim_product_video_job() as job')).rows[0].job,null);
+  const finish = (lease,status='ready',size=100,duration=10,code=null) => db.query('select public.finish_product_video_job($1,$2,$3,$4,$5,$6) as ok',[first.id,lease,status,size,duration,code]);
+  assert.equal((await finish(key(2))).rows[0].ok,false);
+  await assert.rejects(finish(claimed.lease_id,'ready',10485761),/INVALID_OUTPUT/);
+  await assert.rejects(finish(claimed.lease_id,'ready',100,11),/INVALID_OUTPUT/);
+  assert.equal((await finish(claimed.lease_id)).rows[0].ok,true);
+  await role('authenticated',users[0]);
+  await assert.rejects(db.query('select public.cancel_product_video_job($1)',[first.id]),/JOB_ALREADY_READY/);
+  await db.exec('reset role');
+  await db.query("update public.media_processing_jobs set created_at=now()-interval '25 hours', updated_at=now()-interval '25 hours' where id=$1",[first.id]);
+  const url = `https://fixture.supabase.co/storage/v1/object/public/product-media/${first.output_path}`;
+  await db.query('insert into public.products_services(imagen_principal,galeria_imagenes) values($1,$2)',[url,[url]]);
+  await role('service_role');
+  assert.deepEqual((await db.query("select public.expire_unlinked_product_video_outputs('https://fixture.supabase.co') as jobs")).rows[0].jobs,[]);
+  await db.exec('reset role; delete from public.products_services');
+  await role('service_role');
+  const expired = (await db.query("select public.expire_unlinked_product_video_outputs('https://fixture.supabase.co') as jobs")).rows[0].jobs;
+  assert.equal(expired[0].id,first.id);
+  assert.equal((await db.query('select status,error_code from public.media_processing_jobs where id=$1',[first.id])).rows[0].status,'failed');
+  await db.query('select public.mark_product_video_output_deleted($1)',[first.id]);
+  assert.deepEqual((await db.query("select public.expire_unlinked_product_video_outputs('https://fixture.supabase.co') as jobs")).rows[0].jobs,[]);
+  await role('authenticated',users[2]);
+  for(let i=10;i<13;i++) await reserve(key(i));
+  await assert.rejects(reserve(key(13)),/ACTIVE_JOB_LIMIT/);
+  await role('authenticated',users[3]);
+  // An adversary may declare 1 byte then send the full bucket cap before mark-uploaded.
+  // Every reservation still consumes 200 MiB, and cancelling never refunds it.
+  for(let i=20;i<25;i++) {
+    const job=await reserve(key(i),1);
+    await db.query("insert into storage.objects(bucket_id,name,metadata) values('media-processing',$1,$2)",[job.input_path,{size:209715200}]);
+    await assert.rejects(db.query('select public.mark_product_video_uploaded($1)',[job.id]),/INPUT_OBJECT_MISMATCH/);
+    assert.equal((await db.query("delete from storage.objects where bucket_id='media-processing' and name=$1 returning name",[job.input_path])).rows.length,0,'Uploading originals must not be reusable through DELETE');
+    assert.equal((await db.query("update storage.objects set metadata='{}' where bucket_id='media-processing' and name=$1 returning name",[job.input_path])).rows.length,0,'Original UPDATE remains forbidden');
+    await db.query('select public.cancel_product_video_job($1)',[job.id]);
+    assert.equal((await db.query("delete from storage.objects where bucket_id='media-processing' and name=$1 returning name",[job.input_path])).rows.length,1,'Cancel must precede original cleanup');
+  }
+  await assert.rejects(reserve(key(25),1),/DAILY_BYTES_LIMIT/);
+  await role('anon');
+  await assert.rejects(db.query('select public.reserve_product_video_job($1,10,\'video/mp4\')',[key(99)]),/permission denied/);
+  await db.close();
+});

@@ -10,6 +10,7 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { cleanupRemovedMedia } from "@/lib/media/cleanup";
 import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
 import type { MediaAssetInsert } from "@vicino/shared";
+import { parseProductGallery, validateProductGallery } from "@/lib/media/validate-product-gallery";
 
 const RETORNO_PUBLICACION = "/perfil?tab=products";
 
@@ -193,15 +194,6 @@ async function syncMediaAssetsForProduct(
   }
 }
 
-const PRODUCT_MEDIA_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/`
-  : null;
-
-function isValidProductMediaUrl(url: string): boolean {
-  if (!PRODUCT_MEDIA_PREFIX) return false;
-  return typeof url === "string" && url.startsWith(PRODUCT_MEDIA_PREFIX);
-}
-
 export async function createProduct(formData: FormData) {
   const supabase = await createClient();
 
@@ -297,27 +289,14 @@ export async function createProduct(formData: FormData) {
   const appointmentEndTime = (formData.get("appointment_end_time") as string) || "18:00";
   const appointmentDurationMinutes = formData.get("appointment_duration_minutes") ? Number(formData.get("appointment_duration_minutes")) : 60;
 
-  const imagenPrincipal = (formData.get("imagen_principal") as string) || null;
-  const galeriaRaw = formData.get("galeria_imagenes") as string;
   let galeriaImagenes: string[] = [];
   try {
-    if (galeriaRaw) {
-      const parsedGallery = JSON.parse(galeriaRaw);
-      if (Array.isArray(parsedGallery)) {
-        galeriaImagenes = parsedGallery.filter((v): v is string => typeof v === "string");
-      }
-    }
+    galeriaImagenes = parseProductGallery(formData.get("galeria_imagenes"));
+    await validateProductGallery({ urls: galeriaImagenes, ownerId: user.id, baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "" });
   } catch {
-    // ignore parse errors
+    return { error: "No pudimos validar las fotos o videos. Revisa los archivos e inténtalo de nuevo." };
   }
-
-  // Allowlist: only accept URLs pointing to our product-media bucket.
-  if (imagenPrincipal && !isValidProductMediaUrl(imagenPrincipal)) {
-    return { error: "URL de imagen principal inválida" };
-  }
-  if (galeriaImagenes.some((u) => !isValidProductMediaUrl(u))) {
-    return { error: "Una o más URLs de la galería son inválidas" };
-  }
+  const imagenPrincipal = galeriaImagenes[0] ?? null;
 
   const { data, error } = await supabase
     .from("products_services")
@@ -443,6 +422,13 @@ export async function updateProductFull(
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
+  // Trust legacy media only when it is already attached to this owner's row.
+  const { data: existingProduct, error: existingError } = await supabase
+    .from("products_services").select("galeria_imagenes")
+    .eq("id", id).eq("creador_id", user.id).neq("estatus", "eliminado").single();
+  if (existingError || !existingProduct) return { error: "No se encontró la publicación." };
+  const existingGallery = (existingProduct.galeria_imagenes ?? []).filter((url): url is string => typeof url === "string");
+
   // Validate base fields via the partial schema. `tipo` is intentionally
   // omitted — it is immutable once a listing is published (changing it
   // would break appointments / sale_confirmations semantics).
@@ -541,41 +527,16 @@ export async function updateProductFull(
   // all photos; never confused with "leave alone"). Every other field follows
   // the skip-when-undefined rule above. imagen_principal is derived from
   // galeria[0] ?? null — same pattern as components/product/product-gallery.tsx:135.
-  const galeriaRaw = formData.get("galeria_imagenes");
   let galeriaImagenes: string[] = [];
   try {
-    if (typeof galeriaRaw === "string" && galeriaRaw.length > 0) {
-      const parsedGallery = JSON.parse(galeriaRaw);
-      if (Array.isArray(parsedGallery)) {
-        galeriaImagenes = parsedGallery.filter(
-          (v): v is string => typeof v === "string",
-        );
-      }
-    }
+    galeriaImagenes = parseProductGallery(formData.get("galeria_imagenes"));
+    await validateProductGallery({ urls: galeriaImagenes, ownerId: user.id, existing: existingGallery, baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "" });
   } catch {
-    // ignore parse errors -> treat as empty (== remove all)
-  }
-  if (galeriaImagenes.some((u) => !isValidProductMediaUrl(u))) {
-    return { error: "Una o más URLs de la galería son inválidas" };
+    return { error: "No pudimos validar las fotos o videos. Revisa los archivos e inténtalo de nuevo." };
   }
 
-  // removed_urls: only used for Storage cleanup AFTER the UPDATE confirms.
-  // If parsing fails we still proceed with the UPDATE — orphan ruido is
-  // preferable to blocking the user's edit on a malformed client field.
-  const removedUrlsRaw = formData.get("removed_urls");
-  let removedUrls: string[] = [];
-  try {
-    if (typeof removedUrlsRaw === "string" && removedUrlsRaw.length > 0) {
-      const parsedRemoved = JSON.parse(removedUrlsRaw);
-      if (Array.isArray(parsedRemoved)) {
-        removedUrls = parsedRemoved.filter(
-          (u): u is string => typeof u === "string" && isValidProductMediaUrl(u),
-        );
-      }
-    }
-  } catch {
-    // ignore
-  }
+  // Derive deletions from the row, never from client-supplied arbitrary URLs.
+  const removedUrls = existingGallery.filter(url => !galeriaImagenes.includes(url));
 
   // Build UPDATE object — galeria_imagenes + imagen_principal ALWAYS in,
   // everything else only when explicitly provided (no-NULL-overwrite).
