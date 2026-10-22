@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
+import { toggleProductStatus } from "@/app/(marketplace)/vender/actions";
+import { DeleteListingDialog } from "@/components/product/delete-listing-dialog";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { Pencil, Eye, EyeOff, Trash2 } from "lucide-react";
 
@@ -15,7 +16,8 @@ type ToggleArgs = { id: string; newStatus: "disponible" | "pausado" };
 
 export function ListingActions({ id, estatus: initialEstatus }: ListingActionsProps) {
   const [estatus, setEstatus] = useState(initialEstatus);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
 
   const { mutate: toggleStatus, isPending: toggling } = useOptimisticMutation(
     ({ id, newStatus }: ToggleArgs) => toggleProductStatus(id, newStatus),
@@ -35,14 +37,8 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
     await toggleStatus({ id, newStatus });
   }
 
-  async function handleDelete() {
-    if (!confirm("¿Eliminar esta publicación? Esta acción no se puede deshacer.")) return;
-    setDeleting(true);
-    await deleteProduct(id);
-  }
-
   const isPaused = estatus === "pausado";
-  const busy = toggling || deleting;
+  const busy = toggling || deleteOpen;
 
   return (
     <div className="flex items-center gap-2 shrink-0">
@@ -74,8 +70,9 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
 
       {/* Eliminar (Basurero) -> ROJO */}
       <button
+        ref={deleteTriggerRef}
         type="button"
-        onClick={handleDelete}
+        onClick={() => setDeleteOpen(true)}
         disabled={busy}
         className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-10 rounded-xl text-white bg-[#D6544D] hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-50 shrink-0"
         title="Eliminar"
@@ -83,6 +80,7 @@ export function ListingActions({ id, estatus: initialEstatus }: ListingActionsPr
       >
         <Trash2 className="h-4 w-4 shrink-0" />
       </button>
+      <DeleteListingDialog productId={id} open={deleteOpen} onOpenChange={setDeleteOpen} triggerRef={deleteTriggerRef} />
     </div>
   );
 }

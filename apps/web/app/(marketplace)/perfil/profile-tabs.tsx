@@ -163,12 +163,27 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
   productsPanel, reviewsPanel, reviewCount = reviewsAsSeller.length + reviewsAsBuyer.length,
 }: ProfileTabsProps & { productsPanel?: ReactNode; reviewsPanel?: ReactNode; reviewCount?: ReactNode }) {
   const profilePath = usePathname();
-  const [tab, setTab] = useSessionUI<"products" | "reviews">(`profile-tab:${profilePath}:${currentUserId ?? "guest"}`, "products");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [rememberedTab, setTab] = useSessionUI<"products" | "reviews">(`profile-tab:${profilePath}:${currentUserId ?? "guest"}`, "products");
+  // El retorno de una publicacion debe mostrar la cuadricula aunque la
+  // sesion recuerde Reseñas. Solo el perfil propio acepta esta intencion.
+  const requestedTab = profilePath === "/perfil" ? searchParams.get("tab") : null;
+  const tab = requestedTab === "products" || requestedTab === "reviews" ? requestedTab : rememberedTab;
+
+  function selectTab(next: "products" | "reviews") {
+    setTab(next);
+    if (requestedTab === "products" || requestedTab === "reviews") {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", next);
+      router.replace(`${profilePath}?${params.toString()}`, { scroll: false });
+    }
+  }
   return <div>
       {/* Tab bar */}
       <div className="mb-4 flex shadow-[inset_0_-1px_0_0_var(--border)]">
         <button
-          onClick={() => setTab("products")}
+          onClick={() => selectTab("products")}
           className={cn(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "products"
@@ -180,7 +195,7 @@ export function ProfileTabs({ products, reviewsAsSeller, reviewsAsBuyer, isVende
           Productos
         </button>
         <button
-          onClick={() => setTab("reviews")}
+          onClick={() => selectTab("reviews")}
           className={cn(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors",
             tab === "reviews"

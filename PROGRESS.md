@@ -1,3 +1,12 @@
+## 22-oct-2026 — PUB-PERFIL-01
+
+- Inicio: **09:11:02 America/Mexico_City** (15:11:02 UTC). Javier autorizó ejecutar el plan y registrar inicio, término, cambios, pruebas e incidencias. Workflow Advisor aplicado; ejecución directa sin auxiliares.
+- Publicar, guardar una edición y eliminar desde ficha o Mi tienda vuelven a `/perfil?tab=products` con reemplazo de historial y revalidación de perfil, Inicio y listado. La cuadrícula prevalece sobre Reseñas recordada; las pestañas siguen siendo seleccionables y el perfil público conserva su comportamiento.
+- Ocultar mantiene abierta la misma ficha y URL; actualiza estado, permite mostrar y bloquea pulsaciones pendientes. Eliminación con diálogo compartido, cancelación, error recuperable, foco y bloqueo de doble envío; el servidor valida propietario y fila afectada antes del retorno exitoso.
+- Corregido el reinicio del borrador al fallar el envío del formulario, conservando cabecera fija, navegación, validación y estados pendientes actuales. Fallo inicial reproducido: 32/36 recorridos; evidencia anterior conservada. Matriz ampliada y repetida sobre master actualizado: **48/48** en Chromium/WebKit, 375/1280 px; **22/22** acciones, **20/20** Regresar y **4/4** pestañas/ordenación. Auth/DB/router controlados; no acredita aceptación autenticada ni física. Tipos y lint focalizado: exit 0.
+- Candidato aislado basado en `origin/master` **3ccbbdec**, rama `fix/publicacion-perfil-20261022`. Checkout original, 195 commits por detrás, restaurado a sus cambios previos; la fase inicial y su build pertenecen a esa base antigua. Dependencias existentes reutilizadas; sin modificación de lockfile, migraciones ni datos de producción.
+- **Fin de implementación y validación local: 09:42:34 America/Mexico_City** (15:42:34 UTC). Build del candidato **exit 0**, 63/63 páginas estáticas, BUILD_ID `SV4w6a7Ry1s7QiFnnM_Pc`; configuración sintética. Registro completo y evidencia literal en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd); [plan PUB-PERFIL-01](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). Integración remota, publicación y aceptación en Android/iPhone siguen pendientes.
+
 ## 21-oct-2026 — PUB-OPT-01
 
 - Descripción y estado opcionales en alta/edición; vaciar limpia y omitir conserva. Fichas móvil/escritorio sin wrapper de descripción ni celda de estado ausente, con columnas según los datos presentes. Workflow Advisor queda disponible y exigido por instrucciones del proyecto, con modelo/esfuerzo explícitos cuando convenga delegar.

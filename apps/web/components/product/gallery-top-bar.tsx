@@ -2,7 +2,7 @@
 
 import Link from "@/components/auth/auth-link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
   Pencil,
   Eye,
@@ -16,7 +16,9 @@ import { FavoriteButton } from "@/components/shared/favorite-button";
 import { BotonRegresar } from "@/components/ui/boton-regresar";
 import { useMuroSesion } from "@/components/auth/muro-sesion";
 import { ReportModal } from "@/components/moderation/report-modal";
-import { toggleProductStatus, deleteProduct } from "@/app/(marketplace)/vender/actions";
+import { toggleProductStatus } from "@/app/(marketplace)/vender/actions";
+import { DeleteListingDialog } from "./delete-listing-dialog";
+import { esNavegacionDeNext } from "@/lib/next-navigation-error";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,31 +43,34 @@ export function GalleryTopBar({
 }: GalleryTopBarProps) {
   const router = useRouter();
   const [reportOpen, setReportOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [statusPending, startStatusTransition] = useTransition();
+  const togglingStatus = useRef(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const { pedirSesion } = useMuroSesion();
 
   const isPaused = estatus === "pausado";
 
-  async function handleToggleStatus() {
-    const nuevo = isPaused ? "disponible" : "pausado";
-    const res = await toggleProductStatus(productId, nuevo);
-    if (res && "error" in res && res.error) {
-      window.alert(res.error);
-      return;
-    }
-    // El action revalida /seller/listings, no esta ruta: sin este refresh la
-    // propia ficha seguiria mostrando el estatus viejo.
-    router.refresh();
-  }
-
-  async function handleDelete() {
-    if (!confirm("¿Eliminar esta publicación? Esta acción no se puede deshacer.")) return;
-    // No hay navegacion aqui: deleteProduct termina en redirect(), que en un
-    // server action navega solo. Este bloque solo se alcanza cuando el action
-    // devuelve { error } antes de llegar al redirect.
-    const res = await deleteProduct(productId);
-    if (res && "error" in res && res.error) {
-      window.alert(res.error);
-    }
+  function handleToggleStatus() {
+    if (togglingStatus.current || statusPending) return;
+    togglingStatus.current = true;
+    startStatusTransition(async () => {
+      try {
+        const nuevo = isPaused ? "disponible" : "pausado";
+        const res = await toggleProductStatus(productId, nuevo);
+        if (res && "error" in res && res.error) {
+          window.alert(res.error);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        if (esNavegacionDeNext(err)) throw err;
+        window.alert("No se pudo cambiar la visibilidad. Intenta de nuevo.");
+      } finally {
+        togglingStatus.current = false;
+      }
+    });
   }
 
   async function handleShare() {
@@ -118,9 +123,10 @@ export function GalleryTopBar({
             variant="overlay"
           />
 
-          <DropdownMenu>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
             <DropdownMenuTrigger asChild>
               <button
+                ref={menuTriggerRef}
                 type="button"
                 aria-label="Mas opciones"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus:outline-none focus:ring-2 focus:ring-white/40"
@@ -128,7 +134,7 @@ export function GalleryTopBar({
                 <MoreHorizontal className="h-5 w-5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8} className="min-w-0 p-1.5 rounded-2xl bg-card border-0 shadow-[0_8px_30px_rgba(0,0,0,0.14)] flex flex-col items-center gap-1">
+            <DropdownMenuContent align="end" sideOffset={8} onCloseAutoFocus={(event) => { if (deleteOpen) event.preventDefault(); }} className="min-w-0 p-1.5 rounded-2xl bg-card border-0 shadow-[0_8px_30px_rgba(0,0,0,0.14)] flex flex-col items-center gap-1">
               {isOwner ? (
                 <>
                   <DropdownMenuItem asChild>
@@ -142,19 +148,23 @@ export function GalleryTopBar({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    disabled={statusPending}
                     onSelect={() => {
                       void handleToggleStatus();
                     }}
                     className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground hover:bg-[color:var(--bg-elev-2)] transition-colors focus:bg-[color:var(--bg-elev-2)] cursor-pointer"
                     title={isPaused ? "Publicación oculta (clic para mostrar)" : "Publicación visible (clic para ocultar)"}
-                    aria-label={isPaused ? "Publicación oculta" : "Publicación visible"}
+                    aria-label={isPaused ? "Mostrar publicación" : "Ocultar publicación"}
                   >
                     {isPaused ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     destructive
-                    onSelect={() => {
-                      void handleDelete();
+                    disabled={statusPending}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setMenuOpen(false);
+                      setDeleteOpen(true);
                     }}
                     className="flex h-9 w-9 items-center justify-center rounded-xl text-danger hover:bg-danger/10 transition-colors focus:bg-danger/10 focus:text-danger cursor-pointer"
                     title="Eliminar publicación"
@@ -197,6 +207,8 @@ export function GalleryTopBar({
           </DropdownMenu>
         </div>
       </div>
+
+      {isOwner && <DeleteListingDialog productId={productId} open={deleteOpen} onOpenChange={setDeleteOpen} triggerRef={menuTriggerRef} />}
 
       {isOwner ? null : (
         <ReportModal

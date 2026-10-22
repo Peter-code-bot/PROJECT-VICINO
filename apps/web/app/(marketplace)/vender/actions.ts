@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { revalidatePath } from "@/lib/revalidate-session";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
@@ -10,6 +10,8 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { cleanupRemovedMedia } from "@/lib/media/cleanup";
 import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
 import type { MediaAssetInsert } from "@vicino/shared";
+
+const RETORNO_PUBLICACION = "/perfil?tab=products";
 
 // Best-effort dual-write helper for the product_categories pivot.
 //
@@ -419,11 +421,8 @@ export async function createProduct(formData: FormData) {
   await revalidatePath("/perfil");
   await revalidatePath("/");
 
-  // MP#08 #4 Fase 1B: redirect usa la local `primaryCategoria` (derivada del
-  // input validado por zod en L252), NO `data.categoria` (TEXT espejo del
-  // INSERT RETURNING). Cuando 1C deje de escribir el espejo, `data.categoria`
-  // sera stale o null; `primaryCategoria` es el slug correcto in-memory.
-  redirect(`/${primaryCategoria}/${data.slug}`);
+  await revalidatePath("/seller/listings");
+  redirect(RETORNO_PUBLICACION, RedirectType.replace);
 }
 
 export async function updateProductFull(
@@ -734,8 +733,10 @@ export async function updateProductFull(
     await cleanupRemovedMedia(supabase, removedUrls);
   }
 
+  await revalidatePath("/perfil");
+  await revalidatePath("/");
   await revalidatePath("/seller/listings");
-  redirect("/seller/listings");
+  redirect(RETORNO_PUBLICACION, RedirectType.replace);
 }
 
 export async function deleteProduct(id: string) {
@@ -749,20 +750,33 @@ export async function deleteProduct(id: string) {
     redirect("/login");
   }
 
+  const input = z.string().uuid().safeParse(id);
+  if (!input.success) return { error: "No se pudo identificar la publicación." };
+
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
-  const { error } = await supabase
+  // Solo se comunica exito si existe una publicacion de este propietario.
+  // La eliminacion logica permite reintentar una respuesta interrumpida.
+  const { data: deleted, error } = await supabase
     .from("products_services")
     .update({ estatus: "eliminado" })
-    .eq("id", id)
-    .eq("creador_id", user.id);
+    .eq("id", input.data)
+    .eq("creador_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
-    return { error: error.message };
+    Sentry.captureException(error, { tags: { action: "deleteProduct" } });
+    return { error: "No se pudo eliminar la publicación. Intenta de nuevo." };
   }
 
-  redirect("/seller/listings");
+  if (!deleted) return { error: "Esa publicación no está disponible o no te pertenece." };
+
+  await revalidatePath("/perfil");
+  await revalidatePath("/");
+  await revalidatePath("/seller/listings");
+  redirect(RETORNO_PUBLICACION, RedirectType.replace);
 }
 
 export async function toggleProductStatus(id: string, newStatus: "disponible" | "pausado") {
@@ -801,9 +815,9 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
     return { error: "Esa publicación ya no está disponible." };
   }
 
-  // Sync the seller listings page so navigating back from elsewhere shows
-  // the new estatus. The optimistic flip in listing-actions covers the
-  // local UI feel; this covers cross-page consistency.
+  // Actualiza la cuadricula al volver desde la ficha. Ocultar no navega.
+  await revalidatePath("/perfil");
+  await revalidatePath("/");
   await revalidatePath("/seller/listings");
 
   return { success: true };

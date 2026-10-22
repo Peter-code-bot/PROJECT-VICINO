@@ -16,7 +16,7 @@ test.beforeAll(async () => {
     "next/link": "export default function Link({children}){return children;}",
     "next/image": "export default ()=>null;",
     "@/lib/utils": "export const cn=(...parts)=>parts.filter(Boolean).join(' ');",
-    "@vicino/shared": "export const formatPrice=()=>'';export const formatDate=()=>'';export const primaryCategorySlug=()=>null;",
+    "@vicino/shared": "export const formatPrice=()=>'';export const formatDate=()=>'';export const primaryCategorySlug=()=>null;export const publicProfileName=(profile,fallback)=>profile?.nombre??fallback;",
     "@/lib/price-mode": "export const priceFallbackLabel=()=>'';",
     "@/lib/video-thumbnail": "export const posterUrl=x=>x;",
     "@/components/shared/rating-stars": "export const RatingStars=()=>null;",

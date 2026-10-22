@@ -1,7 +1,7 @@
 "use client";
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
-import { useState, useRef, useId, useSyncExternalStore } from "react";
+import { startTransition, useState, useRef, useId, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
@@ -622,11 +622,18 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
 
   async function handleSubmit(formData: FormData) {
     if (submittingRef.current) return;
+    const validationError = validarAntesDeEnviar();
+    if (validationError) {
+      setError(validationError);
+      setLoading(false);
+      return;
+    }
 
     // A4 sub-fase 4.1 (codex follow-up): haptic Medium DESPUES de validar
     // ambos checks (count + primary). Asi no suena en envio fallido.
     void hapticMedium();
     submittingRef.current = true;
+    setLoading(true);
     setError("");
     try {
       const finalUrls = await uploadMediaAndBuildGallery();
@@ -649,7 +656,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           setLoading(false);
           submittingRef.current = false;
         }
-        // success: updateProductFull redirects to /seller/listings
+        // El guardado confirmado vuelve al perfil con la cuadricula visible.
       } else {
         const result = await createProduct(formData);
         if (result?.error) {
@@ -784,7 +791,14 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         data-navigation-ready={hydrated && !isEdit ? navigationId : undefined}
         data-navigation-kind="sell"
         ref={formRef}
-        action={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          // React reinicia los inputs no controlados si una form action
+          // resuelve con error. El envio manual conserva el borrador; la
+          // transicion mantiene el tratamiento de redirects de Next.
+          const formData = new FormData(event.currentTarget);
+          startTransition(async () => { await handleSubmit(formData); });
+        }}
         className="rounded-3xl product-card-custom p-6 md:p-8 space-y-6 animate-scale-in"
       >
       {/* Tipo Toggle / Locked Display */}
