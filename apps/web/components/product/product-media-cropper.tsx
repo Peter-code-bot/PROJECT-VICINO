@@ -28,7 +28,7 @@ export type CropResult =
 
 interface ProductMediaCropperProps {
   open: boolean;
-  /** data URL for images, object URL for videos */
+  /** Bounded image preview or prepared video object URL. */
   mediaSrc: string | null;
   mediaType: "image" | "video";
   /** Original File — needed for the video passthrough */
@@ -68,6 +68,9 @@ export function ProductMediaCropper({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const onCancelRef = useRef(onCancel);
   const congeladoRef = useRef(false);
+  const cropWorkRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => cropWorkRef.current?.abort(), [mediaSrc]);
 
   useEffect(() => {
     onCancelRef.current = onCancel;
@@ -147,10 +150,13 @@ export function ProductMediaCropper({
     if (!mediaSrc) return;
     setSaving(true);
     setError(null);
+    const controller = new AbortController();
+    cropWorkRef.current = controller;
     try {
       if (mediaType === "image") {
         if (!croppedArea) return;
-        const blob = await getCroppedProductBlob(mediaSrc, croppedArea);
+        const blob = await getCroppedProductBlob(mediaSrc, croppedArea, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         onCropComplete({ type: "image", blob });
       } else {
         if (!originalFile) {
@@ -180,7 +186,9 @@ export function ProductMediaCropper({
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
 
-        const portada = await getCroppedProductBlob(dataUrl, croppedArea);
+        const portada = await getCroppedProductBlob(dataUrl, croppedArea, { signal: controller.signal });
+        canvas.width = canvas.height = 0;
+        if (controller.signal.aborted) return;
         onCropComplete({
           type: "video",
           file: originalFile,
@@ -189,6 +197,7 @@ export function ProductMediaCropper({
         });
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error("Crop failed:", err);
       setError(
         mediaType === "video"
@@ -196,7 +205,7 @@ export function ProductMediaCropper({
           : "No se pudo recortar la imagen. Intenta de nuevo o cancela y elige otra.",
       );
     } finally {
-      setSaving(false);
+      if (!controller.signal.aborted) setSaving(false);
     }
   }
 

@@ -35,7 +35,7 @@ export function CommunityPhotoInput({ nombre, foto, onChange, currentUrl, disabl
       </div>
     </div>
     <ProductMediaCropper open={source !== null} mediaSrc={source} mediaType="image" onCancel={() => setSource(null)} onCropComplete={result => {
-      if (result.type === "image") onChange(new File([result.blob], "grupo.webp", { type: "image/webp" }));
+      if (result.type === "image") onChange(new File([result.blob], "grupo.jpg", { type: "image/jpeg" }));
       setSource(null);
     }} />
   </div>;

@@ -49,6 +49,7 @@ class Query {
   }
 }
 const mocks = {
+  "server-only": {},
   "next/navigation": {
     RedirectType: { replace: "replace", push: "push" },
     redirect(destination, type = "push") {
@@ -79,6 +80,7 @@ function loadTs(filename) {
   mod.filename = filename;
   mod.require = (name) => {
     if (mocks[name]) return mocks[name];
+    if (name.startsWith("@/")) return loadTs(path.resolve(web, `${name.slice(2)}.ts`));
     if (name === "@vicino/shared") return loadTs(path.resolve(__dirname, "../packages/shared/src/validators/product.ts"));
     if (name.startsWith(".")) return loadTs(path.resolve(path.dirname(filename), name.endsWith(".ts") ? name : `${name}.ts`));
     return requireWeb(name);
