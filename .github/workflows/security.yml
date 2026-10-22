@@ -86,7 +86,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run security audit
-        run: pnpm audit --audit-level=high
+        # pnpm 9 sigue fijado para install/build. Su endpoint de audit fue
+        # retirado por npm; usar el cliente oficial 11 solo para esta lectura.
+        # "with current" impide volver automaticamente al packageManager 9.
+        run: |
+          npx --yes --package=pnpm@11.0.0 pnpm with current --version
+          npx --yes --package=pnpm@11.0.0 pnpm with current audit --audit-level=high
+          git diff --exit-code -- pnpm-lock.yaml package.json pnpm-workspace.yaml
 
   type-check:
     name: TypeScript type check
@@ -121,6 +127,11 @@ jobs:
 
       - name: Type check
         run: cd apps/web && pnpm type-check
+
+      - name: Validacion y guardado de campos opcionales
+        run: |
+          pnpm exec tsx scripts/test-product-validator.ts
+          node scripts/test-product-optional-actions.cjs
 
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que

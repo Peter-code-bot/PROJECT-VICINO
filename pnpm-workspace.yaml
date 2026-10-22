@@ -1,3 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# El cliente de auditoria pnpm 11 no lee package.json.pnpm. Conserva unicamente
+# la excepcion existente: la app firma pases; no verifica firmas RSA ajenas.
+# GHSA-86w9-cpqp-85rv sigue sin version corregida publicada. Revisar al actualizar.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv

@@ -1,3 +1,9 @@
+## 21-oct-2026 — PUB-OPT-01
+
+- Descripción y estado opcionales en alta/edición; vaciar limpia y omitir conserva. Fichas móvil/escritorio sin wrapper de descripción ni celda de estado ausente, con columnas según los datos presentes. Workflow Advisor queda disponible y exigido por instrucciones del proyecto, con modelo/esfuerzo explícitos cuando convenga delegar.
+- Esquema18/18, acciones20/20 y navegador86/86 (Chromium/WebKit, CSS real, transporte/Auth/DB controlados). Se detectó y corrigió solapamiento en la fila al200%; refluye y envuelve textos largos. Tipos y lint exit0; web194 aprobadas/1 omitida por openssl ausente. Evidencia literal, revisión, compilación, PR/CI/SHA y estado real de entrega en la [Bitácora de Notion](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), PUB-OPT-01.
+- Supabase PROD revisado por navegador integrado: descripcion TEXT NOT NULL admite vacío, estado nullable con CHECK explícito para NULL; RLS activo y triggers compatibles, sin migración ni datos alterados. La auditoría usa cliente oficial pnpm11 sólo para audit: endpoint pnpm9 retirado, misma excepción GHSA existente, lockfile/dependencias intactos; auditoría local exit0 y frozen install9 exit0. Firma Wallet antes omitida completada3/3 con certificados de prueba. [Plan, entrega y aceptación física iPhone pendiente](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263). GEO-PRECISION-01 continúa separado.
+
 ## 20-oct-2026 — ONB-ID-02
 
 - Revisión funcional del ID tras el reporte de Javier: límites y reglas contrastados en Supabase por navegador; motivos de bloqueo junto a Continuar y pruebas ampliadas. Plan, evidencia, publicación y aceptación real en [Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263).

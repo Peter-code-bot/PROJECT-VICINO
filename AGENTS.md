@@ -14,6 +14,31 @@ su sección de transferencia a Mac y el
 No usar las secciones históricas para sustituir el orden vigente.
 Si Notion no está conectado, preparar el entorno y recuperar el plan antes de rediseñar.
 
+## Workflow Advisor y selección de modelos
+
+Regla permanente de Javier Alejandro, 21-oct-2026: aplicar automáticamente
+[Workflow Advisor](.agents/skills/workflow-advisor/SKILL.md) al planificar,
+implementar o revisar trabajo en este repositorio. Antes de delegar, leer su
+[política de selección](.agents/skills/workflow-advisor/references/codex-model-routing.md).
+
+- Resolver directamente tareas pequeñas o secuenciales; delegar subtareas
+  independientes cuando el beneficio compense coordinación y consumo.
+- Elegir el modelo disponible de menor consumo esperado que cumpla la tarea;
+  Luna/Terra o equivalentes para trabajo acotado, mayor capacidad cuando lo
+  justifiquen el riesgo, la ambigüedad o las dependencias.
+- Fijar resultado, modelo/esfuerzo explícitos, contexto mínimo, archivos,
+  verificación y señal de escalado antes de cada despacho. No inventar
+  disponibilidad, precios ni ahorro. Conservar preferencias del usuario.
+- Por defecto, un coordinador y hasta dos auxiliares; sin subdelegación salvo
+  motivo y límite explícitos. Tras dos correcciones fallidas, aislar el fallo
+  antes de repetir o escalar.
+- La regla autoriza delegación pertinente dentro del encargo, sin ampliar su
+  alcance: un plan sigue siendo sólo plan; no autoriza gastos, nuevos chats,
+  mensajes externos ni entregas que el usuario no haya solicitado.
+- Revisar resultados y ejecutar comprobaciones proporcionales antes de
+  integrarlos. No cambiar por esta regla el modelo principal o la configuración
+  global de ChatGPT.
+
 ## Ejecución
 
 - Leer `.agents/AGENTS.md` y las instrucciones de cada directorio antes de editar.
