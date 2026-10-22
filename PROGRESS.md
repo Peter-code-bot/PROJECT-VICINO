@@ -1,3 +1,9 @@
+## 22-oct-2026 — PUB-FICHA-02: ajuste final del mapa compartido
+
+- Revisión posterior al primer push49dd1f6: DeliveryMap también se usa en Solicitudes. El preview se activa ahora con prop explícita sólo desde ProductForm; Solicitudes conserva mapa oculto inicialmente y al quitar. Sin cambios de datos ni precisión.
+- **Fin local del ajuste: 10:58:54 America/Mexico_City** (16:58:54 UTC). Nuevo pase16/16 del mapa, incluidas Solicitudes y recuperación; con12regresiones previas suman28casos distintos. Lint focalizado/diff/build exit0,63/63páginas, BUILD_ID `0T028hKW-snJQPYGRT1OV`. Los56recorridos de navegación y pruebas de acciones/esquema previas siguen vigentes; la navegación no cambió en este ajuste.
+- Primer push49dd1f6 confirmado y CI39817977980SUCCESS; entrega final en curso con este ajuste. El inicio del encargo sigue siendo10:34:17CDMX. El fin global, SHA final y producción se registran en Notion y continuidad local tras verificarlos.
+
 ## 22-oct-2026 — PUB-FICHA-02: ficha tras guardar y preview de ubicación
 
 - Inicio: **10:34:17 America/Mexico_City** (16:34:17 UTC). Fuente: prueba de Javier del despliegue a6a4f9d6 y petición de recuperar ficha → Regresar → Mi perfil. Sustituye el retorno directo al perfil de alta/edición de PUB-PERFIL-01; eliminación y ocultar conservan el comportamiento aprobado.

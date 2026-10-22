@@ -9,11 +9,12 @@ interface DeliveryMapProps {
   initialRadius?: number;
   showRadiusControl?: boolean;
   showRadiusPreview?: boolean;
+  showMapInitially?: boolean;
 }
 /** Adapts the legacy product form contract; the shared picker uses null for absence. */
 export default function DeliveryMap({ onLocationChange, ...props }: DeliveryMapProps) {
   const change = useCallback((value: LocationSelection | null) => {
     onLocationChange(value?.lat ?? 0, value?.lng ?? 0, value?.address ?? "");
   }, [onLocationChange]);
-  return <LocationPicker {...props} showMapInitially onChange={change} placeholder="Busca una ubicación…" />;
+  return <LocationPicker {...props} onChange={change} placeholder="Busca una ubicación…" />;
 }

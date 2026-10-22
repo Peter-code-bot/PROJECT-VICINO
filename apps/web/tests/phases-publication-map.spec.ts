@@ -26,14 +26,14 @@ test.beforeAll(async () => {
       const root=createRoot(document.getElementById('root'));
       window.probe={changes:[],gpsCalls:0};
       Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:()=>window.probe.gpsCalls++}});
-      function Form({edit=false,legacy=false}){
+      function Form({edit=false,legacy=false,deliveryDefault=false}){
         const [value,setValue]=useState(edit?{lat:20.9674,lng:-89.5926,address:'Mérida'}:null);
         const change=value=>{window.probe.changes.push(value);setValue(value);};
         const initial=edit?{initialLat:20.9674,initialLng:-89.5926}:{};
-        return <form><label>Ubicación</label>{legacy?<LocationPicker {...initial} onChange={change}/>:<DeliveryMap {...initial} showRadiusControl={false} showRadiusPreview={false} onRadiusChange={()=>{}} onLocationChange={(lat,lng,address)=>change(lat&&lng?{lat,lng,address}:null)}/>}
+        return <form><label>Ubicación</label>{legacy?<LocationPicker {...initial} onChange={change}/>:<DeliveryMap {...initial} showMapInitially={!deliveryDefault} showRadiusControl={false} showRadiusPreview={false} onRadiusChange={()=>{}} onLocationChange={(lat,lng,address)=>change(lat&&lng?{lat,lng,address}:null)}/>}
           <input name="lat" type="hidden" value={value?.lat??''}/><input name="lng" type="hidden" value={value?.lng??''}/><output>{JSON.stringify(value)}</output></form>;
       }
-      window.renderProbe=(mode='new')=>root.render(mode==='null'||mode==='undefined'?<AppleMap center={[19.04,-98.2]} markerPosition={mode==='null'?null:undefined} height={250}/>:<Form key={mode} edit={mode==='edit'} legacy={mode==='legacy'}/>);
+      window.renderProbe=(mode='new')=>root.render(mode==='null'||mode==='undefined'?<AppleMap center={[19.04,-98.2]} markerPosition={mode==='null'?null:undefined} height={250}/>:<Form key={mode} edit={mode==='edit'} legacy={mode==='legacy'} deliveryDefault={mode==='solicitud'}/>);
     ` },
     bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic",
     tsconfig: path.join(web, "tsconfig.json"), define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_COVERAGE_RADIUS_KM": '"200"' },
@@ -56,7 +56,7 @@ test.beforeEach(async ({ page, context }) => {
 });
 async function render(page: any, mode = 'new') {
   await page.evaluate((mode: string) => (window as any).renderProbe(mode), mode);
-  if (mode !== 'legacy') await expect(page.locator('[data-mapkit-falso]')).toBeVisible();
+  if (mode !== 'legacy' && mode !== 'solicitud') await expect(page.locator('[data-mapkit-falso]')).toBeVisible();
 }
 const pin = (page: any) => page.evaluate(() => (window as any).__mk?.pin() ?? null);
 const changes = (page: any) => page.evaluate(() => (window as any).probe.changes);
@@ -109,8 +109,8 @@ test('editar conserva el punto guardado sin emitir cambios al abrir', async ({ p
   await expect(page.locator('input[name=lat]')).toHaveValue('20.9674');
 });
 
-test('los consumidores sin preview inicial conservan mapa oculto al abrir y quitar', async ({ page }) => {
-  await render(page, 'legacy');
+for (const mode of ['legacy', 'solicitud']) test(`el consumidor ${mode} conserva mapa oculto al abrir y quitar`, async ({ page }) => {
+  await render(page, mode);
   await expect(page.locator('[data-mapkit-falso]')).toHaveCount(0);
   await page.getByRole('textbox').fill('Mérida');
   await page.getByRole('button', { name: /Mérida/ }).click();

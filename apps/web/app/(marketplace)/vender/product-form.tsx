@@ -1309,6 +1309,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <input type="hidden" name="delivery_radius_km" value={locationData.radius} />
         {!isEdit && <p className="text-xs text-muted-foreground">Elige en el mapa dónde realizarás la entrega.</p>}
         <DeliveryMap
+          showMapInitially
           showRadiusControl={false}
           showRadiusPreview={false}
           initialLat={initialValues?.ubicacion_lat ?? undefined}
