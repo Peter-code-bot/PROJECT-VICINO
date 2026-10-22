@@ -100,23 +100,23 @@ async function test() {
   for (const descripcion of [undefined, "", "   ", "ok"]) {
     await run(`crear con descripción ${JSON.stringify(descripcion)} y estado omitido`, async () => {
       const result = await invoke("createProduct", form({ ...base, ...(descripcion === undefined ? {} : { descripcion }) }));
-      assert.equal(result.redirect, "/comida/producto-prueba");
+      assert.equal(result.redirect, "/perfil?tab=products");
       assert.equal(state.record.descripcion, descripcion?.trim() ?? ""); assert.equal(state.record.estado, null);
     });
   }
   await run("crear ambos campos vacíos no inventa condición", async () => {
     const result = await invoke("createProduct", form({ ...base, descripcion: "", estado: "" }));
-    assert.equal(result.redirect, "/comida/producto-prueba");
+    assert.equal(result.redirect, "/perfil?tab=products");
     assert.equal(state.record.descripcion, ""); assert.equal(state.record.estado, null);
   });
   await run("crear sólo con condición conserva descripción vacía", async () => {
     const result = await invoke("createProduct", form({ ...base, estado: "bueno" }));
-    assert.equal(result.redirect, "/comida/producto-prueba");
+    assert.equal(result.redirect, "/perfil?tab=products");
     assert.equal(state.record.descripcion, ""); assert.equal(state.record.estado, "bueno");
   });
   await run("servicio sin descripción ni condición", async () => {
     const result = await invoke("createProduct", form({ ...base, tipo: "servicio", categories: JSON.stringify([{ slug: "servicios-hogar", is_primary: true }]) }));
-    assert.equal(result.redirect, "/servicios-hogar/producto-prueba");
+    assert.equal(result.redirect, "/perfil?tab=products");
     assert.equal(state.record.descripcion, ""); assert.equal(state.record.estado, null);
   });
   await run("crear conserva descripción y condición válidas", async () => {
@@ -139,7 +139,7 @@ async function test() {
   }
   await run("editar vacíos limpia descripción y estado", async () => {
     const result = await invoke("updateProductFull", PRODUCT_ID, form({ descripcion: "", estado: "" }));
-    assert.equal(result.redirect, "/seller/listings");
+    assert.equal(result.redirect, "/perfil?tab=products");
     assert.equal(state.record.descripcion, ""); assert.equal(state.record.estado, null);
   });
   await run("editar campos omitidos preserva valores", async () => {
