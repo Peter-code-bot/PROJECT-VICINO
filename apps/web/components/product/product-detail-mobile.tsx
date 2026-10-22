@@ -125,9 +125,11 @@ export function ProductDetailMobile({
           <LocationBanner ubicacion={product.ubicacion} productId={product.id} version={product.updated_at} available={product.location_map_available ?? false} layout="mobile" />
         </div>
 
-        <div>
-          <DescriptionBlock descripcion={product.descripcion} />
-        </div>
+        {product.descripcion?.trim() ? (
+          <div>
+            <DescriptionBlock descripcion={product.descripcion} />
+          </div>
+        ) : null}
 
         <div>
           <PaymentChips

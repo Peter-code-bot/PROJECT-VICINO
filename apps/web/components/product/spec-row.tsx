@@ -7,16 +7,13 @@ interface SpecRowProps {
   createdAt: string;
   /**
    * Free-text color. Pattern B (MP#08 #3): the COLOR column appears only
-   * when color has a value AND the listing is a producto. Otherwise the
-   * grid keeps the legacy 3-col / 2-col layout untouched (zero visual
-   * regression for the 242 existing rows without color).
+   * when color has a value AND the listing is a producto. Optional cells
+   * take space only when populated; delivery and publication date remain.
    */
   color?: string | null;
   /**
-   * Listing type. Optional for backward compatibility: when omitted, the
-   * row keeps the legacy 3-column layout (ESTADO + ENTREGA + PUBLICADO).
-   * When set to "servicio", the ESTADO column is hidden because physical
-   * condition does not apply to services; the grid collapses to 2 columns.
+   * Services have no physical condition or color. For products, omit either
+   * cell when its value is absent and share the row across the remaining cells.
    */
   tipo?: string | null;
 }
@@ -38,10 +35,10 @@ interface SpecCellProps {
 function SpecCell({ label, value }: SpecCellProps) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center">
-      <span className="text-[10px] uppercase tracking-wider text-fg-dim">
+      <span className="w-full wrap-anywhere text-[10px] uppercase tracking-wider text-fg-dim">
         {label}
       </span>
-      <span className="text-sm font-semibold leading-tight text-fg">{value}</span>
+      <span className="w-full wrap-anywhere text-sm font-semibold leading-tight text-fg">{value}</span>
     </div>
   );
 }
@@ -49,21 +46,14 @@ function SpecCell({ label, value }: SpecCellProps) {
 export function SpecRow({ estado, deliveryLabel, createdAt, color, tipo }: SpecRowProps) {
   const isService = tipo === "servicio";
   const colorTrimmed = color?.trim() ?? "";
-  // Pattern B: COLOR cell only when the product (not service) has a non-empty
-  // color value. Without it the grid stays at 3 cols (or 2 for services),
-  // preserving zero visual regression for rows where color is NULL/empty.
+  const hasCondition = !isService && Boolean(estado?.trim());
   const hasColor = !isService && colorTrimmed.length > 0;
-  const gridClass = isService
-    ? "grid-cols-2"
-    : hasColor
-      ? "grid-cols-4"
-      : "grid-cols-3";
 
   return (
     <div
-      className={`grid ${gridClass} gap-2 rounded-[var(--r-lg)] product-card-custom p-3`}
+      className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,3rem),1fr))] gap-2 rounded-[var(--r-lg)] product-card-custom p-3"
     >
-      {!isService && (
+      {hasCondition && (
         <SpecCell label="ESTADO" value={formatProductCondition(estado)} />
       )}
       {hasColor && <SpecCell label="COLOR" value={colorTrimmed} />}

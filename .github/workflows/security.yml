@@ -122,6 +122,11 @@ jobs:
       - name: Type check
         run: cd apps/web && pnpm type-check
 
+      - name: Validacion y guardado de campos opcionales
+        run: |
+          pnpm exec tsx scripts/test-product-validator.ts
+          node scripts/test-product-optional-actions.cjs
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba

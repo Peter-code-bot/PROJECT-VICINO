@@ -1214,13 +1214,11 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       {/* Descripcion */}
       <div className="space-y-2">
         <label htmlFor="descripcion" className="text-sm font-medium text-foreground/80">
-          Descripción detallada
+          Descripción detallada <span className="text-muted-foreground font-normal">(opcional)</span>
         </label>
         <textarea
           id="descripcion"
           name="descripcion"
-          required
-          minLength={10}
           maxLength={5000}
           rows={5}
           defaultValue={initialValues?.descripcion ?? ""}
@@ -1233,12 +1231,11 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       {tipoSeleccionado === "producto" && (
         <div className="space-y-2 pt-2">
           <label htmlFor="estado" className="text-sm font-medium text-foreground/80">
-            Estado del producto
+            Estado del producto <span className="text-muted-foreground font-normal">(opcional)</span>
           </label>
           <select
             id="estado"
             name="estado"
-            required
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
             className="w-full rounded-xl product-card-btn px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 appearance-none"
@@ -1250,8 +1247,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
               paddingRight: "2.5rem",
             }}
           >
-            <option value="" disabled>
-              Selecciona el estado
+            <option value="">
+              Sin especificar
             </option>
             <option value="nuevo">Nuevo (sellado, sin abrir)</option>
             <option value="como_nuevo">Como nuevo (usado pocas veces)</option>

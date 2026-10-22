@@ -24,6 +24,26 @@ const base = {
 
 const casos: Array<[string, unknown, boolean]> = [
   [
+    "producto sin descripción ni estado -> debe PASAR",
+    { ...base, descripcion: undefined, tipo: "producto", categories: [{ slug: "comida", is_primary: true }] },
+    true,
+  ],
+  ...["", "   ", "ok"].map((descripcion): [string, unknown, boolean] => [
+    `descripción ${JSON.stringify(descripcion)} sin estado -> debe PASAR`,
+    { ...base, descripcion, estado: null, tipo: "producto", categories: [{ slug: "comida", is_primary: true }] },
+    true,
+  ]),
+  [
+    "descripción de más de 5000 caracteres -> debe FALLAR",
+    { ...base, descripcion: "a".repeat(5001), tipo: "producto", categories: [{ slug: "comida", is_primary: true }] },
+    false,
+  ],
+  [
+    "estado inventado -> debe FALLAR",
+    { ...base, estado: "inventado", tipo: "producto", categories: [{ slug: "comida", is_primary: true }] },
+    false,
+  ],
+  [
     "producto + categoria de producto  -> debe PASAR",
     { ...base, tipo: "producto", categories: [{ slug: "comida", is_primary: true }] },
     true,
@@ -91,6 +111,17 @@ const parcialMala = updateProductSchema.safeParse({
 const okParcialMala = parcialMala.success === false;
 if (!okParcialMala) fallos += 1;
 console.log(`${okParcialMala ? "  ok  " : "  FALLA"} edicion con los dos campos incoherentes -> debe FALLAR`);
+
+for (const [nombre, entrada, descripcion, estado] of [
+  ["borrar descripción y estado", { descripcion: "", estado: null }, "", null],
+  ["limpiar espacios", { descripcion: "   " }, "", undefined],
+  ["edición parcial conserva campos omitidos", { titulo: "Otro titulo" }, undefined, undefined],
+] as const) {
+  const r = updateProductSchema.safeParse(entrada);
+  const ok = r.success && r.data.descripcion === descripcion && r.data.estado === estado;
+  if (!ok) fallos += 1;
+  console.log(`${ok ? "  ok  " : "  FALLA"} ${nombre}`);
+}
 
 console.log(fallos === 0 ? "\nTodos los casos pasan." : `\n${fallos} caso(s) FALLAN.`);
 process.exit(fallos === 0 ? 0 : 1);
