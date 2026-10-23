@@ -1,3 +1,8 @@
+## 23-oct-2026 — VENTA-CHAT-01: migración remota aplicada con autorización
+
+- Aplicada `20261023010000` en VICINO/main mediante SQL Editor del navegador ChatGPT, tras ensayo con rollback. DDL+ledger atómicos; MD5 `1d84d16167eaf5636217829e43abf3b4`. Se conservaron46mensajes,9ventas,4reseñas y reputación de67perfiles por hashes; RLS activa. Roles SQL reales: lectura de2operaciones por participante, tercero/anon rechazados en historial/escritura y lectura pública de3reseñas.
+- Preservada identidad pública de negocio de la RPC instalada; prueba nueva incluida. SQL27/27, acciones28/28 y guard de columna generada aprobados. Tipos regenerados desde el artefacto CI de producción, incluido desfase anterior MEDIA-OPT-01. Tipos/lint/build exit0 (139avisos/0errores); actualización de PR80 en cierre.
+- Aplicación nueva, concurrencia de dos conexiones, Auth/Realtime y efectos reales, Android/iPhone continúan pendientes. Sin merge ni despliegue de aplicación. Evidencia literal, hash/SHA/CI y estado vigente en [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), [plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
 ## 23-oct-2026 — VENTA-CHAT-01: correcciones tras revisión de Antigravity
 
 - Implementación corregida en `feat/venta-chat-01-20261022`, sobre `origin/master` `eeeff8b3`. Contratos atómicos por ID, condiciones inmutables, autorización, historial compartido con paginación y retorno al producto; reseñas del local independientes y verificación calculada en servidor. Migración aditiva y reversión que conserva datos preparadas para revisión.

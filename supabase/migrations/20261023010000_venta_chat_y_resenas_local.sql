@@ -232,7 +232,8 @@ BEGIN
     p_cantidad, p_metodo_pago, p_notas, p_tipo_entrega, p_clave, p_revision_esperada
   ) RETURNING * INTO v_venta;
 
-  SELECT nombre INTO v_nombre FROM public.profiles WHERE id = v_actor;
+  SELECT public.profile_public_name(nombre, es_vendedor, seller_type, nombre_negocio)
+    INTO v_nombre FROM public.profiles WHERE id = v_actor;
   INSERT INTO public.messages (chat_id, autor_id, texto, publicacion_id, sale_confirmation_id, message_type)
     VALUES (p_chat_id, v_actor,
       chr(129309) || ' ' || coalesce(v_nombre, 'Alguien') || ' ha iniciado una confirmaci' || chr(243) || 'n de venta por "' ||

@@ -118,6 +118,8 @@ async function main() {
   await db.exec(await migration("20260927160000_resenas_sin_columnas_forjables.sql"));
 
   await db.exec(await migration("20261015164501_mcs_chat_personal_state_security.sql"));
+  const publicIdentity = await migration("20261003213000_identidad_publica_modo_tienda.sql");
+  await db.exec(publicIdentity.slice(0, publicIdentity.indexOf("REVOKE ALL")));
 
   // Synthetic pre-feature intent: never backfill its terms from a current listing.
   const legacyId = "50000000-0000-4000-8000-000000000001";
@@ -482,6 +484,22 @@ async function main() {
     assert.equal(await scalar("SELECT reviews_count_as_seller FROM profiles WHERE id=$1",[B]),0);
     await db.query("DELETE FROM reviews WHERE reviewer_id=$1",[C]);
     assert.equal(await scalar("SELECT reviews_count FROM profiles WHERE id=$1",[B]),0);
+  });
+  await test("manual proposal preserves the installed business public name",async()=>{
+    await db.exec("BEGIN");
+    try {
+      await db.query("UPDATE profiles SET nombre='Private personal name',es_vendedor=true,seller_type='business',nombre_negocio='Public business name' WHERE id=$1",[B]);
+      await db.query("UPDATE products_services SET estatus='disponible',is_hidden=false WHERE id=$1",[pb]);
+      await db.query("UPDATE sale_confirmations SET status='cancelled',cancelled_by=$1 WHERE chat_id=$2 AND status='pending_confirmation'",[B,chat]);
+      await db.query("UPDATE chats SET ultimo_producto_id=$1 WHERE id=$2",[pb,chat]);
+      const revision=await scalar("SELECT producto_revision FROM chats WHERE id=$1",[chat]);
+      const key=await scalar("SELECT gen_random_uuid()");
+      await db.exec("SET LOCAL ROLE authenticated");
+      await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[B]);
+      const created=await scalar("SELECT iniciar_confirmacion_venta($1,$2,$3,$4,30,1)",[chat,pb,revision,key]);
+      const message=await scalar("SELECT texto FROM messages WHERE sale_confirmation_id=$1 AND message_type='sale_proposed'",[created.confirmation.id]);
+      assert.match(message,/Public business name/); assert.doesNotMatch(message,/Private personal name/);
+    } finally { await db.exec("ROLLBACK"); }
   });
   await test("rollback preserves accumulated local rows and live trigger dependencies",async()=>{
     await asActor(C,"SELECT publicar_resena_local($1,4,'Keep this row')",[B]);
