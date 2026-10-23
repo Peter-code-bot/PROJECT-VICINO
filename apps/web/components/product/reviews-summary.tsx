@@ -1,17 +1,17 @@
 "use client";
 
 import { publicProfileName } from "@vicino/shared";
-
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { Star, Plus } from "lucide-react";
 import { RatingStars } from "@/components/shared/rating-stars";
 import type { ProductDetailReview } from "./types";
+import type { SellerReviewSummary } from "@/lib/reviews/contracts";
 
 interface ReviewsSummaryProps {
   reviews: ProductDetailReview[];
-  averageRating: number;
-  reviewsCount: number;
+  summary: SellerReviewSummary;
   onOpenReviews: () => void;
+  onAddReview?: () => void;
 }
 
 interface BreakdownRow {
@@ -20,17 +20,11 @@ interface BreakdownRow {
   pct: number;
 }
 
-function buildBreakdown(reviews: ProductDetailReview[]): BreakdownRow[] {
-  const buckets: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  for (const r of reviews) {
-    const rounded = Math.max(1, Math.min(5, Math.round(r.rating)));
-    buckets[rounded] = (buckets[rounded] ?? 0) + 1;
-  }
-  const total = reviews.length;
-  return [5, 4, 3, 2, 1].map((star) => ({
+function buildBreakdown(summary: SellerReviewSummary): BreakdownRow[] {
+  return ([5, 4, 3, 2, 1] as const).map((star) => ({
     star,
-    count: buckets[star] ?? 0,
-    pct: total === 0 ? 0 : Math.round(((buckets[star] ?? 0) * 100) / total),
+    count: summary.buckets[star],
+    pct: summary.count === 0 ? 0 : Math.round((summary.buckets[star] * 100) / summary.count),
   }));
 }
 
@@ -45,11 +39,12 @@ function truncate(s: string, n: number): string {
 
 export function ReviewsSummary({
   reviews,
-  averageRating,
-  reviewsCount,
+  summary,
   onOpenReviews,
+  onAddReview,
 }: ReviewsSummaryProps) {
-  const breakdown = buildBreakdown(reviews);
+  const breakdown = buildBreakdown(summary);
+  const { count: reviewsCount, average: averageRating } = summary;
   const best = pickBestReview(reviews);
   const bestReviewer = best
     ? Array.isArray(best.profiles)
@@ -59,10 +54,20 @@ export function ReviewsSummary({
   const totalLabel =
     reviewsCount === 1 ? `${reviewsCount} reseña` : `${reviewsCount} reseñas`;
 
-  if (!reviews || reviews.length === 0) {
+  if (reviewsCount === 0) {
     return (
-      <section className="flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
-        <div className="flex items-center gap-3">
+      <section className="relative flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
+        {onAddReview && (
+          <button
+            type="button"
+            onClick={onAddReview}
+            aria-label="Escribir reseña del local"
+            className="absolute top-2.5 right-2.5 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-full text-brand-hi hover:bg-brand-tint transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand z-10"
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
+        <div className="flex items-center gap-3 pr-12">
           <span className="font-display text-3xl font-semibold leading-none text-fg-muted">
             -.-
           </span>
@@ -80,8 +85,18 @@ export function ReviewsSummary({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
-      <div className="flex items-center gap-3">
+    <section className="relative flex flex-col gap-4 rounded-[var(--r-lg)] product-card-custom p-4">
+      {onAddReview && (
+        <button
+          type="button"
+          onClick={onAddReview}
+          aria-label="Escribir reseña del local"
+          className="absolute top-2.5 right-2.5 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-full text-brand-hi hover:bg-brand-tint transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand z-10"
+        >
+          <Plus className="h-5 w-5" aria-hidden="true" />
+        </button>
+      )}
+      <div className="flex items-center gap-3 pr-12">
         <span className="font-display text-3xl font-semibold leading-none text-fg">
           {Number(averageRating).toFixed(1)}
         </span>
@@ -136,7 +151,7 @@ export function ReviewsSummary({
               )}
             </div>
             <span className="truncate text-xs font-semibold text-fg">
-              {publicProfileName(bestReviewer, "Comprador verificado")}
+              {publicProfileName(bestReviewer, "Usuario")}
             </span>
             <RatingStars
               rating={best.rating}
@@ -153,7 +168,7 @@ export function ReviewsSummary({
       <button
         type="button"
         onClick={onOpenReviews}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] bg-card-2 px-4 py-2.5 text-sm font-semibold text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-brand-tint"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] bg-card-2 px-4 py-2.5 text-sm font-semibold text-brand-hi shadow-[inset_0_0_0_1px_var(--brand-tint-strong)] transition-colors hover:bg-brand-tint focus-visible:ring-2 focus-visible:ring-brand"
       >
         Ver {totalLabel}
         <span aria-hidden>→</span>

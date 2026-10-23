@@ -11,11 +11,11 @@ import { createClient } from "@/lib/supabase/server";
 import { ProductView } from "@/components/product/product-view";
 import { ProductDetailMobile } from "@/components/product/product-detail-mobile";
 import { ProductDetailDesktop } from "@/components/product/product-detail-desktop";
+import { readSellerReviews } from "@/lib/reviews/read";
 import type {
   ProductDetailCoupon,
   ProductDetailData,
   ProductDetailExtras,
-  ProductDetailReview,
 } from "@/components/product/types";
 
 interface Props {
@@ -139,20 +139,7 @@ export default async function ProductDetailPage({ params }: Props) {
     ? product.profiles[0]
     : product.profiles;
 
-  const reviewsQuery = supabase
-    .from("reviews")
-    .select(
-      `
-      id, rating, comentario, created_at, review_type, respuesta, respuesta_fecha, reviewer_id,
-      profiles!reviewer_id(nombre, foto, trust_level, es_vendedor, seller_type, nombre_negocio),
-      products_services!product_id(id, titulo, categoria, slug, imagen_principal, product_categories(is_primary, categories(slug)))
-    `
-    )
-    .eq("reviewed_id", product.creador_id)
-    .eq("review_type", "buyer_to_seller")
-    .eq("visible", true)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const reviewsQuery = readSellerReviews(supabase, product.creador_id);
 
   const couponsQuery = supabase
     .from("coupons")
@@ -177,16 +164,14 @@ export default async function ProductDetailPage({ params }: Props) {
   })();
 
   // Start both queries now; only their local Suspense boundaries wait for them.
-  const extras: Promise<ProductDetailExtras> = Promise.all([reviewsQuery, couponsQuery])
+  const extras: Promise<ProductDetailExtras> = Promise.allSettled([reviewsQuery, couponsQuery])
     .then(([reviewResult, couponResult]) => ({
-      reviews: (reviewResult.data ?? []) as ProductDetailReview[],
-      coupons: (couponResult.data ?? []) as ProductDetailCoupon[],
-      ...(reviewResult.error ? { reviewsError: "No se pudieron cargar las reseñas." } : {}),
-      ...(couponResult.error ? { couponsError: "No se pudieron cargar los cupones." } : {}),
-    }), () => ({
-      reviews: [], coupons: [],
-      reviewsError: "No se pudieron cargar las reseñas.",
-      couponsError: "No se pudieron cargar los cupones.",
+      reviews: reviewResult.status === "fulfilled" ? reviewResult.value.reviews : [],
+      ...(reviewResult.status === "fulfilled" ? {
+        reviewSummary: reviewResult.value.summary, ownLocalReview: reviewResult.value.own_local_review,
+      } : { reviewsError: "No se pudieron cargar las reseñas." }),
+      coupons: couponResult.status === "fulfilled" ? (couponResult.value.data ?? []) as ProductDetailCoupon[] : [],
+      ...(couponResult.status === "rejected" || couponResult.value.error ? { couponsError: "No se pudieron cargar los cupones." } : {}),
     }));
 
   let isFavorite = false;

@@ -97,11 +97,25 @@ async function main() {
     "@/lib/haptics": "export const hapticMedium=()=>{};",
     "@/hooks/use-visible-chat-read": "export const useVisibleChatRead=()=>{};",
     "@/hooks/use-firmas-adjuntos": "export const useFirmasAdjuntos=()=>new Map();",
+    // S04-A owns message/sales transport. The operation store and drawer have
+    // separate actual-component coverage in test-venta-chat-ui.ts.
+    "@/hooks/use-chat-operations": `const refresh=async()=>true,loadMore=async()=>{},reveal=()=>{};
+      export function useChatOperations(_chat,_ids,_restoration,enabled=true){
+        // Only mirror sale IDs actually delivered by ChatWindow's real sales
+        // reconciler. Reading all fixture rows would hide lost/late snapshots.
+        const delivered=new Set(_ids);
+        const rows=enabled?window.s04.sales.filter(s=>delivered.has(s.id)).map(s=>({...s,intentMessageId:null,saleId:s.id})):[];
+        return {operations:rows,history:rows,ready:enabled,error:null,nextCursor:null,loadingMore:false,
+          refresh,loadMore,reveal,mutate:async()=>false,isPending:()=>false,errorFor:()=>undefined};
+      }`,
     "@/components/moderation/report-menu-button": "export const ReportMenuButton=()=>null;",
     "@/components/ui/user-avatar": "export const UserAvatar=()=>null;",
-    "./sale-confirmation-card": "import React from 'react';export const SaleConfirmationCard=p=>React.createElement('div',{'data-sale-id':p.confirmation.id},'Venta '+p.confirmation.id);export const SaleConfirmationBanner=p=>React.createElement('button',{onClick:p.onToggle,'aria-expanded':p.expanded,'aria-controls':p.controlsId},'Confirmación de venta');export const StatusPill=()=>null;export const ConfirmationStatus=()=>null;",
+    "./chat-sales-history-drawer": `import React from 'react';export const ChatSalesHistoryDrawer=p=>p.open?
+      React.createElement('div',{'data-transport-history':true},
+        React.createElement('button',{onClick:p.onClose},'Cerrar historial'),
+        ...p.model.history.map(s=>React.createElement('div',{key:s.id,'data-sale-id':s.id},'Venta '+s.id))):null;`,
     "./sale-confirmation-form": `import React from 'react';export const SaleConfirmationForm=p=>React.createElement('button',{
-      onClick:()=>{window.s04.sales=[{id:'created-sale',status:'pending_confirmation',created_at:'2026-09-25T10:00:01Z'}];p.onCreated();}
+      onClick:()=>{window.s04.sales=[{id:'created-sale',status:'pending_confirmation',created_at:'2026-09-25T10:00:01Z'}];p.onCreated();p.onClose();}
     },'Crear venta sintética');`,
     "./message-photos": "export const MessagePhotos=()=>null;",
     "./photo-tray": "export const PhotoPickerButton=()=>null;export const PhotoTray=()=>null;export const admitirFotos=()=>({fotos:[],aviso:''});",
@@ -201,7 +215,7 @@ async function main() {
 
       // Preserve PR68: a chat with no available products still sends normally.
       await mount({ availableProducts: false });
-      await expect(page.getByRole("button", { name: "Confirmar Venta", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Confirmar venta", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Elegir producto", exact: true })).toHaveCount(0);
       await send("Chat sin catálogo disponible");
       await page.evaluate(() => { (window as any).s04.finishSend(0); });
@@ -255,7 +269,8 @@ async function main() {
       await noStatusWasShown();
       await releaseQueries();
       await expect(page.getByText("Producto actualizado", { exact: true }).first()).toBeVisible();
-      await expect(page.getByRole("button", { name: "Confirmar Venta", exact: true })).toHaveCount(0);
+      // The header now opens the existing operation rather than disappearing.
+      await expect(page.getByRole("button", { name: "Confirmar venta", exact: true })).toBeEnabled();
       await expect.poll(() => page.evaluate(() => { const f=(window as any).s04; return f.queries.filter((url: string) => url.includes("/sale_confirmations?")).length-f.initialSaleQueries; })).toBe(2);
       await noStatusWasShown();
       assert.equal(await channelCount(), 1);
@@ -276,14 +291,17 @@ async function main() {
       await releaseQueries();
       await expect.poll(() => page.evaluate(() => { const f=(window as any).s04; return f.queries.filter((url: string) => url.includes("/sale_confirmations?")).length-f.initialSaleQueries; })).toBe(1);
       await noStatusWasShown();
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await page.evaluate(() => { (window as any).s04.blockTable = "chats"; });
       await page.getByRole("button", { name: "Crear venta sintética", exact: true }).click();
       await blocked();
       await noStatusWasShown();
       await releaseQueries();
       await expect.poll(() => page.evaluate(() => { const f=(window as any).s04; return f.queries.filter((url: string) => url.includes("/sale_confirmations?")).length-f.initialSaleQueries; })).toBe(2);
-      await expect(page.getByRole("button", { name: "Confirmar Venta", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Crear venta sintética", exact: true })).toHaveCount(0);
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
+      await expect(page.locator('[data-sale-id="created-sale"]')).toHaveCount(1);
+      await page.getByRole("button", { name: "Cerrar historial", exact: true }).click();
       await noStatusWasShown();
       passed++;
 
@@ -378,7 +396,10 @@ async function main() {
       await expect(page.getByText("Visible aunque fallen ventas", { exact: true })).toHaveCount(1);
       await expect(page.getByRole("status")).toContainText("No se pudieron actualizar las confirmaciones.");
       await expect(page.getByRole("status")).not.toContainText("No se pudieron actualizar los mensajes.");
-      await expect(page.getByRole("button", { name: "Confirmar Venta", exact: true })).toHaveCount(0);
+      // The persistent header remains available; no new-sale submit is mounted
+      // while the deferred sales snapshot is unavailable.
+      await expect(page.getByRole("button", { name: "Confirmar venta", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Crear venta sintética", exact: true })).toHaveCount(0);
       await page.evaluate(() => { (window as any).s04.failTable = ""; });
       await page.getByRole("button", { name: "Reintentar", exact: true }).click();
       await synced();
@@ -388,7 +409,7 @@ async function main() {
       const sale = { id: "saved-sale", buyer_id: "buyer", seller_id: "seller", status: "pending_confirmation", created_at: "2026-09-25T10:00:01Z" };
       await mount({ blockTable: "sale_confirmations", initialSales: [sale], sales: [sale] });
       await blocked();
-      await page.getByRole("button", { name: /Confirmación de venta/ }).click();
+      await page.getByRole("button", { name: "Abrir historial de ventas del chat", exact: true }).click();
       await expect(page.locator('[data-sale-id="saved-sale"]')).toHaveCount(1);
       await page.evaluate(() => { const f=(window as any).s04; f.append(3,"Mensajes antes de ventas"); window.dispatchEvent(new Event("focus")); });
       await expect(page.getByText("Mensajes antes de ventas", { exact: true })).toHaveCount(1);
@@ -402,6 +423,7 @@ async function main() {
       await page.getByRole("button", { name: "Reintentar", exact: true }).click();
       await expect(page.getByText(/No se pudieron actualizar las confirmaciones/)).toHaveCount(0);
       await expect(page.locator('[data-sale-id="saved-sale"]')).toHaveCount(1);
+      await page.getByRole("button", { name: "Cerrar historial", exact: true }).click();
       passed++;
 
       // HTTP starts without SUBSCRIBED and cannot certify live connectivity.
@@ -447,13 +469,16 @@ async function main() {
       // A denied authorization fences outstanding sales and all WS callbacks.
       await mount({ blockTable: "sale_confirmations", initialSales: [sale], sales: [sale] });
       await blocked();
+      await page.getByRole("button", { name: "Abrir historial de ventas del chat", exact: true }).click();
+      await expect(page.locator('[data-sale-id="saved-sale"]')).toHaveCount(1);
       await page.evaluate(() => { const f=(window as any).s04; f.denyChats=true; window.dispatchEvent(new Event("focus")); });
       await expect(page.getByRole("status").filter({hasText:"Esta conversaci\u00f3n ya no est\u00e1 disponible para tu cuenta."})).toHaveCount(1);
       await releaseQueries();
       await page.evaluate(() => { const f=(window as any).s04; f.history[0].emit("messages","INSERT",{...f.rows[0],id:"denied-echo",texto:"Eco tras denegaci?n"}); f.history[0].emit("sale_confirmations","INSERT",f.sales[0]); });
       await page.evaluate(async () => { await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); });
-      await expect(page.getByRole("button", { name: /Confirmaci\u00f3n de venta/ })).toHaveCount(0);
+      await expect(page.locator('[data-transport-history]')).toHaveCount(0);
       await expect(page.locator('[data-sale-id]')).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Confirmar venta", exact: true })).toBeDisabled();
       await expect(page.getByText("Eco tras denegaci?n",{exact:true})).toHaveCount(0);
       await expect(page.getByPlaceholder("Escribe un mensaje...")).toBeDisabled();
       passed++;

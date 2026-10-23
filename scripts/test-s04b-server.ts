@@ -65,10 +65,12 @@ async function load(state: ReturnType<typeof fixture>) {
         "@/lib/supabase/server": "export const createClient=async()=>globalThis.state.client;",
         "@/lib/revalidate-session": "export const revalidatePath=async(path)=>globalThis.state.invalidated.push(path);",
         "next/navigation": "export const redirect=()=>{throw new Error('unexpected redirect');};",
+        "next/server": "export const after=callback=>globalThis.state.calls.push(['after',typeof callback]);",
+        "@/lib/wallet/sincronizar": "export const drenarColaWallet=async()=>{};",
         "@sentry/nextjs": "export const captureException=()=>{};export const captureMessage=()=>{};",
         "@/lib/rate-limit": "export const writeRateLimit={};export const chatReadRateLimit={};export const enforce=async()=>globalThis.state.rate;",
       };
-      const output = await esbuild.build({ entryPoints: [path.join(web, "app/(marketplace)/chat/actions.ts")],
+      const output = await esbuild.build({ stdin: { contents: 'export * from "./app/(marketplace)/chat/actions"; export * from "./app/(marketplace)/chat/sales-actions";', resolveDir: web, loader: "ts" },
         bundle: true, platform: "node", format: "cjs", packages: "external", write: false,
         tsconfig: path.join(web, "tsconfig.json"), plugins: [{ name: "test-boundaries", setup(build: any) {
           build.onResolve({ filter: /.*/ }, (args: any) => Object.hasOwn(mocks, args.path) ? { path: args.path, namespace: "mock" } : undefined);
@@ -183,4 +185,31 @@ test("confirmation is a single authenticated RPC and revalidates its server chat
   assert.deepEqual(plain(f.calls.find(c => c[0] === "rpc")), ["rpc", "confirmar_venta", { p_confirmacion_id: saleId }]);
   assert.deepEqual(f.invalidated, [`/chat/${chatId}`]);
   assert.equal(f.calls.filter(c => c[0] === "from").length, 0);
+});
+
+test("operation reads reject malformed input before Auth and require a session", async () => {
+  let f=fixture();let actions=await load(f);
+  assert.ok((await actions.getChatOperations({chatId,cursor:{createdAt:"bad",id:saleId}})).error);
+  assert.equal(f.calls.length,0);
+  f=fixture({guest:true});actions=await load(f);
+  assert.ok((await actions.getChatOperations({chatId})).error);
+  assert.equal(f.calls.filter(c=>c[0]==="rpc").length,0);
+});
+test("operation reads validate the complete RPC response and sanitize transport/errors", async () => {
+  const f=fixture({rpcData:{items:[],nextCursor:null}}),actions=await load(f);
+  assert.deepEqual(plain(await actions.getChatOperations({chatId,ids:[saleId],limit:100})),{items:[],nextCursor:null});
+  assert.deepEqual(plain(f.calls.find(c=>c[0]==="rpc")),["rpc","get_chat_operations",{p_chat_id:chatId,p_limit:100,p_ids:[saleId]}]);
+  for(const options of [{rpcData:{items:[{id:saleId}],nextCursor:null}},{rpcThrows:true},{rpcError:{code:"PT404",message:"private database detail"}}]){
+    const other=fixture(options);const result=await(await load(other)).getChatOperations({chatId});
+    assert.ok(result.error);assert.doesNotMatch(result.error,/private database detail/);assert.deepEqual(plain(result.items),[]);
+  }
+});
+test("purchase responses validate explicit total/quantity and never forward caller roles", async () => {
+  const f=fixture({rpcData:{success:true,status:"accepted",chat_id:chatId,repeated:false,confirmation:{id:saleId}}}),actions=await load(f);
+  assert.equal((await actions.respondPurchaseIntent({messageId:saleId,action:"aceptar",price:12})).code,"INVALID_INPUT");
+  assert.equal(f.calls.length,0);
+  const result=await actions.respondPurchaseIntent({messageId:saleId,action:"aceptar",price:12.5,quantity:2,notes:"Dos unidades",buyerId:C,sellerId:C});
+  assert.equal(result.success,true);
+  assert.deepEqual(plain(f.calls.find(c=>c[0]==="rpc")),["rpc","responder_intencion_compra",{p_message_id:saleId,p_accion:"aceptar",p_precio:12.5,p_cantidad:2,p_notas:"Dos unidades"}]);
+  assert.equal(f.calls.filter(c=>c[0]==="after").length,0);
 });

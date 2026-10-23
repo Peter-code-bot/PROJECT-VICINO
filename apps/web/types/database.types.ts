@@ -1355,6 +1355,8 @@ export type Database = {
           clave_idempotencia: string | null
           created_at: string | null
           id: string
+          intent_snapshot: Json | null
+          intent_status: string | null
           is_hidden: boolean
           leido_por_comprador: boolean | null
           leido_por_vendedor: boolean | null
@@ -1370,6 +1372,8 @@ export type Database = {
           clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
+          intent_snapshot?: Json | null
+          intent_status?: string | null
           is_hidden?: boolean
           leido_por_comprador?: boolean | null
           leido_por_vendedor?: boolean | null
@@ -1385,6 +1389,8 @@ export type Database = {
           clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
+          intent_snapshot?: Json | null
+          intent_status?: string | null
           is_hidden?: boolean
           leido_por_comprador?: boolean | null
           leido_por_vendedor?: boolean | null
@@ -2060,7 +2066,8 @@ export type Database = {
           id: string
           is_hidden: boolean
           motivo_reporte: string | null
-          product_id: string
+          origen: string
+          product_id: string | null
           rating: number
           reportada: boolean | null
           respuesta: string | null
@@ -2068,7 +2075,7 @@ export type Database = {
           review_type: Database["public"]["Enums"]["review_type"]
           reviewed_id: string | null
           reviewer_id: string
-          sale_confirmation_id: string
+          sale_confirmation_id: string | null
           updated_at: string | null
           visible: boolean | null
         }
@@ -2080,7 +2087,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           motivo_reporte?: string | null
-          product_id: string
+          origen?: string
+          product_id?: string | null
           rating: number
           reportada?: boolean | null
           respuesta?: string | null
@@ -2088,7 +2096,7 @@ export type Database = {
           review_type: Database["public"]["Enums"]["review_type"]
           reviewed_id?: string | null
           reviewer_id: string
-          sale_confirmation_id: string
+          sale_confirmation_id?: string | null
           updated_at?: string | null
           visible?: boolean | null
         }
@@ -2100,7 +2108,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           motivo_reporte?: string | null
-          product_id?: string
+          origen?: string
+          product_id?: string | null
           rating?: number
           reportada?: boolean | null
           respuesta?: string | null
@@ -2108,7 +2117,7 @@ export type Database = {
           review_type?: Database["public"]["Enums"]["review_type"]
           reviewed_id?: string | null
           reviewer_id?: string
-          sale_confirmation_id?: string
+          sale_confirmation_id?: string | null
           updated_at?: string | null
           visible?: boolean | null
         }
@@ -2163,10 +2172,12 @@ export type Database = {
           precio_acordado: number
           product_id: string
           producto_revision: number | null
+          purchase_intent_message_id: string | null
           seller_confirmed: boolean | null
           seller_confirmed_at: string | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot: Json | null
           tipo_entrega: string | null
           updated_at: string | null
         }
@@ -2189,10 +2200,12 @@ export type Database = {
           precio_acordado: number
           product_id: string
           producto_revision?: number | null
+          purchase_intent_message_id?: string | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot?: Json | null
           tipo_entrega?: string | null
           updated_at?: string | null
         }
@@ -2215,14 +2228,23 @@ export type Database = {
           precio_acordado?: number
           product_id?: string
           producto_revision?: number | null
+          purchase_intent_message_id?: string | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot?: Json | null
           tipo_entrega?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sale_confirmations_purchase_intent_message_id_fkey"
+            columns: ["purchase_intent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_sale_chat"
             columns: ["chat_id"]
@@ -2923,6 +2945,14 @@ export type Database = {
       }
     }
     Functions: {
+      get_chat_operations: {
+        Args: { p_chat_id: string; p_cursor?: Json; p_limit?: number; p_ids?: string[] }
+        Returns: Json
+      }
+      leer_resenas_local: {
+        Args: { p_reviewed_id: string; p_offset?: number; p_limit?: number }
+        Returns: Json
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -4148,6 +4178,24 @@ export type Database = {
           p_imagenes?: string[]
           p_parent_post_id?: string
           p_texto: string
+        }
+        Returns: Json
+      }
+      publicar_resena_local: {
+        Args: {
+          p_comentario?: string
+          p_rating: number
+          p_reviewed_id: string
+        }
+        Returns: Json
+      }
+      responder_intencion_compra: {
+        Args: {
+          p_accion: string
+          p_precio?: number
+          p_cantidad?: number
+          p_notas?: string
+          p_message_id: string
         }
         Returns: Json
       }

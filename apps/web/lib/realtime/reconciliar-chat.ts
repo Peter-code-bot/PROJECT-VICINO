@@ -4,8 +4,8 @@ import type { ProductoActivoChat } from "@/lib/chat/producto-activo";
 
 export type Mensaje = Pick<Database["public"]["Tables"]["messages"]["Row"],
   "id" | "chat_id" | "autor_id" | "texto" | "attachments" | "created_at" | "leido_por_comprador" | "leido_por_vendedor">;
-export const CAMPOS_MENSAJE = "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor";
-export const CAMPOS_VENTA = "id, product_id, buyer_id, seller_id, precio_acordado, cantidad, metodo_pago, tipo_entrega, status, initiated_by, buyer_confirmed, seller_confirmed, created_at, products_services(titulo)";
+export const CAMPOS_MENSAJE = "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor, message_type, intent_status, publicacion_id, sale_confirmation_id";
+export const CAMPOS_VENTA = "id, product_id, buyer_id, seller_id, precio_acordado, cantidad, metodo_pago, tipo_entrega, status, initiated_by, buyer_confirmed, seller_confirmed, created_at, purchase_intent_message_id, products_services(id, titulo, slug, categoria, imagen_principal)";
 export type Cursor = { created_at: string; id: string };
 export type Intervalo = { desde: Cursor; hasta: Cursor };
 
