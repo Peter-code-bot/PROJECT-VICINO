@@ -44,6 +44,10 @@ async function rejects(run: () => Promise<unknown>, code: string) {
   await assert.rejects(run, (error: any) => error.code === code);
 }
 
+async function priceChanged(run: () => Promise<unknown>) {
+  await assert.rejects(run, (error: any) => error.code === "PT409" && error.hint === "price_changed");
+}
+
 async function test(name: string, run: () => Promise<void>) {
   await run(); tests++; console.log(`PASS ${name}`);
 }
@@ -66,7 +70,7 @@ async function main() {
     CREATE TABLE user_roles (user_id uuid, role text);
     CREATE TABLE user_blocks (blocker_id uuid, blocked_id uuid);
     CREATE TABLE products_services (id uuid PRIMARY KEY, creador_id uuid NOT NULL REFERENCES profiles(id),
-      titulo text NOT NULL, tipo text DEFAULT 'producto', slug text, categoria text DEFAULT 'otros', precio numeric(10,2), modo_precio text NOT NULL DEFAULT 'fijo',
+      titulo text NOT NULL, tipo text DEFAULT 'producto', slug text, categoria text DEFAULT 'otros', precio numeric(10,2), modo_precio text NOT NULL DEFAULT 'precio', precio_negociable boolean NOT NULL DEFAULT false,
       imagen_principal text, estatus text DEFAULT 'disponible', is_hidden boolean DEFAULT false,
       ventas_count integer NOT NULL DEFAULT 0);
     CREATE FUNCTION vicino_guard.cuenta_suspendida() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
@@ -78,6 +82,8 @@ async function main() {
       $$ BEGIN NEW.updated_at=now(); RETURN NEW; END $$;
   `);
 
+  // Load the real catalog constraints; the fixture must reject the obsolete mode.
+  await db.exec(await migration("20260819000000_products_services_modo_precio_column.sql"));
   await db.exec(await migration("20260320000007_sale_confirmations.sql"));
   await db.exec(await migration("20260320000008_reviews.sql"));
   await db.exec((await migration("20260320000009_chats_messages.sql"))
@@ -131,6 +137,19 @@ async function main() {
   // Apply new migration VENTA-CHAT-01
   await db.exec(await migration("20261023010000_venta_chat_y_resenas_local.sql"));
 
+  // A real snapshot created by the already-applied migration stays byte-for-byte intact.
+  const preFixKey=await scalar("SELECT gen_random_uuid()");
+  const preFixIntent=(await asActor(A,"SELECT iniciar_conversacion($1,$2,'compra',$3)",[B,pb,preFixKey])).message_id;
+  const preFixSnapshot=await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[preFixIntent]);
+  await db.exec(await migration("20261024181849_venta_chat_precio_fijo_catalogo.sql"));
+  await test("migration preserves real old snapshots and actual catalog mode constraints",async()=>{
+    assert.deepEqual(await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[preFixIntent]),preFixSnapshot);
+    assert.equal(preFixSnapshot.price,null);
+    await rejects(()=>db.query("UPDATE products_services SET modo_precio='fijo' WHERE id=$1",[pb]),"23514");
+    await rejects(()=>asActor(B,"SELECT responder_intencion_compra($1,'aceptar')",[preFixIntent]),"PT409");
+    await asActor(B,"SELECT responder_intencion_compra($1,'rechazar')",[preFixIntent]);
+  });
+
   await test("historic sale keeps agreed terms, real status and settlement controls without invented product history",async()=>{
     const r=await asActor(A,"SELECT get_chat_operations($1,NULL,20,ARRAY[$2]::uuid[])",[chat,oldSaleId]);
     assert.equal(r.items[0].status,"pending_confirmation"); assert.equal(r.items[0].price,17);
@@ -150,10 +169,10 @@ async function main() {
     const k1 = "30000000-0000-4000-8000-000000000001";
     const res = await asActor(A,
       "SELECT public.iniciar_confirmacion_venta($1,$2,$3,$4,$5,2,NULL,'Entrega acordada en chat',NULL)",
-      [chat, pb, 0, k1, 30]
+      [chat, pb, 0, k1, 60]
     );
     assert.equal(res.repeated, false);
-    assert.equal(res.confirmation.precio_acordado, 30);
+    assert.equal(res.confirmation.precio_acordado, 60);
     assert.equal(res.confirmation.cantidad, 2);
     assert.equal(res.confirmation.tipo_entrega, null);
     assert.equal(res.confirmation.metodo_pago, null);
@@ -327,6 +346,92 @@ async function main() {
   };
   const cancel = async (id: string) => asActor(B,"UPDATE sale_confirmations SET status='cancelled',cancelled_by=$1,cancelled_at=now() WHERE id=$2",[B,id]);
 
+  await test("fixed manual totals use exact catalog centavos times quantity and preserve retries after edits",async()=>{
+    await db.query("UPDATE products_services SET precio=10.15 WHERE id=$1",[pb]);
+    const revision=await scalar("SELECT producto_revision FROM chats WHERE id=$1",[chat]);
+    const key=await scalar("SELECT gen_random_uuid()");
+    const call=(price:number,k=key)=>asActor(A,"SELECT iniciar_confirmacion_venta($1,$2,$3,$4,$5,3)",[chat,pb,revision,k,price]);
+    await priceChanged(()=>call(10.15));
+    await priceChanged(()=>call(30.44));
+    await rejects(()=>call(30.451),"22023");
+    const created=await call(30.45);
+    assert.equal(created.confirmation.precio_acordado,30.45); assert.equal(created.confirmation.cantidad,3);
+    assert.equal(created.confirmation.buyer_confirmed,true); assert.equal(created.confirmation.seller_confirmed,false);
+    await db.query("UPDATE products_services SET precio=11.25 WHERE id=$1",[pb]);
+    assert.equal((await call(30.45)).confirmation.id,created.confirmation.id);
+    assert.equal((await call(30.45)).repeated,true);
+    await assert.rejects(()=>call(33.75),(e:any)=>e.code==="PT409" && e.hint==="idempotency_conflict");
+    await cancel(created.confirmation.id);
+    const staleKey=await scalar("SELECT gen_random_uuid()");
+    await priceChanged(()=>call(30.45,staleKey));
+    assert.equal(await scalar("SELECT count(*)::int FROM sale_confirmations WHERE clave_idempotencia=$1",[staleKey]),0);
+    const fresh=await call(33.75,staleKey); await cancel(fresh.confirmation.id);
+    await db.query("UPDATE products_services SET precio=30 WHERE id=$1",[pb]);
+  });
+  await test("fixed manual endpoint rejects outsider, unauthenticated and hidden listing",async()=>{
+    const revision=await scalar("SELECT producto_revision FROM chats WHERE id=$1",[chat]);
+    const key=await scalar("SELECT gen_random_uuid()");
+    for(const [actor,code] of [[C,"PT404"],[null,"42501"]] as const){
+      await rejects(()=>asActor(actor,"SELECT iniciar_confirmacion_venta($1,$2,$3,$4,30,1)",[chat,pb,revision,key]),code);
+    }
+    await db.exec("BEGIN;SET LOCAL ROLE anon");
+    try { await rejects(()=>scalar("SELECT iniciar_confirmacion_venta($1,$2,$3,$4,30,1)",[chat,pb,revision,key]),"42501"); }
+    finally { await db.exec("ROLLBACK"); }
+    await db.query("UPDATE products_services SET is_hidden=true WHERE id=$1",[pb]);
+    await rejects(()=>asActor(A,"SELECT iniciar_confirmacion_venta($1,$2,$3,$4,30,1)",[chat,pb,revision,key]),"PT404");
+    await db.query("UPDATE products_services SET is_hidden=false WHERE id=$1",[pb]);
+    assert.equal(await scalar("SELECT count(*)::int FROM sale_confirmations WHERE clave_idempotencia=$1",[key]),0);
+  });
+  await test("negotiable, quotation and reservation manual totals remain freely agreed",async()=>{
+    for(const [mode,negotiable] of [["precio",true],["cotizacion",false],["reservacion",false]] as const){
+      await db.query("UPDATE products_services SET modo_precio=$1,precio_negociable=$2 WHERE id=$3",[mode,negotiable,pb]);
+      const revision=await scalar("SELECT producto_revision FROM chats WHERE id=$1",[chat]);
+      const selected=await asActor(A,"SELECT seleccionar_producto_chat($1,$2,$3)",[chat,pb,revision]);
+      assert.equal(selected.product.precio_negociable,negotiable);
+      const key=await scalar("SELECT gen_random_uuid()");
+      const sale=await asActor(A,"SELECT iniciar_confirmacion_venta($1,$2,$3,$4,17.41,3)",[chat,pb,revision,key]);
+      assert.equal(sale.confirmation.precio_acordado,17.41); await cancel(sale.confirmation.id);
+    }
+    await db.query("UPDATE products_services SET modo_precio='precio',precio_negociable=false WHERE id=$1",[pb]);
+  });
+  await test("fixed intent proposals use original snapshot unit price even after catalog and negotiation edits",async()=>{
+    await db.query("UPDATE products_services SET precio=10.15 WHERE id=$1",[pb]);
+    const id=await newIntent();
+    const snapshot=await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[id]);
+    assert.equal(snapshot.priceMode,"precio"); assert.equal(snapshot.priceNegotiable,false); assert.equal(snapshot.price,10.15);
+    await db.query("UPDATE products_services SET precio=99,precio_negociable=true WHERE id=$1",[pb]);
+    await priceChanged(()=>asActor(B,"SELECT responder_intencion_compra($1,'aceptar',1,3,'terms')",[id]));
+    assert.equal(await scalar("SELECT intent_status FROM messages WHERE id=$1",[id]),"pending");
+    const accepted=await asActor(B,"SELECT responder_intencion_compra($1,'aceptar',30.45,3,'terms')",[id]);
+    assert.equal(accepted.confirmation.precio_acordado,30.45); assert.equal(accepted.confirmation.cantidad,3);
+    assert.equal(accepted.confirmation.buyer_confirmed,false); assert.equal(accepted.confirmation.seller_confirmed,true);
+    assert.deepEqual(await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[id]),snapshot);
+    assert.equal((await asActor(B,"SELECT responder_intencion_compra($1,'aceptar',30.45,3,'terms')",[id])).repeated,true);
+    await cancel(accepted.confirmation.id);
+    await db.query("UPDATE products_services SET precio=30,precio_negociable=false WHERE id=$1",[pb]);
+  });
+  await test("negotiable intent requires agreed price and retains negotiated snapshot after listing becomes fixed",async()=>{
+    await db.query("UPDATE products_services SET precio_negociable=true WHERE id=$1",[pb]);
+    const id=await newIntent();
+    assert.equal((await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[id])).priceNegotiable,true);
+    await db.query("UPDATE products_services SET precio_negociable=false WHERE id=$1",[pb]);
+    await assert.rejects(()=>asActor(B,"SELECT responder_intencion_compra($1,'aceptar')",[id]),(e:any)=>e.code==="PT409" && e.hint==="price_required");
+    const r=await asActor(B,"SELECT responder_intencion_compra($1,'aceptar',19.51,2,'Negotiated')",[id]);
+    assert.equal(r.confirmation.precio_acordado,19.51); await cancel(r.confirmation.id);
+  });
+  await test("failure while recording proposal rolls back sale and allows identical retry",async()=>{
+    const key=await scalar("SELECT gen_random_uuid()");
+    const revision=await scalar("SELECT producto_revision FROM chats WHERE id=$1",[chat]);
+    await db.exec(`CREATE FUNCTION fixture_fail_proposal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.message_type='sale_proposed' THEN RAISE EXCEPTION 'fixture failure' USING ERRCODE='P0001'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER fixture_fail_proposal BEFORE INSERT ON messages FOR EACH ROW EXECUTE FUNCTION fixture_fail_proposal();`);
+    const call=()=>asActor(A,"SELECT iniciar_confirmacion_venta($1,$2,$3,$4,60,2)",[chat,pb,revision,key]);
+    await rejects(call,"P0001");
+    assert.equal(await scalar("SELECT count(*)::int FROM sale_confirmations WHERE clave_idempotencia=$1",[key]),0);
+    await db.exec("DROP TRIGGER fixture_fail_proposal ON messages; DROP FUNCTION fixture_fail_proposal()");
+    const r=await call(); assert.equal(r.repeated,false); await cancel(r.confirmation.id);
+  });
+
   await test("old intents retain no snapshot and expose no action controls", async () => {
     assert.equal(await scalar("SELECT intent_snapshot FROM messages WHERE id=$1",[legacyId]),null);
     await rejects(()=>asActor(B,"SELECT responder_intencion_compra($1,'aceptar')",[legacyId]),"PT409");
@@ -344,6 +449,7 @@ async function main() {
     await rejects(()=>scalar("UPDATE messages SET intent_snapshot='{}' WHERE id=$1",[id]),"42501");
     await rejects(()=>scalar("UPDATE sale_confirmations SET precio_acordado=99 WHERE id=$1",[accepted.confirmation.id]),"42501");
     await cancel(accepted.confirmation.id);
+    await db.query("UPDATE products_services SET precio=30,titulo='Producto B' WHERE id=$1",[pb]);
   });
   await test("quote and reservation need explicit positive total proposals", async () => {
     for(const mode of ["cotizacion","reservacion"]){
@@ -360,7 +466,7 @@ async function main() {
       await rejects(()=>asActor(B,"SELECT responder_intencion_compra($1,'aceptar',45,2,'Two units')",[id]),"PT409");
       await cancel(r.confirmation.id);
     }
-    await db.query("UPDATE products_services SET modo_precio='fijo' WHERE id=$1",[pb]);
+    await db.query("UPDATE products_services SET modo_precio='precio' WHERE id=$1",[pb]);
   });
   await test("blocks in either direction and hidden counterparts deny accept and retry", async () => {
     const id=await newIntent();
@@ -502,6 +608,15 @@ async function main() {
     } finally { await db.exec("ROLLBACK"); }
   });
   await test("rollback preserves accumulated local rows and live trigger dependencies",async()=>{
+    const snapshots=await scalar("SELECT jsonb_agg(jsonb_build_array(id,intent_snapshot) ORDER BY id) FROM messages WHERE intent_snapshot IS NOT NULL");
+    const terms=await scalar("SELECT jsonb_agg(jsonb_build_array(id,precio_acordado,cantidad,terms_snapshot) ORDER BY id) FROM sale_confirmations");
+    const functionOids=await scalar("SELECT jsonb_agg(oid ORDER BY oid) FROM pg_proc WHERE proname IN ('set_purchase_intent_status','iniciar_confirmacion_venta','responder_intencion_compra','seleccionar_producto_chat')");
+    await db.exec(await readFile(path.join(root,"docs/rollback/20261024181849_venta_chat_precio_fijo_catalogo_rollback.sql"),"utf8"));
+    assert.deepEqual(await scalar("SELECT jsonb_agg(jsonb_build_array(id,intent_snapshot) ORDER BY id) FROM messages WHERE intent_snapshot IS NOT NULL"),snapshots);
+    assert.deepEqual(await scalar("SELECT jsonb_agg(jsonb_build_array(id,precio_acordado,cantidad,terms_snapshot) ORDER BY id) FROM sale_confirmations"),terms);
+    assert.deepEqual(await scalar("SELECT jsonb_agg(oid ORDER BY oid) FROM pg_proc WHERE proname IN ('set_purchase_intent_status','iniciar_confirmacion_venta','responder_intencion_compra','seleccionar_producto_chat')"),functionOids);
+    assert.equal(await scalar("SELECT has_function_privilege('anon','public.iniciar_confirmacion_venta(uuid,uuid,integer,uuid,numeric,integer,text,text,text)','EXECUTE')"),false);
+    assert.match(await scalar("SELECT prosrc FROM pg_proc WHERE proname='set_purchase_intent_status'"),/modo_precio='fijo'/);
     await asActor(C,"SELECT publicar_resena_local($1,4,'Keep this row')",[B]);
     await db.exec(await readFile(path.join(root,"docs/rollback/20261023010000_venta_chat_y_resenas_local_rollback.sql"),"utf8"));
     await rejects(()=>asActor(C,"SELECT publicar_resena_local($1,5,'disabled')",[B]),"42501");

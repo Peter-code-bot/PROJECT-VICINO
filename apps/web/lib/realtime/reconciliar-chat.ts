@@ -37,7 +37,7 @@ export async function reconciliarChat(client: SupabaseClient<Database>, args: {
   loadedIds: string[]; cursor: Cursor | null; intervalo: Intervalo | null;
 }) {
   const { data: chat, error: membershipError } = await client.from("chats")
-    .select("comprador_id, vendedor_id, deleted_at_comprador, deleted_at_vendedor, producto_revision, ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, modo_precio, imagen_principal, creador_id, estatus, is_hidden)")
+    .select("comprador_id, vendedor_id, deleted_at_comprador, deleted_at_vendedor, producto_revision, ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, modo_precio, precio_negociable, imagen_principal, creador_id, estatus, is_hidden)")
     .eq("id", args.chatId).maybeSingle();
   if (membershipError) throw new Error("VICINO_CHAT_RECOVERY_PENDING");
   if (!chat || ![chat.comprador_id, chat.vendedor_id].includes(args.userId)) return { denied: true } as const;

@@ -10,7 +10,7 @@ export type CatalogoChat = { data: ProductoChat[]; sellers: VendedorChat[]; sell
 export async function loadChatCatalog(client: Client, participants: string[], requestedSeller?: string, search?: string): Promise<CatalogoChat> {
   if (requestedSeller && !participants.includes(requestedSeller)) throw new Error("INVALID_SELLER");
   const available = () => client.from("products_services")
-    .select("id,titulo,precio,modo_precio,imagen_principal,creador_id,estatus,is_hidden")
+    .select("id,titulo,precio,modo_precio,precio_negociable,imagen_principal,creador_id,estatus,is_hidden")
     .eq("estatus", "disponible").eq("is_hidden", false);
   const ids = [...new Set(participants)];
   const availability = await Promise.all(ids.map(id => available().eq("creador_id", id).limit(1)));
