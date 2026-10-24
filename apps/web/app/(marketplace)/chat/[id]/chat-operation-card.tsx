@@ -13,7 +13,7 @@ export interface ChatOperationCardProps {
   onAction: (action: "accept" | "confirm" | "reject", proposal?: OperationProposal) => Promise<boolean>;
 }
 const labels: Record<ChatOperation["status"], string> = {
-  requested: "Solicitud de compra", accepted: "Compra aceptada", pending_confirmation: "Confirmación pendiente",
+  requested: "Solicitud de compra", accepted: "Compra aceptada", pending_confirmation: "Pendiente",
   completed: "Venta completada", rejected: "Venta rechazada", cancelled: "Venta cancelada", expired: "Venta vencida", legacy: "Solicitud anterior",
 };
 const control = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50";
@@ -46,13 +46,12 @@ export function ChatOperationCard({ operation: op, currentUserId, expanded, onTo
         <span className="font-display font-semibold text-brand-hi">{op.price === null ? "Por acordar" : `${formatPrice(op.price)} MXN total`}</span>
         <span>{op.quantity} {op.quantity === 1 ? "unidad" : "unidades"}</span>
       </div>
-      {op.status === "accepted" && <p className="text-sm text-fg-muted">Falta confirmar recepción.</p>}
-      {op.status === "legacy" && <p className="text-sm text-fg-muted">Esta solicitud no conserva condiciones verificables. Abre la publicación y envía una solicitud nueva, o acuerden la operación con Confirmar venta.</p>}
+      {op.status === "legacy" && <p className="text-sm text-fg-muted">Solicitud anterior sin condiciones verificables.</p>}
       {!terminal && <p className="text-sm text-fg-muted">
-        {op.canRespond ? "Al confirmar aceptas la compra. Se completará cuando el comprador confirme que la recibió."
-          : op.status === "requested" ? "Solicitud enviada. El vendedor debe aceptar la compra antes de que puedas confirmar la recepción."
-            : op.canConfirm ? isBuyer ? "Confirma cuando hayas recibido y revisado el producto o servicio, la cantidad y el importe." : "Confirma tu parte cuando hayas entregado el producto o realizado el servicio."
-            : "Ya confirmaste tu parte. Esperando la confirmación de la otra persona."}
+        {op.canRespond ? "Acepta la compra; el comprador confirmará la recepción."
+          : op.status === "requested" ? "Esperando respuesta del vendedor."
+            : op.canConfirm ? isBuyer ? "Confirma tras recibir y revisar lo acordado." : "Confirma tras entregar el producto o servicio."
+            : isBuyer ? "Esperando al vendedor." : "Esperando al comprador."}
       </p>}
       <div className="flex flex-wrap items-center justify-between gap-1">
         <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls={detailId} className={cn(control, "text-brand-hi")}>
@@ -81,7 +80,7 @@ export function ChatOperationCard({ operation: op, currentUserId, expanded, onTo
         <button type="button" disabled={busy || disabled} onClick={() => setProposing(value => !value)} className={cn(control, "border border-border bg-card-2")}>Ajustar condiciones</button>
       </div>}
       {proposing && op.canRespond && <form onSubmit={submitProposal} className="space-y-2 rounded-xl bg-card-2 p-3">
-        <p className="text-sm">Propón el total y la cantidad acordados. El comprador revisará estas condiciones antes de confirmar la recepción.</p>
+        <p className="text-sm">Total y cantidad acordados; el comprador confirmará la recepción.</p>
         <label className="block text-sm">Precio acordado total (MXN)<input aria-label="Precio acordado total (MXN)" required type="number" min="0.01" max="99999999" step="0.01" value={price} onChange={e => setPrice(e.target.value)} disabled={busy} className="mt-1 min-h-12 w-full rounded-lg border border-border bg-card px-3" /></label>
         <label className="block text-sm">Cantidad<input aria-label="Cantidad" required type="number" min="1" max="9999" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} disabled={busy} className="mt-1 min-h-12 w-full rounded-lg border border-border bg-card px-3" /></label>
         <label className="block text-sm">Notas (opcional)<textarea aria-label="Notas (opcional)" maxLength={1000} value={notes} onChange={e => setNotes(e.target.value)} disabled={busy} className="mt-1 min-h-12 w-full rounded-lg border border-border bg-card px-3 py-2" /></label>
