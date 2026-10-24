@@ -293,7 +293,8 @@ async function main() {
     const visualBrowser = await launcher.launch({ headless: true });
     try {
       for (const width of [320, 375, 1280]) for (const theme of ["light", "dark"]) {
-        const page = await visualBrowser.newPage({ viewport: { width, height: 900 } });
+        const context = await visualBrowser.newContext({ viewport: { width, height: 900 } });
+        const page = await context.newPage();
         page.setDefaultTimeout(5000);
         const errors: string[] = [], unexpectedNetwork: string[] = [];
         page.on("pageerror", (error: Error) => errors.push(error.message));
@@ -379,9 +380,9 @@ async function main() {
         assert.equal(calls.length, 2); assert.deepEqual(calls[0], calls[1]);
         assert.equal(calls[0].precioAcordado, 12500.5); assert.equal(calls[0].cantidad, 2); assert.equal(calls[0].notas, "Entrega acordada");
         assert.deepEqual(errors, []); assert.deepEqual(unexpectedNetwork, []);
+        await context.close();
         matrices.push({ engine, width, theme, panelHeight: bounds!.height, contrast, passed: true });
         console.log("PASA panel " + engine + " " + width + " " + theme + "; altura " + bounds!.height + "px.");
-        await page.close();
       }
     } finally { await visualBrowser.close(); }
   }
