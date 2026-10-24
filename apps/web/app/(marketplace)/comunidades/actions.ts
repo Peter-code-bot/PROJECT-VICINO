@@ -124,7 +124,7 @@ export async function fundarComunidad(input: {
 
   const parsed = fundarComunidadSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
   const { nombre, categoria_id, creation_id, descripcion, lat, lng, es_privada } = parsed.data;
 
@@ -152,7 +152,7 @@ export async function editarIdentidad(input: { community_id: string; categoria_i
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = editarIdentidadComunidadSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   const { community_id, categoria_id, foto_path } = parsed.data;
   // The RPC checks ownership and allows retaining an existing photo after a transfer.
   // New paths must be inside this owner's folder and already exist in storage.
@@ -254,7 +254,7 @@ export async function solicitarUnion(input: {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = solicitarUnionComunidadSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
 
   const { data, error } = await s.supabase.rpc("solicitar_union_comunidad", {
     p_community_id: parsed.data.community_id,
@@ -455,7 +455,7 @@ export async function editarDescripcion(input: {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = editarDescripcionComunidadSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
 
   const { data, error } = await s.supabase.rpc("editar_descripcion_comunidad", {
     p_community_id: parsed.data.community_id,
@@ -500,7 +500,7 @@ export async function editarCentro(input: {
   const s = await sesionYFreno();
   if (!s.ok) return { error: s.error };
   const parsed = editarCentroComunidadSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Ubicación inválida" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Ubicación inválida" };
 
   const { data, error } = await s.supabase.rpc("editar_centro_comunidad", {
     p_community_id: parsed.data.community_id,
@@ -611,7 +611,7 @@ function revisarEntradaDeMuro(
             parent_post_id: entrada.parent_post_id,
             texto: entrada.texto,
           });
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
     return { texto: parsed.data.texto, rutas: [] };
   }
 
@@ -620,7 +620,7 @@ function revisarEntradaDeMuro(
     return { error: "Publicación inválida." };
   }
   const texto = textoJuntoAImagenes.safeParse(entrada.texto ?? "");
-  if (!texto.success) return { error: texto.error.errors[0]?.message ?? "Datos inválidos" };
+  if (!texto.success) return { error: texto.error.issues[0]?.message ?? "Datos inválidos" };
   return { texto: texto.data, rutas };
 }
 

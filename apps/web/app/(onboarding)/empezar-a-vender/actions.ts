@@ -7,7 +7,7 @@ import { enforce, writeRateLimit } from "@/lib/rate-limit";
 import { CATEGORIES, sellerOnboardingSchema, updateProfileSchema } from "@vicino/shared";
 import { z } from "zod";
 
-const profileFields = updateProfileSchema.innerType().shape;
+const profileFields = updateProfileSchema.shape;
 const activationSchema = z.object({
   categoria: sellerOnboardingSchema.shape.categoria_negocio.nullable(),
   tipo: profileFields.seller_type.removeDefault(),

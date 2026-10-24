@@ -37,20 +37,20 @@ export const COMMUNITY_JOIN_MESSAGE_MAX = 200;
 export const COMMUNITY_CENTRO_RADIO_METROS = 1000;
 
 const latitud = z
-  .number({ invalid_type_error: "Ubicación inválida" })
+  .number({ error: "Ubicación inválida" })
   .finite("Ubicación inválida")
   .min(-90, "Ubicación inválida")
   .max(90, "Ubicación inválida");
 
 const longitud = z
-  .number({ invalid_type_error: "Ubicación inválida" })
+  .number({ error: "Ubicación inválida" })
   .finite("Ubicación inválida")
   .min(-180, "Ubicación inválida")
   .max(180, "Ubicación inválida");
 
 /** Un nombre es una sola linea: sin saltos ni tabuladores (communities_nombre_una_linea). */
 const nombreComunidad = z
-  .string({ required_error: "Escribe un nombre" })
+  .string({ error: issue => issue.input === undefined ? "Escribe un nombre" : undefined })
   .trim()
   .min(COMMUNITY_NOMBRE_MIN, `El nombre debe tener entre ${COMMUNITY_NOMBRE_MIN} y ${COMMUNITY_NOMBRE_MAX} caracteres`)
   .max(COMMUNITY_NOMBRE_MAX, `El nombre debe tener entre ${COMMUNITY_NOMBRE_MIN} y ${COMMUNITY_NOMBRE_MAX} caracteres`)
@@ -65,7 +65,7 @@ const descripcionComunidad = z
   .nullable()
   .optional();
 
-const categoriaComunidad = z.string({ required_error: "Elige una categoría" })
+const categoriaComunidad = z.string({ error: issue => issue.input === undefined ? "Elige una categoría" : undefined })
   .refine(value => COMMUNITY_CATEGORIES.some(category => category.id === value), "Elige una categoría válida");
 
 /** Category and privacy are committed with the initial creation. */
@@ -99,7 +99,7 @@ export const editarVisibilidadComunidadSchema = z.object({
 });
 
 const cuerpoPublicacion = z
-  .string({ required_error: "Escribe algo" })
+  .string({ error: issue => issue.input === undefined ? "Escribe algo" : undefined })
   .trim()
   .min(1, "Escribe algo")
   .max(COMMUNITY_POST_MAX, `El texto no puede pasar de ${COMMUNITY_POST_MAX} caracteres`);

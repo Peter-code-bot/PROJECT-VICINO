@@ -21,7 +21,7 @@ export async function assignRole(userId: string, role: string, claveDeSeguridad?
 
   const parsed = assignRoleSchema.safeParse({ user_id: userId, role });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // El cliente privilegiado se crea sólo después de autenticar, comprobar
@@ -48,7 +48,7 @@ export async function removeRole(userId: string, role: string, claveDeSeguridad?
 
   const parsed = removeRoleSchema.safeParse({ user_id: userId, role });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // Mismo canal exclusivo de servidor; conserva el bloqueo del auto-retiro.

@@ -17,7 +17,7 @@ export async function respondToReview(reviewId: string, respuesta: string) {
 
   const parsed = respondReviewSchema.safeParse({ review_id: reviewId, respuesta });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   const { data: updated, error: updateErr } = await supabase

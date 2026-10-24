@@ -146,7 +146,7 @@ test("seller UI: skip remains available with missing category and never activate
     assert.equal(await page.getByRole("button", { name: "Activar y entrar", exact: true }).isDisabled(), true);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
     assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
-    await page.getByRole("button", { name: "Entrar por ahora", exact: true }).click();
+    await page.getByRole("button", { name: "Omitir", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/"]);
     assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
   } finally { await browser.close(); }
@@ -191,7 +191,7 @@ test("seller UI: one datum per page, skipped edits stay out of review and final 
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
     await page.getByRole("button", { name: "Activar y entrar", exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
     await page.waitForFunction(() => (window as any).fixture.calls.length === 1);
-    assert.equal(await page.getByRole("button", { name: "Entrar por ahora", exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole("button", { name: "Omitir", exact: true }).isDisabled(), true);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), []);
     await page.evaluate(() => (window as any).fixture.resolveActivation());
     await page.waitForFunction(() => (window as any).fixture.routes.length === 1);
@@ -237,8 +237,8 @@ test("seller UI: missing business name can still finish exploring without activa
     await page.getByLabel("Nombre del negocio", { exact: true }).fill("Nombre que se omite");
     for (let step = 0; step < 4; step++) await page.getByRole("button", { name: "Omitir", exact: true }).click();
     assert.equal(await page.getByRole("button", { name: "Activar y entrar", exact: true }).isDisabled(), true);
-    assert.equal(await page.getByRole("button", { name: "Entrar por ahora", exact: true }).isDisabled(), false);
-    await page.getByRole("button", { name: "Entrar por ahora", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "Omitir", exact: true }).isDisabled(), false);
+    await page.getByRole("button", { name: "Omitir", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.routes), ["/"]);
     assert.equal(await page.evaluate(() => (window as any).fixture.calls.length), 0);
   } finally { await browser.close(); }
@@ -247,7 +247,7 @@ test("seller UI: missing business name can still finish exploring without activa
 test("seller UI: an active seller enters publishing or home without reactivation", async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const [button, destination] of [["Crear publicación", "/vender"], ["Entrar a VICINO", "/"]]) {
+    for (const [button, destination] of [["Crear publicación", "/vender"], ["Omitir", "/"]]) {
       const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
       await mountSeller(page, { yaEsVendedor: true, categoriaInicial: "comida" });
       await page.getByRole("heading", { name: "Tu perfil para vender", exact: true }).waitFor();

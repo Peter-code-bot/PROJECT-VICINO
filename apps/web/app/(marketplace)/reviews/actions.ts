@@ -22,7 +22,7 @@ export async function publishLocalReview(
   if (!parsed.success) {
     return {
       success: false,
-      error: parsed.error.errors[0]?.message ?? "Datos inválidos",
+      error: parsed.error.issues[0]?.message ?? "Datos inválidos",
       code: "INVALID_INPUT",
     };
   }

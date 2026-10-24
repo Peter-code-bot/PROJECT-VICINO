@@ -133,6 +133,9 @@ jobs:
           pnpm exec tsx scripts/test-product-validator.ts
           node scripts/test-product-optional-actions.cjs
 
+      - name: Regresiones de validacion y verificacion de identidad
+        run: pnpm exec tsx --test scripts/test-zod-upgrade.ts scripts/test-veredicto-verificacion.ts
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba

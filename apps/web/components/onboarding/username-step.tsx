@@ -28,7 +28,7 @@ export function UsernameStep({ value, onChange, onFeedbackChange, refreshToken =
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const format = onboardingUsernameSchema.safeParse(value);
-  const formatError = format.success ? "" : format.error.errors[0]!.message;
+  const formatError = format.success ? "" : format.error.issues[0]!.message;
   const validFormat = format.success;
 
   // Accounts can arrive with an automatic uppercase ID. Ask only for options,
@@ -108,7 +108,7 @@ export function UsernameStep({ value, onChange, onFeedbackChange, refreshToken =
 
   function invalidate(nextValue: string) {
     const parsed = onboardingUsernameSchema.safeParse(nextValue);
-    onFeedbackChange({ username: nextValue, valid: false, message: parsed.success ? CHECKING_MESSAGE : parsed.error.errors[0]!.message });
+    onFeedbackChange({ username: nextValue, valid: false, message: parsed.success ? CHECKING_MESSAGE : parsed.error.issues[0]!.message });
   }
   return (
     <div className="space-y-6">

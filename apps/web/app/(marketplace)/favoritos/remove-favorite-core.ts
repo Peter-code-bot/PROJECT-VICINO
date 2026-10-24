@@ -35,7 +35,7 @@ export async function removeFavoriteCore(
 
   const parsed = toggleFavoriteSchema.safeParse({ product_id: productId });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Producto inválido" };
+    return { error: parsed.error.issues[0]?.message ?? "Producto inválido" };
   }
 
   const { error: deleteErr } = await supabase

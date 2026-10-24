@@ -1,18 +1,10 @@
 import { z } from "zod";
-import { CATEGORIES, type CategorySlug } from "../constants/categories";
+import { CATEGORIES } from "../constants/categories";
 import { containsCoordinatePair } from "../utils/public-location-label";
 
-// Type predicate refine sobre cada slug del array: cumple dos objetivos a la vez.
-//   (1) Runtime: rechaza cualquier slug que no sea uno de los 35 canonicos
-//       de CATEGORIES (25 visibles + 10 subcategorias de mayoreo marcadas
-//       hidden_in_form). El form pinta solo las 25 visibles, pero el predicate
-//       acepta los 35 para no romper rutas alternativas (admin, RPC, futuro
-//       flujo de mayoreo).
-//   (2) Type level: el predicate `(v): v is CategorySlug` propaga el literal
-//       union a `z.infer<typeof createProductSchema>["categories"][number]["slug"]`.
-//       Zod v3 `z.enum` con array dinamico ensancharia a `string` (los docs
-//       piden valores inline con `as const`); el refine preserva la union
-//       literal sin duplicar la lista.
+// El enum conserva la union CategorySlug y valida los 35 slugs canonicos,
+// incluidas las subcategorias ocultas en el formulario. En Zod 4 un predicate
+// pasado a refine ya no estrecha el tipo inferido.
 //
 // Multi-categoria (MP#08 #5c-2): el campo `categories` es un array de
 // {slug, is_primary} con min(1), max(3) y exactly-1-primary enforzado por
@@ -49,10 +41,7 @@ const baseProductSchema = z.object({
   categories: z
     .array(
       z.object({
-        slug: z.string().refine(
-          (v): v is CategorySlug => CATEGORIES.some((c) => c.slug === v),
-          { message: "Categoría no válida" },
-        ),
+        slug: z.enum(CATEGORIES.map((c) => c.slug), { error: "Categoría no válida" }),
         is_primary: z.boolean(),
       }),
     )
@@ -75,9 +64,8 @@ const baseProductSchema = z.object({
 });
 
 // El superRefine cruza modo_precio con precio: en modo "precio" el campo es
-// obligatorio; en "cotizacion"/"reservacion" NO debe venir. Ojo: esto convierte
-// createProductSchema en ZodEffects, que NO expone .partial()/.shape/.extend.
-// Por eso updateProductSchema deriva del baseProductSchema plano, no de este.
+// obligatorio; en "cotizacion"/"reservacion" NO debe venir. La edicion deriva
+// del esquema base porque sus campos parciales tienen otras reglas.
 /**
  * Cruza `tipo` con el `type` de cada categoría elegida.
  *
@@ -129,6 +117,13 @@ export const createProductSchema = baseProductSchema.superRefine((data, ctx) => 
 // aplica cuando la edicion manda los dos. Editar solo el titulo no tiene por que
 // arrastrar una validacion de categorias.
 export const updateProductSchema = baseProductSchema
+  // Zod 4 aplica defaults incluso dentro de optional. Un PATCH omitido debe
+  // conservar lo guardado, sin vaciar descripcion ni reiniciar precio/entrega.
+  .extend({
+    descripcion: baseProductSchema.shape.descripcion.removeDefault(),
+    modo_precio: baseProductSchema.shape.modo_precio.removeDefault(),
+    tipo_entrega: baseProductSchema.shape.tipo_entrega.removeDefault(),
+  })
   .partial()
   .superRefine(validarCoherenciaTipoCategoria);
 

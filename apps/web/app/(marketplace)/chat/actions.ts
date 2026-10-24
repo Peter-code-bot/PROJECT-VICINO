@@ -44,7 +44,7 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
     product_id: productId,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // Defense in depth: reject self-chat at the server boundary. The owner-
@@ -119,7 +119,7 @@ export async function iniciarConversacion(input: {
     clave: input.clave,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // La base tambien lo rechaza (22023); aqui solo se ahorra el viaje.
@@ -316,7 +316,7 @@ export async function sendMessage(
     attachments,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
+    return { error: parsed.error.issues[0]?.message ?? "Mensaje inválido" };
   }
 
   // Cada foto tiene que vivir bajo <chat>/<autor>/. Se comprueba con el chatId
@@ -534,7 +534,7 @@ export async function createSaleConfirmation(data: {
     precio_acordado: data?.precioAcordado, cantidad: data?.cantidad,
     metodo_pago: data?.metodoPago, notas: data?.notas, tipo_entrega: data?.tipoEntrega,
   });
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -598,7 +598,7 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     reason,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   const { data: cancelled, error } = await supabase
@@ -699,7 +699,7 @@ export async function respondPurchaseIntent(input: {
   confirmation?: Database["public"]["Tables"]["sale_confirmations"]["Row"] | null;
 } | ChatContractError> {
   const parsed = respondPurchaseIntentSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
