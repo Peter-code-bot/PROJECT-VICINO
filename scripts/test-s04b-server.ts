@@ -16,7 +16,7 @@ const chatId = "10000000-0000-4000-8000-000000000001";
 const productId = "20000000-0000-4000-8000-000000000001";
 const idempotencyKey = "30000000-0000-4000-8000-000000000001";
 const saleId = "40000000-0000-4000-8000-000000000001";
-const product = { id: productId, titulo: "Mesa", precio: 25, modo_precio: "fijo", imagen_principal: null, creador_id: B, estatus: "disponible", is_hidden: false };
+const product = { id: productId, titulo: "Mesa", precio: 25, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: B, estatus: "disponible", is_hidden: false };
 const input = { chatId, productId, expectedRevision: 3, idempotencyKey, precioAcordado: 25, cantidad: 1, tipoEntrega: "pickup" };
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value));
 let bundled: Promise<string> | undefined;
@@ -161,6 +161,7 @@ test("create uses single atomic RPC without client roles or separate messages", 
 });
 for (const [code, hint, expected] of [
   ["PT409", "product_changed", "PRODUCT_CHANGED"], ["PT409", "pending_confirmation", "PENDING_CONFIRMATION"],
+  ["PT409", "price_changed", "PRICE_CHANGED"],
   ["PT409", "idempotency_conflict", "IDEMPOTENCY_CONFLICT"], ["PT409", "confirmation_closed", "CONFIRMATION_CLOSED"],
   ["PT404", "", "NOT_AVAILABLE"], ["42501", "", "FORBIDDEN"], ["22023", "", "INVALID_INPUT"],
   ["PGRST202", "", "UNAVAILABLE"],

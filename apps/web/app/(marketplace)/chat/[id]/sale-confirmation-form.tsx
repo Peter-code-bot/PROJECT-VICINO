@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Package, Send, X } from "lucide-react";
 import { createSaleConfirmation } from "../actions";
 import type { ProductoChat } from "@/lib/chat/producto-activo";
+import { importeVenta, precioFijo, totalPrecioFijo } from "@/lib/chat/precio-confirmacion";
 import { posterUrl } from "@/lib/video-thumbnail";
 import styles from "./sale-confirmation-form.module.css";
 
-const drafts = new Map<string, { price: string; quantity: string; notes: string; uncertain: boolean; operation: { key: string; signature: string } | null }>();
+type Quote = { fixed: boolean; unitPrice: number | null };
+const drafts = new Map<string, { price: string; quantity: string; notes: string; quote: Quote; uncertain: boolean; stale: boolean; operation: { key: string; signature: string } | null }>();
 
 interface SaleConfirmationFormProps {
   chatId: string;
@@ -16,6 +18,7 @@ interface SaleConfirmationFormProps {
   productRevision: number;
   onClose: () => void;
   onCreated?: () => void;
+  onProductRefresh?: () => void;
 }
 
 export function SaleConfirmationForm({
@@ -25,6 +28,7 @@ export function SaleConfirmationForm({
   productRevision,
   onClose,
   onCreated,
+  onProductRefresh,
 }: SaleConfirmationFormProps) {
   const [precio, setPrecio] = useState(product?.precio?.toString() ?? "");
   const [cantidad, setCantidad] = useState("1");
@@ -32,6 +36,10 @@ export function SaleConfirmationForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
+  const [stale, setStale] = useState(false);
+  // Freeze the displayed offer for this draft, including an ambiguous retry.
+  // Catalog refreshes must never silently change the submitted amount.
+  const [quote, setQuote] = useState<Quote>({ fixed: precioFijo(product), unitPrice: product?.precio ?? null });
   const [imageFailed, setImageFailed] = useState(false);
   const submitting = useRef(false);
   const mounted = useRef(true);
@@ -51,20 +59,24 @@ export function SaleConfirmationForm({
     if (saved) {
       queueMicrotask(() => {
         if (!active) return;
-        setPrecio(saved.price); setCantidad(saved.quantity); setNotas(saved.notes); setUncertain(saved.uncertain); operation.current = saved.operation;
+        setPrecio(saved.price); setCantidad(saved.quantity); setNotas(saved.notes); setQuote(saved.quote);
+        setUncertain(saved.uncertain); setStale(saved.stale); operation.current = saved.operation;
       });
     }
     return () => { active = false; };
   }, [draftKey]);
   useEffect(() => {
-    drafts.set(draftKey, { price: precio, quantity: cantidad, notes: notas, uncertain, operation: operation.current });
+    drafts.set(draftKey, { price: precio, quantity: cantidad, notes: notas, quote, uncertain, stale, operation: operation.current });
     if (drafts.size > 20) drafts.delete(drafts.keys().next().value!);
-  }, [draftKey, precio, cantidad, notas, uncertain, loading]);
+  }, [draftKey, precio, cantidad, notas, quote, uncertain, stale, loading]);
   const eligible = !!product && product.estatus === "disponible" && !product.is_hidden;
+  const fixedTotal = totalPrecioFijo(quote.unitPrice, cantidad);
+  const invalidTotal = quote.fixed && fixedTotal === null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!product || !eligible || submitting.current) return;
+    const agreedTotal = quote.fixed ? fixedTotal : Number(precio);
+    if (!product || !eligible || stale || agreedTotal === null || submitting.current) return;
     submitting.current = true;
     setError("");
     setLoading(true);
@@ -72,7 +84,7 @@ export function SaleConfirmationForm({
     const payload = {
       productId: product.id,
       chatId,
-      precioAcordado: Number(precio),
+      precioAcordado: agreedTotal,
       cantidad: Number(cantidad),
       notas: notas.trim() || undefined,
       expectedRevision: productRevision,
@@ -90,6 +102,7 @@ export function SaleConfirmationForm({
       if (!mounted.current) return;
       if ("error" in result && result.error) {
         setError(result.error);
+        if (result.code === "PRICE_CHANGED") setStale(true);
         setUncertain(previous => result.code === "INVALID_INPUT" ? false : previous || !result.code || result.code === "UNAVAILABLE");
         return;
       }
@@ -125,9 +138,16 @@ export function SaleConfirmationForm({
       {error && (
         <p role="alert" className={styles.error}>{error}</p>
       )}
+      {stale && (
+        <button type="button" className={styles.refresh} onClick={() => {
+          drafts.delete(draftKey);
+          onProductRefresh?.();
+          onClose();
+        }}>Cerrar y actualizar producto</button>
+      )}
 
       <form onSubmit={handleSubmit} aria-label="Datos de la venta" className={styles.form}>
-        <fieldset disabled={loading || uncertain} className={styles.fields}>
+        <fieldset disabled={loading || uncertain || stale} className={styles.fields}>
           <div className={styles.product}>
             <div className={styles.thumbnail} aria-hidden>
               {product?.imagen_principal && !imageFailed ? (
@@ -145,26 +165,31 @@ export function SaleConfirmationForm({
                   </summary>
                 </details>
               )}
-              <label htmlFor="sale-price" className={styles.label}>
-                Total <span>(MXN)</span>
-                <span className="sr-only"> acordado</span>
-              </label>
-              <input
-                id="sale-price"
-                aria-label="Total acordado (MXN)"
-                type="number"
-                inputMode="decimal"
-                value={precio}
-                onChange={(e) => setPrecio(e.target.value)}
-                required
-                min={0.01}
-                step="0.01"
-                placeholder="0.00"
-                className={styles.price}
-              />
+              {quote.fixed ? (
+                <output aria-label="Total de la venta" aria-live="polite" className={styles.price}>
+                  <strong>{fixedTotal === null ? "—" : importeVenta(fixedTotal)}</strong>
+                  <span> MXN total</span>
+                </output>
+              ) : <>
+                <label htmlFor="sale-price" className={styles.label}>Total acordado (MXN)</label>
+                <input
+                  id="sale-price"
+                  aria-label="Total acordado (MXN)"
+                  type="number"
+                  inputMode="decimal"
+                  value={precio}
+                  onChange={(e) => setPrecio(e.target.value)}
+                  required
+                  min={0.01}
+                  max={99_999_999}
+                  step="0.01"
+                  placeholder="0.00"
+                  className={styles.input}
+                />
+              </>}
             </div>
           </div>
-          <div>
+          <div className={styles.quantityField}>
             <label htmlFor="sale-quantity" className={styles.label}>
               <span aria-hidden>Cant.</span><span className="sr-only">Cantidad</span>
             </label>
@@ -182,7 +207,7 @@ export function SaleConfirmationForm({
               className={styles.quantity}
             />
           </div>
-          <div>
+          <div className={styles.notesField}>
             <label htmlFor="sale-notes" className={styles.label}>
               Notas (opcional)
             </label>
@@ -197,6 +222,9 @@ export function SaleConfirmationForm({
             />
           </div>
         </fieldset>
+        {invalidTotal && <p role="status" className={styles.guidance}>
+          Revisa la cantidad y el precio del producto. El total debe ser mayor a cero y no superar $99,999,999 MXN.
+        </p>}
         <p id="sale-form-guidance" className={styles.guidance}>
           {product?.creador_id === currentUserId
             ? "Tras entregar. El comprador confirmará la recepción."
@@ -205,7 +233,7 @@ export function SaleConfirmationForm({
         <button
           type="submit"
           aria-describedby="sale-form-guidance"
-          disabled={loading || !eligible}
+          disabled={loading || !eligible || stale || invalidTotal}
           className={styles.submit}
         >
           <Send size={20} aria-hidden />

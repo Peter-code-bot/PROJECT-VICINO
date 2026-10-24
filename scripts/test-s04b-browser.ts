@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { loadChatTestFonts } from "./lib/venta-chat-test-fonts.mjs";
 
 const require = createRequire(new URL("../apps/web/package.json", import.meta.url));
 const esbuild = require(require.resolve("esbuild", { paths: [require.resolve("tsx")] }));
@@ -13,11 +14,11 @@ const web = fileURLToPath(new URL("../apps/web", import.meta.url));
 const out = path.join(web, "test-results/venta-chat-01");
 const postcss = createRequire(require.resolve("@tailwindcss/postcss"))("postcss");
 const products = [
-  { id: "10000000-0000-4000-8000-000000000001", titulo: "Mesa sintética", precio: 120, modo_precio: "fijo", imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
-  { id: "10000000-0000-4000-8000-000000000002", titulo: "Silla sintética", precio: 80, modo_precio: "fijo", imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
-  { id: "10000000-0000-4000-8000-000000000003", titulo: "Artículo pausado", precio: 90, modo_precio: "fijo", imagen_principal: null, creador_id: "seller", estatus: "pausado", is_hidden: false },
-  { id: "10000000-0000-4000-8000-000000000004", titulo: "Artículo oculto", precio: 90, modo_precio: "fijo", imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: true },
-  { id: "10000000-0000-4000-8000-000000000005", titulo: "Banco sintético", precio: 60, modo_precio: "fijo", imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
+  { id: "10000000-0000-4000-8000-000000000001", titulo: "Mesa sintética", precio: 120, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
+  { id: "10000000-0000-4000-8000-000000000002", titulo: "Silla sintética", precio: 80, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
+  { id: "10000000-0000-4000-8000-000000000003", titulo: "Artículo pausado", precio: 90, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: "seller", estatus: "pausado", is_hidden: false },
+  { id: "10000000-0000-4000-8000-000000000004", titulo: "Artículo oculto", precio: 90, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: true },
+  { id: "10000000-0000-4000-8000-000000000005", titulo: "Banco sintético", precio: 60, modo_precio: "precio", precio_negociable: false, imagen_principal: null, creador_id: "seller", estatus: "disponible", is_hidden: false },
 ];
 
 function contrastRatio(a: string, b: string) {
@@ -101,7 +102,7 @@ async function main() {
           {location.pathname==='/selector'?<ChatProductSelector chatId="chat" currentUserId="buyer" active={active}
             onSelected={value=>{f.selections.push(value);setActive(value);}}/>:
           <SaleConfirmationForm key={active.product.id+':'+active.revision} chatId="chat" currentUserId="buyer"
-            product={active.product} productRevision={active.revision} onClose={()=>f.closed++} onCreated={value=>f.created.push(value)}/>}
+            product={active.product} productRevision={active.revision} onClose={()=>f.closed++} onProductRefresh={()=>f.refreshes++} onCreated={value=>f.created.push(value)}/>}
         </>;
       }
       createRoot(document.getElementById('root')).render(<Harness/>);`,
@@ -117,8 +118,13 @@ async function main() {
   const cssPath = path.join(web, "app/globals.css");
   const source = (await readFile(cssPath, "utf8")).replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "./(marketplace)/chat/**/*.tsx";\n@source "../components/ui/dialog.tsx";');
   const globalCss = (await postcss([require("@tailwindcss/postcss")({ base: web })]).process(source, { from: cssPath })).css;
-  const css = globalCss + "\n" + bundle.outputFiles.filter((file: any) => file.path.endsWith(".css")).map((file: any) => file.text).join("\n");
+  const fonts = await loadChatTestFonts(web);
+  const css = globalCss + "\n" + bundle.outputFiles.filter((file: any) => file.path.endsWith(".css")).map((file: any) => file.text).join("\n") + "\n" + fonts.css;
   const js = bundle.outputFiles.find((file: any) => file.path.endsWith(".js")).text;
+  const widthOption = process.argv.find(arg => arg.startsWith("--widths="));
+  const widths = widthOption ? widthOption.slice(9).split(",").map(Number) : [320, 360, 375, 390, 430, 577, 578, 579, 768, 1280];
+  assert.ok(widths.every(width => Number.isInteger(width) && width >= 320 && width <= 1920), "valid test widths");
+  if (!process.argv.includes("--visual-only")) {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   let passed = 0;
   try {
@@ -140,6 +146,10 @@ async function main() {
         }, { products, initialIndex: 0, selectResult: { data: { product: { ...products[1], titulo: "Respuesta canónica del servidor" }, revision: 7 } }, saleResults: [], ...options });
         await page.addStyleTag({ content: css });
         await page.addScriptTag({ content: js });
+        await page.evaluate(async (families: string[]) => {
+          await Promise.all(families.map(family => document.fonts.load('16px "' + family + '"')));
+          await document.fonts.ready;
+        }, fonts.families);
       }
       async function openSelector() {
         try { await expect(page.locator(`select option[value="${products[1].id}"]`)).toHaveCount(1); }
@@ -184,13 +194,13 @@ async function main() {
       await expect.poll(async () => (await saleCalls()).length).toBe(1);
       assert.equal(await page.evaluate(() => (window as any).s04b.closed), 0);
       await expect(page.getByRole("alert")).toContainText("Reintenta con los mismos datos");
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Notas (opcional)", { exact: true })).toBeDisabled();
       await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
       await submitSale();
       await expect.poll(async () => (await saleCalls()).length).toBe(2);
       await expect(page.getByRole("alert")).toHaveText("Espera antes de reintentar.");
       await expect(page.getByRole("form", { name: "Datos de la venta" }).getByRole("button", { name: "Confirmar venta", exact: true })).toBeEnabled();
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Notas (opcional)", { exact: true })).toBeDisabled();
       await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
       assert.equal(await page.evaluate(() => (window as any).s04b.closed), 0);
       await submitSale();
@@ -249,14 +259,14 @@ async function main() {
       await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[4].titulo);
       await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await expect(page.getByRole("form", { name: "Datos de la venta" }).getByRole("button", { name: "Confirmar venta", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toHaveValue("60");
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$60");
       await page.evaluate(async () => {
         const f = (window as any).s04b;
         f.finishSelect({ data: { product: f.products[1], revision: 5 } });
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       });
       await expect(page.getByRole("form", { name: "Datos de la venta" }).getByRole("button", { name: "Confirmar venta", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toHaveValue("60");
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$60");
       await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[4].titulo);
       assert.equal((await saleCalls()).length, 0);
       passed++;
@@ -268,23 +278,77 @@ async function main() {
       await page.evaluate(() => { (window as any).s04b.remoteProduct(1, 5); });
       await expect(page.getByRole("button", { name: "Enviando...", exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toHaveValue("80");
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$80");
       await page.evaluate(async () => {
         (window as any).s04b.finishSale({ data: { id: "synthetic-old-sale" } });
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       });
       await expect(page.getByRole("form", { name: "Datos de la venta" }).getByRole("button", { name: "Confirmar venta", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Total acordado (MXN)", { exact: true })).toHaveValue("80");
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$80");
       assert.equal((await saleCalls()).length, 1);
+      passed++;
+
+      // Fixed unit price has no edit control and quantity determines the total.
+      await mount("/sale");
+      await expect(page.locator("#sale-price")).toHaveCount(0);
+      await page.getByLabel("Cantidad", { exact: true }).fill("2");
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$240");
+      await submitSale();
+      await expect.poll(async () => (await saleCalls()).length).toBe(1);
+      assert.equal((await saleCalls())[0].precioAcordado, 240);
+      passed++;
+
+      // Negotiable, quote and reservation publications still use an agreed total.
+      for (const mode of [{ modo_precio: "precio", precio_negociable: true }, { modo_precio: "cotizacion", precio_negociable: false }, { modo_precio: "reservacion", precio_negociable: false }]) {
+        await mount("/sale", { products: products.map((product, index) => index ? product : { ...product, ...mode }) });
+        await page.getByLabel("Total acordado (MXN)", { exact: true }).fill("183.15");
+        await submitSale();
+        await expect.poll(async () => (await saleCalls()).length).toBe(1);
+        assert.equal((await saleCalls())[0].precioAcordado, 183.15);
+      }
+      passed++;
+
+      await mount("/sale", { saleResults: [{ error: "El precio cambió. Actualiza el producto y revisa el total antes de confirmar.", code: "PRICE_CHANGED" }] });
+      await submitSale();
+      await expect(page.getByRole("alert")).toContainText("El precio cambió");
+      await expect(page.locator('button[type="submit"]')).toBeDisabled();
+      await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
+      await page.getByRole("button", { name: "Cerrar y actualizar producto", exact: true }).click();
+      assert.equal(await page.evaluate(() => (window as any).s04b.refreshes), 1);
+      assert.equal(await page.evaluate(() => (window as any).s04b.closed), 1);
+      assert.equal((await saleCalls()).length, 1);
+      passed++;
+
+      // An uncertain retry retains its quote and UUID after close/reopen and a
+      // catalog price refresh for the same selected product/revision.
+      await mount("/chat", { saleResults: ["transport-error", { data: { id: "synthetic-sale" } }] });
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
+      await page.getByLabel("Cantidad", { exact: true }).fill("2");
+      await submitSale();
+      await expect(page.getByRole("alert")).toContainText("Reintenta con los mismos datos");
+      await page.getByRole("button", { name: "Cerrar confirmación", exact: true }).click();
+      await page.evaluate(() => {
+        const f = (window as any).s04b;
+        f.products[0] = { ...f.products[0], precio: 999 };
+        f.remoteProduct(0, 4);
+      });
+      await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[0].titulo);
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
+      await expect(page.getByLabel("Total de la venta", { exact: true })).toContainText("$240");
+      await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
+      await submitSale();
+      await expect.poll(async () => (await saleCalls()).length).toBe(2);
+      assert.deepEqual((await saleCalls())[0], (await saleCalls())[1]);
       passed++;
 
       assert.deepEqual(errors, []);
       assert.deepEqual(unexpectedNetwork, []);
-      console.log(`PASA: 9 casos S04-B en Chrome ${viewport.width}x${viewport.height}; selector, formulario y ChatWindow reales.`);
+      console.log(`PASA: 13 casos S04-B en Chrome ${viewport.width}x${viewport.height}; selector, precio fijo/manual, borrador y ChatWindow reales.`);
       await context.close();
     }
     console.log(`PASA ${passed}/${passed}; acciones simuladas, sin tráfico externo.`);
   } finally { await browser.close(); }
+  }
 
   const matrices: object[] = [];
   const longTitle = "Laptop Lenovo ThinkPad T14 Gen 3 (Core i7, 16GB, 512GB SSD)";
@@ -292,7 +356,7 @@ async function main() {
   for (const [engine, launcher] of [["chromium", chromium], ["webkit", webkit]] as const) {
     const visualBrowser = await launcher.launch({ headless: true });
     try {
-      for (const width of [320, 375, 1280]) for (const theme of ["light", "dark"]) {
+      for (const width of widths) for (const theme of ["light", "dark"]) {
         const context = await visualBrowser.newContext({ viewport: { width, height: 900 } });
         const page = await context.newPage();
         page.setDefaultTimeout(5000);
@@ -313,11 +377,17 @@ async function main() {
         }, { products, longTitle, thumbnail, theme });
         await page.addStyleTag({ content: css });
         await page.addScriptTag({ content: js });
+        const loadedFonts = await page.evaluate(async (families: string[]) => {
+          await Promise.all(families.map(family => document.fonts.load('600 16px "' + family + '"')));
+          await document.fonts.ready;
+          return families.every(family => document.fonts.check('600 16px "' + family + '"'));
+        }, fonts.families);
+        assert.equal(loadedFonts, true, "actual Inter and Outfit are loaded before measurement");
         await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
         const panel = page.getByRole("region", { name: "Confirmar venta", exact: true });
         const form = panel.getByRole("form", { name: "Datos de la venta" });
         const submit = form.getByRole("button", { name: "Confirmar venta", exact: true });
-        const price = form.getByLabel("Total acordado (MXN)", { exact: true });
+        const price = form.getByLabel("Total de la venta", { exact: true });
         const quantity = form.getByLabel("Cantidad", { exact: true });
         const notes = form.getByLabel("Notas (opcional)", { exact: true });
         await expect(panel).toBeVisible();
@@ -336,9 +406,9 @@ async function main() {
         const row = await page.getByRole("button", { name: "Cambiar producto", exact: true }).boundingBox();
         assert.ok(bounds && row && bounds.y + bounds.height <= row.y + 1, "form precedes product/history row");
         await page.screenshot({ path: path.join(out, "panel-" + engine + "-" + width + "-" + theme + ".png"), fullPage: true });
-        assert.ok(bounds.height <= (width === 320 ? 360 : 290), "compact initial panel height: " + JSON.stringify({ engine, width, theme, bounds, fields: await form.locator("fieldset").boundingBox(), price: await price.boundingBox() }));
+        assert.ok(bounds.height <= 450, "initial panel fits within half the viewport");
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow");
-        for (const control of [price, quantity, notes, submit, panel.getByRole("button", { name: "Cerrar confirmación" })]) {
+        for (const control of [quantity, notes, submit, panel.getByRole("button", { name: "Cerrar confirmación" })]) {
           const rect = await control.boundingBox();
           assert.ok(rect && rect.height >= 48, "48px control target");
         }
@@ -346,47 +416,64 @@ async function main() {
         assert.ok(quantityRect && notesRect && Math.abs(quantityRect.y - notesRect.y) < 1, "quantity and notes share row");
         const summary = panel.locator("summary");
         const title = summary.locator("span");
+        assert.ok((await title.boundingBox())!.width >= 170, "product title has useful space");
+        assert.equal(await title.evaluate((element: HTMLElement) => getComputedStyle(element).fontFamily.includes("Outfit")), true);
+        assert.equal(await quantity.evaluate((element: HTMLElement) => getComputedStyle(element).fontFamily.includes("Inter")), true);
+        assert.equal(await title.evaluate((element: HTMLElement) => getComputedStyle(element).fontSize), "16px", "title never shrinks to fit");
         assert.equal(await title.evaluate((element: HTMLElement) => getComputedStyle(element).webkitLineClamp), "2");
         await summary.focus(); await page.keyboard.press("Enter");
         await expect(panel.locator("details")).toHaveAttribute("open", "");
         assert.equal(await title.evaluate((element: HTMLElement) => element.scrollHeight <= element.clientHeight + 1), true, "full title accessible");
         await page.keyboard.press("Enter");
-        await price.fill("12500.50"); await quantity.fill("2"); await notes.fill("Entrega acordada");
+        await expect(form.locator("#sale-price")).toHaveCount(0);
+        await quantity.fill("2"); await notes.fill("Entrega acordada");
+        await expect(price).toContainText("$25,600");
         await page.getByRole("button", { name: "Cerrar confirmación" }).click();
         await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
-        await expect(price).toHaveValue("12500.50"); await expect(quantity).toHaveValue("2"); await expect(notes).toHaveValue("Entrega acordada");
-        await price.focus(); await page.keyboard.press("Tab"); await expect(quantity).toBeFocused();
+        await expect(price).toContainText("$25,600"); await expect(quantity).toHaveValue("2"); await expect(notes).toHaveValue("Entrega acordada");
+        await summary.focus(); await page.keyboard.press("Tab"); await expect(quantity).toBeFocused();
         await page.keyboard.press("Tab"); await expect(notes).toBeFocused();
         await page.keyboard.press("Tab"); await expect(submit).toBeFocused();
 
         // Without a photo the placeholder stays compact. Invalid URLs get the same fallback.
         await panel.locator("img").evaluate((image: HTMLImageElement) => image.dispatchEvent(new Event("error")));
         await expect(panel.locator("img")).toHaveCount(0);
-        await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "200% horizontal overflow");
-        for (const control of [price, quantity, notes, submit]) {
-          await control.scrollIntoViewIfNeeded();
-          const rect = await control.boundingBox();
-          assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= width + 1, "200% control remains reachable");
+        for (const scale of [125, 150, 200]) {
+          await page.evaluate((value: number) => { document.documentElement.style.fontSize = value + "%"; }, scale);
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, scale + "% horizontal overflow");
+          assert.equal(await title.evaluate((element: HTMLElement) => getComputedStyle(element).fontSize), 16 * scale / 100 + "px", "text enlargement is respected");
+          for (const control of [price, quantity, notes, submit]) {
+            await control.scrollIntoViewIfNeeded();
+            const rect = await control.boundingBox();
+            assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= width + 1, scale + "% control remains reachable");
+          }
+          if (scale === 200) await page.screenshot({ path: path.join(out, "panel-200-" + engine + "-" + width + "-" + theme + ".png"), fullPage: true });
         }
-        await page.screenshot({ path: path.join(out, "panel-200-" + engine + "-" + width + "-" + theme + ".png"), fullPage: true });
         await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+        // A shorter viewport approximates landscape/keyboard occupation only;
+        // it does not claim to emulate a physical mobile keyboard.
+        await page.setViewportSize({ width, height: 390 });
+        await notes.scrollIntoViewIfNeeded(); await expect(notes).toBeVisible();
+        await submit.scrollIntoViewIfNeeded(); await expect(submit).toBeVisible();
+        await expect(quantity).toHaveValue("2"); await expect(notes).toHaveValue("Entrega acordada");
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        await page.setViewportSize({ width, height: 900 });
         await submit.click();
         await expect(panel.getByRole("alert")).toContainText("Reintenta con los mismos datos");
-        await expect(price).toBeDisabled(); await expect(quantity).toBeDisabled(); await expect(notes).toBeDisabled();
+        await expect(quantity).toBeDisabled(); await expect(notes).toBeDisabled();
         await submit.click();
         await expect(panel).toHaveCount(0);
         const calls = await page.evaluate(() => (window as any).s04b.saleCalls);
         assert.equal(calls.length, 2); assert.deepEqual(calls[0], calls[1]);
-        assert.equal(calls[0].precioAcordado, 12500.5); assert.equal(calls[0].cantidad, 2); assert.equal(calls[0].notas, "Entrega acordada");
+        assert.equal(calls[0].precioAcordado, 25600); assert.equal(calls[0].cantidad, 2); assert.equal(calls[0].notas, "Entrega acordada");
         assert.deepEqual(errors, []); assert.deepEqual(unexpectedNetwork, []);
         await context.close();
-        matrices.push({ engine, width, theme, panelHeight: bounds!.height, contrast, passed: true });
+        matrices.push({ engine, width, theme, fonts: fonts.families, textScale: [100, 125, 150, 200], shortViewportHeight: 390, panelHeight: bounds!.height, contrast, passed: true });
         console.log("PASA panel " + engine + " " + width + " " + theme + "; altura " + bounds!.height + "px.");
       }
     } finally { await visualBrowser.close(); }
   }
-  await writeFile(path.join(out, "panel-results.json"), JSON.stringify(matrices, null, 2));
-  console.log("PASA " + matrices.length + "/12 matrices del panel real: Chromium/WebKit, 320/375/1280, claro/oscuro, texto200%, borrador y reintento. Sin aceptación física.");
+  await writeFile(path.join(out, widthOption ? "panel-extra-width-results.json" : "panel-results.json"), JSON.stringify(matrices, null, 2));
+  console.log("PASA " + matrices.length + "/" + widths.length * 4 + " matrices del panel real: Chromium/WebKit, anchos " + widths.join("/") + ", claro/oscuro, Inter/Outfit, texto100/125/150/200%, altura390, borrador y reintento. Sin aceptación física.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

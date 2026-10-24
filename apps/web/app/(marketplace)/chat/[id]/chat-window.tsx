@@ -812,6 +812,7 @@ export function ChatWindow({
           productRevision={activeProduct.revision}
           onClose={() => setSaleDraft(null)}
           onCreated={() => { syncChatRef.current(); void operations.refresh(); }}
+          onProductRefresh={() => { syncChatRef.current(); router.refresh(); }}
         />
       )}
       <div className="mx-4 flex shrink-0 items-center justify-between gap-2 text-xs">

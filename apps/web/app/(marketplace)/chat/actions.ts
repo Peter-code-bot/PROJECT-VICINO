@@ -454,6 +454,7 @@ function chatContractError(error: { code?: string; hint?: string } | null): Chat
     if (error.hint === "intent_already_rejected") return { error: "Esta solicitud ya fue rechazada.", code: "INTENT_ALREADY_REJECTED" };
     if (error.hint === "legacy_intent_recreate") return { error: "Esta solicitud anterior no conserva sus condiciones. Envía una solicitud nueva o usa Confirmar venta.", code: "LEGACY_INTENT" };
     if (error.hint === "price_required") return { error: "El producto seleccionado no tiene un precio definido.", code: "PRICE_REQUIRED" };
+    if (error.hint === "price_changed") return { error: "El precio cambió. Actualiza el producto y revisa el total antes de confirmar.", code: "PRICE_CHANGED" };
     if (error.hint === "product_changed") return { error: "El producto del chat cambió. Actualiza la selección y revisa los datos.", code: "PRODUCT_CHANGED" };
     if (error.hint === "pending_confirmation") return { error: "Ya hay una confirmación en curso.", code: "PENDING_CONFIRMATION" };
     if (error.hint === "idempotency_conflict") return { error: "Este envío corresponde a otra operación. Revisa la confirmación del chat.", code: "IDEMPOTENCY_CONFLICT" };

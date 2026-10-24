@@ -1,7 +1,7 @@
 import type { Database } from "@/types/database.types";
 
 export type ProductoChat = Pick<Database["public"]["Tables"]["products_services"]["Row"],
-  "id" | "titulo" | "precio" | "modo_precio" | "imagen_principal" | "creador_id" | "estatus" | "is_hidden">;
+  "id" | "titulo" | "precio" | "modo_precio" | "precio_negociable" | "imagen_principal" | "creador_id" | "estatus" | "is_hidden">;
 export type ProductoActivoChat = { product: ProductoChat | null; revision: number };
 
 export function productoElegible(product: ProductoChat | null, participants: string[]) {

@@ -44,7 +44,7 @@ export default async function ChatDetailPage({ params, searchParams }: Props) {
       deleted_at_comprador, deleted_at_vendedor,
       comprador:profiles!comprador_id(id, nombre, foto, trust_level, es_vendedor, seller_type, nombre_negocio),
       vendedor:profiles!vendedor_id(id, nombre, foto, trust_level, es_vendedor, seller_type, nombre_negocio),
-      ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, modo_precio, imagen_principal, creador_id, estatus, is_hidden)
+      ultimo_producto:products_services!ultimo_producto_id(id, titulo, precio, modo_precio, precio_negociable, imagen_principal, creador_id, estatus, is_hidden)
     `
     )
     .eq("id", chatId)
