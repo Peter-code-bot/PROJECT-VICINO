@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Package, Send, X } from "lucide-react";
 import { createSaleConfirmation } from "../actions";
 import type { ProductoChat } from "@/lib/chat/producto-activo";
+import { posterUrl } from "@/lib/video-thumbnail";
+import styles from "./sale-confirmation-form.module.css";
 
 const drafts = new Map<string, { price: string; quantity: string; notes: string; uncertain: boolean; operation: { key: string; signature: string } | null }>();
 
@@ -30,6 +32,7 @@ export function SaleConfirmationForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const submitting = useRef(false);
   const mounted = useRef(true);
 
@@ -105,77 +108,82 @@ export function SaleConfirmationForm({
   }
 
   return (
-    <div className="max-h-[45vh] shrink-0 overflow-y-auto px-4 py-3 border-b bg-muted space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">
-          Confirmar venta
-        </h3>
+    <section aria-labelledby="sale-form-title" className={styles.panel}>
+      <div className={styles.header}>
+        <h3 id="sale-form-title" className={styles.heading}>Confirmar venta</h3>
         <button
           type="button"
           aria-label="Cerrar confirmación"
           disabled={loading}
           onClick={onClose}
-          className="min-h-12 min-w-12 text-muted-foreground hover:text-foreground flex items-center justify-center"
+          className={styles.close}
         >
-          <X className="h-4 w-4" />
+          <X size={18} aria-hidden />
         </button>
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-danger">{error}</p>
+        <p role="alert" className={styles.error}>{error}</p>
       )}
 
-      {product && (
-        <details className="group text-sm text-fg-muted">
-          <summary className="flex min-h-12 cursor-pointer items-center gap-2 [&::-webkit-details-marker]:hidden">
-            <span className="min-w-0 flex-1 line-clamp-2 break-words font-semibold group-open:line-clamp-none">{product.titulo}</span>
-            <span className="sr-only">Ver nombre completo</span>
-            <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
-          </summary>
-        </details>
-      )}
-      <p className="text-sm text-fg-muted">
-        {product?.creador_id === currentUserId
-          ? "Envía sólo tras entregar; el comprador confirmará la recepción."
-          : "Envía sólo tras recibir; el vendedor confirmará la entrega."}
-      </p>
-
-      <form onSubmit={handleSubmit} className="space-y-2.5">
-        <fieldset disabled={loading || uncertain} className="grid grid-cols-2 gap-2">
-          <div>
-            <label htmlFor="sale-price" className="text-xs font-medium text-muted-foreground block mb-1">
-              Total acordado (MXN)
-            </label>
-            <input
-              id="sale-price"
-              type="number"
-              value={precio}
-              onChange={(e) => setPrecio(e.target.value)}
-              required
-              min={0.01}
-              step="0.01"
-              placeholder="0.00"
-              className="min-h-12 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            />
+      <form onSubmit={handleSubmit} aria-label="Datos de la venta" className={styles.form}>
+        <fieldset disabled={loading || uncertain} className={styles.fields}>
+          <div className={styles.product}>
+            <div className={styles.thumbnail} aria-hidden>
+              {product?.imagen_principal && !imageFailed ? (
+                // Product media may be a video; use its existing poster convention.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={posterUrl(product.imagen_principal)} alt="" onError={() => setImageFailed(true)} />
+              ) : <Package size={24} />}
+            </div>
+            <div className={styles.productInfo}>
+              {product && (
+                <details className={styles.productName}>
+                  <summary aria-label={"Ver nombre completo: " + product.titulo}>
+                    <span>{product.titulo}</span>
+                    <ChevronDown size={14} aria-hidden />
+                  </summary>
+                </details>
+              )}
+              <label htmlFor="sale-price" className={styles.label}>
+                Total <span>(MXN)</span>
+                <span className="sr-only"> acordado</span>
+              </label>
+              <input
+                id="sale-price"
+                aria-label="Total acordado (MXN)"
+                type="number"
+                inputMode="decimal"
+                value={precio}
+                onChange={(e) => setPrecio(e.target.value)}
+                required
+                min={0.01}
+                step="0.01"
+                placeholder="0.00"
+                className={styles.price}
+              />
+            </div>
           </div>
           <div>
-            <label htmlFor="sale-quantity" className="text-xs font-medium text-muted-foreground block mb-1">
-              Cantidad
+            <label htmlFor="sale-quantity" className={styles.label}>
+              <span aria-hidden>Cant.</span><span className="sr-only">Cantidad</span>
             </label>
             <input
               id="sale-quantity"
+              aria-label="Cantidad"
               type="number"
+              inputMode="numeric"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               required
               min={1}
               max={9999}
               step={1}
-              className="min-h-12 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              className={styles.quantity}
             />
           </div>
-          <div className="col-span-2">
-            <label htmlFor="sale-notes" className="text-xs font-medium text-muted-foreground block mb-1">
+          <div>
+            <label htmlFor="sale-notes" className={styles.label}>
               Notas (opcional)
             </label>
             <input
@@ -183,20 +191,27 @@ export function SaleConfirmationForm({
               type="text"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Acuerdos adicionales"
+              placeholder="Notas…"
               maxLength={1000}
-              className="min-h-12 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              className={styles.input}
             />
           </div>
         </fieldset>
+        <p id="sale-form-guidance" className={styles.guidance}>
+          {product?.creador_id === currentUserId
+            ? "Tras entregar. El comprador confirmará la recepción."
+            : "Tras recibir. El vendedor confirmará la entrega."}
+        </p>
         <button
           type="submit"
+          aria-describedby="sale-form-guidance"
           disabled={loading || !eligible}
-          className="w-full min-h-12 rounded-md bg-brand hover:bg-brand-dark text-white px-3 py-2 text-sm font-medium disabled:opacity-50 transition-colors flex items-center justify-center shadow-sm"
+          className={styles.submit}
         >
-          {loading ? "Enviando..." : "Iniciar Confirmación"}
+          <Send size={20} aria-hidden />
+          {loading ? "Enviando..." : "Confirmar venta"}
         </button>
       </form>
-    </div>
+    </section>
   );
 }

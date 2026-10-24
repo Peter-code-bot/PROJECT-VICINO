@@ -803,6 +803,17 @@ export function ChatWindow({
       </div>}
 
       {/* Sale confirmation form */}
+      {showSaleForm && (
+        <SaleConfirmationForm
+          key={`${activeProduct.revision}:${product?.id}`}
+          chatId={chatId}
+          currentUserId={currentUserId}
+          product={product}
+          productRevision={activeProduct.revision}
+          onClose={() => setSaleDraft(null)}
+          onCreated={() => { syncChatRef.current(); void operations.refresh(); }}
+        />
+      )}
       <div className="mx-4 flex shrink-0 items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2">
           {(hayQueVender || showProductSelector) && (
@@ -835,17 +846,6 @@ export function ChatWindow({
       {saleDraft && !showSaleForm && salesStatus === "ready" && <p role="status" className="mx-4 text-xs text-muted-foreground">
         El producto cambió o dejó de estar disponible. Revisa la selección y abre una nueva confirmación.
       </p>}
-      {showSaleForm && (
-        <SaleConfirmationForm
-          key={`${activeProduct.revision}:${product?.id}`}
-          chatId={chatId}
-          currentUserId={currentUserId}
-          product={product}
-          productRevision={activeProduct.revision}
-          onClose={() => setSaleDraft(null)}
-          onCreated={() => { syncChatRef.current(); void operations.refresh(); }}
-        />
-      )}
 
       {/* Product context — compact bar */}
       {product && (
