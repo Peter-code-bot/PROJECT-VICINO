@@ -116,7 +116,7 @@ const main = async () => {
       const precio = pC.locator('#sale-price');
       await precio.waitFor({ timeout: 20_000 });
       await precio.fill('85');
-      await pC.getByRole('button', { name: 'Iniciar Confirmación' }).click();
+      await pC.getByRole('form', { name: 'Datos de la venta' }).getByRole('button', { name: 'Confirmar venta', exact: true }).click();
       await pV.getByText('Pendiente de respuesta del vendedor').first().waitFor({ timeout: 25_000 });
       const [s] = await leer(cfg, `select count(*)::int n from sale_confirmations where chat_id = ${q(chat)} and status = 'pending_confirmation'`);
       if (s.n !== 1) throw new Error(`ventas pendientes en BD: ${s.n}`);

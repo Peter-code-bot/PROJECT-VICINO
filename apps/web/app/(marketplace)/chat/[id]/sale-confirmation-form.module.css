@@ -1,0 +1,53 @@
+.panel {
+  container: sale-confirmation / inline-size;
+  flex-shrink: 0;
+  min-width: 0;
+  max-height: min(50dvh, 30rem);
+  overflow-y: auto;
+  margin: .5rem .75rem;
+  padding: 0 .75rem .75rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 15%, var(--card));
+  border-radius: var(--r-xl);
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+.header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.heading { margin: 0; font-family: var(--font-outfit), system-ui, sans-serif; font-size: 1rem; line-height: 1.5rem; font-weight: 600; }
+.close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 3rem; min-height: 3rem; margin-right: -.5rem; border-radius: var(--r-md); color: var(--fg-muted); }
+.close:hover { color: var(--fg); background: var(--card-2); }
+.form { display: grid; gap: .5rem; }
+.fields { display: grid; grid-template-columns: minmax(0, 1fr) 3.5rem minmax(5rem, .6fr); align-items: end; gap: .5rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.fields > div { min-width: 0; }
+.product { display: flex; align-items: center; gap: .5rem; padding-right: .5rem; border-right: 1px solid color-mix(in srgb, var(--fg) 15%, var(--card)); }
+.thumbnail { display: flex; align-items: center; justify-content: center; flex: 0 0 3rem; width: 3rem; height: 4rem; overflow: hidden; border-radius: var(--r-md); background: var(--card-2); color: var(--fg-muted); }
+.thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.productInfo { flex: 1; min-width: 0; }
+.productName summary { display: flex; align-items: center; gap: .125rem; min-height: 3rem; cursor: pointer; list-style: none; border-radius: var(--r-md); }
+.productName summary::-webkit-details-marker { display: none; }
+.productName summary span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-family: var(--font-outfit), system-ui, sans-serif; font-size: .875rem; line-height: 1.125rem; font-weight: 600; }
+.productName summary svg { flex-shrink: 0; }
+.productName[open] summary span { display: block; }
+.productName[open] summary svg { transform: rotate(180deg); }
+.label { display: block; margin-bottom: .25rem; color: var(--fg-muted); font-size: .6875rem; line-height: 1rem; overflow-wrap: anywhere; }
+.input, .price, .quantity { width: 100%; min-width: 0; min-height: 3rem; border: 1px solid var(--fg-muted); border-radius: var(--r-md); padding: .5rem; background: var(--bg); color: var(--fg); font-size: 1rem; line-height: 1.25rem; }
+.price { color: var(--brand); font-family: var(--font-outfit), system-ui, sans-serif; font-weight: 600; }
+:global(.dark) .price { color: var(--fg); }
+.quantity { padding-inline: .25rem; text-align: center; }
+.price, .quantity { appearance: textfield; -moz-appearance: textfield; }
+.price::-webkit-inner-spin-button, .price::-webkit-outer-spin-button, .quantity::-webkit-inner-spin-button, .quantity::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.input::placeholder, .price::placeholder { color: var(--fg-muted); opacity: 1; }
+.guidance { margin: 0; color: var(--fg-muted); font-size: .75rem; line-height: 1rem; }
+.submit { display: flex; align-items: center; justify-content: center; gap: .75rem; width: 100%; min-height: 3rem; padding: .75rem; border-radius: var(--r-lg); background: var(--brand); color: var(--primary-foreground); font-size: 1rem; line-height: 1.25rem; font-weight: 600; }
+.submit svg { flex-shrink: 0; }
+.submit:hover { background: var(--brand-dark); }
+.close:disabled, .submit:disabled { opacity: .5; cursor: not-allowed; }
+.fields:disabled input { opacity: .6; }
+.close:focus-visible, .productName summary:focus-visible, .input:focus-visible, .price:focus-visible, .quantity:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.submit:focus-visible { outline: 2px solid var(--primary-foreground); outline-offset: -4px; }
+.error { margin: 0 0 .5rem; padding: .5rem; border-radius: var(--r-md); background: color-mix(in srgb, var(--danger) 10%, var(--card)); color: var(--fg); font-size: .875rem; line-height: 1.25rem; overflow-wrap: anywhere; }
+@container sale-confirmation (max-width: 19rem) {
+  .fields { grid-template-columns: 3.5rem minmax(0, 1fr); align-items: end; }
+  .product { grid-column: 1 / -1; padding-right: 0; border-right: 0; }
+}
