@@ -42,7 +42,7 @@ export async function hideReview(reviewId: string) {
 
   const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
+    return { error: parsed.error.issues[0]?.message ?? "Reseña inválida" };
   }
 
   const { error } = await supabase.rpc("moderate_review", {
@@ -72,7 +72,7 @@ export async function approveReview(reviewId: string) {
 
   const parsed = moderateReviewSchema.safeParse({ review_id: reviewId });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Reseña inválida" };
+    return { error: parsed.error.issues[0]?.message ?? "Reseña inválida" };
   }
 
   const { error } = await supabase.rpc("moderate_review", {

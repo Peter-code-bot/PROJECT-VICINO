@@ -247,7 +247,7 @@ export async function createProduct(formData: FormData) {
 
   const result = createProductSchema.safeParse(raw);
   if (!result.success) {
-    return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: result.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // MP#08 #4 Fase 1C (D1C-A Camino X): ultima escritura del espejo categoria
@@ -491,7 +491,7 @@ export async function updateProductFull(
 
   const parsed = updateProductSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // Extra fields outside the partial schema. Handled manually.

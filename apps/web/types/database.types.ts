@@ -1347,6 +1347,69 @@ export type Database = {
         }
         Relationships: []
       }
+      media_processing_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          duration: number | null
+          error_code: string | null
+          id: string
+          idempotency_key: string
+          input_deleted_at: string | null
+          input_path: string
+          input_size: number
+          lease_id: string | null
+          lease_until: string | null
+          mime: string
+          output_deleted_at: string | null
+          output_path: string
+          output_size: number | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          duration?: number | null
+          error_code?: string | null
+          id?: string
+          idempotency_key: string
+          input_deleted_at?: string | null
+          input_path: string
+          input_size: number
+          lease_id?: string | null
+          lease_until?: string | null
+          mime: string
+          output_deleted_at?: string | null
+          output_path: string
+          output_size?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          duration?: number | null
+          error_code?: string | null
+          id?: string
+          idempotency_key?: string
+          input_deleted_at?: string | null
+          input_path?: string
+          input_size?: number
+          lease_id?: string | null
+          lease_until?: string | null
+          mime?: string
+          output_deleted_at?: string | null
+          output_path?: string
+          output_size?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           attachments: Json | null
@@ -1355,6 +1418,8 @@ export type Database = {
           clave_idempotencia: string | null
           created_at: string | null
           id: string
+          intent_snapshot: Json | null
+          intent_status: string | null
           is_hidden: boolean
           leido_por_comprador: boolean | null
           leido_por_vendedor: boolean | null
@@ -1370,6 +1435,8 @@ export type Database = {
           clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
+          intent_snapshot?: Json | null
+          intent_status?: string | null
           is_hidden?: boolean
           leido_por_comprador?: boolean | null
           leido_por_vendedor?: boolean | null
@@ -1385,6 +1452,8 @@ export type Database = {
           clave_idempotencia?: string | null
           created_at?: string | null
           id?: string
+          intent_snapshot?: Json | null
+          intent_status?: string | null
           is_hidden?: boolean
           leido_por_comprador?: boolean | null
           leido_por_vendedor?: boolean | null
@@ -2060,7 +2129,8 @@ export type Database = {
           id: string
           is_hidden: boolean
           motivo_reporte: string | null
-          product_id: string
+          origen: string
+          product_id: string | null
           rating: number
           reportada: boolean | null
           respuesta: string | null
@@ -2068,7 +2138,7 @@ export type Database = {
           review_type: Database["public"]["Enums"]["review_type"]
           reviewed_id: string | null
           reviewer_id: string
-          sale_confirmation_id: string
+          sale_confirmation_id: string | null
           updated_at: string | null
           visible: boolean | null
         }
@@ -2080,7 +2150,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           motivo_reporte?: string | null
-          product_id: string
+          origen?: string
+          product_id?: string | null
           rating: number
           reportada?: boolean | null
           respuesta?: string | null
@@ -2088,7 +2159,7 @@ export type Database = {
           review_type: Database["public"]["Enums"]["review_type"]
           reviewed_id?: string | null
           reviewer_id: string
-          sale_confirmation_id: string
+          sale_confirmation_id?: string | null
           updated_at?: string | null
           visible?: boolean | null
         }
@@ -2100,7 +2171,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           motivo_reporte?: string | null
-          product_id?: string
+          origen?: string
+          product_id?: string | null
           rating?: number
           reportada?: boolean | null
           respuesta?: string | null
@@ -2108,7 +2180,7 @@ export type Database = {
           review_type?: Database["public"]["Enums"]["review_type"]
           reviewed_id?: string | null
           reviewer_id?: string
-          sale_confirmation_id?: string
+          sale_confirmation_id?: string | null
           updated_at?: string | null
           visible?: boolean | null
         }
@@ -2163,10 +2235,12 @@ export type Database = {
           precio_acordado: number
           product_id: string
           producto_revision: number | null
+          purchase_intent_message_id: string | null
           seller_confirmed: boolean | null
           seller_confirmed_at: string | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot: Json | null
           tipo_entrega: string | null
           updated_at: string | null
         }
@@ -2189,10 +2263,12 @@ export type Database = {
           precio_acordado: number
           product_id: string
           producto_revision?: number | null
+          purchase_intent_message_id?: string | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot?: Json | null
           tipo_entrega?: string | null
           updated_at?: string | null
         }
@@ -2215,10 +2291,12 @@ export type Database = {
           precio_acordado?: number
           product_id?: string
           producto_revision?: number | null
+          purchase_intent_message_id?: string | null
           seller_confirmed?: boolean | null
           seller_confirmed_at?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["sale_status"]
+          terms_snapshot?: Json | null
           tipo_entrega?: string | null
           updated_at?: string | null
         }
@@ -2256,6 +2334,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_confirmations_purchase_intent_message_id_fkey"
+            columns: ["purchase_intent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -3213,6 +3298,7 @@ export type Database = {
           vigente_desde: string
         }[]
       }
+      cancel_product_video_job: { Args: { p_job_id: string }; Returns: Json }
       cancel_sale: {
         Args: { p_reason?: string; p_sale_id: string }
         Returns: undefined
@@ -3237,6 +3323,7 @@ export type Database = {
         Args: { p_attachments: Json; p_autor_id: string; p_chat_id: string }
         Returns: boolean
       }
+      claim_product_video_job: { Args: never; Returns: Json }
       cleanup_old_deletion_logs: { Args: never; Returns: number }
       comentarios_de_publicacion: {
         Args: {
@@ -3448,7 +3535,12 @@ export type Database = {
       estado_confirmacion_legal: { Args: never; Returns: Json }
       estado_cuota_fundacion: { Args: never; Returns: Json }
       exigir_confirmacion_legal: { Args: never; Returns: undefined }
+      expire_product_video_jobs: { Args: never; Returns: undefined }
       expire_stale_confirmations: { Args: never; Returns: number }
+      expire_unlinked_product_video_outputs: {
+        Args: { p_public_base_url: string }
+        Returns: Json
+      }
       feed_comunidades_explorar: {
         Args: {
           cursor_id?: string
@@ -3554,6 +3646,17 @@ export type Database = {
           p_operation_id: string
         }
         Returns: Json
+      }
+      finish_product_video_job: {
+        Args: {
+          p_duration: number
+          p_error_code: string
+          p_job_id: string
+          p_lease_id: string
+          p_output_size: number
+          p_status: string
+        }
+        Returns: boolean
       }
       fundar_comunidad: {
         Args: {
@@ -3686,6 +3789,15 @@ export type Database = {
         Returns: {
           appointment_start: string
         }[]
+      }
+      get_chat_operations: {
+        Args: {
+          p_chat_id: string
+          p_cursor?: Json
+          p_ids?: string[]
+          p_limit?: number
+        }
+        Returns: Json
       }
       get_my_profile: {
         Args: never
@@ -3906,6 +4018,10 @@ export type Database = {
         }
         Returns: Json
       }
+      leer_resenas_local: {
+        Args: { p_limit?: number; p_offset?: number; p_reviewed_id: string }
+        Returns: Json
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       loyalty_actor: { Args: never; Returns: string }
       loyalty_aplicar_evento: {
@@ -3999,6 +4115,15 @@ export type Database = {
         Args: { p_chat_id: string; p_user_id: string }
         Returns: undefined
       }
+      mark_product_video_input_deleted: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
+      mark_product_video_output_deleted: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
+      mark_product_video_uploaded: { Args: { p_job_id: string }; Returns: Json }
       mis_comunidades: {
         Args: never
         Returns: {
@@ -4151,6 +4276,10 @@ export type Database = {
         }
         Returns: Json
       }
+      publicar_resena_local: {
+        Args: { p_comentario?: string; p_rating: number; p_reviewed_id: string }
+        Returns: Json
+      }
       puedo_ver_media_de_comunidad: {
         Args: { p_ruta: string }
         Returns: boolean
@@ -4182,6 +4311,10 @@ export type Database = {
         Args: { p_note: string; p_verification_id: string }
         Returns: Json
       }
+      reserve_product_video_job: {
+        Args: { p_key: string; p_mime: string; p_size: number }
+        Returns: Json
+      }
       resolve_dispute_admin: {
         Args: {
           p_decision: Database["public"]["Enums"]["dispute_status"]
@@ -4192,6 +4325,16 @@ export type Database = {
       }
       resolver_solicitud_union: {
         Args: { p_aceptar: boolean; p_request_id: string }
+        Returns: Json
+      }
+      responder_intencion_compra: {
+        Args: {
+          p_accion: string
+          p_cantidad?: number
+          p_message_id: string
+          p_notas?: string
+          p_precio?: number
+        }
         Returns: Json
       }
       ruta_de_chat_referenciada: { Args: { p_ruta: string }; Returns: boolean }

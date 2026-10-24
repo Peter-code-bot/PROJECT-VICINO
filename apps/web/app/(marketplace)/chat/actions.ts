@@ -19,6 +19,7 @@ import {
   cancelSaleSchema,
   getChatProductsSchema,
   selectChatProductSchema,
+  respondPurchaseIntentSchema,
   type ChatAttachment,
 } from "@vicino/shared";
 import { enforce, writeRateLimit, chatReadRateLimit } from "@/lib/rate-limit";
@@ -43,7 +44,7 @@ export async function getOrCreateChat(sellerId: string, productId?: string) {
     product_id: productId,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // Defense in depth: reject self-chat at the server boundary. The owner-
@@ -118,7 +119,7 @@ export async function iniciarConversacion(input: {
     clave: input.clave,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // La base tambien lo rechaza (22023); aqui solo se ahorra el viaje.
@@ -199,6 +200,10 @@ export async function getMessagesBefore(
     created_at: string | null;
     leido_por_comprador: boolean | null;
     leido_por_vendedor: boolean | null;
+    message_type?: string | null;
+    intent_status?: string | null;
+    publicacion_id?: string | null;
+    sale_confirmation_id?: string | null;
   }>;
   nextCursor: string | null;
   error?: string;
@@ -246,7 +251,7 @@ export async function getMessagesBefore(
   const messagesQuery = supabase
     .from("messages")
     .select(
-      "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor",
+      "id, chat_id, autor_id, texto, attachments, created_at, leido_por_comprador, leido_por_vendedor, message_type, intent_status, publicacion_id, sale_confirmation_id",
     )
     .eq("chat_id", chatId)
     .lt("created_at", cursor)
@@ -311,7 +316,7 @@ export async function sendMessage(
     attachments,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Mensaje inválido" };
+    return { error: parsed.error.issues[0]?.message ?? "Mensaje inválido" };
   }
 
   // Cada foto tiene que vivir bajo <chat>/<autor>/. Se comprueba con el chatId
@@ -445,6 +450,10 @@ type ChatContractError = { error: string; code: string };
 
 function chatContractError(error: { code?: string; hint?: string } | null): ChatContractError {
   if (error?.code === "PT409") {
+    if (error.hint === "intent_already_accepted") return { error: "Esta solicitud ya fue aceptada.", code: "INTENT_ALREADY_ACCEPTED" };
+    if (error.hint === "intent_already_rejected") return { error: "Esta solicitud ya fue rechazada.", code: "INTENT_ALREADY_REJECTED" };
+    if (error.hint === "legacy_intent_recreate") return { error: "Esta solicitud anterior no conserva sus condiciones. Envía una solicitud nueva o usa Confirmar venta.", code: "LEGACY_INTENT" };
+    if (error.hint === "price_required") return { error: "El producto seleccionado no tiene un precio definido.", code: "PRICE_REQUIRED" };
     if (error.hint === "product_changed") return { error: "El producto del chat cambió. Actualiza la selección y revisa los datos.", code: "PRODUCT_CHANGED" };
     if (error.hint === "pending_confirmation") return { error: "Ya hay una confirmación en curso.", code: "PENDING_CONFIRMATION" };
     if (error.hint === "idempotency_conflict") return { error: "Este envío corresponde a otra operación. Revisa la confirmación del chat.", code: "IDEMPOTENCY_CONFLICT" };
@@ -515,9 +524,9 @@ export async function createSaleConfirmation(data: {
   idempotencyKey: string;
   precioAcordado: number;
   cantidad: number;
-  metodoPago?: string;
-  notas?: string;
-  tipoEntrega: string;
+  metodoPago?: string | null;
+  notas?: string | null;
+  tipoEntrega?: "pickup" | "envio" | null;
 }) {
   const parsed = createSaleConfirmationSchema.safeParse({
     product_id: data?.productId, chat_id: data?.chatId,
@@ -525,7 +534,7 @@ export async function createSaleConfirmation(data: {
     precio_acordado: data?.precioAcordado, cantidad: data?.cantidad,
     metodo_pago: data?.metodoPago, notas: data?.notas, tipo_entrega: data?.tipoEntrega,
   });
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -537,8 +546,8 @@ export async function createSaleConfirmation(data: {
       p_chat_id: parsed.data.chat_id, p_producto_id: parsed.data.product_id,
       p_revision_esperada: parsed.data.producto_revision, p_clave: parsed.data.clave_idempotencia,
       p_precio: parsed.data.precio_acordado, p_cantidad: parsed.data.cantidad,
-      p_metodo_pago: parsed.data.metodo_pago, p_notas: parsed.data.notas,
-      p_tipo_entrega: parsed.data.tipo_entrega,
+      p_metodo_pago: parsed.data.metodo_pago ?? undefined, p_notas: parsed.data.notas ?? undefined,
+      p_tipo_entrega: parsed.data.tipo_entrega ?? undefined,
     });
     if (error) return chatContractError(error);
     const response = result as { confirmation: Database["public"]["Tables"]["sale_confirmations"]["Row"]; repeated: boolean } | null;
@@ -589,7 +598,7 @@ export async function cancelSale(saleConfirmationId: string, reason?: string) {
     reason,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   const { data: cancelled, error } = await supabase
@@ -676,4 +685,57 @@ export async function hideChat(chatId: string) {
 
   await revalidatePath("/chat");
   return { success: true };
+}
+
+
+export async function respondPurchaseIntent(input: {
+  messageId: string;
+  action: "aceptar" | "rechazar";
+  price?: number; quantity?: number; notes?: string;
+}): Promise<{
+  success: boolean;
+  status: "accepted" | "rejected";
+  repeated: boolean;
+  confirmation?: Database["public"]["Tables"]["sale_confirmations"]["Row"] | null;
+} | ChatContractError> {
+  const parsed = respondPurchaseIntentSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos", code: "INVALID_INPUT" };
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError") return chatContractError(null);
+    if (!user) return { error: "Inicia sesión para continuar.", code: "UNAUTHENTICATED" };
+    const rate = await enforce(writeRateLimit, `write:${user.id}`);
+    if (!rate.ok) return { error: rate.error, code: "RATE_LIMITED" };
+
+    const { data, error } = await supabase.rpc("responder_intencion_compra", {
+      p_message_id: parsed.data.messageId,
+      p_accion: parsed.data.action,
+      p_precio: parsed.data.price, p_cantidad: parsed.data.quantity, p_notas: parsed.data.notes,
+    });
+    if (error) return chatContractError(error);
+
+    const result = data as {
+      success: boolean;
+      status: "accepted" | "rejected";
+      chat_id?: string;
+      repeated: boolean;
+      confirmation?: Database["public"]["Tables"]["sale_confirmations"]["Row"] | null;
+    } | null;
+
+    if (!result?.success) return chatContractError(null);
+
+    if (result.chat_id) {
+      await revalidatePath(`/chat/${result.chat_id}`);
+    }
+
+    return {
+      success: true,
+      status: result.status,
+      repeated: result.repeated,
+      confirmation: result.confirmation ?? null,
+    };
+  } catch {
+    return chatContractError(null);
+  }
 }

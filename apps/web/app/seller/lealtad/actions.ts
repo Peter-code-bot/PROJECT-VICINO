@@ -47,7 +47,7 @@ export async function guardarPrograma(formData: FormData): Promise<{ error: stri
     plantilla: formData.get("plantilla"),
   });
   if (!entrada.success) {
-    return { error: entrada.error.errors[0]?.message ?? "Revisa los datos del programa" };
+    return { error: entrada.error.issues[0]?.message ?? "Revisa los datos del programa" };
   }
 
   const { data, error } = await conLealtad(supabase).rpc("loyalty_programa_guardar", {
@@ -92,7 +92,7 @@ export async function confirmarCanje(
   codigo: string,
 ): Promise<{ success?: true; cliente?: string; premio?: string; repetido?: boolean; error?: string }> {
   const parseado = loyaltyConfirmRedemptionSchema.safeParse({ codigo });
-  if (!parseado.success) return { error: parseado.error.errors[0]?.message ?? "Código inválido" };
+  if (!parseado.success) return { error: parseado.error.issues[0]?.message ?? "Código inválido" };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -124,7 +124,7 @@ export async function confirmarCanje(
 
 export async function revertirEvento(eventId: string, motivo?: string): Promise<{ success?: true; error?: string }> {
   const parseado = loyaltyReverseEventSchema.safeParse({ eventId, motivo });
-  if (!parseado.success) return { error: parseado.error.errors[0]?.message ?? "Datos inválidos" };
+  if (!parseado.success) return { error: parseado.error.issues[0]?.message ?? "Datos inválidos" };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

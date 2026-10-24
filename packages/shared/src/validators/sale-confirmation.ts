@@ -21,9 +21,9 @@ export const createSaleConfirmationSchema = z.object({
   clave_idempotencia: z.string().uuid(),
   precio_acordado: z.number().positive("El precio debe ser mayor a 0").max(99_999_999).multipleOf(0.01, "Usa hasta dos decimales"),
   cantidad: z.number().int().positive().max(9999).default(1),
-  metodo_pago: z.string().max(200).optional(),
-  notas: z.string().max(1000).optional(),
-  tipo_entrega: z.enum(["pickup", "envio"]).default("pickup"),
+  metodo_pago: z.string().max(200).optional().nullable(),
+  notas: z.string().max(1000).optional().nullable(),
+  tipo_entrega: z.enum(["pickup", "envio"]).optional().nullable(),
 });
 
 export const confirmSaleSchema = z.object({
@@ -35,6 +35,24 @@ export const cancelSaleSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const respondPurchaseIntentSchema = z.object({
+  messageId: z.string().uuid(),
+  action: z.enum(["aceptar", "rechazar"]),
+  price: z.number().positive().max(99_999_999).multipleOf(0.01).optional(),
+  quantity: z.number().int().min(1).max(9999).optional(),
+  notes: z.string().max(1000).optional(),
+}).refine(value => (value.price === undefined) === (value.quantity === undefined), "Indica precio total y cantidad juntos.")
+  .refine(value => value.action === "aceptar" || (value.price === undefined && value.notes === undefined), "El rechazo no cambia condiciones.");
+
+export const getChatSalesHistorySchema = z.object({
+  chatId: z.string().uuid(),
+  cursor: z.object({ createdAt: z.string().datetime({ offset: true }), id: z.string().uuid() }).optional().nullable(),
+  limit: z.number().int().min(1).max(100).default(20),
+  ids: z.array(z.string().uuid()).max(100).optional(),
+});
+
 export type CreateSaleConfirmationInput = z.infer<typeof createSaleConfirmationSchema>;
 export type ConfirmSaleInput = z.infer<typeof confirmSaleSchema>;
 export type CancelSaleInput = z.infer<typeof cancelSaleSchema>;
+export type RespondPurchaseIntentInput = z.infer<typeof respondPurchaseIntentSchema>;
+export type GetChatSalesHistoryInput = z.infer<typeof getChatSalesHistorySchema>;

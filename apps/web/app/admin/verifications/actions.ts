@@ -62,7 +62,7 @@ export async function approveVerification(verificationId: string, userId: string
     user_id: userId,
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // MP#07 Fase 4 + MP#08 #6: atomic approve verification via RPC.
@@ -166,7 +166,7 @@ export async function rejectVerification(verificationId: string, note: string) {
     note: note ?? "",
   });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // Se lee el dueno ANTES del rechazo porque despues hace falta para avisarle.

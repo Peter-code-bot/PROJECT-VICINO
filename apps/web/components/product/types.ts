@@ -1,4 +1,5 @@
 import type { PublicProfileIdentity, TrustLevel } from "@vicino/shared";
+import type { OwnLocalReview, SellerReviewSummary } from "@/lib/reviews/contracts";
 
 export interface ProductDetailProduct {
   id: string;
@@ -53,8 +54,8 @@ export interface ProductDetailReviewedProduct {
   id: string;
   titulo: string;
   categoria: string;
-  slug: string;
-  imagen_principal: string | null;
+  slug: string | null;
+  imagen_principal?: string | null;
 }
 
 export interface ProductDetailReview {
@@ -66,6 +67,10 @@ export interface ProductDetailReview {
   respuesta: string | null;
   respuesta_fecha: string | null;
   reviewer_id: string;
+  origen?: string | null;
+  sale_confirmation_id?: string | null;
+  /** Derived by the read RPC from the completed matching sale. */
+  is_verified?: boolean;
   profiles: ProductDetailReviewerProfile | ProductDetailReviewerProfile[] | null;
   products_services:
     | ProductDetailReviewedProduct
@@ -117,6 +122,8 @@ export interface ProductDetailData {
 
 export interface ProductDetailExtras {
   reviews: ProductDetailReview[];
+  reviewSummary?: SellerReviewSummary;
+  ownLocalReview?: OwnLocalReview | null;
   coupons: ProductDetailCoupon[];
   reviewsError?: string;
   couponsError?: string;

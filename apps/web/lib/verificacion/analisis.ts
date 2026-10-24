@@ -30,11 +30,12 @@ const TIPO_UNIVERSITARIA = "Credencial Universitaria";
  */
 const textoOpcional = z
   .unknown()
+  .optional()
   .transform((v) => (typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, 600) : null));
 
-const booleanoOpcional = z.unknown().transform((v) => (typeof v === "boolean" ? v : null));
+const booleanoOpcional = z.unknown().optional().transform((v) => (typeof v === "boolean" ? v : null));
 
-const porcentaje = z.unknown().transform((valor) => {
+const porcentaje = z.unknown().optional().transform((valor) => {
   const n =
     typeof valor === "number"
       ? valor
@@ -52,6 +53,7 @@ const porcentaje = z.unknown().transform((valor) => {
 // `unknown` justo en el campo que decide si una identidad se aprueba.
 const veredictoDelModelo = z
   .unknown()
+  .optional()
   .transform((v): "aprobar" | "rechazar" | "revision_humana" => {
     if (v === "aprobar") return "aprobar";
     if (v === "rechazar") return "rechazar";

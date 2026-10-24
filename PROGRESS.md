@@ -1,3 +1,20 @@
+## 23-oct-2026 — VENTA-CHAT-01: cierre de seguridad y entrega autorizada
+
+- Javier indicó «Continúa solo déjame pruebas en físico»: continuar con correcciones, integración y publicación tras verificar; la aceptación Android/iPhone permanece abierta.
+- Zod actualizado a 4.6.7 (suelo 4.6.6) en todas las rutas del lockfile, sin añadir excepciones de auditoría. Adaptados errores, categorías, edición parcial sin defaults y normalizadores conservadores de identidad. Auditoría exit0; regresiones nuevas añadidas al CI.
+- Tipos web/shared exit0; SQL27/27, acciones28/28, validación/identidad/reseñas42/42, productos18+acciones20, lealtad4/4, comunidades8/8, alta vendedor17/17 y matrices chat8/8/reseñas8/8 aprobadas. Build, CI remoto y publicación se cierran con evidencia en Notion.
+- Fuente vigente con resultado de entrega, incidentes de prueba y recorrido físico comprador/vendedor: [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), [seguimiento](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26). No se da por validado Auth/Realtime/push real por una prueba aislada.
+
+## 23-oct-2026 — VENTA-CHAT-01: migración remota aplicada con autorización
+
+- Aplicada `20261023010000` en VICINO/main mediante SQL Editor del navegador ChatGPT, tras ensayo con rollback. DDL+ledger atómicos; MD5 `1d84d16167eaf5636217829e43abf3b4`. Se conservaron46mensajes,9ventas,4reseñas y reputación de67perfiles por hashes; RLS activa. Roles SQL reales: lectura de2operaciones por participante, tercero/anon rechazados en historial/escritura y lectura pública de3reseñas.
+- Preservada identidad pública de negocio de la RPC instalada; prueba nueva incluida. SQL27/27, acciones28/28 y guard de columna generada aprobados. Tipos regenerados desde el artefacto CI de producción, incluido desfase anterior MEDIA-OPT-01. Tipos/lint/build exit0 (139avisos/0errores); actualización de PR80 en cierre.
+- Aplicación nueva, concurrencia de dos conexiones, Auth/Realtime y efectos reales, Android/iPhone continúan pendientes. Sin merge ni despliegue de aplicación. Evidencia literal, hash/SHA/CI y estado vigente en [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd), [plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
+## 23-oct-2026 — VENTA-CHAT-01: correcciones tras revisión de Antigravity
+
+- Implementación corregida en `feat/venta-chat-01-20261022`, sobre `origin/master` `eeeff8b3`. Contratos atómicos por ID, condiciones inmutables, autorización, historial compartido con paginación y retorno al producto; reseñas del local independientes y verificación calculada en servidor. Migración aditiva y reversión que conserva datos preparadas para revisión.
+- Evidencia local: SQL26/26 y S04 SQL21/21; acciones28/28; sincronización46/46; formulario18/18; chat8/8 matrices Chromium/WebKit; reseñas8/8 y contrato4/4. Tipos, lint y build exit0; push de rama y verificación remota en cierre. Pruebas controladas: no acreditan dos conexiones PostgreSQL, Realtime alojado ni Android/iPhone físicos.
+- Estado vigente, evidencia literal, PR/SHA y pruebas comprador/vendedor en el [plan VENTA-CHAT-01](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd) y [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26). Sin migración remota ni producción; `master` despliega automáticamente y requiere una entrega autorizada por separado.
 ## 22-oct-2026 — MEDIA-OPT-01: compresión automática de fotos y videos al publicar
 
 - Inicio original: **12:01:02 America/Mexico_City** (18:01:02 UTC, GPT Codex `gpt-5.4-codex / high`). Relevo por límite de cuota de Codex: **12:56:41 America/Mexico_City** (`Alejandro (Antigravity) - Gemini 4 Argon (High)`). Workflow Advisor aplicado; ejecución directa sobre el worktree aislado `fix/media-opt-20261022` y ajuste posterior `fix/media-opt-90mb-ios` tras prueba física de Javier en iPhone (foto de 90 MB).
@@ -554,3 +571,7 @@ Validación nativa/proveedor real e integración pendientes.
 Fuente operativa: [Plan en Notion](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), S05/D01/D02-S05.
 DevLog: entrada 2026-09-26-s05-mapas-confirmacion-y-preview en la
 [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd).
+
+## 2026-10-22 — VENTA-CHAT-01: revisión independiente de Antigravity
+
+Estado: requiere correcciones; entrega y migración remota no aprobadas. Código revisado en scratch/venta-chat-01-20261022, base eeeff8b3, preservado. Tipos/lint/build exit0 y SQL9/9 + S04b21/21; se reprodujeron fallos funcionales y de integridad. Evidencia y 12 hallazgos exclusivamente en Notion: https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd . Plan y seguimiento reabiertos; Android/iPhone pendientes. No hubo migración remota, push ni deploy.

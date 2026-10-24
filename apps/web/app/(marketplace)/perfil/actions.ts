@@ -47,7 +47,7 @@ export async function updateProfile(formData: FormData) {
 
   const parsed = updateProfileSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   // MP#07 Fase 2: profile update + product pause are atomic via RPC
@@ -101,7 +101,7 @@ export async function setUsername(formData: FormData) {
 
   const parsed = usernameSchema.safeParse(formData.get("username") ?? "");
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Nombre de usuario invalido" };
+    return { error: parsed.error.issues[0]?.message ?? "Nombre de usuario invalido" };
   }
 
   const { data, error } = await supabase.rpc("set_username", {

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   }
   const format = onboardingUsernameSchema.safeParse(username);
   if (username && !format.success) {
-    return Response.json({ username, status: "invalid", message: format.error.errors[0]!.message, suggestions: [] }, { headers: NO_CACHE });
+    return Response.json({ username, status: "invalid", message: format.error.issues[0]!.message, suggestions: [] }, { headers: NO_CACHE });
   }
 
   const { data: profile, error: profileError } = await supabase.from("profiles")

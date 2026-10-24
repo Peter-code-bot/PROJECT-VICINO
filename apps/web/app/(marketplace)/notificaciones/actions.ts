@@ -22,7 +22,7 @@ export async function markAsRead(notificationId: string) {
 
   const parsed = markNotificationReadSchema.safeParse({ notification_id: notificationId });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Notificación inválida" };
+    return { error: parsed.error.issues[0]?.message ?? "Notificación inválida" };
   }
 
   const { data: updated, error: updateErr } = await supabase

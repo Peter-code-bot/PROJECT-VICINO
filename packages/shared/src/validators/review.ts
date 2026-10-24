@@ -13,5 +13,12 @@ export const respondReviewSchema = z.object({
   respuesta: z.string().min(1, "Escribe una respuesta").max(1000),
 });
 
+export const createLocalReviewSchema = z.object({
+  reviewedId: z.string().uuid(),
+  rating: z.number().int().min(1).max(5),
+  comentario: z.string().max(1000).optional().nullable(),
+});
+
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type RespondReviewInput = z.infer<typeof respondReviewSchema>;
+export type CreateLocalReviewInput = z.infer<typeof createLocalReviewSchema>;

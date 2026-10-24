@@ -10,7 +10,7 @@ import { recuperacionConexion } from "@/lib/realtime/recuperacion-conexion";
 import { reconciliarChat, recuperarVentasChat, fusionarMensajes, ultimoConfirmado, type Cursor, type Intervalo } from "@/lib/realtime/reconciliar-chat";
 import { formatPrice, formatRelativeTime, cleanDisplayName } from "@vicino/shared";
 import { priceFallbackLabel } from "@/lib/price-mode";
-import { Send, Handshake, Check, CheckCheck, Loader2 } from "lucide-react";
+import { Send, Handshake, Check, CheckCheck, Loader2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessage, getMessagesBefore } from "../actions";
 import { hapticMedium } from "@/lib/haptics";
@@ -18,7 +18,13 @@ import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { useInfiniteCursor } from "@/hooks/use-infinite-cursor";
 import { useDeferredSales, type SalesSeed } from "@/hooks/use-deferred-sales";
 import { useVisibleChatRead } from "@/hooks/use-visible-chat-read";
-import { SaleConfirmationCard, SaleConfirmationBanner, ConfirmationStatus, SaleConfirmation } from "./sale-confirmation-card";
+import type { SaleConfirmation } from "./sale-confirmation-card";
+import { ChatOperationCard } from "./chat-operation-card";
+import { useChatOperations } from "@/hooks/use-chat-operations";
+import { operationForMessage } from "@/lib/chat/operations";
+import type { OperationCursor } from "@/lib/chat/operations";
+import { readChatViewState, saveChatViewState } from "@/lib/chat/view-state";
+import { ChatSalesHistoryDrawer } from "./chat-sales-history-drawer";
 import { SaleConfirmationForm } from "./sale-confirmation-form";
 import { ChatProductSelector } from "./chat-product-selector";
 import { productoElegible, reconciliarProducto, type ProductoActivoChat, type ProductoChat } from "@/lib/chat/producto-activo";
@@ -52,6 +58,10 @@ interface Message {
   created_at: string | null;
   leido_por_comprador: boolean | null;
   leido_por_vendedor: boolean | null;
+  message_type?: string | null;
+  intent_status?: string | null;
+  publicacion_id?: string | null;
+  sale_confirmation_id?: string | null;
 }
 
 
@@ -156,6 +166,23 @@ export function ChatWindow({
   const applyProduct = useCallback((next: ProductoActivoChat) => setActiveProduct(prev => reconciliarProducto(prev, next)), []);
   const [saleDraft, setSaleDraft] = useState<{ productId: string; revision: number } | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [restoredHistory, setRestoredHistory] = useState<{ ids: string[]; cursor: OperationCursor | null } | null>(null);
+  const [operationsAllowed, setOperationsAllowed] = useState(true);
+  const operations = useChatOperations(chatId, [
+    ...messages.filter(message => ["purchase_intent", "sale_proposed"].includes(message.message_type ?? "")).map(message => message.id),
+    ...saleConfirmations.map(sale => sale.id),
+  ], restoredHistory, operationsAllowed);
+  const refreshOperationsRef = useRef<() => void>(() => {});
+  const { refresh: refreshOperations } = operations;
+  useEffect(() => { refreshOperationsRef.current = () => { void refreshOperations(); }; }, [refreshOperations]);
+  const [expandedOperations, setExpandedOperations] = useState<Set<string>>(new Set());
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const pendingOperation = operations.operations.find(op => op.status === "accepted" || op.status === "pending_confirmation");
+  const toggleOperation = (id: string) => setExpandedOperations(previous => {
+    const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next;
+  });
   const eligibleProduct = productoElegible(product, [currentUserId, otherUser?.id ?? ""]);
   // Sin producto elegible y sin nada publicado por ninguno de los dos, no hay
   // venta posible: se ocultan "Confirmar Venta" y el selector, que solo
@@ -163,7 +190,6 @@ export function ChatWindow({
   // saber (null) se muestran como antes.
   const hayQueVender = eligibleProduct || hayProductosDisponibles !== false;
   const showSaleForm = salesStatus === "ready" && !!saleDraft && saleDraft.revision === activeProduct.revision && saleDraft.productId === product?.id && eligibleProduct;
-  const [showSaleDetails, setShowSaleDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // A5.1: refs for the load-older flow.
   // scrollContainerRef -- the overflow-y-auto wrapper around the message
@@ -178,6 +204,25 @@ export function ChatWindow({
   //   Used to discriminate "new message at bottom" (auto-scroll) from
   //   "older messages prepended at top" (do NOT auto-scroll).
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const restoredViewRef = useRef(false);
+  const saveView = () => saveChatViewState(currentUserId, chatId, {
+    draft: input, expanded: [...expandedOperations], scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
+    historyOpen: showHistoryModal,
+    history: { ids: operations.history.map(op => op.intentMessageId ?? op.id), cursor: operations.nextCursor },
+  });
+  useLayoutEffect(() => {
+    const saved = readChatViewState(currentUserId, chatId);
+    if (!saved) return;
+    restoredViewRef.current = true;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setInput(saved.draft); setExpandedOperations(new Set(saved.expanded)); setShowHistoryModal(saved.historyOpen);
+      setRestoredHistory(saved.history);
+      requestAnimationFrame(() => { if (active && scrollContainerRef.current) scrollContainerRef.current.scrollTop = saved.scrollTop; });
+    });
+    return () => { active = false; };
+  }, [currentUserId, chatId]);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const pendingScrollSnapshotRef = useRef<{ height: number; top: number } | null>(null);
   const lastMessageIdRef = useRef<string | null>(null);
@@ -381,6 +426,7 @@ export function ChatWindow({
         const snapshot = await recuperarVentasChat(supabase, chatId)
           .finally(() => { if (!disposed) setRetryingSales(false); });
         if (disposed || !authorized) return;
+        refreshOperationsRef.current();
         const salesChanges = new Map(changedSales);
         applySalesSnapshot(() => {
           const sales = new Map(snapshot.map((sc) => [sc.id, sc as SaleConfirmation]));
@@ -404,6 +450,8 @@ export function ChatWindow({
         });
         if (disposed) return;
         if (result.denied) {
+          setOperationsAllowed(false);
+          setShowHistoryModal(false);
           authorized = false;
           access.allowed = false;
           connection.cancelar();
@@ -455,6 +503,7 @@ export function ChatWindow({
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
           if (!vigente() || !authorized) return;
           const message = payload.new as Message;
+          if (message.message_type && message.message_type !== "user_text") refreshOperationsRef.current();
           changedMessages.set(message.id, message);
           if (message.autor_id === currentUserId && inFlightSendsRef.current.size > 0) return;
           setMessages((prev) => fusionarMensajes(prev, [message], new Map(), deletedAtRef.current));
@@ -462,6 +511,7 @@ export function ChatWindow({
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
           if (!vigente() || !authorized) return;
           const message = payload.new as Message;
+          if (message.message_type && message.message_type !== "user_text") refreshOperationsRef.current();
           changedMessages.set(message.id, message);
           setMessages((prev) => prev.map((m) => m.id === message.id ? message : m));
         })
@@ -548,6 +598,7 @@ export function ChatWindow({
   // useLayoutEffect above without a smooth-scroll override here.
   useEffect(() => {
     const lastId = messages[messages.length - 1]?.id ?? null;
+    if (restoredViewRef.current) { restoredViewRef.current = false; lastMessageIdRef.current = lastId; return; }
     if (lastId === lastMessageIdRef.current) {
       preserveRecoveryScrollRef.current = false;
       return;
@@ -703,16 +754,24 @@ export function ChatWindow({
             )}
           </div>
         </Link>
-        {hayQueVender && salesStatus === "ready" && saleConfirmations.filter((s) => s.status === "pending_confirmation").length === 0 && (
+        {(hayQueVender || pendingOperation) && (
           <button
-            onClick={() => {
+            type="button"
+            disabled={!operations.ready}
+            onClick={(event) => {
+              if (pendingOperation) {
+                historyOpenerRef.current = event.currentTarget;
+                operations.reveal(pendingOperation);
+                setExpandedOperations(previous => new Set([...previous, pendingOperation.intentMessageId ?? pendingOperation.id]));
+                setShowHistoryModal(true); return;
+              }
               if (!eligibleProduct || !product) { setShowProductSelector(true); return; }
               setSaleDraft(showSaleForm ? null : { productId: product.id, revision: activeProduct.revision });
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--brand)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-[color:var(--brand-dark)]"
+            className="inline-flex min-h-12 items-center gap-1.5 rounded-lg bg-[color:var(--brand)] px-3 py-1.5 text-sm font-semibold text-white shadow-[var(--shadow-glow)] transition-colors hover:bg-[color:var(--brand-dark)] disabled:opacity-50"
           >
             <Handshake className="h-3.5 w-3.5" />
-            Confirmar Venta
+            Confirmar venta
           </button>
         )}
       </div>
@@ -738,18 +797,37 @@ export function ChatWindow({
 
       {salesStatus !== "ready" && <div className="mx-4 shrink-0 text-xs text-fg-muted" role="status">
         {salesStatus === "loading" ? "Cargando confirmaciones…" : <>
-          No se pudieron actualizar las confirmaciones. <button type="button" className="min-h-11 font-semibold text-brand"
+          No se pudieron actualizar las confirmaciones. <button type="button" className="min-h-12 font-semibold text-brand"
             disabled={retryingSales || recovery === "denied"} onClick={() => retrySalesRef.current()}>{retryingSales ? "Reintentando…" : "Reintentar"}</button>
         </>}
       </div>}
 
       {/* Sale confirmation form */}
-      <div className="mx-4 flex shrink-0 items-center gap-2 text-xs">
-        {(hayQueVender || showProductSelector) && <button type="button" className="min-h-12 rounded-lg px-2 font-semibold text-brand"
-          onClick={() => setShowProductSelector(value => !value)}>
-          {showProductSelector ? "Cerrar selección" : product ? "Cambiar producto" : "Elegir producto"}
-        </button>}
-        {product && !eligibleProduct && <span className="text-muted-foreground">Este producto ya no está disponible para confirmar una venta.</span>}
+      <div className="mx-4 flex shrink-0 items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          {(hayQueVender || showProductSelector) && (
+            <button
+              type="button"
+              className="min-h-12 rounded-lg px-2 font-semibold text-brand"
+              onClick={() => setShowProductSelector((value) => !value)}
+            >
+              {showProductSelector ? "Cerrar selección" : product ? "Cambiar producto" : "Elegir producto"}
+            </button>
+          )}
+          {product && !eligibleProduct && (
+            <span className="text-muted-foreground">Este producto ya no está disponible para confirmar una venta.</span>
+          )}
+        </div>
+        <button
+          ref={historyTriggerRef}
+          type="button"
+          onClick={(event) => { historyOpenerRef.current = event.currentTarget; setShowHistoryModal(true); }}
+          className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg font-medium py-1 px-2.5 rounded-lg hover:bg-muted transition-colors ml-auto min-h-12"
+          aria-label="Abrir historial de ventas del chat"
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Historial</span>
+        </button>
       </div>
       {showProductSelector && <ChatProductSelector key={activeProduct.revision} chatId={chatId} currentUserId={currentUserId} active={activeProduct}
         onRefresh={() => retryRecoveryRef.current()}
@@ -765,7 +843,7 @@ export function ChatWindow({
           product={product}
           productRevision={activeProduct.revision}
           onClose={() => setSaleDraft(null)}
-          onCreated={() => syncChatRef.current()}
+          onCreated={() => { syncChatRef.current(); void operations.refresh(); }}
         />
       )}
 
@@ -783,7 +861,7 @@ export function ChatWindow({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-[color:var(--fg)]">{product.titulo}</p>
+            <p className="line-clamp-2 text-sm font-semibold text-[color:var(--fg)]">{product.titulo}</p>
             {/* precio es nullable (modo cotizacion/reservacion). Llamar
                 .toLocaleString() directo sobre null reventaba el detalle del
                 chat entero con un TypeError. */}
@@ -799,69 +877,9 @@ export function ChatWindow({
         </Link>
       )}
 
-      {/* Sale confirmation — compact collapsible banner */}
-      {saleConfirmations.length > 0 && (() => {
-        const primarySc = saleConfirmations[0];
-        if (!primarySc) return null;
-        
-        const scIsBuyer = currentUserId === primarySc.buyer_id;
-        const myConf = scIsBuyer ? primarySc.buyer_confirmed : primarySc.seller_confirmed;
-        const otherConf = scIsBuyer ? primarySc.seller_confirmed : primarySc.buyer_confirmed;
-        
-        let scStatus: ConfirmationStatus = "pendiente";
-        let scLabel = "";
-        if (primarySc.status === "cancelled" || primarySc.status === "rejected" || primarySc.cancelled_by) {
-          scStatus = "rechazado";
-          scLabel = "Venta rechazada";
-        } else if (primarySc.status === "completed") {
-          scStatus = "completado";
-          scLabel = "Venta confirmada";
-        } else if (myConf && !otherConf) {
-          scStatus = "esperando";
-          scLabel = "Esperando respuesta del " + (scIsBuyer ? "vendedor" : "comprador");
-        } else {
-          scStatus = "pendiente";
-          scLabel = "Pendiente de respuesta del " + (!scIsBuyer ? "vendedor" : "comprador");
-        }
-
-        return (
-          <div className="mx-3 my-1">
-            <SaleConfirmationBanner
-              status={scStatus} label={scLabel} expanded={showSaleDetails}
-              controlsId={"sale-confirmation-details-" + primarySc.id}
-              onToggle={() => setShowSaleDetails(!showSaleDetails)}
-            />
-              <div id={"sale-confirmation-details-" + primarySc.id} hidden={!showSaleDetails} className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_4rem)]">
-                {showSaleDetails && saleConfirmations.map((sc) => (
-                  <SaleConfirmationCard 
-                    key={sc.id} 
-                    confirmation={sc} 
-                    currentUserId={currentUserId}
-                    counterpart={{ 
-                      name: publicProfileName(otherUser, "Usuario"),
-                      avatarUrl: otherUser?.foto, 
-                      role: currentUserId === sc.buyer_id ? "vendedor" : "comprador"
-                    }}
-                    currentUser={{ 
-                      initial: "Y", // Using generic 'Y' for 'You' since we don't have current user's name easily accessible
-                      role: currentUserId === sc.buyer_id ? "comprador" : "vendedor"
-                    }}
-                    onRate={() => {
-                      const reviewType = currentUserId === sc.buyer_id ? "buyer_to_seller" : "seller_to_buyer";
-                      router.push(`/historial/review?sale=${sc.id}&type=${reviewType}&product=${sc.product_id}`);
-                    }}
-                    onPropose={() => {
-                      setShowSaleDetails(false);
-                      // Depending on business logic, you might also clear the form or open it:
-                      // setShowSaleForm(true);
-                    }}
-                  />
-                ))}
-              </div>
-          </div>
-        );
-      })()}
-
+      {operations.error && <div role="alert" className="mx-4 text-sm text-fg-muted">
+        {operations.error} <button type="button" className="min-h-12 font-semibold text-brand-hi" onClick={() => void operations.refresh()}>Actualizar operaciones</button>
+      </div>}
       {/* Messages */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-2">
         {/* A5.1: top sentinel + load-older indicator. The sentinel is a
@@ -911,6 +929,15 @@ export function ChatWindow({
                 />
                 {/* Una foto sola viaja con texto vacio: pintar el parrafo
                     igual dejaria una linea en blanco bajo la imagen. */}
+                {["purchase_intent", "sale_proposed"].includes(msg.message_type ?? "") && (() => {
+                  const operation = operationForMessage(operations.operations, msg);
+                  if (!operation) return <p className="text-sm text-fg-muted" role="status">{operations.error ?? "Consultando operación…"}</p>;
+                  const key = operation.intentMessageId ?? operation.id;
+                  return <ChatOperationCard operation={operation} currentUserId={currentUserId}
+                    expanded={expandedOperations.has(key)} onToggle={() => toggleOperation(key)}
+                    busy={operations.isPending(operation)} disabled={!operations.ready} error={operations.errorFor(operation)}
+                    onBeforeProduct={saveView} onAction={(action, proposal) => operations.mutate(operation, action, proposal)} />;
+                })()}
                 {msg.texto.trim() !== "" && (
                   <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
                 )}
@@ -993,11 +1020,23 @@ export function ChatWindow({
         <button
           type="submit"
           disabled={(!input.trim() && fotos.length === 0) || subiendo || recovery === "denied"}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
+          aria-label="Enviar mensaje"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-[var(--shadow-glow)] transition-all hover:bg-[color:var(--brand-dark)] disabled:opacity-50 disabled:shadow-none"
         >
           {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
       </form>
+      <ChatSalesHistoryDrawer
+        open={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        currentUserId={currentUserId}
+        stateKey={`${currentUserId}:${chatId}`}
+        model={operations}
+        expanded={expandedOperations}
+        onToggle={toggleOperation}
+        onBeforeProduct={saveView}
+        onRestoreFocus={() => (historyOpenerRef.current ?? historyTriggerRef.current)?.focus()}
+      />
     </div>
   );
 }

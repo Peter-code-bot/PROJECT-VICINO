@@ -22,7 +22,7 @@ export async function toggleFavorite(productId: string) {
 
   const parsed = toggleFavoriteSchema.safeParse({ product_id: productId });
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Producto inválido" };
+    return { error: parsed.error.issues[0]?.message ?? "Producto inválido" };
   }
 
   const { data: existing, error: lookupErr } = await supabase

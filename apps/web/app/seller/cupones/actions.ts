@@ -29,7 +29,7 @@ export async function createCoupon(formData: FormData) {
 
   const result = createCouponSchema.safeParse(raw);
   if (!result.success) {
-    return { error: result.error.errors[0]?.message ?? "Datos inválidos" };
+    return { error: result.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
   const { error } = await supabase.from("coupons").insert({

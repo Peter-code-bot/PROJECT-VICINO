@@ -19,6 +19,7 @@ const products = [
 
 async function main() {
   const mocks: Record<string, string> = {
+    "@/hooks/use-chat-operations": "export const useChatOperations=()=>({operations:[],history:[],ready:true,error:null,nextCursor:null,loadingMore:false,refresh:async()=>true,loadMore:async()=>{},mutate:async()=>false,isPending:()=>false,errorFor:()=>undefined});",
     "../actions": `
       export const sendMessage=async()=>({error:'Sending is outside this S04-B fixture'});
       export const getMessagesBefore=async()=>({items:[],nextCursor:null});
@@ -160,13 +161,13 @@ async function main() {
       await expect.poll(async () => (await saleCalls()).length).toBe(1);
       assert.equal(await page.evaluate(() => (window as any).s04b.closed), 0);
       await expect(page.getByRole("alert")).toContainText("Reintenta con los mismos datos");
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toBeDisabled();
       await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
       await submitSale();
       await expect.poll(async () => (await saleCalls()).length).toBe(2);
       await expect(page.getByRole("alert")).toHaveText("Espera antes de reintentar.");
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeEnabled();
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toBeDisabled();
       await expect(page.getByLabel("Cantidad", { exact: true })).toBeDisabled();
       assert.equal(await page.evaluate(() => (window as any).s04b.closed), 0);
       await submitSale();
@@ -197,7 +198,7 @@ async function main() {
 
       await mount("/chat");
       await expect(page.getByText("Recuperando conversación…", { exact: true })).toHaveCount(0);
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeVisible();
       await page.evaluate(() => { (window as any).s04b.remoteProduct(); });
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toHaveCount(0);
@@ -206,7 +207,7 @@ async function main() {
       // A-B-A changes still invalidate the old draft even when the final ID matches.
       await mount("/chat");
       await expect(page.getByText("Recuperando conversación…", { exact: true })).toHaveCount(0);
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeVisible();
       await page.evaluate(() => { (window as any).s04b.remoteProduct(0); });
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toHaveCount(0);
@@ -223,34 +224,34 @@ async function main() {
       await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[1].titulo);
       await page.evaluate(() => { (window as any).s04b.remoteProduct(4, 6); });
       await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[4].titulo);
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toHaveValue("60");
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toHaveValue("60");
       await page.evaluate(async () => {
         const f = (window as any).s04b;
         f.finishSelect({ data: { product: f.products[1], revision: 5 } });
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       });
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toHaveValue("60");
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toHaveValue("60");
       await expect(page.locator('a[href="/vendedor/seller"]')).toContainText(products[4].titulo);
       assert.equal((await saleCalls()).length, 0);
       passed++;
 
       await mount("/chat", { holdSale: true });
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
       await submitSale();
       await expect.poll(async () => (await saleCalls()).length).toBe(1);
       await page.evaluate(() => { (window as any).s04b.remoteProduct(1, 5); });
       await expect(page.getByRole("button", { name: "Enviando...", exact: true })).toHaveCount(0);
-      await page.getByRole("button", { name: "Confirmar Venta", exact: true }).click();
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toHaveValue("80");
+      await page.getByRole("button", { name: "Confirmar venta", exact: true }).click();
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toHaveValue("80");
       await page.evaluate(async () => {
         (window as any).s04b.finishSale({ data: { id: "synthetic-old-sale" } });
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       });
       await expect(page.getByRole("button", { name: "Iniciar Confirmación", exact: true })).toBeVisible();
-      await expect(page.getByLabel("Precio acordado (MXN)", { exact: true })).toHaveValue("80");
+      await expect(page.getByLabel("Precio acordado total (MXN)", { exact: true })).toHaveValue("80");
       assert.equal((await saleCalls()).length, 1);
       passed++;
 
