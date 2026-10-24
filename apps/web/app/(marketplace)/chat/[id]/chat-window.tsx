@@ -900,6 +900,7 @@ export function ChatWindow({
         )}
         {messages.map((msg) => {
           const isOwn = msg.autor_id === currentUserId;
+          const isOperation = ["purchase_intent", "sale_proposed"].includes(msg.message_type ?? "");
           // Read receipt: check if the OTHER party has read the message
           const isRead = isOwn
             ? (isBuyer ? msg.leido_por_vendedor : msg.leido_por_comprador)
@@ -916,10 +917,12 @@ export function ChatWindow({
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
-                  isOwn
-                    ? "rounded-br-md bg-[color:var(--fg)] text-[color:var(--bg)]"
-                    : "rounded-bl-md bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]"
+                  isOperation ? "w-full max-w-sm text-sm text-[color:var(--fg)]" : [
+                    "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
+                    isOwn
+                      ? "rounded-br-md bg-[color:var(--fg)] text-[color:var(--bg)]"
+                      : "rounded-bl-md bg-[color:var(--sidebar-bg)] text-[color:var(--fg)]",
+                  ]
                 )}
               >
                 <MessagePhotos
@@ -929,7 +932,7 @@ export function ChatWindow({
                 />
                 {/* Una foto sola viaja con texto vacio: pintar el parrafo
                     igual dejaria una linea en blanco bajo la imagen. */}
-                {["purchase_intent", "sale_proposed"].includes(msg.message_type ?? "") && (() => {
+                {isOperation && (() => {
                   const operation = operationForMessage(operations.operations, msg);
                   if (!operation) return <p className="text-sm text-fg-muted" role="status">{operations.error ?? "Consultando operación…"}</p>;
                   const key = operation.intentMessageId ?? operation.id;
@@ -938,13 +941,13 @@ export function ChatWindow({
                     busy={operations.isPending(operation)} disabled={!operations.ready} error={operations.errorFor(operation)}
                     onBeforeProduct={saveView} onAction={(action, proposal) => operations.mutate(operation, action, proposal)} />;
                 })()}
-                {msg.texto.trim() !== "" && (
+                {!isOperation && msg.texto.trim() !== "" && (
                   <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
                 )}
                 <div
                   className={cn(
                     "mt-1 flex items-center justify-end gap-1",
-                    isOwn ? "opacity-70" : "text-[color:var(--fg-muted)]"
+                    isOwn && !isOperation ? "opacity-70" : "text-[color:var(--fg-muted)]"
                   )}
                 >
                   <span className="text-[10px]">

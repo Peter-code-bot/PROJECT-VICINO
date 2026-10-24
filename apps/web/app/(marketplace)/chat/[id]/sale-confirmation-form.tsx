@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { createSaleConfirmation } from "../actions";
 import type { ProductoChat } from "@/lib/chat/producto-activo";
 
@@ -126,22 +126,25 @@ export function SaleConfirmationForm({
       )}
 
       {product && (
-        <details className="text-sm text-fg-muted">
-          <summary className="min-h-12 cursor-pointer"><span className="line-clamp-2">Producto: <strong>{product.titulo}</strong></span>Ver nombre completo</summary>
-          <p className="break-words">{product.titulo}{product.creador_id === currentUserId ? " · Tú vendes" : " · Tú compras"}</p>
+        <details className="group text-sm text-fg-muted">
+          <summary className="flex min-h-12 cursor-pointer items-center gap-2 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0 flex-1 line-clamp-2 break-words font-semibold group-open:line-clamp-none">{product.titulo}</span>
+            <span className="sr-only">Ver nombre completo</span>
+            <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
         </details>
       )}
       <p className="text-sm text-fg-muted">
         {product?.creador_id === currentUserId
-          ? "Al enviar confirmas tu parte: hazlo cuando hayas entregado el producto o realizado el servicio. La otra persona confirmará la recepción."
-          : "Al enviar confirmas tu parte: hazlo cuando hayas recibido el producto o servicio. El vendedor confirmará su entrega."}
+          ? "Envía sólo tras entregar; el comprador confirmará la recepción."
+          : "Envía sólo tras recibir; el vendedor confirmará la entrega."}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-2.5">
         <fieldset disabled={loading || uncertain} className="grid grid-cols-2 gap-2">
           <div>
             <label htmlFor="sale-price" className="text-xs font-medium text-muted-foreground block mb-1">
-              Precio acordado total (MXN)
+              Total acordado (MXN)
             </label>
             <input
               id="sale-price"
@@ -154,7 +157,6 @@ export function SaleConfirmationForm({
               placeholder="0.00"
               className="min-h-12 w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
-            <p className="mt-1 text-xs text-fg-muted">Total por las {cantidad || "0"} unidades; no es el precio unitario.</p>
           </div>
           <div>
             <label htmlFor="sale-quantity" className="text-xs font-medium text-muted-foreground block mb-1">
@@ -181,7 +183,7 @@ export function SaleConfirmationForm({
               type="text"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Detalles acordados o instrucciones..."
+              placeholder="Acuerdos adicionales"
               maxLength={1000}
               className="min-h-12 w-full rounded-md border bg-background px-3 py-2 text-sm"
             />

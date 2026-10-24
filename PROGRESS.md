@@ -1,3 +1,9 @@
+## 23-oct-2026 — VENTA-CHAT-01: textos breves y tarjeta única
+
+- Ajuste solicitado por Javier a partir de Fotos1–2: resumir formulario/tarjeta y ocultar el texto automático de inicio, conservando sólo la tarjeta en mensajes estructurados. Los mensajes normales mantienen su texto.
+- Se conserva total/cantidad/notas, nombre completo desplegable, detalle por operación y confirmación de recepción. Sin cambios de datos, migraciones ni efectos de venta. Tipos exit0, lint de componentes exit0 (1aviso existente), formulario18/18 y matriz chat8/8 aprobados; entrega remota se registra en Notion.
+- Estado vigente y evidencia: [plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [seguimiento](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd). El resto de la aceptación física permanece abierto.
+
 ## 23-oct-2026 — VENTA-CHAT-01: cierre de seguridad y entrega autorizada
 
 - Javier indicó «Continúa solo déjame pruebas en físico»: continuar con correcciones, integración y publicación tras verificar; la aceptación Android/iPhone permanece abierta.
