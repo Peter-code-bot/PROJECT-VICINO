@@ -63,6 +63,24 @@ export type Database = {
         }
         Relationships: []
       }
+      actividad_diaria: {
+        Row: {
+          dia: string
+          primera_vez: string
+          user_id: string
+        }
+        Insert: {
+          dia: string
+          primera_vez?: string
+          user_id: string
+        }
+        Update: {
+          dia?: string
+          primera_vez?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       apple_device_registrations: {
         Row: {
           created_at: string
@@ -769,6 +787,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cuentas_internas: {
+        Row: {
+          marcada_en: string
+          motivo: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          marcada_en?: string
+          motivo: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          marcada_en?: string
+          motivo?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       disputes: {
         Row: {
@@ -4111,6 +4150,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      marcar_visto: { Args: never; Returns: undefined }
       mark_messages_as_read: {
         Args: { p_chat_id: string; p_user_id: string }
         Returns: undefined
@@ -4124,6 +4164,41 @@ export type Database = {
         Returns: boolean
       }
       mark_product_video_uploaded: { Args: { p_job_id: string }; Returns: Json }
+      metricas_resumen_externas: {
+        Args: never
+        Returns: {
+          chats_calificados: number
+          cuentas_externas: number
+          gmv_mxn: number
+          miembros_de_comunidades: number
+          publicaciones_visibles: number
+          solicitudes_abiertas: number
+          usuarios_con_visita_30d: number
+          usuarios_con_visita_7d: number
+          vendedores_con_publicacion: number
+          ventas_entre_independientes: number
+        }[]
+      }
+      metricas_semanales_externas: {
+        Args: { p_semanas?: number }
+        Returns: {
+          chats_calificados: number
+          chats_iniciados: number
+          compradores_activos: number
+          cuentas_acumuladas: number
+          cuentas_nuevas: number
+          gmv_mxn: number
+          publicaciones_nuevas: number
+          resenas: number
+          semana: string
+          solicitudes_nuevas: number
+          usuarios_activos: number
+          usuarios_con_visita: number
+          vendedores_activos: number
+          vendedores_nuevos: number
+          ventas_completadas: number
+        }[]
+      }
       mis_comunidades: {
         Args: never
         Returns: {
