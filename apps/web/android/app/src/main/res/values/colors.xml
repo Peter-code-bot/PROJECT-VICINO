@@ -4,4 +4,7 @@
     <color name="colorPrimaryDark">#FFF8F0</color>
     <color name="colorAccent">#C45B3F</color>
     <color name="splash_background">#FFF8F0</color>
+    <!-- Token bg del tema claro, el tema por defecto de la app. Sin variante
+         en values-night: la app no sigue el modo del telefono por defecto. -->
+    <color name="window_background">#FFF8F0</color>
 </resources>
