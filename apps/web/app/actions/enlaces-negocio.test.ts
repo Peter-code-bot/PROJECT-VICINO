@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cargarReal, sentryEspia } from "../../lib/pruebas/cargar-real";
+import { cubetaDeClic } from "../../lib/perfil/cubeta-clic";
 
 type Acciones = typeof import("./enlaces-negocio");
 const VENDEDOR = "00000000-0000-4000-8000-000000000001";
@@ -62,11 +63,21 @@ test("el RPC puede decir que no conto (dueno, canal sin configurar, freno): se r
   assert.equal(f.sentry.captureException.llamadas.length, 0);
 });
 
-test("sin sesion, la cubeta del freno es la primera IP de x-forwarded-for", async () => {
+test("sin sesion, la cubeta es un resumen con fecha de la primera IP de x-forwarded-for, nunca la IP", async () => {
   const f = await cargar({ userId: null, data: true });
   const r = await f.acciones.registrarClicEnlaceNegocio({ vendedorId: VENDEDOR, canal: "google_maps" });
   assert.deepEqual(r, { registrado: true });
-  assert.deepEqual(f.cubetas, ["clic-ip:203.0.113.9"]);
+  assert.equal(f.cubetas.length, 1);
+  const cubeta = f.cubetas[0] ?? "";
+  assert.match(cubeta, /^clic-ip:[A-Za-z0-9_-]{22}$/);
+  assert.ok(!cubeta.includes("203.0.113.9"));
+  assert.ok(!cubeta.includes("10.0.0.1"));
+  // Misma IP y mismo dia: misma cubeta (si no, el freno no frenaria nada).
+  const hoy = new Date().toISOString().slice(0, 10);
+  assert.equal(cubeta, cubetaDeClic({ userId: null, ip: "203.0.113.9", dia: hoy }));
+  // Otro dia u otra IP: otra cubeta.
+  assert.notEqual(cubeta, cubetaDeClic({ userId: null, ip: "203.0.113.9", dia: "2000-01-01" }));
+  assert.notEqual(cubeta, cubetaDeClic({ userId: null, ip: "203.0.113.10", dia: hoy }));
   // El RPC NO recibe nada de quien toca: solo el negocio y el canal.
   assert.deepEqual(Object.keys((f.llamadas[0]?.args ?? {}) as object).sort(), ["p_canal", "p_vendedor_id"]);
 });

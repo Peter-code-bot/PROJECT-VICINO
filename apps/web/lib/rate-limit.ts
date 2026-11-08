@@ -78,13 +78,23 @@ function avisarSiNoHayFreno(): void {
   console.error(mensaje);
 }
 
-function makeLimiter(window: Parameters<typeof Ratelimit.slidingWindow>[1], count: number, prefix: string) {
+// `analytics: true` hace que @upstash/ratelimit escriba en Redis, por cada
+// limit(), el identificador de la cubeta (IP o id de usuario) con hora y
+// resultado, en claves `<prefix>:events:<hora>` SIN caducidad (la retencion
+// que pide el SDK la ignora @upstash/core-analytics 0.0.10). Un limitador que
+// prometa no guardar nada de la persona tiene que pasar `analytics = false`.
+function makeLimiter(
+  window: Parameters<typeof Ratelimit.slidingWindow>[1],
+  count: number,
+  prefix: string,
+  analytics = true,
+) {
   if (!redis) return null;
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(count, window),
     prefix,
-    analytics: true,
+    analytics,
     // Preserve the SDK's 5 s budget explicitly; strict callers reject timeout.
     timeout: 5_000,
   });
@@ -128,11 +138,15 @@ export const adminSecurityRateLimit = makeLimiter("15 m", 10, "rl:admin-segurida
 export const productMapRateLimit = makeLimiter("1 m", 20, "rl:product-map");
 
 // Clics a los enlaces externos de un negocio (Instagram, WhatsApp, Maps,
-// resenas). Lo llama cualquiera que vea una ficha, con o sin sesion, asi que
-// el identificador es el usuario si lo hay y la IP si no. 20 por minuto es
-// mas de lo que una persona toca en una ficha. El RPC pone ademas un freno
-// por negocio, porque es ejecutable con la llave anon sin pasar por aqui.
-export const clicEnlaceRateLimit = makeLimiter("1 m", 20, "rl:clic-enlace");
+// resenas). Lo llama cualquiera que vea una ficha, con o sin sesion. El
+// identificador lo arma lib/perfil/cubeta-clic.ts: el id de usuario si hay
+// sesion, y si no un resumen (hash con la fecha) de la IP, nunca la IP en
+// claro. `analytics` en false: estos clics prometen no guardar nada de quien
+// toca, y la analitica del SDK persistiria el identificador sin caducidad.
+// 20 por minuto es mas de lo que una persona toca en una ficha. El RPC pone
+// ademas un freno por negocio, porque es ejecutable con la llave anon sin
+// pasar por aqui.
+export const clicEnlaceRateLimit = makeLimiter("1 m", 20, "rl:clic-enlace", false);
 
 // Reportes de contenido. Dos limitadores para dos abusos distintos.
 //

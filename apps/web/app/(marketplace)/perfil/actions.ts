@@ -12,6 +12,7 @@ import {
   usernameSchema,
   cleanDisplayName,
   enlacesNegocioSchema,
+  type EnlacesNegocioNormalizados,
 } from "@vicino/shared";
 
 const CAMPOS_ENLACES_NEGOCIO = ["instagram_usuario", "whatsapp_numero", "google_maps_url", "google_resenas_url"] as const;
@@ -66,23 +67,31 @@ export async function updateProfile(formData: FormData) {
   // validan ANTES de escribir el perfil para no dejar un guardado a medias
   // por un enlace mal escrito.
   //
-  // Solo se tocan si (a) es vendedor y (b) el formulario que envio TRAE los
-  // campos. Lo segundo protege de un cliente viejo, abierto antes del deploy
-  // que agrego estos campos: sin ellos en el FormData, `get` daria null para
-  // los cuatro y el RPC los borraria. Si no es vendedor se conservan tal cual
-  // (misma regla que nombre_negocio al desactivar el modo vendedor) y la ficha
-  // no los muestra porque ya no es vendedor.
+  // Solo se tocan si el formulario que envio TRAE los campos: protege de un
+  // cliente viejo, abierto antes del deploy que los agrego, cuyo FormData
+  // daria null para los cuatro y los borraria sin querer.
+  //
+  // Con el modo vendedor APAGADO los cuatro se QUITAN, al reves que
+  // nombre_negocio (que se conserva). Son columnas publicas y legibles por
+  // cualquiera via PostgREST aunque la ficha ya no las pinte; un comercio que
+  // deja de vender tiene que poder retirar su numero sin volver a activar nada,
+  // y apagar el modo vendedor es la unica puerta que le queda (los campos solo
+  // se ven con el modo encendido). El aviso de desactivacion lo dice.
   const traeEnlaces = CAMPOS_ENLACES_NEGOCIO.some((campo) => formData.has(campo));
-  const enlaces = es_vendedor && traeEnlaces
-    ? enlacesNegocioSchema.safeParse({
-        instagram_usuario: campoTexto(formData, "instagram_usuario"),
-        whatsapp_numero: campoTexto(formData, "whatsapp_numero"),
-        google_maps_url: campoTexto(formData, "google_maps_url"),
-        google_resenas_url: campoTexto(formData, "google_resenas_url"),
-      })
-    : null;
-  if (enlaces && !enlaces.success) {
-    return { error: enlaces.error.issues[0]?.message ?? "Revisa los enlaces de tu negocio" };
+  let enlaces: EnlacesNegocioNormalizados | null = null;
+  if (traeEnlaces && es_vendedor) {
+    const parsedEnlaces = enlacesNegocioSchema.safeParse({
+      instagram_usuario: campoTexto(formData, "instagram_usuario"),
+      whatsapp_numero: campoTexto(formData, "whatsapp_numero"),
+      google_maps_url: campoTexto(formData, "google_maps_url"),
+      google_resenas_url: campoTexto(formData, "google_resenas_url"),
+    });
+    if (!parsedEnlaces.success) {
+      return { error: parsedEnlaces.error.issues[0]?.message ?? "Revisa los enlaces de tu negocio" };
+    }
+    enlaces = parsedEnlaces.data;
+  } else if (traeEnlaces) {
+    enlaces = { instagram_usuario: null, whatsapp_numero: null, google_maps_url: null, google_resenas_url: null };
   }
 
   // MP#07 Fase 2: profile update + product pause are atomic via RPC
@@ -116,14 +125,14 @@ export async function updateProfile(formData: FormData) {
   // ver feedback de migraciones que cambian la aridad), y los enlaces tienen
   // sus propias reglas y sus propios mensajes. Si este falla, el perfil ya
   // quedo guardado y se dice asi, igual que hace el formulario con el @.
-  if (enlaces?.success) {
+  if (enlaces) {
     const { error: errorEnlaces } = await supabase.rpc("actualizar_enlaces_negocio", {
       // `?? undefined` por la misma razon que arriba: la clave se omite y
       // Postgres aplica DEFAULT NULL, que aqui significa "quitar el enlace".
-      p_instagram_usuario: enlaces.data.instagram_usuario ?? undefined,
-      p_whatsapp_numero: enlaces.data.whatsapp_numero ?? undefined,
-      p_google_maps_url: enlaces.data.google_maps_url ?? undefined,
-      p_google_resenas_url: enlaces.data.google_resenas_url ?? undefined,
+      p_instagram_usuario: enlaces.instagram_usuario ?? undefined,
+      p_whatsapp_numero: enlaces.whatsapp_numero ?? undefined,
+      p_google_maps_url: enlaces.google_maps_url ?? undefined,
+      p_google_resenas_url: enlaces.google_resenas_url ?? undefined,
     });
     if (errorEnlaces) {
       // El perfil SI quedo guardado: se revalida igual, o la interfaz seguiria

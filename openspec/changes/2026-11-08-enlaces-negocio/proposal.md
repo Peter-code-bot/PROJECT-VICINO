@@ -35,24 +35,36 @@ Lo que se decidio NO hacer aqui, a proposito:
   directo: `authenticated` solo tiene UPDATE sobre `foto` y `fcm_token`
   (migracion 20260826240000). Los grants de `profiles` son por columna.
 - Los enlaces externos ya se abren con `<a target="_blank" rel="noopener noreferrer">`
-  en `legal-footer.tsx` y `seller-steps.tsx`; `@capacitor/browser` solo se usa para el
-  pase de Google Wallet.
+  en `legal-footer.tsx` y `seller-steps.tsx`; `@capacitor/browser` se usa para el pase de
+  Google Wallet (`tarjetas/[id]/acciones-tarjeta.tsx`) y para el OAuth nativo
+  (`lib/auth/native-oauth.ts`, `components/auth/oauth-url-listener.tsx`).
+- `capacitor.config.ts` lleva `*.google.com` en `server.allowNavigation` (por el OAuth):
+  en Android, esos hosts navegan DENTRO del WebView en vez de ir al sistema.
 - No existe ninguna tabla de eventos o clics; solo `loyalty_events`.
+- Todos los limitadores de `lib/rate-limit.ts` se crean con `analytics: true`, que
+  persiste en Upstash el identificador de cada cubeta (IP o id) sin caducidad.
 
 ## What changes
 
 1. **Cuatro columnas** en `profiles`: `instagram_usuario`, `whatsapp_numero`,
    `google_maps_url`, `google_resenas_url`, con CHECK de formato y SELECT publico.
-2. **RPC `actualizar_enlaces_negocio`**: unico camino de escritura; exige modo vendedor.
+2. **RPC `actualizar_enlaces_negocio`**: unico camino de escritura; poner un enlace exige
+   modo vendedor, quitarlos se permite siempre.
 3. **Tabla `clics_enlaces_negocio`** y **RPC `registrar_clic_enlace_negocio`**
-   (ejecutable por `anon`): un clic por fila, sin identidad de quien toca.
-4. **`@vicino/shared`**: normalizadores (`@usuario`, URL pegadas, numeros con espacios),
-   armado de URL por proveedor y `enlacesNegocioSchema`.
-5. **Formulario** `/perfil/editar`: cuatro campos dentro del bloque Modo Vendedor.
+   (ejecutable por `anon`): un clic por fila, sin identidad de quien toca; topes por
+   negocio y globales, lock por negocio, purga a 90 dias.
+4. **`@vicino/shared`**: normalizadores (`@usuario`, URL pegadas, numeros con espacios,
+   host en minusculas), lista cerrada de hosts de Google, armado de URL por proveedor y
+   `enlacesNegocioSchema`.
+5. **Formulario** `/perfil/editar`: cuatro campos dentro del bloque Modo Vendedor; apagar
+   el modo vendedor quita los enlaces (lo dice el aviso).
 6. **Ficha** `/vendedor/[id]` y **perfil propio**: fila de botones bajo la zona; la
-   resena de Google solo para quien tiene una venta completada con el negocio.
-7. **`/seller/analytics`**: clics por canal en 30 dias, con la aclaracion de que un clic
-   no es un mensaje ni una venta.
+   resena de Google solo para quien tiene una venta completada con el negocio; en Android,
+   `Browser.open` para los hosts `*.google.com` que `allowNavigation` dejaria dentro del
+   WebView.
+7. **`/seller/analytics`**: clics por canal en 30 dias (count), con la aclaracion de que
+   un clic no es un mensaje ni una venta y de que el conteo es orientativo.
+8. **Freno del clic** sin analitica de Upstash y con la IP solo como resumen con fecha.
 
 ## Non-goals
 
@@ -65,11 +77,12 @@ producto, atribucion por persona, codigos QR impresos.
 | --- | --- | --- |
 | D1 | Disponible para todo vendedor, casual y negocio. | Filtrar por `seller_type` en el formulario y en los RPC. |
 | D2 | Resena de Google solo tras una compra completada; el dueno la ve para probar. | Quitar la consulta a `sale_confirmations` en la ficha. |
-| D3 | Clics sin identidad (solo `con_sesion`). | Anadir `visitante_id`; implica aviso de privacidad. |
-| D4 | `<a target=_blank>`; sin plugin nativo nuevo (no obliga a un AAB). | `@capacitor/app-launcher` + AAB. |
+| D3 | Clics sin identidad (solo `con_sesion`); IP solo como resumen con fecha en el freno, sin analitica; retencion 90 dias. | Anadir `visitante_id`; implica aviso de privacidad. |
+| D4 | `<a target=_blank>`; sin plugin nativo nuevo (no obliga a un AAB). En Android, `Browser.open` solo para los hosts `*.google.com` de `allowNavigation`. | `@capacitor/app-launcher` + AAB, o quitar `*.google.com` de `allowNavigation` + AAB. |
 | D5 | Texto prellenado fijo en WhatsApp, sin datos de la persona. | Pasar producto o contexto. |
-| D6 | WhatsApp: 10-15 digitos, sin anteponer la lada. | Anteponer 52 a los de 10 (inventa un dato). |
-| D7 | Diseno de los botones: clases de `ChipCategoria`, sin cambios en el resto de la cabecera. | Lo que diga Alejandro. |
+| D6 | WhatsApp: 11-15 digitos; un numero local de 10 se rechaza con mensaje y no se le antepone la lada. | Aceptar 10 (enlace roto probable) o anteponer 52 (inventa un dato). |
+| D7 | Apagar el modo vendedor quita los cuatro enlaces (son publicos); `nombre_negocio` y lo demas se conservan. | Conservarlos ocultos (quedan legibles por PostgREST sin via para retirarlos). |
+| D8 | Diseno de los botones: clases de `ChipCategoria`; una fila nueva en el aviso de desactivacion. | Lo que diga Alejandro. |
 
 ## Criterio de paso (del pendiente)
 

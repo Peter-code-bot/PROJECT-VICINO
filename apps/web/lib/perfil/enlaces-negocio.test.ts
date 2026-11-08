@@ -44,7 +44,7 @@ test("WhatsApp: limpia +, espacios, parentesis, guiones, 00 y la URL de wa.me", 
   assert.equal(normalizarNumeroWhatsApp("https://api.whatsapp.com/send?phone=522221234567"), "522221234567");
 });
 
-test("WhatsApp: rechaza letras, menos de 10 digitos, mas de 15 y cero inicial", () => {
+test("WhatsApp: rechaza letras, menos de 11 digitos, mas de 15 y cero inicial", () => {
   assert.equal(normalizarNumeroWhatsApp("222 123 45 67 ext 2"), null);
   assert.equal(normalizarNumeroWhatsApp("123456789"), null);
   assert.equal(normalizarNumeroWhatsApp("1234567890123456"), null);
@@ -52,10 +52,16 @@ test("WhatsApp: rechaza letras, menos de 10 digitos, mas de 15 y cero inicial", 
   assert.equal(normalizarNumeroWhatsApp(""), null);
 });
 
-test("WhatsApp: NO rellena la lada de un numero local de 10 digitos (no se inventan datos)", () => {
-  // Pasa tal cual: la interfaz es la que pide la lada. Lo que no se hace es
-  // anteponer 52 por cuenta propia.
-  assert.equal(normalizarNumeroWhatsApp("2221234567"), "2221234567");
+test("WhatsApp: un numero local de 10 digitos se RECHAZA, no se le inventa la lada", () => {
+  // El error mas comun en Mexico: pegar el numero tal como se marca aqui.
+  // Ni pasa (seria un chat inexistente o ajeno) ni se le antepone 52 (seria
+  // inventar un dato): se rechaza y el formulario pide la lada.
+  assert.equal(normalizarNumeroWhatsApp("2221234567"), null);
+  assert.equal(normalizarNumeroWhatsApp("222 123 4567"), null);
+  // Con lada si: Mexico (12), Estados Unidos (11), Espana (11).
+  assert.equal(normalizarNumeroWhatsApp("52 222 123 4567"), "522221234567");
+  assert.equal(normalizarNumeroWhatsApp("+1 212 555 1234"), "12125551234");
+  assert.equal(normalizarNumeroWhatsApp("+34 612 345 678"), "34612345678");
 });
 
 test("Google Maps: acepta las formas que copia la app, pone https y rechaza otros dominios", () => {
@@ -103,6 +109,25 @@ test("Google Maps: lista cerrada de hosts, host en minusculas y sin segmentos '.
   // Las resenas tambien rechazan rutas raras aunque el patron estricto ya las cortara.
   assert.equal(normalizarUrlResenasGoogle("https://g.page/r/../review"), null);
   assert.equal(normalizarUrlResenasGoogle("HTTPS://G.PAGE/r/CaBc/review"), "https://g.page/r/CaBc/review");
+});
+
+test("URLs: controles y espacios Unicode se rechazan con la misma lista que Postgres", () => {
+  // `\s` de JavaScript no incluye U+0085 y el de Postgres depende del locale:
+  // por eso la lista es explicita en los dos lados.
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u0085y"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u0000y"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u00A0y"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u200By"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u2028y"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\uFEFFy"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\ty"), null);
+  assert.equal(normalizarUrlGoogleMaps("https://www.google.com/maps/place/x\u007fy"), null);
+  // Lo que si es texto normal de una URL de Maps pasa: acentos y emoji en la ruta.
+  assert.equal(
+    normalizarUrlGoogleMaps("https://www.google.com/maps/place/Café+Ñ/@19.04,-98.2,17z"),
+    "https://www.google.com/maps/place/Café+Ñ/@19.04,-98.2,17z",
+  );
+  assert.equal(normalizarUrlResenasGoogle("https://g.page/r/CaBc/review\u0085"), null);
 });
 
 test("Resenas de Google: solo las dos formas oficiales", () => {
@@ -172,11 +197,18 @@ test("enlacesNegocioSchema: normaliza, convierte vacios en null y nombra el camp
     assert.deepEqual(todoVacio.data, { instagram_usuario: null, whatsapp_numero: null, google_maps_url: null, google_resenas_url: null });
   }
 
-  const mal = enlacesNegocioSchema.safeParse({ instagram_usuario: "mi tienda", whatsapp_numero: "2221234567" });
+  const mal = enlacesNegocioSchema.safeParse({ instagram_usuario: "mi tienda", whatsapp_numero: "522221234567" });
   assert.equal(mal.success, false);
   if (!mal.success) {
     assert.deepEqual(mal.error.issues[0]?.path, ["instagram_usuario"]);
     assert.match(mal.error.issues[0]?.message ?? "", /Instagram/);
+  }
+
+  const sinLada = enlacesNegocioSchema.safeParse({ whatsapp_numero: "2221234567" });
+  assert.equal(sinLada.success, false);
+  if (!sinLada.success) {
+    assert.deepEqual(sinLada.error.issues[0]?.path, ["whatsapp_numero"]);
+    assert.match(sinLada.error.issues[0]?.message ?? "", /lada/);
   }
 
   const mapsAjeno = enlacesNegocioSchema.safeParse({ google_maps_url: "https://evil.com/maps" });

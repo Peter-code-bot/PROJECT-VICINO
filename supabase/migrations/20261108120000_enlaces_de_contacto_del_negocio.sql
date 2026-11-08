@@ -66,10 +66,11 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_instagram_usuario_formato
 
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_whatsapp_numero_formato;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_whatsapp_numero_formato
-  -- E.164 sin "+": de 10 a 15 digitos y sin cero inicial. El minimo de 10 (y
-  -- no 8) corta la forma mas comun de enlace roto en Mexico: un numero local
-  -- sin lada de pais. No se rellena la lada: eso seria inventar un dato.
-  CHECK (whatsapp_numero IS NULL OR whatsapp_numero ~ '^[1-9][0-9]{9,14}$');
+  -- E.164 sin "+": de 11 a 15 digitos y sin cero inicial. El minimo de 11
+  -- corta la forma mas comun de enlace roto en Mexico: un numero local de 10
+  -- digitos sin lada de pais (52 + 10 = 12). Se rechaza con mensaje; no se
+  -- rellena la lada, que seria inventar un dato.
+  CHECK (whatsapp_numero IS NULL OR whatsapp_numero ~ '^[1-9][0-9]{10,14}$');
 
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_google_maps_url_formato;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_google_maps_url_formato
@@ -77,7 +78,12 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_google_maps_url_formato
     google_maps_url IS NULL
     OR (
       char_length(google_maps_url) <= 500
-      AND google_maps_url !~ '\s'
+      -- Controles, DEL y espacios Unicode, como lista EXPLICITA y no `\s`: el
+      -- `\s` de Postgres depende del locale y el de JavaScript cubre otro
+      -- conjunto; con la lista, los dos lados rechazan exactamente lo mismo
+      -- (packages/shared/src/utils/enlaces-negocio.ts CARACTER_PROHIBIDO_URL_REGEX;
+      -- alli desde \u0000, aqui desde \u0001 porque text no admite NUL).
+      AND google_maps_url !~ '[\u0001-\u0020\u007f-\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]'
       -- Sin segmentos "." o ".." (ni codificados) ni barras invertidas: el
       -- navegador los normaliza DESPUES de que el patron vio /maps/, y
       -- google.com/maps/../url?q=... acabaria fuera de Maps.
@@ -93,6 +99,9 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_google_resenas_url_formato
     google_resenas_url IS NULL
     OR (
       char_length(google_resenas_url) <= 300
+      AND google_resenas_url !~ '[\u0001-\u0020\u007f-\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]'
+      -- g.page/r/<id>/review (la forma actual), g.page/<nombre>/review (la
+      -- antigua) o search.google.com/local/writereview?placeid=<id>.
       AND google_resenas_url ~ '^https://(g\.page/(r/)?[A-Za-z0-9_-]+/review/?|search\.google\.com/local/writereview\?placeid=[A-Za-z0-9_-]+)$'
     )
   );
@@ -141,14 +150,14 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
-  IF v_whatsapp IS NOT NULL AND v_whatsapp !~ '^[1-9][0-9]{9,14}$' THEN
-    RAISE EXCEPTION 'Escribe el WhatsApp con lada de pais y solo digitos, por ejemplo 522221234567.'
+  IF v_whatsapp IS NOT NULL AND v_whatsapp !~ '^[1-9][0-9]{10,14}$' THEN
+    RAISE EXCEPTION 'Escribe el WhatsApp con lada de pais y solo digitos: 52 y tus 10 digitos, por ejemplo 522221234567.'
       USING ERRCODE = '22023';
   END IF;
 
   IF v_maps IS NOT NULL AND (
        char_length(v_maps) > 500
-       OR v_maps ~ '\s'
+       OR v_maps ~ '[\u0001-\u0020\u007f-\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]'
        OR v_maps ~* '(/\.|%2e|\\)'
        OR v_maps !~ '^https://((www\.)?google\.com(\.mx)?/maps([/?]|$)|maps\.google\.com(\.mx)?/|maps\.app\.goo\.gl/|goo\.gl/maps/|g\.page/)'
      ) THEN
@@ -158,19 +167,26 @@ BEGIN
 
   IF v_resenas IS NOT NULL AND (
        char_length(v_resenas) > 300
+       OR v_resenas ~ '[\u0001-\u0020\u007f-\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]'
        OR v_resenas !~ '^https://(g\.page/(r/)?[A-Za-z0-9_-]+/review/?|search\.google\.com/local/writereview\?placeid=[A-Za-z0-9_-]+)$'
      ) THEN
     RAISE EXCEPTION 'El enlace de resenas debe ser el que genera Google en tu Perfil de Negocio (g.page/r/.../review).'
       USING ERRCODE = '22023';
   END IF;
 
+  -- PONER enlaces exige modo vendedor activo. QUITARLOS (los cuatro en NULL)
+  -- se permite siempre: un comercio que dejo de vender tiene que poder retirar
+  -- su numero de una columna que es publica, sin volver a activar nada.
   UPDATE public.profiles
      SET instagram_usuario  = v_instagram,
          whatsapp_numero    = v_whatsapp,
          google_maps_url    = v_maps,
          google_resenas_url = v_resenas
    WHERE id = v_uid
-     AND es_vendedor IS TRUE;
+     AND (
+       es_vendedor IS TRUE
+       OR (v_instagram IS NULL AND v_whatsapp IS NULL AND v_maps IS NULL AND v_resenas IS NULL)
+     );
 
   IF NOT FOUND THEN
     -- Un UPDATE de cero filas devolveria exito sin haber escrito nada.
@@ -290,6 +306,11 @@ BEGIN
     RETURN FALSE;
   END IF;
 
+  -- Serializa los clics de un mismo negocio dentro de la transaccion: sin
+  -- esto, N llamadas concurrentes cuentan antes de que ninguna inserte y el
+  -- tope se pasa en N. Un lock por negocio, liberado al terminar, cuesta nada.
+  PERFORM pg_advisory_xact_lock(hashtext('clics_enlaces_negocio:' || p_vendedor_id::text));
+
   -- Tope por negocio (indice vendedor_id, created_at).
   SELECT count(*) INTO v_ultimo_minuto
     FROM public.clics_enlaces_negocio
@@ -361,8 +382,13 @@ END $do$;
 --   -- esperado: true
 --   SELECT has_table_privilege('anon', 'public.clics_enlaces_negocio', 'SELECT');
 --   -- esperado: false
---   SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'purgar-clics-enlaces-negocio';
---   -- esperado: 1 fila, '23 4 * * *', active = true (si no hay fila, pg_cron no estaba: programar a mano)
+--   SELECT jobname, schedule, active, username FROM cron.job WHERE jobname = 'purgar-clics-enlaces-negocio';
+--   -- esperado: 1 fila, '23 4 * * *', active = true, username = postgres (el job borra con
+--   -- los permisos de quien lo creo; con otro rol la RLS lo dejaria sin filas que borrar).
+--   -- Si no hay fila, pg_cron no estaba al aplicar: quien aplica la migracion programa el
+--   -- job a mano con el mismo cron.schedule(...) del bloque 4 y lo anota en el PR.
+--   SELECT tableowner FROM pg_tables WHERE tablename = 'clics_enlaces_negocio';
+--   -- esperado: postgres
 --
 --   SELECT 'https://www.google.com/maps/../url?q=https://evil.com' ~* '(/\.|%2e|\\)';   -- true (se rechaza)
 --   SELECT 'https://www.google.xyz/maps/place/x' ~ '^https://((www\.)?google\.com(\.mx)?/maps([/?]|$)|maps\.google\.com(\.mx)?/|maps\.app\.goo\.gl/|goo\.gl/maps/|g\.page/)';
@@ -371,8 +397,13 @@ END $do$;
 --   Bajo rol real (BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claims = '{"sub":"<uuid vendedor>","role":"authenticated"}';):
 --     SELECT public.actualizar_enlaces_negocio('@Mi.Tienda', '+52 (222) 123-4567', NULL, NULL);
 --     -- esperado: 22023 en Instagram (el @ no se limpia aqui: lo hace el cliente) y en WhatsApp (tiene + y guiones)
+--     SELECT public.actualizar_enlaces_negocio(NULL, '2221234567', NULL, NULL);
+--     -- esperado: 22023 (10 digitos: falta la lada; no se rellena)
 --     SELECT public.actualizar_enlaces_negocio('mi.tienda', '522221234567', 'https://maps.app.goo.gl/abc', NULL);
 --     -- esperado: jsonb con los tres valores y resenas null
 --     SELECT public.registrar_clic_enlace_negocio('<uuid vendedor>', 'whatsapp');
 --     -- esperado: false (es el dueno)
 --   ROLLBACK;
+--   Con el sub de un perfil que NO es vendedor:
+--     SELECT public.actualizar_enlaces_negocio('mi.tienda', NULL, NULL, NULL);   -- 42501
+--     SELECT public.actualizar_enlaces_negocio(NULL, NULL, NULL, NULL);          -- jsonb con cuatro null (retirar siempre se puede)

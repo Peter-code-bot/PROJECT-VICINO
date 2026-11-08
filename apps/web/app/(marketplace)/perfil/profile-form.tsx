@@ -403,7 +403,7 @@ export function ProfileForm({
                 />
               </FieldRow>
 
-              <FieldRow label="WhatsApp" htmlFor="whatsapp_numero" hint="Con lada de país: 52 y luego tus 10 dígitos">
+              <FieldRow label="WhatsApp" htmlFor="whatsapp_numero" hint="Con lada de país: 52 y luego tus 10 dígitos (12 en total). Sin lada no se guarda.">
                 <input
                   id="whatsapp_numero"
                   name="whatsapp_numero"
@@ -585,14 +585,20 @@ export function ProfileForm({
               )}
               <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
+              <li className="list-disc">
+                Se quitan tus enlaces de contacto (Instagram, WhatsApp, Google Maps y reseñas):
+                son públicos, y así nadie los ve mientras no vendas. Tendrás que volver a ponerlos.
+              </li>
               <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
             </ul>
             {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
                 desactivar ponia a NULL el nombre del negocio, su descripcion y
                 los metodos de pago, y este mismo recuadro decia "podras
-                reactivarlos", dando a entender que se recuperaba todo. */}
+                reactivarlos", dando a entender que se recuperaba todo. Los
+                enlaces de contacto son la excepcion deliberada (20261108120000):
+                se quitan porque son columnas publicas. */}
             <p className="pt-1">
-              No se borra nada: el nombre de tu negocio, su descripción y tus métodos
+              Lo demás no se borra: el nombre de tu negocio, su descripción y tus métodos
               de pago se guardan, y vuelven tal cual si lo reactivas.
             </p>
           </div>

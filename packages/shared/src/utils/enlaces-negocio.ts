@@ -34,11 +34,14 @@ export const INSTAGRAM_USUARIO_MAX = 30;
 /** Letras, numeros, guion bajo y puntos; ningun punto al final ni dos seguidos. */
 export const INSTAGRAM_USUARIO_REGEX = /^(?:[A-Za-z0-9_]|\.(?=[A-Za-z0-9_]))+$/;
 /**
- * E.164 sin "+": de 10 a 15 digitos, sin cero inicial. El minimo de 10 (y no
- * 8) corta la forma mas comun de enlace roto en Mexico: un numero local sin
- * lada de pais. La lada NO se rellena: seria inventar un dato.
+ * E.164 sin "+": de 11 a 15 digitos, sin cero inicial. El minimo de 11 corta
+ * la forma mas comun de enlace roto en Mexico: un numero local de 10 digitos
+ * sin lada de pais (52 + 10 = 12). Se RECHAZA con mensaje, no se rellena la
+ * lada: rellenarla seria inventar un dato. Precio asumido: un numero
+ * internacional legitimo de 10 digitos en total (raro para un negocio de
+ * Puebla) no entra.
  */
-export const WHATSAPP_NUMERO_REGEX = /^[1-9][0-9]{9,14}$/;
+export const WHATSAPP_NUMERO_REGEX = /^[1-9][0-9]{10,14}$/;
 export const GOOGLE_MAPS_URL_MAX = 500;
 /**
  * Lista CERRADA de hosts: google.com y google.com.mx (con o sin www) solo bajo
@@ -54,6 +57,16 @@ export const GOOGLE_MAPS_URL_REGEX =
  * google.com/maps/../url?q=... acabaria fuera de Maps. Se rechazan en seco.
  */
 export const RUTA_SOSPECHOSA_REGEX = /(\/\.|%2e|\\)/i;
+/**
+ * Puntos de codigo que no van en una URL guardada: controles (incluido NUL,
+ * que Postgres ni siquiera puede almacenar), DEL, y todos los espacios
+ * Unicode. Es una lista EXPLICITA y no `\s` porque el `\s` de JavaScript y el
+ * de Postgres no cubren el mismo conjunto (U+0085, y en Postgres depende del
+ * locale): con la lista, los dos lados rechazan exactamente lo mismo. La
+ * migracion repite la misma clase desde \u0001.
+ */
+export const CARACTER_PROHIBIDO_URL_REGEX =
+  /[\u0000-\u0020\u007F-\u00A0\u1680\u2000-\u200D\u2028\u2029\u202F\u205F\u3000\uFEFF]/;
 export const GOOGLE_RESENAS_URL_MAX = 300;
 /** Solo las dos formas que genera Google: g.page/r/<id>/review y writereview?placeid=. */
 export const GOOGLE_RESENAS_URL_REGEX =
@@ -83,9 +96,8 @@ export function normalizarUsuarioInstagram(entrada: string): string | null {
 
 /**
  * "+52 (222) 123-4567", "52 222 123 4567", "wa.me/522221234567" y
- * "00522221234567" devuelven "522221234567". Un numero sin lada de pais de 10
- * digitos PASA (no hay forma de saber que le falta): por eso la interfaz pide
- * la lada en voz alta en vez de adivinarla.
+ * "00522221234567" devuelven "522221234567". Un numero local de 10 digitos sin
+ * lada ("2221234567") devuelve null: se rechaza con mensaje, no se adivina.
  */
 export function normalizarNumeroWhatsApp(entrada: string): string | null {
   let valor = entrada.trim();
@@ -119,7 +131,8 @@ function conHttpsYHostEnMinusculas(valor: string): string {
  */
 export function normalizarUrlGoogleMaps(entrada: string): string | null {
   const valor = conHttpsYHostEnMinusculas(entrada.trim());
-  if (valor.length > GOOGLE_MAPS_URL_MAX || /\s/.test(valor)) return null;
+  if (valor.length > GOOGLE_MAPS_URL_MAX) return null;
+  if (CARACTER_PROHIBIDO_URL_REGEX.test(valor)) return null;
   if (RUTA_SOSPECHOSA_REGEX.test(valor)) return null;
   if (!GOOGLE_MAPS_URL_REGEX.test(valor)) return null;
   return valor;
@@ -129,6 +142,7 @@ export function normalizarUrlGoogleMaps(entrada: string): string | null {
 export function normalizarUrlResenasGoogle(entrada: string): string | null {
   const valor = conHttpsYHostEnMinusculas(entrada.trim());
   if (valor.length > GOOGLE_RESENAS_URL_MAX) return null;
+  if (CARACTER_PROHIBIDO_URL_REGEX.test(valor)) return null;
   if (RUTA_SOSPECHOSA_REGEX.test(valor)) return null;
   if (!GOOGLE_RESENAS_URL_REGEX.test(valor)) return null;
   return valor;
