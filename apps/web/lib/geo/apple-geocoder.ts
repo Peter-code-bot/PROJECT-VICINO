@@ -9,6 +9,21 @@ export interface ReverseGeocodeResult {
   locality?: string;
   subLocality?: string;
   postalCode?: string;
+  /**
+   * Colonia y ciudad, y nada mas fino: sin calle, sin numero exterior y sin
+   * codigo postal. Es la etiqueta publica de una ubicacion APROXIMADA
+   * (GEO-PUB-EXACT): con calle y numero, la celda de 110 m no protegeria nada.
+   * Vacia si Apple no da ninguna de las dos.
+   */
+  zona?: string;
+}
+
+/** Ver ReverseGeocodeResult.zona. Pura, para poder probarla sin MapKit. */
+export function zonaPublica(place: { subLocality?: string | null; locality?: string | null; administrativeArea?: string | null }): string {
+  const colonia = place.subLocality?.trim() ?? "";
+  const ciudad = (place.locality || place.administrativeArea || "").trim();
+  if (colonia && ciudad && colonia.toLowerCase() !== ciudad.toLowerCase()) return `${colonia}, ${ciudad}`;
+  return colonia || ciudad;
 }
 
 const REVERSE_TIMEOUT_MS = 4000;
@@ -103,6 +118,7 @@ export async function reverseGeocodeWithApple(
           locality,
           subLocality,
           postalCode,
+          zona: zonaPublica(place),
         });
       });
     } catch {

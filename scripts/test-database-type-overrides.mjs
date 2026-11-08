@@ -40,4 +40,14 @@ assert.ok(protectedBoth.includes('ubicacion_publica: unknown'), 'Row stays reada
 assert.equal(protectGeneratedMapColumn(protectedBoth), protectedBoth);
 // Only one of Insert/Update carrying the new column is a generator shape we do not know.
 assert.throws(() => protectGeneratedMapColumn(withPublica.replace('ubicacion_publica?: unknown\n', '')));
-console.log('PASS generated map columns are read-only (ubicacion_mapa required, ubicacion_publica optional); new schema, RPCs and other tables preserved; idempotent; unexpected schema rejected');
+// After migration 20261108210000 the generator also emits ubicacion_exacta (GEO-PUB-EXACT):
+// trigger-derived, never written by a client.
+const withExacta = withPublica
+  .replace('          ubicacion_mapa: unknown\n', '          ubicacion_exacta: unknown\n          ubicacion_mapa: unknown\n')
+  .replace(/^        (Insert|Update): \{\n          ubicacion_mapa\?: unknown\n/gm, '        $1: {\n          ubicacion_exacta?: unknown\n          ubicacion_mapa?: unknown\n');
+const protectedExacta = protectGeneratedMapColumn(withExacta);
+assert.equal((protectedExacta.match(/ubicacion_exacta\?: never/g) ?? []).length, 2);
+assert.ok(protectedExacta.includes('ubicacion_exacta: unknown'), 'Row stays readable');
+assert.equal(protectGeneratedMapColumn(protectedExacta), protectedExacta);
+assert.throws(() => protectGeneratedMapColumn(withExacta.replace('ubicacion_exacta?: unknown\n', '')));
+console.log('PASS generated map columns are read-only (ubicacion_mapa required, ubicacion_publica and ubicacion_exacta optional); new schema, RPCs and other tables preserved; idempotent; unexpected schema rejected');

@@ -143,7 +143,8 @@ export function ProductDetailDesktop({
           </div>
 
           <div>
-            <LocationBanner ubicacion={product.ubicacion} productId={product.id} version={product.updated_at} available={product.location_map_available ?? false} layout="desktop" />
+            <LocationBanner ubicacion={product.ubicacion} productId={product.id} version={product.updated_at} available={product.location_map_available ?? false}
+            precision={product.location_precision} decimales={product.location_decimales} revision={product.location_revision} layout="desktop" />
           </div>
 
           {product.descripcion?.trim() ? (

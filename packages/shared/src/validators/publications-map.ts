@@ -39,10 +39,19 @@ export const mapQuerySchema = z.object({
   if (q.price_min !== null && q.price_max !== null && q.price_min > q.price_max) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["price_max"], message: "El precio máximo debe ser mayor al mínimo" });
 }).transform(q => ({ ...q, center: q.mode === "zone" ? null : q.center }));
 
+// GEO-PUB-EXACT (search_map_publications_v4): un nodo o una celda cuyas
+// publicaciones son TODAS exactas y comparten un mismo punto lo dicen con
+// `precision` / `punto`. Opcionales y en grados: v2/v3 no los mandan, los
+// bundles viejos los descartan y projection_version no cambia.
+export const mapPointSchema = z.object({
+  lat: z.number().finite().min(MAP_AREA.south).max(MAP_AREA.north),
+  lng: z.number().finite().min(MAP_AREA.west).max(MAP_AREA.east),
+});
 const featureSchema = z.object({
   id: z.string(), public_lat: z.number().finite(), public_lng: z.number().finite(),
   count: z.number().int().positive(), seller_count: z.number().int().positive(),
   bounds: z.object({ west: z.number(), south: z.number(), east: z.number(), north: z.number() }),
+  precision: z.literal("exacta").optional(),
 });
 const listingSchema = z.object({
   id: z.string().uuid(), titulo: z.string(), slug: z.string().nullable(),
@@ -96,7 +105,10 @@ export const mapCoverageRequestSchema = z.object({
 export const mapCoverageResultSchema = mapResultSchema.extend({
   list_seller_total: z.number().int().nonnegative(),
   revision: z.string().regex(/^[a-f0-9]{32}$/),
-  cells: z.array(z.object({ x: z.number().int(), y: z.number().int(), count: z.number().int().positive(), seller_count: z.number().int().positive() })).max(300),
+  cells: z.array(z.object({
+    x: z.number().int(), y: z.number().int(), count: z.number().int().positive(), seller_count: z.number().int().positive(),
+    punto: mapPointSchema.optional(),
+  })).max(300),
   next_cell_cursor: mapCellCursorSchema.nullable(),
   complete: z.boolean(),
 });

@@ -122,7 +122,8 @@ export function ProductDetailMobile({
         </div>
 
         <div>
-          <LocationBanner ubicacion={product.ubicacion} productId={product.id} version={product.updated_at} available={product.location_map_available ?? false} layout="mobile" />
+          <LocationBanner ubicacion={product.ubicacion} productId={product.id} version={product.updated_at} available={product.location_map_available ?? false}
+            precision={product.location_precision} decimales={product.location_decimales} revision={product.location_revision} layout="mobile" />
         </div>
 
         {product.descripcion?.trim() ? (

@@ -141,6 +141,15 @@ jobs:
           pnpm exec tsx --test scripts/test-precio-confirmacion.ts scripts/test-s04b-server.ts
           pnpm exec tsx scripts/test-venta-chat-sql.ts
 
+      # GEO-PUB-EXACT (ubicacion exacta por publicacion): que escribe el
+      # formulario (conservar, fijar, quitar; exacta solo confirmada), la
+      # rejilla que decide el servidor, el pin exacto del mapa y las rutas del
+      # mapa y del minimapa cargadas de verdad con cargarReal. Rutas sin
+      # corchetes a proposito: node --test lee [id] como un patron y la saltaria.
+      - name: Ubicacion exacta por publicacion
+        run: |
+          cd apps/web && node --import tsx --test lib/geo/escritura-ubicacion.test.ts lib/geo/ubicacion-publica.test.ts lib/geo/map-coverage.exacta.test.ts app/api/products/location-map.route.test.ts app/api/publications/map/coverage/route.v4.test.ts
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba

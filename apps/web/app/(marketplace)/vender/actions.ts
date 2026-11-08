@@ -11,6 +11,7 @@ import { cleanupRemovedMedia } from "@/lib/media/cleanup";
 import { VIDEO_EXT_RE } from "@/lib/video-thumbnail";
 import type { MediaAssetInsert } from "@vicino/shared";
 import { parseProductGallery, validateProductGallery } from "@/lib/media/validate-product-gallery";
+import { cambiosAlEditar, leerEntradaUbicacion, ubicacionAlCrear, type UbicacionGuardada } from "@/lib/geo/escritura-ubicacion";
 
 const RETORNO_PUBLICACION = "/perfil?tab=products";
 
@@ -261,23 +262,14 @@ export async function createProduct(formData: FormData) {
     return { error: "No se pudo determinar la categoría principal" };
   }
 
-  const ubicLat = formData.get("ubicacion_lat") ? Number(formData.get("ubicacion_lat")) : null;
-  const ubicLng = formData.get("ubicacion_lng") ? Number(formData.get("ubicacion_lng")) : null;
   const deliveryRadius = formData.get("delivery_radius_km") ? Number(formData.get("delivery_radius_km")) : 5;
 
-  if (!ubicLat || !ubicLng) {
-    return { error: "Selecciona una ubicación en el mapa para tu publicación" };
-  }
-  if (
-    !Number.isFinite(ubicLat) ||
-    !Number.isFinite(ubicLng) ||
-    ubicLat < -90 ||
-    ubicLat > 90 ||
-    ubicLng < -180 ||
-    ubicLng > 180
-  ) {
-    return { error: "Las coordenadas de la ubicación son inválidas" };
-  }
+  // Punto obligatorio y precision (GEO-PUB-EXACT): exacta solo si el formulario
+  // la pidio y el vendedor la confirmo al publicar; sin el campo, aproximada.
+  const entradaUbicacion = leerEntradaUbicacion(formData);
+  if (!entradaUbicacion.ok) return { error: entradaUbicacion.error };
+  const ubicacionNueva = ubicacionAlCrear(entradaUbicacion.valor);
+  if (!ubicacionNueva.ok) return { error: ubicacionNueva.error };
 
   const allowAppointments = formData.get("allow_appointments") === "true";
   // Sin precio no hay nada que negociar: los modos cotizacion/reservacion
@@ -331,9 +323,9 @@ export async function createProduct(formData: FormData) {
       appointment_start_time: allowAppointments ? appointmentStartTime : null,
       appointment_end_time: allowAppointments ? appointmentEndTime : null,
       appointment_duration_minutes: allowAppointments ? appointmentDurationMinutes : null,
-      ...(ubicLat && ubicLng
-        ? { ubicacion_geo: `SRID=4326;POINT(${ubicLng} ${ubicLat})` }
-        : {}),
+      // El punto publico exacto y la revision los deriva la base de estos dos.
+      ubicacion_geo: ubicacionNueva.valor.ubicacion_geo,
+      ubicacion_precision: ubicacionNueva.valor.ubicacion_precision,
     })
     .select("id, slug, categoria")
     .single();
@@ -494,27 +486,10 @@ export async function updateProductFull(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  // Extra fields outside the partial schema. Handled manually.
-  const ubicLatRaw = formData.get("ubicacion_lat");
-  const ubicLngRaw = formData.get("ubicacion_lng");
-  const ubicLat = ubicLatRaw ? Number(ubicLatRaw) : null;
-  const ubicLng = ubicLngRaw ? Number(ubicLngRaw) : null;
-
-  if (ubicLat !== null && ubicLng !== null) {
-    if (
-      !Number.isFinite(ubicLat) ||
-      !Number.isFinite(ubicLng) ||
-      ubicLat < -90 ||
-      ubicLat > 90 ||
-      ubicLng < -180 ||
-      ubicLng > 180
-    ) {
-      return { error: "Las coordenadas de la ubicación son inválidas" };
-    }
-  }
-
-  const deliveryRadiusRaw = formData.get("delivery_radius_km");
-  const deliveryRadius = deliveryRadiusRaw ? Number(deliveryRadiusRaw) : null;
+  // Extra fields outside the partial schema. Handled manually. La ubicacion
+  // (punto, etiqueta, radio y precision) se decide entera en cambiosAlEditar.
+  const lecturaUbicacion = leerEntradaUbicacion(formData);
+  if (!lecturaUbicacion.ok) return { error: lecturaUbicacion.error };
 
   const allowAppointments = formData.has("allow_appointments")
     ? formData.get("allow_appointments") === "true"
@@ -578,7 +553,6 @@ export async function updateProductFull(
   // queda stale a proposito; la primary canonical es el pivote actualizado
   // por syncProductCategoriesForProduct (L606+). La columna se DROPea en
   // Fase 2. Bloque updateObj.categoria removido aqui.
-  if (parsed.data.ubicacion !== undefined) updateObj.ubicacion = parsed.data.ubicacion;
   if (parsed.data.tipo_entrega !== undefined) updateObj.tipo_entrega = parsed.data.tipo_entrega;
   if (parsed.data.estado !== undefined) {
     updateObj.estado = parsed.data.estado;
@@ -591,9 +565,6 @@ export async function updateProductFull(
     updateObj.color = parsed.data.color;
   }
 
-  if (deliveryRadius !== null && !Number.isNaN(deliveryRadius)) {
-    updateObj.delivery_radius_km = deliveryRadius;
-  }
   // Sin precio no hay nada que negociar: cotizacion/reservacion apagan el flag
   // aunque el form lo mande en true (o no lo mande).
   if (modoPrecio !== "precio") {
@@ -621,15 +592,20 @@ export async function updateProductFull(
     }
   }
 
-  const removal = z.enum(["true", "false"]).safeParse(formData.get("remove_location") ?? "false");
-  if (!removal.success) return { error: "Selección de ubicación inválida" };
-  if (removal.data === "true") {
-    updateObj.ubicacion_geo = null;
-    updateObj.ubicacion = null;
-    updateObj.delivery_radius_km = null;
-  } else if (ubicLat !== null && ubicLng !== null) {
-    updateObj.ubicacion_geo = `SRID=4326;POINT(${ubicLng} ${ubicLat})`;
+  // GEO-PUB-EXACT: editar precio o fotos ("conservar") no escribe nada de la
+  // ubicacion, ni dispara el trigger de cobertura. Un formulario anterior al
+  // cambio no manda la accion: se compara con el punto guardado para saber si
+  // movio el pin, y si lo movio queda aproximada.
+  const entradaEdicion = { ...lecturaUbicacion.valor, etiqueta: parsed.data.ubicacion ?? null };
+  let ubicacionGuardada: UbicacionGuardada | null = null;
+  if (entradaEdicion.accion === null && entradaEdicion.punto && !entradaEdicion.quitarHeredado) {
+    const { data: guardada } = await supabase.rpc("get_product_location", { p_product_id: id });
+    const fila = Array.isArray(guardada) ? guardada[0] : guardada;
+    ubicacionGuardada = fila ? { lat: fila.lat ?? null, lng: fila.lng ?? null } : null;
   }
+  const cambiosUbicacion = cambiosAlEditar(entradaEdicion, ubicacionGuardada);
+  if (!cambiosUbicacion.ok) return { error: cambiosUbicacion.error };
+  Object.assign(updateObj, cambiosUbicacion.valor);
 
   // C1 ORDER OF OPERATIONS: subir fotos en el cliente ya ocurrio antes de
   // llamar este action. Aqui solo confirmamos el UPDATE. Si falla o devuelve

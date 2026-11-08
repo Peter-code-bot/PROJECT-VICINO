@@ -59,7 +59,7 @@ export function PublicationMap({ initialBounds, focus, features, selected, onBou
     if (focus && instance.current && mapkit) instance.current.setRegionAnimated(region(mapkit,focus.bounds),true);
   }, [focus, isReady, mapkit]);
   return <div className="relative h-full min-h-[280px] overflow-hidden rounded-3xl bg-[color:var(--card-2)]" data-no-page-swipe data-no-pull-to-refresh>
-    <div ref={node} className="h-full w-full" aria-label="Mapa de ubicaciones aproximadas. Toca un punto para ver sus publicaciones. También hay controles de puntos para teclado y lector de pantalla." />
+    <div ref={node} className="h-full w-full" aria-label="Mapa de publicaciones: zonas aproximadas y puntos exactos que eligieron sus vendedores. Toca un punto para ver sus publicaciones. También hay controles de puntos para teclado y lector de pantalla." />
     {(!isReady || !isAvailable) && <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color:var(--sidebar-bg)] px-6 text-center text-sm">
       {!isReady ? <><Loader2 className="h-6 w-6 animate-spin motion-reduce:animate-none" />Cargando mapa…</> : <><MapPin className="h-7 w-7" /><p>No pudimos cargar el mapa. Puedes usar la búsqueda o los controles de puntos accesibles.</p><button type="button" disabled={retryWaitSeconds>0} onClick={retry} className="discovery-control">{retryWaitSeconds>0 ? `Reintentar en ${retryWaitSeconds} s` : "Reintentar mapa"}</button></>}
     </div>}

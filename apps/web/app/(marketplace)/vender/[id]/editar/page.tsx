@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm, type CategorySelection } from "../../product-form";
+import { decimalesRejillaAproximada, esPrecisionUbicacion, type PrecisionUbicacion } from "@/lib/geo/ubicacion-publica";
 
 export const metadata = { title: "Editar publicación" };
 
@@ -47,10 +48,13 @@ export default async function EditarPublicacionPage({ params }: Props) {
   // y ningun mapa, como si nunca hubiera puesto ubicacion. El dato no se
   // perdia (vender/actions.ts solo toca ubicacion_geo si llegan coordenadas),
   // pero para mover el marcador tenia que buscar su direccion desde cero.
-  const { data: coords } = await supabase.rpc("get_product_location", {
-    p_product_id: id,
-  });
-  const ubicacion = Array.isArray(coords) ? coords[0] : null;
+  //
+  // GEO-PUB-EXACT: ubicacion_de_mi_publicacion trae ademas la precision
+  // guardada y la revision (el formulario abre en el modo guardado y pide
+  // reconfirmar si cambia un punto exacto). Si la funcion aun no existe
+  // (migracion pendiente), se cae a get_product_location y la publicacion se
+  // trata como aproximada, que es lo que es.
+  const ubicacion = await leerMiUbicacion(supabase, id);
 
   // MP#08 #5c-2: leemos las categorias del pivote (joineamos categories.slug)
   // para pre-poblar el form multi-select. Tras el backfill de 5c-1 cada
@@ -98,6 +102,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
       <ProductForm
         userId={user.id}
         mode="edit"
+        decimalesAproximada={decimalesRejillaAproximada(process.env.VICINO_MAPA_RPC)}
         initialValues={{
           id: product.id,
           titulo: product.titulo,
@@ -110,6 +115,7 @@ export default async function EditarPublicacionPage({ params }: Props) {
           delivery_radius_km: product.delivery_radius_km,
           ubicacion_lat: ubicacion?.lat ?? null,
           ubicacion_lng: ubicacion?.lng ?? null,
+          ubicacion_precision: ubicacion?.precision ?? "aproximada",
           // tipo_entrega admite NULL en la tabla (filas anteriores al DEFAULT).
           // El respaldo es 'punto_encuentro' porque es exactamente lo que ya
           // usan los dos vecinos: el DEFAULT de la columna desde
@@ -130,4 +136,27 @@ export default async function EditarPublicacionPage({ params }: Props) {
       />
     </div>
   );
+}
+
+type ClienteServidor = Awaited<ReturnType<typeof createClient>>;
+
+/** Punto, precision y revision del dueno; null si no tiene ubicacion o falla. */
+async function leerMiUbicacion(supabase: ClienteServidor, id: string): Promise<{
+  lat: number | null; lng: number | null; precision: PrecisionUbicacion; revision: number;
+} | null> {
+  const { data, error } = await supabase.rpc("ubicacion_de_mi_publicacion", { p_product_id: id });
+  if (!error) {
+    const fila = data as { lat?: unknown; lng?: unknown; precision?: unknown; revision?: unknown } | null;
+    if (!fila) return null;
+    return {
+      lat: typeof fila.lat === "number" ? fila.lat : null,
+      lng: typeof fila.lng === "number" ? fila.lng : null,
+      precision: esPrecisionUbicacion(fila.precision) ? fila.precision : "aproximada",
+      revision: typeof fila.revision === "number" ? fila.revision : 0,
+    };
+  }
+  if (error.code !== "PGRST202") return null;
+  const { data: coords } = await supabase.rpc("get_product_location", { p_product_id: id });
+  const legado = Array.isArray(coords) ? coords[0] : null;
+  return legado ? { lat: legado.lat ?? null, lng: legado.lng ?? null, precision: "aproximada", revision: 0 } : null;
 }

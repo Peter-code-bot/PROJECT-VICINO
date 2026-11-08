@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm } from "./product-form";
+import { decimalesRejillaAproximada } from "@/lib/geo/ubicacion-publica";
 
 export const metadata = {
   title: "Publicar producto — VICINO",
@@ -25,7 +26,11 @@ export default async function VenderPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 md:py-10 animate-fade-in-up">
-      <ProductForm userId={user.id} sellerInactive={!profile?.es_vendedor} />
+      <ProductForm
+        userId={user.id}
+        sellerInactive={!profile?.es_vendedor}
+        decimalesAproximada={decimalesRejillaAproximada(process.env.VICINO_MAPA_RPC)}
+      />
     </div>
   );
 }

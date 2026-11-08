@@ -1727,9 +1727,12 @@ export type Database = {
           titulo: string
           titulo_en: string | null
           ubicacion: string | null
+          ubicacion_exacta: unknown
           ubicacion_geo: unknown
           ubicacion_mapa: unknown
+          ubicacion_precision: string
           ubicacion_publica: unknown
+          ubicacion_revision: number
           updated_at: string | null
           ventas_count: number | null
           vistas_count: number | null
@@ -1767,9 +1770,12 @@ export type Database = {
           titulo: string
           titulo_en?: string | null
           ubicacion?: string | null
+          ubicacion_exacta?: never
           ubicacion_geo?: unknown
           ubicacion_mapa?: never
+          ubicacion_precision?: string
           ubicacion_publica?: never
+          ubicacion_revision?: number
           updated_at?: string | null
           ventas_count?: number | null
           vistas_count?: number | null
@@ -1807,9 +1813,12 @@ export type Database = {
           titulo?: string
           titulo_en?: string | null
           ubicacion?: string | null
+          ubicacion_exacta?: never
           ubicacion_geo?: unknown
           ubicacion_mapa?: never
+          ubicacion_precision?: string
           ubicacion_publica?: never
+          ubicacion_revision?: number
           updated_at?: string | null
           ventas_count?: number | null
           vistas_count?: number | null
@@ -4410,6 +4419,7 @@ export type Database = {
       search_map_publications_v1: { Args: { p_query: Json }; Returns: Json }
       search_map_publications_v2: { Args: { p_request: Json }; Returns: Json }
       search_map_publications_v3: { Args: { p_request: Json }; Returns: Json }
+      search_map_publications_v4: { Args: { p_request: Json }; Returns: Json }
       search_nearby_products: {
         Args: {
           radius_meters?: number
@@ -5083,6 +5093,23 @@ export type Database = {
       tiene_consentimiento_biometrico: {
         Args: { p_user_id: string }
         Returns: boolean
+      }
+      ubicacion_de_mi_publicacion: {
+        Args: { p_product_id: string }
+        Returns: Json
+      }
+      ubicacion_publica_de_publicacion: {
+        Args: { p_decimales?: number; p_product_id: string }
+        Returns: Json
+      }
+      ubicacion_publica_punto: {
+        Args: {
+          p_decimales: number
+          p_exacta: unknown
+          p_geo: unknown
+          p_precision: string
+        }
+        Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
       update_profile_and_pause_products: {
