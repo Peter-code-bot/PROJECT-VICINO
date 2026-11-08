@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Smoke de produccion que mira CONTENIDO, no codigos de estado.
+ * Smoke de produccion que mira CONTENIDO, no solo codigos de estado.
  *
  *   node scripts/smoke-produccion.mjs
  *   node scripts/smoke-produccion.mjs --url https://vicinomarket.com
@@ -28,6 +28,11 @@
  * falsos durante semanas (21-oct-2026). Un smoke sin sesion no puede ver
  * resultados de busqueda; lo que si puede comprobar es que el muro existe y
  * que conserva la busqueda en `next` para despues del login.
+ *
+ * En las API el codigo de estado SI es el contrato, y por eso una comprobacion
+ * puede declarar `estado`: se exige ese codigo exacto ademas del cuerpo (o del
+ * destino, junto con `redirigeA`). `nota` se imprime solo si falla, para decir
+ * que hacer cuando el rojo es un cambio a proposito y no una caida.
  *
  * Sale 0 si todo pasa, 1 si algo falla.
  */
@@ -94,6 +99,48 @@ const COMPROBACIONES = [
   },
 ];
 
+/**
+ * Wallet y lealtad, sin sesion (docs/LEALTAD-WALLET-2026-10-20.md, seccion
+ * «Comprobado en produccion»). Bloque aparte y al final. En las API se exige
+ * estado Y cuerpo: un 503 o un 401 solos no distinguen el caso esperado de
+ * otra falla con el mismo codigo.
+ */
+const COMPROBACIONES_WALLET = [
+  {
+    nombre: 'Apple Wallet apagado: el pase responde 503 apple_wallet_no_configurado',
+    // UUID nulo: bien formado (con otro id la ruta da 404 antes de mirar la
+    // configuracion) y sin membresia detras. Apagado, ni consulta la base.
+    ruta: '/api/wallet/apple/pase/00000000-0000-0000-0000-000000000000',
+    estado: 503,
+    debe: [/"error":"apple_wallet_no_configurado"/],
+    nota:
+      'Si Apple Wallet se encendio A PROPOSITO, un invitado recibe 401 {"ok":false}: cambiar este caso a ' +
+      'estado 401 y quitar el error del cuerpo. Un 401 sin que nadie lo encendiera quiere decir que las ' +
+      'variables APPLE_WALLET_* quedaron completas en Production.',
+  },
+  {
+    nombre: 'cron de Wallet sin secreto: 401 unauthorized (CRON_SECRET puesto)',
+    // Nunca se manda el secreto. Sin CRON_SECRET en Vercel la ruta responderia
+    // 500 "CRON_SECRET not configured" (apps/web/app/api/cron/wallet-sync/route.ts).
+    ruta: '/api/cron/wallet-sync',
+    estado: 401,
+    debe: [/"error":"unauthorized"/],
+    nunca: [/CRON_SECRET not configured/],
+  },
+  {
+    nombre: 'tarjetas sin sesion: 307 al login, que conserva el destino',
+    ruta: '/tarjetas',
+    estado: 307,
+    redirigeA: /^\/login\?next=%2Ftarjetas$/,
+  },
+  {
+    nombre: 'panel de lealtad sin sesion: 307 al login, que conserva el destino',
+    ruta: '/seller/lealtad',
+    estado: 307,
+    redirigeA: /^\/login\?next=%2Fseller%2Flealtad$/,
+  },
+];
+
 const traer = async (url, cookie, sinSeguir = false) => {
   const res = await fetch(url, {
     headers: cookie ? { Cookie: cookie } : {},
@@ -121,8 +168,9 @@ const main = async () => {
   const i = args.indexOf('--url');
   const base = i !== -1 ? args[i + 1] : BASE_POR_DEFECTO;
 
+  const todas = [...COMPROBACIONES, ...COMPROBACIONES_WALLET];
   let fallos = 0;
-  for (const c of COMPROBACIONES) {
+  for (const c of todas) {
     const url = base + c.ruta;
     let html = '';
     let status = 0;
@@ -137,34 +185,39 @@ const main = async () => {
 
     if (c.redirigeA) {
       const destino = destinoRelativo(location, base);
-      if (status >= 300 && status < 400 && c.redirigeA.test(destino)) {
+      const estadoOk = c.estado === undefined ? status >= 300 && status < 400 : status === c.estado;
+      if (estadoOk && c.redirigeA.test(destino)) {
         console.log(`OK     ${c.nombre}`);
       } else {
         fallos++;
         console.log(`FALLA  ${c.nombre}   (HTTP ${status}, Location: ${destino || '(sin Location)'})`);
-        console.log(`       esperaba 3xx a ${c.redirigeA}`);
+        console.log(`       esperaba ${c.estado ?? '3xx'} a ${c.redirigeA}`);
+        if (c.nota) console.log(`       nota:   ${c.nota}`);
       }
       continue;
     }
 
     const faltan = (c.debe ?? []).filter((re) => !re.test(html));
     const sobran = (c.nunca ?? []).filter((re) => re.test(html));
+    const estadoMal = c.estado !== undefined && status !== c.estado;
 
-    if (faltan.length === 0 && sobran.length === 0) {
+    if (faltan.length === 0 && sobran.length === 0 && !estadoMal) {
       console.log(`OK     ${c.nombre}`);
       continue;
     }
 
     fallos++;
     console.log(`FALLA  ${c.nombre}   (HTTP ${status}, ${html.length} bytes)`);
+    if (estadoMal) console.log(`       estado: esperaba HTTP ${c.estado}`);
     for (const re of faltan) console.log(`       falta:  ${re}`);
     for (const re of sobran) console.log(`       sobra:  ${re}`);
+    if (c.nota) console.log(`       nota:   ${c.nota}`);
   }
 
   console.log(
     fallos === 0
-      ? `\n${COMPROBACIONES.length} comprobaciones, todas en verde.\n`
-      : `\n${fallos} de ${COMPROBACIONES.length} en rojo.\n`,
+      ? `\n${todas.length} comprobaciones, todas en verde.\n`
+      : `\n${fallos} de ${todas.length} en rojo.\n`,
   );
   process.exit(fallos === 0 ? 0 : 1);
 };

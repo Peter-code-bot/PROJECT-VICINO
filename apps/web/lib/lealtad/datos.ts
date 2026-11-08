@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import { conLealtad } from "@/types/loyalty.types";
+import { conLealtad, type MembresiaPropia } from "@/types/loyalty.types";
 import {
   miTarjetaSchema,
   misTarjetasSchema,
@@ -55,7 +55,7 @@ export async function membresiaPropiaEn(
   supabase: Cliente,
   programId: string,
   userId: string,
-): Promise<{ id: string; sellos_disponibles: number; status: "activa" | "revocada" } | null> {
+): Promise<MembresiaPropia | null> {
   const { data, error } = await conLealtad(supabase)
     .from("loyalty_memberships")
     .select("id, sellos_disponibles, status")

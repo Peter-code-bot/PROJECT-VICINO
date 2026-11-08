@@ -12,10 +12,11 @@ export const maxDuration = 60;
 
 /**
  * Procesador de la outbox de Wallet (wallet_update_jobs). Vercel Cron lo
- * invoca cada 10 minutos (apps/web/vercel.json) con el mismo
- * `Authorization: Bearer ${CRON_SECRET}` que recompute-rankings. Tambien se
- * puede disparar a mano con POST. Sin credenciales de Wallet no hay nada que
- * sincronizar y responde 200 con cero trabajos.
+ * invoca una vez al dia, 09:15 UTC (apps/web/vercel.json; Vercel Hobby solo
+ * admite crons diarios), con el mismo `Authorization: Bearer ${CRON_SECRET}`
+ * que recompute-rankings. Tambien se puede disparar a mano con POST. Sin
+ * CRON_SECRET responde 500; sin la cabecera correcta, 401. Sin credenciales de
+ * Wallet no hay nada que sincronizar y responde 200 con cero trabajos.
  */
 async function sincronizar(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;

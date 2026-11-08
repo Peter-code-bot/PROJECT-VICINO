@@ -141,6 +141,71 @@ jobs:
           pnpm exec tsx --test scripts/test-precio-confirmacion.ts scripts/test-s04b-server.ts
           pnpm exec tsx scripts/test-venta-chat-sql.ts
 
+      # Las pruebas de lealtad existen desde el PR #76 y ningun job las corria:
+      # una regresion del motor no le habria avisado a nadie. Ninguno de los dos
+      # scripts es node:test; cada uno sale distinto de 0 al primer fallo. Las
+      # de lib/wallet corren en el paso siguiente, con el resto de apps/web.
+      #
+      # Hueco conocido, sin prueba todavia: "venta confirmada con las RPC del
+      # 23/24-oct -> sello". test-lealtad-sql.ts solo aplica la migracion
+      # 20260320000007 de sale_confirmations, y test-venta-chat-sql.ts no
+      # aplica la de lealtad.
+      - name: Motor y validadores de lealtad
+        run: |
+          pnpm exec tsx scripts/test-lealtad-validadores.ts
+          pnpm exec tsx scripts/test-lealtad-sql.ts
+
+      # La suite unitaria de apps/web, la misma que se corre antes de cada push
+      # (apps/web/lib/pruebas/cargar-real.ts). La lista sale de git y no de un
+      # glob, a proposito: `lib/**/*.test.ts` deja fuera archivos en bash sin
+      # globstar (`**` vale un solo nivel) y en git (exige una subcarpeta), y
+      # Node 22 con un glob sin coincidencias corre 0 pruebas y sale con 0.
+      # Una CI que corre menos pruebas sin avisar es un verde que no mira. Por
+      # eso falla si la lista sale vacia e imprime cuantas corre. Si alguna vez
+      # hay que excluir una, que sea con pathspec explicito y comentado
+      # (':!:ruta'), nunca cambiando el patron.
+      #
+      # Pasarle a Node la lista tal cual tampoco basta: Node 22 vuelve a leer
+      # CADA argumento de --test como glob y, si otro argumento si coincide,
+      # descarta sin avisar el que no. Una prueba bajo una carpeta dinamica de
+      # Next ([id], [...slug]) no correria nunca, ni una con nombre no ASCII,
+      # que git devuelve entre comillas. Por eso la lista se lee con -z (rutas
+      # tal cual, sin comillas), cada metacaracter de glob va en una clase de
+      # un solo caracter ([id] -> [[]id[]]) y, antes de correr, el mismo glob
+      # de Node (fs.globSync) confirma que cada patron da exactamente un
+      # archivo. Lo que el escape no cubra (p. ej. llaves con coma, que el glob
+      # expande antes de mirar las clases) falla aqui en voz alta en vez de
+      # saltarse.
+      #
+      # openssl se exige porque sin el la prueba de firma del .pkpass
+      # (lib/wallet/apple/pase.test.ts) se OMITE en vez de fallar.
+      - name: Pruebas unitarias de apps/web
+        working-directory: apps/web
+        shell: bash
+        run: |
+          openssl version
+          mapfile -d '' -t archivos < <(git ls-files -z '*.test.ts')
+          if [ "${#archivos[@]}" -eq 0 ]; then
+            echo "::error title=Sin pruebas::git ls-files no encontro ningun *.test.ts en apps/web"
+            exit 1
+          fi
+          patrones=()
+          for ruta in "${archivos[@]}"; do
+            patrones+=("$(printf '%s' "$ruta" | sed 's/[][*?{}()]/[&]/g')")
+          done
+          node -e '
+            const { globSync } = require("node:fs");
+            const malos = process.argv.slice(1)
+              .map((patron) => [patron, globSync(patron).length])
+              .filter(([, n]) => n !== 1);
+            for (const [patron, n] of malos) {
+              console.log(`::error title=Prueba que Node no correria::${patron} da ${n} archivos en el glob de Node, no 1`);
+            }
+            process.exit(malos.length > 0 ? 1 : 0);
+          ' -- "${patrones[@]}"
+          echo "Archivos de prueba: ${#patrones[@]}"
+          node --import tsx --test "${patrones[@]}"
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba
