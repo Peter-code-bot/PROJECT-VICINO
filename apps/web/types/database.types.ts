@@ -3219,8 +3219,11 @@ export type Database = {
           es_vendedor: boolean | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
@@ -3250,6 +3253,7 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3274,8 +3278,11 @@ export type Database = {
           es_vendedor: boolean | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
@@ -3305,6 +3312,7 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -3868,8 +3876,11 @@ export type Database = {
           es_vendedor: boolean | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
@@ -3899,6 +3910,7 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
         }
         SetofOptions: {
           from: "*"
