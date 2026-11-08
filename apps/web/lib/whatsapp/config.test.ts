@@ -28,6 +28,10 @@ test("el verify token y el app secret exigen al menos 16 caracteres", async () =
   assert.equal(c.tokenVerificacionWebhook({ WHATSAPP_VERIFY_TOKEN: "corto" }), null);
   assert.equal(c.tokenVerificacionWebhook({ WHATSAPP_VERIFY_TOKEN: " token-de-verificacion-largo " }), "token-de-verificacion-largo");
   assert.equal(c.secretoAppWhatsApp({}), null);
-  assert.equal(c.secretoAppWhatsApp({ WHATSAPP_APP_SECRET: "0123456789abcdef" }), "0123456789abcdef");
-  assert.equal(c.secretoAppWhatsApp({ WHATSAPP_APP_SECRET: "0123456789abcde" }), null);
+  // Los valores se arman en ejecucion: un literal con forma de secreto junto a
+  // la clave WHATSAPP_APP_SECRET lo marca el escaneo de secretos (gitleaks).
+  const dieciseis = "x".repeat(16);
+  const quince = "x".repeat(15);
+  assert.equal(c.secretoAppWhatsApp({ WHATSAPP_APP_SECRET: dieciseis }), dieciseis);
+  assert.equal(c.secretoAppWhatsApp({ WHATSAPP_APP_SECRET: quince }), null);
 });
