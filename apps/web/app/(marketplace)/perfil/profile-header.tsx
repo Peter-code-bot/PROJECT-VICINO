@@ -12,6 +12,7 @@ import { PaymentMethodsBadge } from "@/components/profile/payment-methods-badge"
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
 import { cn } from "@/lib/utils";
+import { urlPerfilVendedor } from "@/lib/navigation/url-perfil-vendedor";
 interface ProfileHeaderProps {
   profile: {
     id: string;
@@ -87,6 +88,10 @@ export function ProfileHeader({
       </div>
     );
   }
+  const puedeModerar = Boolean(currentUserId && currentUserId !== profile.id);
+  const compartirPerfil = profile.es_vendedor
+    ? { titulo: displayName, url: urlPerfilVendedor(profile.id) }
+    : undefined;
 
   return (
     <div className="space-y-5 mb-6">
@@ -246,12 +251,14 @@ export function ProfileHeader({
               ? "Mensaje"
               : "Contactar"}
           </Link>
-          {currentUserId && currentUserId !== profile.id && (
+          {(puedeModerar || compartirPerfil) && (
             <ReportMenuButton
               targetType="user"
               targetId={profile.id}
               targetLabel={displayName}
               blockableUserId={profile.id}
+              compartirPerfil={compartirPerfil}
+              ocultarModeracion={!puedeModerar}
               ariaLabel="Más opciones"
               iconSize={18}
               className="!p-0 !h-[46px] !w-[46px] !rounded-full !bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] !text-[#11162D] hover:!bg-[#FBFAF6] hover:!text-[#11162D] shadow-[0_4px_14px_rgba(23,25,34,0.09),0_1px_4px_rgba(23,25,34,0.04)] active:translate-y-[1px] active:shadow-[0_2px_6px_rgba(23,25,34,0.08)] transition-[transform,box-shadow] duration-120 shrink-0 flex items-center justify-center"
@@ -259,7 +266,7 @@ export function ProfileHeader({
           )}
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
             href="/perfil/editar"
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--fg)] px-4 py-2.5 text-sm font-semibold text-[color:var(--bg)] shadow-sm transition-all hover:opacity-90"
@@ -275,6 +282,15 @@ export function ProfileHeader({
               <Handshake className="w-4 h-4" />
               Mi tienda
             </Link>
+          )}
+          {compartirPerfil && (
+            <ReportMenuButton
+              targetType="user"
+              targetId={profile.id}
+              compartirPerfil={compartirPerfil}
+              ocultarModeracion
+              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[color:var(--sidebar-bg)]"
+            />
           )}
         </div>
       )}

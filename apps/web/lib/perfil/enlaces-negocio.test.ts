@@ -12,6 +12,41 @@ import {
   urlInstagram,
   urlWhatsApp,
 } from "@vicino/shared";
+import { desglosarWhatsApp, digitosWhatsApp, mostrarWhatsApp } from "./telefono-whatsapp";
+import { urlPerfilVendedor } from "../navigation/url-perfil-vendedor";
+import { loginPara } from "../auth/acceso-invitado";
+
+test("El número de México se guarda con +52 separado y se muestra agrupado por región", () => {
+  const nuevo = desglosarWhatsApp("");
+  assert.deepEqual(nuevo, { pais: "MX", nacional: "" });
+  assert.equal(digitosWhatsApp(nuevo), "");
+  const puebla = { ...nuevo, nacional: "2221234567" };
+  assert.equal(mostrarWhatsApp(puebla), "222 123 4567");
+  assert.equal(digitosWhatsApp(puebla), "522221234567");
+  assert.equal(mostrarWhatsApp(desglosarWhatsApp("525512345678")), "55 1234 5678");
+});
+
+test("Un número internacional guardado recupera su país y admite el prefijo local de Reino Unido", () => {
+  assert.deepEqual(desglosarWhatsApp("34612345678"), { pais: "ES", nacional: "612345678" });
+  assert.equal(digitosWhatsApp({ pais: "GB", nacional: "02079460000" }), "442079460000");
+  assert.equal(digitosWhatsApp(desglosarWhatsApp("80012345678")), "80012345678");
+});
+
+test("El mensaje de WhatsApp lleva la ficha del vendedor, y el inicio de sesión conserva ese destino", () => {
+  const id = "d16d9e0f-85b7-4ea5-b872-07c26f8dce07";
+  const perfil = urlPerfilVendedor(id);
+  const [whatsapp] = listarEnlacesNegocio({ whatsapp_numero: "522221234567" }, {
+    incluirResenas: false,
+    urlPerfil: perfil,
+  });
+  assert.ok(whatsapp);
+  const enlace = new URL(whatsapp.href);
+  assert.equal(enlace.origin, "https://wa.me");
+  assert.equal(enlace.searchParams.get("text"), `${TEXTO_WHATSAPP_DESDE_VICINO}\n\n${perfil}`);
+  const ruta = new URL(perfil).pathname;
+  assert.equal(ruta, `/vendedor/${id}`);
+  assert.equal(new URL(loginPara(ruta), perfil).searchParams.get("next"), ruta);
+});
 
 // Las pruebas van en apps/web y no en packages/shared porque la suite que se
 // corre antes de cada push es `node --import tsx --test $(git ls-files '*.test.ts')`

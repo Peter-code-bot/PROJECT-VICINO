@@ -179,7 +179,7 @@ export interface EnlaceNegocioListo {
  */
 export function listarEnlacesNegocio(
   enlaces: Partial<EnlacesNegocio> | null | undefined,
-  opciones: { incluirResenas: boolean },
+  opciones: { incluirResenas: boolean; urlPerfil?: string },
 ): EnlaceNegocioListo[] {
   if (!enlaces) return [];
   const lista: EnlaceNegocioListo[] = [];
@@ -187,7 +187,10 @@ export function listarEnlacesNegocio(
     lista.push({ canal: "instagram", href: urlInstagram(enlaces.instagram_usuario), etiqueta: "Instagram" });
   }
   if (enlaces.whatsapp_numero) {
-    lista.push({ canal: "whatsapp", href: urlWhatsApp(enlaces.whatsapp_numero), etiqueta: "WhatsApp" });
+    const mensaje = opciones.urlPerfil
+      ? `${TEXTO_WHATSAPP_DESDE_VICINO}\n\n${opciones.urlPerfil}`
+      : TEXTO_WHATSAPP_DESDE_VICINO;
+    lista.push({ canal: "whatsapp", href: urlWhatsApp(enlaces.whatsapp_numero, mensaje), etiqueta: "WhatsApp" });
   }
   if (enlaces.google_maps_url) {
     lista.push({ canal: "google_maps", href: enlaces.google_maps_url, etiqueta: "Google Maps" });
