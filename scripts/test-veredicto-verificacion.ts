@@ -22,9 +22,19 @@ import {
   alarmasDelAnalisis,
   alarmasGraves,
   decidirEstado,
+  esAprobable,
+  esRechazable,
   type AnalisisDocumento,
+  type OpcionesDelVeredicto,
 } from "../apps/web/lib/verificacion/veredicto.ts";
 import { interpretarRespuesta } from "../apps/web/lib/verificacion/analisis.ts";
+
+/** Lo que hay hoy en produccion: sin aprobacion automatica y con rechazo automatico. */
+const COMO_HOY: OpcionesDelVeredicto = { aprobacionAutomatica: false, rechazoAutomatico: true };
+/** La aprobacion encendida (solo para probar ese camino; no conviene encenderla). */
+const CON_APROBACION: OpcionesDelVeredicto = { aprobacionAutomatica: true, rechazoAutomatico: true };
+/** El rechazo automatico apagado (VERIFICACION_RECHAZO_AUTOMATICO=false). */
+const SIN_RECHAZO: OpcionesDelVeredicto = { aprobacionAutomatica: false, rechazoAutomatico: false };
 
 /** Un analisis impecable. Cada caso cambia solo lo que quiere probar. */
 function analisisPerfecto(): AnalisisDocumento {
@@ -81,7 +91,7 @@ test("una cara distinta con confianza baja NO rechaza: va a revision humana", ()
     confianza_porcentaje: 40,
     veredicto: "revision_humana",
   });
-  assert.equal(decidirEstado(a, false, false), "pending");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "pending");
 });
 
 test("un frente ilegible NO rechaza aunque diga que no es una credencial valida", () => {
@@ -96,7 +106,7 @@ test("un frente ilegible NO rechaza aunque diga que no es una credencial valida"
     confianza_porcentaje: 95,
     veredicto: "revision_humana",
   });
-  assert.equal(decidirEstado(a, false, false), "pending");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "pending");
 });
 
 test("un nombre que no coincide con el frente ilegible NO rechaza", () => {
@@ -110,12 +120,12 @@ test("un nombre que no coincide con el frente ilegible NO rechaza", () => {
     },
     confianza_porcentaje: 88,
   });
-  assert.equal(decidirEstado(a, false, false), "pending");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "pending");
 });
 
 test("un 'rechazar' con poca confianza NO rechaza", () => {
   const a = con({ veredicto: "rechazar", confianza_porcentaje: 55 });
-  assert.equal(decidirEstado(a, false, false), "pending");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "pending");
 });
 
 test("una universidad que no cuadra con el frente ilegible NO rechaza", () => {
@@ -129,7 +139,7 @@ test("una universidad que no cuadra con el frente ilegible NO rechaza", () => {
     },
     confianza_porcentaje: 92,
   });
-  assert.equal(decidirEstado(a, true, false), "pending");
+  assert.equal(decidirEstado(a, true, COMO_HOY), "pending");
 });
 
 test("un rostro no detectado NO rechaza: no ver no es un hallazgo", () => {
@@ -143,7 +153,7 @@ test("un rostro no detectado NO rechaza: no ver no es un hallazgo", () => {
     veredicto: "revision_humana",
     confianza_porcentaje: 80,
   });
-  assert.equal(decidirEstado(a, false, false), "pending");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "pending");
 });
 
 // --------------------------------------------------------------------------
@@ -162,7 +172,7 @@ test("dos caras distintas con confianza alta SI rechazan", () => {
     veredicto: "rechazar",
     confianza_porcentaje: 94,
   });
-  assert.equal(decidirEstado(a, false, false), "rejected");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "rejected");
 });
 
 test("un documento legible que no es una credencial SI rechaza", () => {
@@ -172,7 +182,7 @@ test("un documento legible que no es una credencial SI rechaza", () => {
     veredicto: "rechazar",
     confianza_porcentaje: 93,
   });
-  assert.equal(decidirEstado(a, false, false), "rejected");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "rejected");
 });
 
 test("un nombre sin ninguna relacion, con el frente legible, SI rechaza", () => {
@@ -182,7 +192,7 @@ test("un nombre sin ninguna relacion, con el frente legible, SI rechaza", () => 
     confianza_porcentaje: 91,
     veredicto: "rechazar",
   });
-  assert.equal(decidirEstado(a, false, false), "rejected");
+  assert.equal(decidirEstado(a, false, COMO_HOY), "rejected");
 });
 
 test("otra universidad, con el frente legible, SI rechaza", () => {
@@ -192,7 +202,7 @@ test("otra universidad, con el frente legible, SI rechaza", () => {
     confianza_porcentaje: 90,
     veredicto: "revision_humana",
   });
-  assert.equal(decidirEstado(a, true, false), "rejected");
+  assert.equal(decidirEstado(a, true, COMO_HOY), "rejected");
 });
 
 // --------------------------------------------------------------------------
@@ -200,25 +210,25 @@ test("otra universidad, con el frente legible, SI rechaza", () => {
 // --------------------------------------------------------------------------
 
 test("con la bandera apagada, un analisis impecable se queda en pending", () => {
-  assert.equal(decidirEstado(analisisPerfecto(), false, false), "pending");
+  assert.equal(decidirEstado(analisisPerfecto(), false, COMO_HOY), "pending");
 });
 
 test("con la bandera encendida, un analisis impecable aprueba", () => {
-  assert.equal(decidirEstado(analisisPerfecto(), false, true), "approved");
+  assert.equal(decidirEstado(analisisPerfecto(), false, CON_APROBACION), "approved");
 });
 
 test("el reverso ausente nunca aprueba, ni con la bandera encendida", () => {
   const a = con({
     reverso: { presente: false, legible: false, corresponde_al_frente: false, observacion: null },
   });
-  assert.equal(decidirEstado(a, true, true), "pending");
+  assert.equal(decidirEstado(a, true, CON_APROBACION), "pending");
 });
 
 test("un reverso que no corresponde al frente nunca aprueba", () => {
   const a = con({
     reverso: { presente: true, legible: true, corresponde_al_frente: false, observacion: null },
   });
-  assert.equal(decidirEstado(a, false, true), "pending");
+  assert.equal(decidirEstado(a, false, CON_APROBACION), "pending");
 });
 
 test("un cotejo de rostro flojo nunca aprueba, aunque diga misma persona", () => {
@@ -230,19 +240,19 @@ test("un cotejo de rostro flojo nunca aprueba, aunque diga misma persona", () =>
       observacion: null,
     },
   });
-  assert.equal(decidirEstado(a, false, true), "pending");
+  assert.equal(decidirEstado(a, false, CON_APROBACION), "pending");
 });
 
 test("una credencial universitaria sin cotejo de universidad nunca aprueba", () => {
   // la_universidad_coincide en null significa «no habia nada que cotejar», y
   // en un tramite universitario eso no puede aprobar por descarte.
   const a = con({ la_universidad_coincide: null });
-  assert.equal(decidirEstado(a, true, true), "pending");
+  assert.equal(decidirEstado(a, true, CON_APROBACION), "pending");
 });
 
 test("un 'aprobar' con 89 de confianza no aprueba: el umbral es 90", () => {
   const a = con({ confianza_porcentaje: 89 });
-  assert.equal(decidirEstado(a, false, true), "pending");
+  assert.equal(decidirEstado(a, false, CON_APROBACION), "pending");
 });
 
 // --------------------------------------------------------------------------
@@ -307,18 +317,18 @@ test("una respuesta impecable se interpreta entera y aprobaria con la bandera", 
   const leido = interpretarRespuesta(JSON.stringify(analisisPerfecto()));
   assert.notEqual(leido, null);
   assert.ok(leido !== null);
-  assert.equal(decidirEstado(leido, false, true), "approved");
+  assert.equal(decidirEstado(leido, false, CON_APROBACION), "approved");
 });
 
 test("alarmas: un analisis impecable no tiene ninguna y es aprobable", () => {
   assert.deepEqual(alarmasDelAnalisis(analisisPerfecto(), false), []);
-  assert.equal(decidirEstado(analisisPerfecto(), false, true), "approved");
+  assert.equal(decidirEstado(analisisPerfecto(), false, CON_APROBACION), "approved");
 });
 
 test("alarmas: «aprobar» con el rostro dudoso queda pendiente y dice por que", () => {
   const a = analisisPerfecto();
   a.selfie.confianza_rostro_porcentaje = 80;
-  assert.equal(decidirEstado(a, false, true), "pending");
+  assert.equal(decidirEstado(a, false, CON_APROBACION), "pending");
   assert.deepEqual(alarmasDelAnalisis(a, false), ["el rostro no coincide o no es seguro (80 %)"]);
 });
 
@@ -339,13 +349,13 @@ test("alarmas: la lista vacia coincide con «aprobable» en cada condicion de to
   for (const cambiar of variantes) {
     const a = analisisPerfecto();
     cambiar(a);
-    const aprobable = decidirEstado(a, false, true) === "approved";
+    const aprobable = decidirEstado(a, false, CON_APROBACION) === "approved";
     assert.equal(alarmasDelAnalisis(a, false).length === 0, aprobable, JSON.stringify(a).slice(0, 80));
   }
   const u = analisisPerfecto();
   u.la_universidad_coincide = false;
   u.confianza_porcentaje = 60;
-  assert.equal(decidirEstado(u, true, true) === "approved", false);
+  assert.equal(decidirEstado(u, true, CON_APROBACION) === "approved", false);
   assert.ok(alarmasDelAnalisis(u, true).includes("la universidad no coincide"));
 });
 
@@ -358,4 +368,97 @@ test("alarmas graves: identidad o documento, no una foto mala", () => {
   const otraCara = analisisPerfecto();
   otraCara.selfie.misma_persona = false;
   assert.deepEqual(alarmasGraves(otraCara, false), ["el rostro no coincide"]);
+});
+
+// --------------------------------------------------------------------------
+// El rechazo automatico, controlable (interpretacion A del 7-nov-2026). Hoy
+// sigue encendido; con VERIFICACION_RECHAZO_AUTOMATICO=false los cuatro
+// caminos de rechazo se quedan en 'pending', en la cola, y la nota conserva
+// el hallazgo en `rechazable`. Estos casos fallan contra el decidirEstado de
+// tres booleanos: con un objeto en el tercer argumento aquel rechazaba igual.
+// --------------------------------------------------------------------------
+
+/** Un analisis por cada camino de rechazo, y SOLO ese camino. */
+function losCuatroCaminosDeRechazo(): Array<{ nombre: string; analisis: AnalisisDocumento; esUniversitaria: boolean }> {
+  return [
+    {
+      nombre: "«rechazar» del modelo con confianza suficiente",
+      analisis: con({ veredicto: "rechazar", confianza_porcentaje: 80 }),
+      esUniversitaria: false,
+    },
+    {
+      nombre: "documento legible que no es una credencial",
+      analisis: con({ es_credencial_valida: false, confianza_porcentaje: 93, veredicto: "revision_humana" }),
+      esUniversitaria: false,
+    },
+    {
+      nombre: "cara distinta con confianza de rostro alta",
+      analisis: con({
+        selfie: { rostro_detectado: true, misma_persona: false, confianza_rostro_porcentaje: 96, observacion: null },
+        confianza_porcentaje: 60,
+        veredicto: "revision_humana",
+      }),
+      esUniversitaria: false,
+    },
+    {
+      nombre: "otra universidad con el frente legible",
+      analisis: con({ la_universidad_coincide: false, confianza_porcentaje: 90, veredicto: "revision_humana" }),
+      esUniversitaria: true,
+    },
+  ];
+}
+
+test("rechazo apagado: los cuatro caminos de rechazo quedan en pending y siguen siendo rechazables", () => {
+  for (const { nombre, analisis, esUniversitaria } of losCuatroCaminosDeRechazo()) {
+    assert.equal(decidirEstado(analisis, esUniversitaria, SIN_RECHAZO), "pending", nombre);
+    assert.equal(esRechazable(analisis, esUniversitaria), true, nombre);
+    assert.equal(esAprobable(analisis, esUniversitaria), false, nombre);
+  }
+});
+
+test("rechazo encendido: los cuatro caminos rechazan, igual que hoy, con o sin aprobacion", () => {
+  for (const { nombre, analisis, esUniversitaria } of losCuatroCaminosDeRechazo()) {
+    assert.equal(decidirEstado(analisis, esUniversitaria, COMO_HOY), "rejected", nombre);
+    assert.equal(decidirEstado(analisis, esUniversitaria, CON_APROBACION), "rejected", nombre);
+  }
+});
+
+test("rechazo apagado: un hallazgo fundado nunca cae a una aprobacion, ni con la aprobacion encendida", () => {
+  const soloAprobacion: OpcionesDelVeredicto = { aprobacionAutomatica: true, rechazoAutomatico: false };
+  for (const { nombre, analisis, esUniversitaria } of losCuatroCaminosDeRechazo()) {
+    assert.equal(decidirEstado(analisis, esUniversitaria, soloAprobacion), "pending", nombre);
+  }
+});
+
+test("las dos opciones no se pueden intercambiar sin que esto falle", () => {
+  const soloAprobacion: OpcionesDelVeredicto = { aprobacionAutomatica: true, rechazoAutomatico: false };
+  const soloRechazo: OpcionesDelVeredicto = { aprobacionAutomatica: false, rechazoAutomatico: true };
+  const rechazo = losCuatroCaminosDeRechazo()[0];
+  assert.ok(rechazo);
+  // Un analisis impecable solo lo aprueba la aprobacion...
+  assert.equal(decidirEstado(analisisPerfecto(), false, soloAprobacion), "approved");
+  assert.equal(decidirEstado(analisisPerfecto(), false, soloRechazo), "pending");
+  // ...y un hallazgo fundado solo lo rechaza el rechazo.
+  assert.equal(decidirEstado(rechazo.analisis, false, soloAprobacion), "pending");
+  assert.equal(decidirEstado(rechazo.analisis, false, soloRechazo), "rejected");
+});
+
+test("rechazable y aprobable no dependen de las banderas ni se pisan", () => {
+  assert.equal(esAprobable(analisisPerfecto(), false), true);
+  assert.equal(esRechazable(analisisPerfecto(), false), false);
+  // Una duda (foto borrosa) no es ni lo uno ni lo otro.
+  const duda = con({ frente: { legible: false, vigente: true, sellos_o_elementos_de_seguridad: false, observacion: null }, veredicto: "revision_humana", confianza_porcentaje: 50 });
+  assert.equal(esAprobable(duda, false), false);
+  assert.equal(esRechazable(duda, false), false);
+  assert.equal(decidirEstado(duda, false, SIN_RECHAZO), "pending");
+});
+
+test("una opcion ausente o que no es exactamente true vale como apagada", () => {
+  const rechazo = losCuatroCaminosDeRechazo()[0];
+  assert.ok(rechazo);
+  const sinTipos = (valor: unknown) => valor as OpcionesDelVeredicto;
+  assert.equal(decidirEstado(rechazo.analisis, false, sinTipos({})), "pending");
+  assert.equal(decidirEstado(analisisPerfecto(), false, sinTipos({})), "pending");
+  assert.equal(decidirEstado(rechazo.analisis, false, sinTipos({ rechazoAutomatico: "false" })), "pending");
+  assert.equal(decidirEstado(analisisPerfecto(), false, sinTipos({ aprobacionAutomatica: "true" })), "pending");
 });

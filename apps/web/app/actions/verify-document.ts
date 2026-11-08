@@ -13,9 +13,12 @@ import {
   alarmasDelAnalisis,
   alarmasGraves,
   decidirEstado,
+  esAprobable,
+  esRechazable,
   type AnalisisDocumento,
 } from "@/lib/verificacion/veredicto";
 import { construirPrompt, interpretarRespuesta } from "@/lib/verificacion/analisis";
+import { sonFotosDistintas } from "@/lib/verificacion/rutas-de-fotos";
 import {
   esVeredictoDeEstaEntrada,
   esVeredictoReal,
@@ -65,6 +68,27 @@ const TIPO_UNIVERSITARIA = "Credencial Universitaria";
  * que el camino de la IA tambien escriba el perfil.
  */
 const APROBACION_AUTOMATICA = process.env.VERIFICACION_APROBACION_AUTOMATICA === "true";
+
+/**
+ * El rechazo automatico, en cambio, nace ENCENDIDO: es lo que este archivo
+ * hace hoy, y fusionar la bandera no cambia nada. Se apaga con
+ * VERIFICACION_RECHAZO_AUTOMATICO=false, exactamente "false"; ausente o con
+ * cualquier otro valor, todo sigue como hoy. El valor final lo decide Pedro, y
+ * en Vercel no surte efecto sin redesplegar.
+ *
+ * Por que se puede querer apagar: 'rejected' es un estado RESUELTO, asi que
+ * la fila sale de la cola del panel, nadie recibe aviso y el cron de purga
+ * borra las tres imagenes en menos de una hora. Con la bandera apagada, los
+ * cuatro caminos de rechazo de decidirEstado se quedan en 'pending' y la nota
+ * guarda el hallazgo en `rechazable` para el revisor.
+ *
+ * ANTES DE APAGARLA: el historial (lib/verificacion/vigencia-analisis.ts) aun
+ * no lee `rechazable`. Esas notas se siguen guardando como negativas, pero las
+ * que el modelo no marco como «rechazar» quedan fuera del cupo de rechazos y
+ * el panel las etiqueta como duda; cambiarlo toca un texto del panel, y eso
+ * pasa por la revision de diseno.
+ */
+const RECHAZO_AUTOMATICO = process.env.VERIFICACION_RECHAZO_AUTOMATICO !== "false";
 
 /**
  * El modelo por defecto NO es el mini.
@@ -150,6 +174,16 @@ function avisarSinLlave(): void {
     "[verificacion] OPENAI_API_KEY ausente en produccion: ningun documento se analiza, todo pasa a revision humana.",
     { level: "warning" },
   );
+}
+
+/**
+ * VERIFICACION_ANALISIS_IA apaga el analisis con IA SIN quitar la llave (que
+ * el lector de documentos podria necesitar). Encendido por defecto: solo el
+ * valor exacto "off" lo apaga, asi que ausente, vacio o mal escrito deja lo de
+ * hoy. Se lee en cada llamada, igual que OPENAI_API_KEY.
+ */
+function analisisIaApagado(): boolean {
+  return process.env.VERIFICACION_ANALISIS_IA === "off";
 }
 
 /**
@@ -393,6 +427,22 @@ export async function verifyDocument(
     return { success: false, error: "No pudimos leer tus documentos. Vuelve a subirlos." };
   }
 
+  // TRES OBJETOS DISTINTOS. Leer las rutas de la fila no impide que el propio
+  // vendedor escriba por REST la misma ruta en dos columnas (o dos escrituras
+  // que piden el mismo objeto del bucket), y entonces el modelo compararia la
+  // foto del documento consigo misma. Se para aqui, antes de descargar, cobrar
+  // o llamar a nadie, y la fila sigue en la cola; una ruta ambigua (controles,
+  // espacios en los bordes) tambien para. NO detecta el mismo contenido subido
+  // con dos nombres: eso pediria comparar los bytes. Ver
+  // lib/verificacion/rutas-de-fotos.ts.
+  if (!sonFotosDistintas(rutasEnBucket)) {
+    Sentry.captureMessage("verifyDocument: la fila repite una foto en dos ranuras", {
+      level: "warning",
+      tags: { action: "verifyDocument", paso: "rutas_repetidas" },
+    });
+    return { success: false, error: "No pudimos leer tus documentos. Vuelve a subirlos." };
+  }
+
   // Sin consentimiento expreso registrado, no se procesa nada.
   //
   // La casilla de la interfaz es necesaria pero no suficiente: se salta con la
@@ -416,6 +466,18 @@ export async function verifyDocument(
       success: false,
       error: "Necesitas aceptar el tratamiento de tus datos biométricos antes de verificar tu identidad.",
     };
+  }
+
+  // ANALISIS APAGADO (interpretacion B, preparada). Sale con lo mismo que hoy
+  // cuando falta OPENAI_API_KEY: no lista ni descarga las fotos, no cobra cuota
+  // y no llama al modelo; la fila sigue 'pending' desde la subida y el panel la
+  // muestra sin analisis automatico (o, si traia la nota de un envio anterior,
+  // con esa nota marcada como desfasada). Va DESPUES del tipo, la universidad
+  // y el consentimiento a proposito: la salida por falta de llave va antes que
+  // todo eso, y entonces nada en el servidor comprobaba el consentimiento de
+  // unas fotos que se siguen guardando y revisando a mano.
+  if (analisisIaApagado()) {
+    return { success: true, status: "pending", fallback: true };
   }
 
   // El error se LEE. Los privilegios de `profiles` van columna por columna
@@ -680,7 +742,10 @@ export async function verifyDocument(
   }
 
   const estadoPropuesto: EstadoVerificacion = analisis
-    ? decidirEstado(analisis, esUniversitaria, APROBACION_AUTOMATICA)
+    ? decidirEstado(analisis, esUniversitaria, {
+        aprobacionAutomatica: APROBACION_AUTOMATICA,
+        rechazoAutomatico: RECHAZO_AUTOMATICO,
+      })
     : "pending";
 
   // Ultima comprobacion contra la FILA, no contra los argumentos: entre la
@@ -736,12 +801,17 @@ export async function verifyDocument(
       // `aprobable`/`alarmas`: con la aprobacion automatica apagada todo
       // «aprobar» queda en 'pending'; esto dice si de verdad cuadraba y, si no,
       // que fallo (sin datos del documento).
+      // `rechazable`: lo mismo para el rechazo. Con el rechazo automatico
+      // apagado, `decision` dice 'pending' y esto conserva que habia un
+      // hallazgo fundado. Es un campo NUEVO a proposito: `decision` sigue
+      // diciendo lo que hizo el servidor.
       ai_analysis_raw: analisis
         ? {
             ...analisis,
             entrada: { tipo, universidad },
             decision: finalStatus,
-            aprobable: decidirEstado(analisis, esUniversitaria, true) === "approved",
+            aprobable: esAprobable(analisis, esUniversitaria),
+            rechazable: esRechazable(analisis, esUniversitaria),
             alarmas: alarmasDelAnalisis(analisis, esUniversitaria),
             grave: alarmasGraves(analisis, esUniversitaria).length > 0,
             anteriores,
