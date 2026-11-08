@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreVertical, Flag, UserX, Loader2 } from "lucide-react";
+import { MoreVertical, Flag, UserX, Loader2, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import type { ReportTargetType } from "@vicino/shared";
 import { ReportModal } from "./report-modal";
 import { useBlockUser } from "@/lib/moderation/use-block-user";
@@ -22,6 +23,8 @@ interface ReportMenuButtonProps {
   className?: string;
   /** Aria-label custom (default "Más opciones"). */
   ariaLabel?: string;
+  compartirPerfil?: { titulo: string; url: string };
+  ocultarModeracion?: boolean;
 }
 
 export function ReportMenuButton({
@@ -34,6 +37,8 @@ export function ReportMenuButton({
   iconSize = 18,
   className = "",
   ariaLabel = "Más opciones",
+  compartirPerfil,
+  ocultarModeracion = false,
 }: ReportMenuButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -87,6 +92,26 @@ export function ReportMenuButton({
     if (ok && onBlocked) onBlocked();
   }
 
+  async function handleShare() {
+    if (!compartirPerfil) return;
+    setMenuOpen(false);
+    const { titulo, url } = compartirPerfil;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: titulo, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace del perfil copiado");
+    } catch {
+      toast.error("No pudimos copiar el enlace del perfil.");
+    }
+  }
+
   return (
     <>
       <div ref={wrapperRef} className="relative inline-block">
@@ -111,17 +136,31 @@ export function ReportMenuButton({
             role="menu"
             className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl bg-[color:var(--bg-elev-2)] shadow-xl overflow-hidden p-1"
           >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={openReportModal}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-muted text-left transition-colors"
-            >
-              <Flag size={14} aria-hidden="true" />
-              Reportar {targetWord}
-            </button>
+            {compartirPerfil && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleShare}
+                className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              >
+                <Share2 size={14} aria-hidden="true" />
+                Compartir perfil
+              </button>
+            )}
 
-            {targetType === "user" && blockableUserId && (
+            {!ocultarModeracion && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={openReportModal}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-muted text-left transition-colors"
+              >
+                <Flag size={14} aria-hidden="true" />
+                Reportar {targetWord}
+              </button>
+            )}
+
+            {!ocultarModeracion && targetType === "user" && blockableUserId && (
               <button
                 type="button"
                 role="menuitem"
@@ -136,13 +175,15 @@ export function ReportMenuButton({
         )}
       </div>
 
-      <ReportModal
-        open={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        targetType={targetType}
-        targetId={targetId}
-        targetLabel={targetLabel}
-      />
+      {!ocultarModeracion && (
+        <ReportModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          targetType={targetType}
+          targetId={targetId}
+          targetLabel={targetLabel}
+        />
+      )}
     </>
   );
 }

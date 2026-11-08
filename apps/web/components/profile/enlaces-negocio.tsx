@@ -10,6 +10,7 @@ import {
 } from "@vicino/shared";
 import { registrarClicEnlaceNegocio } from "@/app/actions/enlaces-negocio";
 import { cargaDentroDelWebView } from "@/lib/perfil/abrir-enlace-externo";
+import { urlPerfilVendedor } from "@/lib/navigation/url-perfil-vendedor";
 
 interface EnlacesNegocioProps {
   vendedorId: string;
@@ -51,7 +52,10 @@ const ICONOS: Record<CanalEnlaceNegocio, typeof Instagram> = {
  * igual. rel lleva nofollow y ugc porque el destino lo escribe el vendedor.
  */
 export function EnlacesNegocio({ vendedorId, enlaces, esDueno, mostrarResenasGoogle }: EnlacesNegocioProps) {
-  const lista = listarEnlacesNegocio(enlaces, { incluirResenas: esDueno || mostrarResenasGoogle });
+  const lista = listarEnlacesNegocio(enlaces, {
+    incluirResenas: esDueno || mostrarResenasGoogle,
+    urlPerfil: urlPerfilVendedor(vendedorId),
+  });
   if (lista.length === 0) return null;
 
   const contar = (canal: CanalEnlaceNegocio) => {

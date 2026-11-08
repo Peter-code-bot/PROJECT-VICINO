@@ -11,6 +11,7 @@ import { invalidateSessionData } from "@/lib/session-events";
 import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
+import { CampoWhatsApp } from "@/components/profile/campo-whatsapp";
 
 function FieldRow({ label, htmlFor, hint, children, last = false }: {
   label: string;
@@ -100,6 +101,16 @@ export function ProfileForm({
 
   const bioRef = useRef<HTMLTextAreaElement>(null);
   const negocioRef = useRef<HTMLTextAreaElement>(null);
+  const avisoRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (pendingDeactivation) avisoRef.current?.scrollIntoView({ block: "center" });
+  }, [pendingDeactivation]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "center" });
+  }, [error]);
 
   function autoGrow(el: HTMLTextAreaElement) {
     el.style.height = "auto";
@@ -204,14 +215,16 @@ export function ProfileForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <BotonRegresar href="/perfil" aria-label="Volver al perfil" />
-        <h1 className="flex-1 text-xl font-heading font-bold">Editar perfil</h1>
+    <form action={handleSubmit} className="relative space-y-6">
+      <h1 className="pointer-events-none absolute inset-x-14 top-0 flex h-11 items-center text-xl font-heading font-bold">
+        Editar perfil
+      </h1>
+      <div className="pointer-events-none sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 flex h-11 items-center justify-between md:top-0">
+        <BotonRegresar href="/perfil" aria-label="Volver al perfil" variante="solido" className="pointer-events-auto" />
         <button
           type="submit"
           disabled={loading || pendingDeactivation !== null}
-          className="shrink-0 text-[15px] font-semibold text-primary dark:text-accent px-2 py-1 rounded-lg transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="pointer-events-auto min-h-11 shrink-0 rounded-full bg-[color:var(--bg)] px-3 text-[15px] font-semibold text-primary shadow-sm transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-accent"
         >
           {loading ? (
             <span className="inline-flex items-center gap-1.5">
@@ -245,7 +258,7 @@ export function ProfileForm({
       )}
 
       {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
+        <div ref={errorRef} role="alert" className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
           <ShieldAlert className="w-5 h-5 shrink-0" />
           <p>{error}</p>
         </div>
@@ -403,18 +416,8 @@ export function ProfileForm({
                 />
               </FieldRow>
 
-              <FieldRow label="WhatsApp" htmlFor="whatsapp_numero" hint="Con lada de país: 52 y luego tus 10 dígitos (12 en total). Sin lada no se guarda.">
-                <input
-                  id="whatsapp_numero"
-                  name="whatsapp_numero"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="off"
-                  maxLength={30}
-                  defaultValue={profile?.whatsapp_numero ?? ""}
-                  placeholder="52 222 123 4567"
-                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-                />
+              <FieldRow label="WhatsApp" htmlFor="whatsapp_nacional" hint="Selecciona el país y escribe tu número local.">
+                <CampoWhatsApp inicial={profile?.whatsapp_numero ?? ""} activo={esVendedor} />
               </FieldRow>
 
               <FieldRow label="Google Maps" htmlFor="google_maps_url" hint="Enlace de tu ficha o del punto que quieras compartir (Compartir → Copiar enlace)">
@@ -566,7 +569,7 @@ export function ProfileForm({
       </div>
 
       {pendingDeactivation && (
-        <div className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
+        <div ref={avisoRef} className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           <p className="font-semibold text-amber-900 dark:text-amber-200">
             Desactivar Modo Vendedor
           </p>
