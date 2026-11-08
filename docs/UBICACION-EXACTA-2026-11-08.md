@@ -1,7 +1,7 @@
 # Ubicación exacta por publicación (GEO-PUB-EXACT-20261104 / GEO-PRECISION-01)
 
 > Estado al 8-nov-2026: rama `feat/ubicacion-exacta-20261108` sobre `master` `4c8e56b`.
-> Migración `20261108210000` aplicada y probada en el **staging** (21/21 casos con roles reales);
+> Migración `20261108210000` aplicada y probada en el **staging** (23/23 casos con roles reales);
 > **nada aplicado en producción** (la migración la aplica Pedro antes del merge).
 
 ## Qué pidió el encargo y dónde quedó
@@ -42,6 +42,7 @@ Ficha:     page.tsx (RLS) → ubicacion_publica_de_publicacion (service_role) �
 Minimapa:  /api/products/[id]/location-map (RLS) → misma función → snapshot centrado en P
 ```
 
+- **Revisión que no delata.** `ubicacion_revision` sube solo cuando cambia algo público: la precisión, el punto exacto o, en aproximada, la celda de 110 m. Mover el pin privado dentro de su celda no la cambia.
 - **Fallo cerrado.** Un formulario abierto antes del despliegue no manda `ubicacion_accion` ni `ubicacion_precision`: al publicar queda aproximada; al editar, si movió el pin, aproximada. El servidor exige `confirmar_ubicacion_exacta=1` para guardar una exacta.
 - **Escrituras directas.** El INSERT de `products_services` es de tabla: un cliente puede mandar `ubicacion_exacta` o `ubicacion_revision`, y el trigger los pisa. `authenticated` solo tiene UPDATE de `ubicacion_precision`. Nadie lee las tres columnas por PostgREST.
 - **Celdas compartidas.** Si una exacta comparte su celda de 110 m con otra publicación, el mapa muestra el número de la celda (no el pin individual) y el detalle lista las dos; no se suelta el punto de la otra. Con la rejilla de 1 km (la de hoy) casi no pasa.
@@ -70,12 +71,35 @@ Minimapa:  /api/products/[id]/location-map (RLS) → misma función → snapshot
 
 | Dónde | Qué | Resultado |
 | --- | --- | --- |
-| Staging (PostGIS 3.3, PostgREST, RLS reales) | `node scripts/staging/probar-ubicacion-exacta.mjs`: 21 casos (escritura del dueño, columnas ilegibles, escrituras directas rechazadas, otra cuenta, v4 en las dos rejillas, celda compartida, bloqueos, anon, función de la ficha solo para service_role, editar precio, mover, revocar, quitar, históricas iguales a v2) | 21/21 |
+| Staging (PostGIS 3.3, PostgREST, RLS reales) | `node scripts/staging/probar-ubicacion-exacta.mjs`: 23 casos (escritura del dueño, columnas ilegibles, escrituras directas rechazadas, otra cuenta, v4 en las dos rejillas, celda compartida, bloqueos, anon, función de la ficha solo para service_role, editar precio, mover dentro y fuera de la celda, revocar, quitar, vista ancha igual a v3, históricas iguales a v2) | 23/23 |
 | CI (`security.yml`) | `escritura-ubicacion`, `ubicacion-publica`, `map-coverage.exacta`, rutas del minimapa y del mapa con `cargarReal` | 32/32 |
 | CI (`security.yml`) | `scripts/test-product-optional-actions.cjs` con 9 casos de ubicación | 29/29 |
 | CI (`database-types.yml`) | `ubicacion_exacta` no escribible en los tipos | en verde |
 
 No se pudo probar aquí (regla de la laptop: sin navegador ni `next dev`): MapKit real, gestos del pin, la imagen de Apple, la app nativa. Se prueba en el preview de Vercel (tras aplicar la migración) y en los teléfonos.
+
+## Revisión (8-nov-2026)
+
+Tres revisores independientes (seguridad y privacidad, base de datos, TypeScript y React) sobre `0135ab5b`, solo lectura.
+
+| Hallazgo | Severidad | Qué se hizo |
+| --- | --- | --- |
+| El prefiltro geography de v4 perdía publicaciones pegadas al borde sur en vistas de más de ~3 grados de ancho (el lado sur es un arco que se curva al norte) | Alto | `ST_Segmentize(..., 0.25)` antes del cast; caso nuevo en el staging (vista de 23 grados, igual que v3) |
+| La revisión delataba que el vendedor movía su pin privado dentro de la celda | Bajo | La revisión sigue solo a lo público; fuera del md5 del mapa; caso nuevo en el staging |
+| `GRANT INSERT (ubicacion_precision)` y comprobaciones de `service_role` y `anon` en el DO | Medio | Hecho (el INSERT de producción es de tabla: comprobado en solo lectura) |
+| La proyección se evaluaba ~14 veces por fila en v4 | Bajo | `OFFSET 0` en el LATERAL |
+| La reversión no era una sola transacción | Bajo | `BEGIN..COMMIT` |
+| «Guardando…» se quedaba puesto si un campo obligatorio fallaba al confirmar la exacta | Medio | `reportValidity()` antes de enviar |
+| Teclear en el buscador cancelaba la zona pedida y la etiqueta quedaba genérica | Bajo | Solo se cancela al moverse |
+| Tocar y dejar igual reescribía la ubicación | Bajo | Ahora es «conservar» |
+| `createProduct` mandaba a Sentry los `details` de Postgres (la fila, con el punto) | Bajo | Ya no |
+
+Quedan, con su motivo:
+
+- **Alto, anterior a este PR:** `search_nearby_products_v4` (feed «Cerca de ti») es SECURITY DEFINER, ejecutable por `anon` y calcula la distancia desde `ubicacion_geo` (redondeada hacia arriba a 100 m). Con tres orígenes elegidos a mano se puede triangular el punto privado de cualquier publicación, también de las aproximadas. Arreglo propuesto, en un PR aparte porque cambia el feed: medir la distancia y el radio sobre `ubicacion_publica_punto`, o llamar la RPC solo desde el servidor.
+- **Medio, decisión:** la exacta arranca encendida (lo pide el encargo) y publicar es la confirmación. La confirmación «¿Mostrar el punto exacto?» ya existe para editar; usarla también al publicar es un cambio de una línea si Alejandro lo prefiere.
+- **Bajo:** el servidor no valida la etiqueta según la precisión (un POST a mano del propio vendedor puede guardar calle y número en una aproximada); las etiquetas históricas se conservan.
+- **Bajo:** entre la comprobación RLS y la lectura con `service_role` del minimapa hay milisegundos; lo que se sirve es siempre el estado público vigente.
 
 ## Decisiones abiertas (no son de código)
 
