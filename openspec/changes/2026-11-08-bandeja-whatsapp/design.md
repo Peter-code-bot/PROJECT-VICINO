@@ -107,9 +107,10 @@ parcial; `(recibido_at)` en eventos y huerfanos.
 - La migracion completa, en un PostgreSQL 18 embebido con pgcrypto y una imitacion minima
   de Supabase, con 120 comprobaciones bajo `SET LOCAL ROLE anon|authenticated` y
   `request.jwt.claims` (`scripts/sql/arnes-bandeja-whatsapp/`, `npm run probar`).
-- `pnpm type-check` (web y shared), ESLint de lo tocado, `pnpm build`.
-- Revision adversarial: 5 revisores + 3 jueces por hallazgo; 53 sostenidos, 0 criticos,
-  todos corregidos (lista en docs/BANDEJA-WHATSAPP-2026-11-08.md).
+- `pnpm type-check` (web y shared), ESLint de lo tocado; build de produccion en el preview de
+  Vercel del PR #98 (en local solo sobre la version previa a la revision).
+- Revision adversarial: 5 revisores + 3 jueces por hallazgo; 53 sostenidos, 0 criticos;
+  48 corregidos del todo y 5 en parte (lista en docs/BANDEJA-WHATSAPP-2026-11-08.md).
 
 ## Decisiones
 

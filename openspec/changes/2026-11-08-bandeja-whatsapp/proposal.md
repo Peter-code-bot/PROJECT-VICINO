@@ -1,7 +1,7 @@
 # Proposal — Bandeja de WhatsApp (fase 2 de INT-CRM-20261104)
 
 > Change: `2026-11-08-bandeja-whatsapp`. Rama `feat/bandeja-whatsapp-20261108` sobre
-> `master` `ebc09e2`. **Trae codigo**: una migracion, un webhook, un cliente de la API de
+> `master` `4c8e56b` (PR #98). **Trae codigo**: una migracion, un webhook, un cliente de la API de
 > Meta, la bandeja del vendedor, una pantalla de admin y pruebas. **Nada aplicado en
 > produccion, sin app en Meta todavia y con la pantalla apagada por bandera.**
 
@@ -81,8 +81,8 @@ sin confirmar se queda pendiente, nunca se marca fallido).
 ## Revision adversarial (8-nov-2026)
 
 Cinco revisores (seguridad, SQL, TypeScript/Next, privacidad y contrato, cobertura) y tres
-jueces independientes por hallazgo: 53 sostenidos, 1 refutado, 0 criticos. Todos corregidos
-en la rama; la lista con lo que cambio esta en `docs/BANDEJA-WHATSAPP-2026-11-08.md`
+jueces independientes por hallazgo: 53 sostenidos, 1 refutado, 0 criticos; 48 corregidos del
+todo en la rama y 5 en parte; la lista, con lo que falta, esta en `docs/BANDEJA-WHATSAPP-2026-11-08.md`
 ("Revision adversarial").
 
 ## Riesgos

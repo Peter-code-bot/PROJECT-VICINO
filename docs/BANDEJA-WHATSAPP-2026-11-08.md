@@ -1,8 +1,9 @@
 # Bandeja de WhatsApp (fase 2 de INT-CRM-20261104)
 
 > Estado al 8-nov-2026: rama `feat/bandeja-whatsapp-20261108` sobre `master` `4c8e56b`.
-> Codigo completo con pruebas y una revision adversarial corregida (53 hallazgos
-> sostenidos, ver abajo); **nada aplicado en produccion** (migracion pendiente de Pedro) y
+> PR #98. Codigo completo con pruebas y una revision adversarial aplicada (53 hallazgos
+> sostenidos: 48 corregidos del todo y 5 en parte, ver abajo); build de produccion en
+> verde en el preview de Vercel; **nada aplicado en produccion** (migracion pendiente de Pedro) y
 > **sin app en Meta todavia** (la crea Pedro con la cuenta de administracion de VICINO; ver
 > la lista de clics). La pantalla esta detras de una bandera de build y apagada.
 
@@ -345,18 +346,37 @@ El bloque VERIFY de la migracion reproduce lo esencial contra produccion.
 
 Cinco revisores (seguridad, SQL, TypeScript/Next, privacidad y contrato, cobertura) y tres
 jueces independientes por hallazgo (refutar, reproducir, impacto): **53 hallazgos
-sostenidos, 1 refutado; 0 criticos**. Los de mas peso, ya corregidos en esta rama: el hilo
-cargaba los 300 mensajes MAS VIEJOS; la hora de cada mensaje producia un error de
-hidratacion; la burbuja de un envio fallido mostraba el detalle crudo de Meta; la retencion
-no cubria `conversaciones_whatsapp`; un fallo del Vault se veia como "firmas malas" sin
-Sentry; el usuario del negocio se buscaba distinguiendo mayusculas; un estado de Meta que
-llegaba antes de cerrar el envio se perdia; un tiempo de espera cerraba como 'fallido' un
-mensaje que quiza salio; la pausa descartaba mensajes sin posibilidad de recuperarlos; el
-propio negocio podia deshacer una pausa del admin; sin `WHATSAPP_APP_SECRET` en Vercel
-cualquier POST forjado costaba un HMAC y una lectura del Vault; `negocio_id` podia divergir
-entre canal y conversaciones; el evento crudo guardaba 7 dias mensajes de numeros sin
-conectar; el arnes SQL vivia fuera del repo y las pruebas no corrian en CI. El resto fueron
-robustez, textos y documentacion, tambien corregidos.
+sostenidos, 1 refutado; 0 criticos** (por mayoria de jueces: 5 altos, 21 medios, 27
+bajos). **48 quedaron corregidos del todo en esta rama y 5 en parte.**
+
+Los de mas peso, corregidos: el hilo cargaba los 300 mensajes MAS VIEJOS; la hora de cada
+mensaje producia un error de hidratacion; la burbuja de un envio fallido mostraba el
+detalle crudo de Meta; la retencion no cubria `conversaciones_whatsapp`; un fallo del
+Vault se veia como "firmas malas" sin Sentry; el usuario del negocio se buscaba
+distinguiendo mayusculas; un estado de Meta que llegaba antes de cerrar el envio se
+perdia; un tiempo de espera cerraba como 'fallido' un mensaje que quiza salio; la pausa
+descartaba mensajes sin posibilidad de recuperarlos; el propio negocio podia deshacer una
+pausa del admin; sin `WHATSAPP_APP_SECRET` en Vercel cualquier POST forjado costaba un
+HMAC y una lectura del Vault; `negocio_id` podia divergir entre canal y conversaciones; el
+evento crudo guardaba 7 dias mensajes de numeros sin conectar; el arnes SQL vivia fuera
+del repo y las pruebas no corrian en CI. El resto (robustez, textos y documentacion),
+tambien.
+
+Los 5 que quedaron en parte (lo que falta esta en Pendientes):
+
+1. La llamada DIRECTA al RPC del webhook con la llave anon (sin pasar por la ruta) sigue
+   siendo posible, como la de cualquier RPC publico del proyecto: lo forjado ya muere en la
+   ruta y el RPC tiene `statement_timeout` de 8 s, pero a quien llame a PostgREST directo la
+   base todavia le calcula un HMAC por peticion.
+2. La cubeta del freno por IP del webhook ya es un HMAC con sal (`VICINO_SAL_CUBETAS`); la
+   de los clics de la fase 1 (`lib/perfil/cubeta-clic.ts`) sigue siendo sha256 sin sal.
+3. Se quito el refresco redundante tras responder, pero marcar como leida revalida la lista
+   en cada apertura aunque no haya cambiado nada.
+4. Un cambio del secreto en un solo lado ya avisa en Sentry al instante; falta el "latido"
+   que avise si el webhook deja de recibir avisos 24 h.
+5. Hay prueba unitaria de las etiquetas del hilo, pero no E2E de Playwright de la bandeja:
+   en la laptop no se corren navegadores (regla tras los pantallazos del 8-nov) y hace
+   falta un entorno con la migracion aplicada.
 
 ## Pendientes y fase siguiente
 
@@ -373,6 +393,9 @@ Del piloto (Pedro / Alejandro):
   (pg_cron o un check de Sentry). Hoy, si Meta deja de mandar, nadie se entera hasta que
   un negocio lo nota.
 - Paginar hacia atras en el hilo (hoy se muestran los ultimos 300 y se dice).
+- Freno de clics de la fase 1 con HMAC y sal, como el del webhook (`lib/perfil/cubeta-clic.ts`).
+- Que marcar como leida solo revalide la lista cuando de verdad cambie el contador.
+- E2E de Playwright de `/seller/bandeja` en un entorno con la migracion y la bandera encendida.
 
 Siguiente fase, cuando el piloto lo justifique (todo investigado el 8-nov-2026):
 
