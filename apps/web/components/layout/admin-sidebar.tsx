@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ShieldCheck, AlertTriangle, Flag, Settings, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, ShieldCheck, AlertTriangle, Flag, Settings, ChevronRight, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BANDEJA_WHATSAPP_ACTIVA } from "@/lib/whatsapp/bandera";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Panel", icon: LayoutDashboard, exact: true },
@@ -11,6 +12,8 @@ const NAV_ITEMS = [
   { href: "/admin/verifications", label: "Verificaciones", icon: ShieldCheck },
   { href: "/admin/disputes", label: "Disputas", icon: AlertTriangle },
   { href: "/admin/moderation", label: "Moderación", icon: Flag },
+  // Conectar numeros de WhatsApp a negocios (piloto de la bandeja).
+  ...(BANDEJA_WHATSAPP_ACTIVA ? [{ href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }] : []),
 ] as const;
 
 export function AdminSidebar() {
