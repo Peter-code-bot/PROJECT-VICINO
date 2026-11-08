@@ -38,20 +38,37 @@ export function publicZoneBounds(bounds: MapBounds, units: number): MapBounds {
   return intersectMapBounds({ west: cell.west - longitudeMargin, east: cell.east + longitudeMargin,
     south: cell.south - latitudeMargin, north: cell.north + latitudeMargin }) ?? MAP_AREA;
 }
+/**
+ * Punto exacto que el servidor adjunta a una celda (v4: todas sus publicaciones
+ * son exactas y comparten ese punto). Se usa solo si cae DENTRO de la celda que
+ * lo trae: media unidad, mas un margen por los redondeos distintos de Postgres
+ * (la mitad se aleja del cero) y de JS. Si no, la celda se pinta en su nodo.
+ */
+export function puntoExactoDeCelda(c: MapCell, units: number): { lat: number; lng: number } | null {
+  const p = c.punto;
+  if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return null;
+  const holgura = 0.5 + 1e-6;
+  return Math.abs(p.lng * units - c.x) <= holgura && Math.abs(p.lat * units - c.y) <= holgura ? { lat: p.lat, lng: p.lng } : null;
+}
 /** Only public cells; count each entire node before clipping to the camera. */
 function featuresAtStride(cells:MapCell[],viewport:MapBounds,stride:number,units:number):MapFeature[] {
-    const groups=new Map<string,{count:number;lat:number;lng:number;bounds:MapBounds}>();
+    const groups=new Map<string,{count:number;lat:number;lng:number;bounds:MapBounds;celdas:number;exactas:number}>();
     // Count the entire stable node. Cropping before grouping would make its
     // badge disagree with the SQL details when the camera cuts through it.
     for(const c of cells){
       const id=`cell:${stride}:${Math.floor(c.x/stride)}:${Math.floor(c.y/stride)}`;
-      const lat=c.y/units,lng=c.x/units;
-      const g=groups.get(id)??{count:0,lat:0,lng:0,bounds:{west:lng,east:lng,south:lat,north:lat}};
-      g.count+=c.count;g.lat+=lat*c.count;g.lng+=lng*c.count;
+      // Un punto exacto se pinta donde esta; una celda aproximada, en su nodo.
+      const exacto=puntoExactoDeCelda(c,units);
+      const lat=exacto?.lat??c.y/units,lng=exacto?.lng??c.x/units;
+      const g=groups.get(id)??{count:0,lat:0,lng:0,bounds:{west:lng,east:lng,south:lat,north:lat},celdas:0,exactas:0};
+      g.count+=c.count;g.lat+=lat*c.count;g.lng+=lng*c.count;g.celdas+=1;if(exacto)g.exactas+=1;
       g.bounds={west:Math.min(g.bounds.west,lng),east:Math.max(g.bounds.east,lng),south:Math.min(g.bounds.south,lat),north:Math.max(g.bounds.north,lat)};groups.set(id,g);
     }
     const visible=[...groups].filter(([,g])=>g.bounds.east>=viewport.west&&g.bounds.west<=viewport.east&&g.bounds.north>=viewport.south&&g.bounds.south<=viewport.north);
-    return visible.sort(([a],[b])=>a.localeCompare(b)).map(([id,g])=>({id,public_lat:g.lat/g.count,public_lng:g.lng/g.count,count:g.count,seller_count:0,bounds:g.bounds}));
+    // Exacto solo si el grupo es UNA celda con su punto: dos celdas nunca
+    // comparten punto (el punto define la celda), asi que mezclar ya no lo es.
+    return visible.sort(([a],[b])=>a.localeCompare(b)).map(([id,g])=>({id,public_lat:g.lat/g.count,public_lng:g.lng/g.count,count:g.count,seller_count:0,bounds:g.bounds,
+      ...(g.celdas===1&&g.exactas===1?{precision:'exacta' as const}:{})}));
 }
 /** Keep a level until a finer one has room to spare; a small pan cannot toggle
  * between 299 and 301 markers on every camera event. The hard cap stays 300.

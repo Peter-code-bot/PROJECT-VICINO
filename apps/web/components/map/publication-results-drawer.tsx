@@ -29,7 +29,7 @@ export function PublicationResultsDrawer({ feature, data, pending, error, onClos
   // Not framer-motion's useReducedMotion: it reads the setting once and this drawer stays mounted.
   const reducedMotion = usePrefersReducedMotion();
   const close = useRef<HTMLButtonElement>(null);
-  const title = feature && feature.count > 1 ? "Publicaciones en esta zona" : "Publicación en esta zona";
+  const title = feature && feature.count > 1 ? "Publicaciones en esta zona" : feature?.precision === "exacta" ? "Publicación en este punto" : "Publicación en esta zona";
 
   return <Dialog.Root open={feature !== null} onOpenChange={open => { if (!open) onClose(); }}>
     <AnimatePresence>
@@ -55,7 +55,7 @@ export function PublicationResultsDrawer({ feature, data, pending, error, onClos
             </button>
             <div className="flex shrink-0 items-start justify-between gap-4 px-4 pb-4 sm:px-6">
               <div className="min-w-0"><Dialog.Title className="font-heading text-xl leading-tight font-bold">{title}</Dialog.Title>
-                <Dialog.Description className="mt-2 text-sm leading-relaxed">{data ? `${data.list_total} publicaciones · ${data.list_seller_total} vendedores` : `${feature.count} ${feature.count === 1 ? "publicación" : "publicaciones"}`}<span className="mt-1 block text-xs">Las ubicaciones son aproximadas.</span></Dialog.Description>
+                <Dialog.Description className="mt-2 text-sm leading-relaxed">{data ? `${data.list_total} publicaciones · ${data.list_seller_total} vendedores` : `${feature.count} ${feature.count === 1 ? "publicación" : "publicaciones"}`}<span className="mt-1 block text-xs">{feature.precision === "exacta" ? "El vendedor eligió mostrar este punto exacto." : "Las ubicaciones son aproximadas."}</span></Dialog.Description>
               </div>
               <Dialog.Close asChild><button ref={close} type="button" aria-label="Cerrar publicaciones" className="discovery-control min-w-12 shrink-0 px-2"><X className="h-5 w-5" /></button></Dialog.Close>
             </div>

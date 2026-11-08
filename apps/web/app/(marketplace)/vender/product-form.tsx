@@ -2,6 +2,14 @@
 
 import { CACHE_INMUTABLE } from "@/lib/storage/cache";
 import { startTransition, useState, useRef, useId, useSyncExternalStore, useEffect } from "react";
+import { flushSync } from "react-dom";
+import {
+  PRECISION_POR_DEFECTO_AL_CREAR,
+  textoTamanoAproximado,
+  type DecimalesRejilla,
+  type PrecisionUbicacion,
+} from "@/lib/geo/ubicacion-publica";
+import { MENSAJE_CONFIRMAR_EXACTA, mismoPunto, type AccionUbicacion } from "@/lib/geo/escritura-ubicacion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { CATEGORIES, DELIVERY_OPTIONS } from "@vicino/shared";
@@ -78,6 +86,8 @@ export interface ProductInitialValues {
   /** Coordenadas guardadas, para hidratar el mapa al editar. */
   ubicacion_lat?: number | null;
   ubicacion_lng?: number | null;
+  /** Modo guardado (GEO-PUB-EXACT). Las publicaciones anteriores son aproximadas. */
+  ubicacion_precision?: PrecisionUbicacion;
   tipo_entrega: string;
   estado?: string | null;
   color?: string | null;
@@ -95,6 +105,46 @@ interface ProductFormProps {
   mode?: Mode;
   initialValues?: ProductInitialValues;
   sellerInactive?: boolean;
+  /** Decimales de la rejilla aproximada que decide el servidor (VICINO_MAPA_RPC). */
+  decimalesAproximada?: DecimalesRejilla;
+}
+
+/**
+ * El interruptor del formulario: el mismo boton role=switch, las mismas clases
+ * y los mismos estados que ya usaban "Permitir agendar citas" y "Precio
+ * negociable", ahora en un solo sitio y con nombre accesible (antes el lector
+ * de pantalla decia solo "interruptor, activado") y anillo de foco visible.
+ */
+function InterruptorFormulario({ activo, onCambio, etiquetaId, descripcionId, disabled = false }: {
+  activo: boolean;
+  onCambio: () => void;
+  etiquetaId: string;
+  descripcionId?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={activo}
+      aria-labelledby={etiquetaId}
+      aria-describedby={descripcionId}
+      disabled={disabled}
+      onClick={onCambio}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent p-0 transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-tint-strong)] disabled:cursor-not-allowed disabled:opacity-40 ${
+        activo
+          ? "bg-[color:var(--brand)]"
+          : "bg-neutral-300 dark:bg-neutral-700"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition duration-200 ease-in-out ${
+          activo ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
 }
 
 const VIDEO_EXT_RE = /\.(mp4|webm|mov)$/i;
@@ -216,7 +266,7 @@ function filterCategoriesByTipo(
   );
 }
 
-export function ProductForm({ userId, mode = "create", initialValues, sellerInactive = false }: ProductFormProps) {
+export function ProductForm({ userId, mode = "create", initialValues, sellerInactive = false, decimalesAproximada = 2 }: ProductFormProps) {
   const navigationId = useId();
   const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
   const router = useRouter();
@@ -246,6 +296,23 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     address: initialValues?.ubicacion ?? "",
     radius: initialValues?.delivery_radius_km ?? 5,
   });
+  // GEO-PUB-EXACT: modo de la ubicacion publica. Al publicar arranca en exacta
+  // (lo pide el encargo; el mapa sigue abriendo sin pin, asi que no se publica
+  // nada sin que el vendedor toque, arrastre o busque). Al editar, el guardado.
+  const precisionGuardada: PrecisionUbicacion = initialValues?.ubicacion_precision ?? "aproximada";
+  const [precision, setPrecision] = useState<PrecisionUbicacion>(
+    mode === "edit" ? precisionGuardada : PRECISION_POR_DEFECTO_AL_CREAR,
+  );
+  // Solo una accion del vendedor sobre el mapa o el modo la enciende: abrir la
+  // edicion y guardar el precio o las fotos deja la ubicacion como estaba.
+  const [ubicacionTocada, setUbicacionTocada] = useState(false);
+  // Punto para el que el vendedor confirmo, al editar, que se vera exacto.
+  const [confirmacionExacta, setConfirmacionExacta] = useState<{ pendiente: boolean; punto: { lat: number; lng: number } | null }>({ pendiente: false, punto: null });
+  const avisoExactaRef = useRef<HTMLDivElement>(null);
+  // El boton de guardar esta arriba y la ubicacion abajo: llevar el aviso a la vista.
+  useEffect(() => {
+    if (confirmacionExacta.pendiente) avisoExactaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [confirmacionExacta.pendiente]);
   const [precioNegociable, setPrecioNegociable] = useState(initialValues?.precio_negociable ?? false);
   const [modoPrecio, setModoPrecio] = useState(initialValues?.modo_precio ?? "precio");
   const [allowAppointments, setAllowAppointments] = useState(initialValues?.allow_appointments ?? false);
@@ -523,9 +590,60 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     } finally { setUploading(false); }
   }
 
+  const hayPunto = !(locationData.lat === 0 && locationData.lng === 0);
+  const puntoActual = { lat: locationData.lat, lng: locationData.lng };
+  const puntoGuardado = initialValues?.ubicacion_lat != null && initialValues?.ubicacion_lng != null
+    ? { lat: initialValues.ubicacion_lat, lng: initialValues.ubicacion_lng }
+    : null;
+  // Tocar y volver a dejarlo como estaba (dos veces el interruptor, "Usar
+  // aproximada" sobre una aproximada) no es un cambio: no se reescribe nada.
+  const huboCambioDeUbicacion = !mismoPunto(puntoActual, puntoGuardado) || precision !== precisionGuardada
+    || locationData.address !== (initialValues?.ubicacion ?? "");
+  const accionUbicacion: AccionUbicacion =
+    mode !== "edit" ? "fijar" : locationCleared ? "quitar" : ubicacionTocada && huboCambioDeUbicacion ? "fijar" : "conservar";
+  // Al editar se vuelve a confirmar si se pide exacta para un punto que no
+  // estaba confirmado como exacto: un punto nuevo, o el mismo que era aproximado.
+  const pideReconfirmar = mode === "edit" && accionUbicacion === "fijar" && precision === "exacta" && hayPunto
+    && (precisionGuardada !== "exacta" || !mismoPunto(puntoActual, puntoGuardado));
+  const confirmadaParaEstePunto = mismoPunto(puntoActual, confirmacionExacta.punto);
+  // Al publicar, el propio boton de publicar es la confirmacion (el encargo).
+  const exactaConfirmada = precision === "exacta" && hayPunto && (mode !== "edit" || !pideReconfirmar || confirmadaParaEstePunto);
+
+  function cambiarPrecision() {
+    setPrecision((actual) => (actual === "exacta" ? "aproximada" : "exacta"));
+    // Sin punto no hay ubicacion que reescribir (y al editar seria un error).
+    if (hayPunto) setUbicacionTocada(true);
+    setConfirmacionExacta({ pendiente: false, punto: null });
+  }
+
+  function confirmarExacta() {
+    const form = formRef.current;
+    if (!form) return;
+    flushSync(() => {
+      setConfirmacionExacta({ pendiente: false, punto: puntoActual });
+      setError("");
+    });
+    // Como el boton de arriba: si un campo obligatorio quedo invalido, el envio
+    // no ocurre y "Guardando..." no debe quedarse puesto.
+    if (!form.reportValidity()) return;
+    setLoading(true);
+    form.requestSubmit();
+  }
+
+  function usarAproximada() {
+    setConfirmacionExacta({ pendiente: false, punto: null });
+    setPrecision("aproximada");
+    if (hayPunto) setUbicacionTocada(true);
+    setError("");
+  }
+
   function validarAntesDeEnviar(): string | null {
     if (mode === "create" && locationData.lat === 0 && locationData.lng === 0) {
       return "Selecciona una ubicación en el mapa para tu publicación";
+    }
+    if (pideReconfirmar && !confirmadaParaEstePunto) {
+      setConfirmacionExacta({ pendiente: true, punto: null });
+      return MENSAJE_CONFIRMAR_EXACTA;
     }
     // MP#08 #5c-2: validacion cliente del array de categorias. El zod del
     // servidor enforza la misma regla; este check ahorra un round-trip y
@@ -832,27 +950,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <div className="space-y-4 p-4 rounded-2xl product-card-custom">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">Permitir agendar citas</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Los compradores podrán reservar horarios</p>
+              <p id={`${navigationId}-citas`} className="text-sm font-medium text-foreground">Permitir agendar citas</p>
+              <p id={`${navigationId}-citas-ayuda`} className="text-xs text-muted-foreground mt-0.5">Los compradores podrán reservar horarios</p>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={allowAppointments}
-              onClick={() => setAllowAppointments(!allowAppointments)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent p-0 transition-colors duration-200 ease-in-out focus:outline-none ${
-                allowAppointments
-                  ? "bg-[color:var(--brand)]"
-                  : "bg-neutral-300 dark:bg-neutral-700"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition duration-200 ease-in-out ${
-                  allowAppointments ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
+            <InterruptorFormulario
+              activo={allowAppointments}
+              onCambio={() => setAllowAppointments(!allowAppointments)}
+              etiquetaId={`${navigationId}-citas`}
+              descripcionId={`${navigationId}-citas-ayuda`}
+            />
           </div>
           <input type="hidden" name="allow_appointments" value={allowAppointments ? "true" : "false"} />
 
@@ -993,27 +1099,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">Precio negociable</p>
-              <p className="text-xs text-muted-foreground mt-0.5">El comprador puede proponer otro precio</p>
+              <p id={`${navigationId}-negociable`} className="text-sm font-medium text-foreground">Precio negociable</p>
+              <p id={`${navigationId}-negociable-ayuda`} className="text-xs text-muted-foreground mt-0.5">El comprador puede proponer otro precio</p>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={precioNegociable}
-              onClick={() => setPrecioNegociable(!precioNegociable)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent p-0 transition-colors duration-200 ease-in-out focus:outline-none ${
-                precioNegociable
-                  ? "bg-[color:var(--brand)]"
-                  : "bg-neutral-300 dark:bg-neutral-700"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition duration-200 ease-in-out ${
-                  precioNegociable ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
+            <InterruptorFormulario
+              activo={precioNegociable}
+              onCambio={() => setPrecioNegociable(!precioNegociable)}
+              etiquetaId={`${navigationId}-negociable`}
+              descripcionId={`${navigationId}-negociable-ayuda`}
+            />
           </div>
           <input type="hidden" name="precio_negociable" value={precioNegociable ? "true" : "false"} />
         </div>
@@ -1241,6 +1335,9 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           </p>
         )}
         <input type="hidden" name="remove_location" value={String(locationCleared)} />
+        <input type="hidden" name="ubicacion_accion" value={accionUbicacion} />
+        <input type="hidden" name="ubicacion_precision" value={precision} />
+        <input type="hidden" name="confirmar_ubicacion_exacta" value={exactaConfirmada ? "1" : "0"} />
         <input type="hidden" name="ubicacion" value={locationData.address} />
         <input type="hidden" name="ubicacion_lat" value={locationData.lat || ""} />
         <input type="hidden" name="ubicacion_lng" value={locationData.lng || ""} />
@@ -1253,9 +1350,55 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
           initialLat={initialValues?.ubicacion_lat ?? undefined}
           initialLng={initialValues?.ubicacion_lng ?? undefined}
           initialRadius={initialValues?.delivery_radius_km ?? undefined}
-          onLocationChange={(lat, lng, address) => { setLocationCleared(lat === 0 && lng === 0 && address === ""); setLocationData((p) => ({ ...p, lat, lng, address })); }}
+          initialAddress={initialValues?.ubicacion ?? undefined}
+          precision={precision}
+          decimalesAproximada={decimalesAproximada}
+          controlEntreBuscadorYMapa={
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p id={`${navigationId}-ubicacion-exacta`} className="text-sm font-medium text-foreground">Ubicación exacta</p>
+                <p id={`${navigationId}-ubicacion-exacta-ayuda`} className="text-xs text-muted-foreground mt-0.5">
+                  {precision === "exacta"
+                    ? "Los compradores verán el punto exacto que elijas. Apágalo si es tu casa."
+                    : `Los compradores verán un área de ${textoTamanoAproximado(decimalesAproximada)}, no tu punto.`}
+                </p>
+              </div>
+              <InterruptorFormulario
+                activo={precision === "exacta"}
+                onCambio={cambiarPrecision}
+                etiquetaId={`${navigationId}-ubicacion-exacta`}
+                descripcionId={`${navigationId}-ubicacion-exacta-ayuda`}
+                disabled={loading}
+              />
+            </div>
+          }
+          onLocationChange={(lat, lng, address) => {
+            setLocationCleared(lat === 0 && lng === 0 && address === "");
+            setLocationData((p) => ({ ...p, lat, lng, address }));
+            setUbicacionTocada(true);
+          }}
           onRadiusChange={(radius) => setLocationData((p) => ({ ...p, radius }))}
         />
+        {/* Al editar: pasar a exacta o mover un punto exacto se confirma aparte. */}
+        {confirmacionExacta.pendiente && pideReconfirmar && !confirmadaParaEstePunto && (
+          <div ref={avisoExactaRef} role="alertdialog" aria-labelledby={`${navigationId}-confirmar-exacta`} aria-describedby={`${navigationId}-confirmar-exacta-texto`}
+            className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-sm dark:bg-amber-950/30">
+            <p id={`${navigationId}-confirmar-exacta`} className="font-semibold text-amber-900 dark:text-amber-200">¿Mostrar el punto exacto?</p>
+            <p id={`${navigationId}-confirmar-exacta-texto`} className="text-amber-800/90 dark:text-amber-200/80">
+              Los compradores verán este punto exacto en la ficha, el minimapa y el mapa. Si es tu casa, mejor usa la ubicación aproximada.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={usarAproximada} disabled={loading}
+                className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-transparent dark:text-amber-100 dark:hover:bg-amber-900/40">
+                Usar aproximada
+              </button>
+              <button type="button" onClick={confirmarExacta} disabled={loading}
+                className="flex-1 rounded-lg bg-[color:var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--brand-dark)] disabled:opacity-50">
+                Sí, mostrar el punto
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pb-4">

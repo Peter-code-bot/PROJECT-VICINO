@@ -17,6 +17,10 @@ export interface ProductDetailProduct {
   ubicacion: string | null;
   updated_at?: string | null;
   location_map_available?: boolean;
+  /** Ubicacion publica (GEO-PUB-EXACT): modo, decimales de la rejilla aproximada y revision. Sin coordenadas. */
+  location_precision?: "exacta" | "aproximada";
+  location_decimales?: 2 | 3;
+  location_revision?: number | null;
   tipo_entrega: string | null;
   imagen_principal: string | null;
   galeria_imagenes: string[] | null;

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { MapPin } from "lucide-react";
 import { mapPreviewError, type MapPreviewError } from "@/lib/geo/map-preview-error";
 const subscribeScreen = (listener: () => void) => {
   const query = matchMedia("(min-width: 768px)"); query.addEventListener("change", listener);
@@ -28,7 +29,22 @@ function PreviewFailure({ error, onRetry }: { error: MapPreviewError; onRetry: (
   </div>;
 }
 
-export function LocationBanner({ ubicacion, productId, version, available, layout }: { ubicacion: string | null; productId: string; version?: string | null; available: boolean; layout: "mobile" | "desktop" }) {
+interface LocationBannerProps {
+  ubicacion: string | null;
+  productId: string;
+  /** updated_at: clave de la imagen solo si la base aun no da revision (migracion pendiente). */
+  version?: string | null;
+  available: boolean;
+  /** Modo publico de la publicacion (GEO-PUB-EXACT). Sin el, aproximada. */
+  precision?: "exacta" | "aproximada";
+  /** Decimales de la rejilla aproximada: 2 (~1 km) o 3 (~110 m). */
+  decimales?: 2 | 3;
+  /** Sube al mover el punto o cambiar el modo; editar precio o fotos no la toca. */
+  revision?: number | null;
+  layout: "mobile" | "desktop";
+}
+
+export function LocationBanner({ ubicacion, productId, version, available, precision = "aproximada", decimales = 2, revision, layout }: LocationBannerProps) {
   const desktop = useSyncExternalStore(subscribeScreen, () => matchMedia("(min-width: 768px)").matches, () => false);
   const activeLayout = layout === (desktop ? "desktop" : "mobile");
   const container = useRef<HTMLElement>(null);
@@ -37,7 +53,9 @@ export function LocationBanner({ ubicacion, productId, version, available, layou
   const [result, setResult] = useState<{ key: string; url?: string; error?: MapPreviewError } | null>(null);
   const [loaded, setLoaded] = useState<string | null>(null);
   const { resolvedTheme } = useTheme();
-  const src = `/api/products/${productId}/location-map?theme=${resolvedTheme === "dark" ? "dark" : "light"}&v=${encodeURIComponent(version ?? "")}`;
+  const clave = revision !== null && revision !== undefined ? `r${revision}` : version ?? "";
+  const src = `/api/products/${productId}/location-map?theme=${resolvedTheme === "dark" ? "dark" : "light"}&v=${encodeURIComponent(clave)}`;
+  const exacta = precision === "exacta";
   const requestKey = `${src}:${attempt}`;
   useEffect(() => {
     const node = container.current;
@@ -89,13 +107,18 @@ export function LocationBanner({ ubicacion, productId, version, available, layou
       {visible && activeLayout && current?.url && <>
         {/* Native image preserves attribution and avoids a public optimizer cache. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={current.url} alt="Mapa de la zona aproximada de la publicación" width={1280} height={360}
+        <img src={current.url} alt={exacta ? "Mapa del punto exacto que eligió el vendedor" : "Mapa de la zona aproximada de la publicación"} width={1280} height={360}
           className="h-full w-full" onLoad={() => setLoaded(requestKey)} onError={() => setResult({ key: requestKey, error: mapPreviewError(503) })} />
-        {loaded === requestKey && <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[60%] -translate-x-1/2 -translate-y-1/2 aspect-square rounded-full border-2 border-[var(--brand-hi)] bg-[var(--brand-hi)]/20" />}
+        {/* La imagen se centra en el dato publico: el pin marca el punto exacto;
+            el circulo, la celda (60% del alto con la de ~1 km y el encuadre
+            ancho; 24% con la de ~110 m y el encuadre cercano). */}
+        {loaded === requestKey && (exacta
+          ? <MapPin aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-full fill-[var(--brand-hi)] text-[var(--card)] drop-shadow" />
+          : <span aria-hidden="true" className={`pointer-events-none absolute left-1/2 top-1/2 ${decimales === 3 ? "h-[24%]" : "h-[60%]"} -translate-x-1/2 -translate-y-1/2 aspect-square rounded-full border-2 border-[var(--brand-hi)] bg-[var(--brand-hi)]/20`} />)}
       </>}
       {activeLayout && current?.error && <PreviewFailure key={requestKey} error={current.error} onRetry={() => setAttempt(value => value + 1)} />}
     </div>}
     <p className="text-sm font-medium text-fg">{ubicacion || "Ubicación no indicada"}</p>
-    {available && <p className="text-xs text-fg-muted">La ubicación es aproximada</p>}
+    {available && <p className="text-xs text-fg-muted">{exacta ? "El vendedor eligió mostrar este punto exacto" : "La ubicación es aproximada"}</p>}
   </section>;
 }

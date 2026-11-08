@@ -10,7 +10,7 @@ interface Entry { marker: Marker; feature: MapFeature | null; appearance: Appear
 function appearance(feature: MapFeature, selected: string | null, brand?: string, active?: string): Appearance {
   return {
     lat: feature.public_lat, lng: feature.public_lng, color: selected === feature.id ? active : brand,
-    label: `${feature.count === 1 ? 'Zona' : 'Grupo'} · ${feature.count} ${feature.count === 1 ? 'publicación' : 'publicaciones'}${feature.seller_count > 0 ? ` · ${feature.seller_count} ${feature.seller_count === 1 ? 'vendedor' : 'vendedores'}` : ''} · ubicación aproximada${selected === feature.id ? ' · seleccionado' : ''}`,
+    label: `${feature.count === 1 ? (feature.precision === 'exacta' ? 'Punto' : 'Zona') : 'Grupo'} · ${feature.count} ${feature.count === 1 ? 'publicación' : 'publicaciones'}${feature.seller_count > 0 ? ` · ${feature.seller_count} ${feature.seller_count === 1 ? 'vendedor' : 'vendedores'}` : ''} · ${feature.precision === 'exacta' ? 'ubicación exacta' : 'ubicación aproximada'}${selected === feature.id ? ' · seleccionado' : ''}`,
     glyph: feature.count === 1 ? '•' : feature.count > 99 ? '99+' : String(feature.count),
     selected: selected === feature.id,
   };

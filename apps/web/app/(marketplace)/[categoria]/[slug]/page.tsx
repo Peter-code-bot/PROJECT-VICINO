@@ -1,5 +1,7 @@
 import { publicProduct } from "@/lib/public-product";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { leerUbicacionPublica } from "@/lib/geo/ubicacion-publica-servidor";
+import { decimalesRejillaAproximada, type DecimalesRejilla, type PrecisionUbicacion } from "@/lib/geo/ubicacion-publica";
 import { notFound } from "next/navigation";
 import { ogImageUrl } from "@/lib/og-image";
 import Link from "next/link";
@@ -26,6 +28,9 @@ interface Props {
 // del pivote para que las URLs viejas con [categoria] != primary actual sean
 // dedupeadas por Google (mismo patron de SITE_URL que report-webhook).
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
+
+/** Lo unico de la ubicacion que cruza al cliente: sin coordenadas. */
+interface FichaUbicacion { available: boolean; precision: PrecisionUbicacion; revision: number | null; decimales: DecimalesRejilla }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -150,16 +155,26 @@ export default async function ProductDetailPage({ params }: Props) {
     .limit(5);
 
   // Arranca ya, en paralelo con reseñas, cupones y favoritos; se espera al
-  // final, cuando se arma `data`.
-  const locationMapAvailablePromise: Promise<boolean> = (async () => {
+  // final, cuando se arma `data`. La ficha ya paso la RLS (el SELECT de arriba);
+  // el dato autorizado lo calcula la base igual que para el mapa, y al cliente
+  // solo cruzan la disponibilidad, el modo, los decimales y la revision.
+  const locationPromise = (async (): Promise<FichaUbicacion> => {
     try {
-      const { data: mapped, error: mapError } = await createAdminClient().from("products_services")
+      const admin = createAdminClient();
+      const lectura = await leerUbicacionPublica(admin, product.id, decimalesRejillaAproximada(process.env.VICINO_MAPA_RPC));
+      if (lectura.estado === "ok") {
+        const { disponible, precision, revision, decimales } = lectura.ubicacion;
+        return { available: disponible, precision, revision, decimales };
+      }
+      if (lectura.estado === "error") throw lectura.error;
+      // Migracion 20261108210000 sin aplicar: lo de antes, celda de ~1 km.
+      const { data: mapped, error: mapError } = await admin.from("products_services")
         .select("id").eq("id", product.id).not("ubicacion_geo", "is", null).maybeSingle();
       if (mapError) throw mapError;
-      return Boolean(mapped);
+      return { available: Boolean(mapped), precision: "aproximada", revision: null, decimales: 2 };
     } catch (error) {
       Sentry.captureException(error, { tags: { action: "productDetailPage", step: "location_map_available" } });
-      return false;
+      return { available: false, precision: "aproximada", revision: null, decimales: 2 };
     }
   })();
 
@@ -237,7 +252,7 @@ export default async function ProductDetailPage({ params }: Props) {
   // TTFB de cada ficha. Y si falla, el texto de ubicacion sigue siendo util;
   // el fallo queda en Sentry, porque un catch mudo aqui escondia una clave
   // ausente o rotada para siempre.
-  const locationMapAvailable = await locationMapAvailablePromise;
+  const location = await locationPromise;
 
   const data: ProductDetailData = {
     // Una sola clave por render de la ficha, compartida por el detalle movil y
@@ -248,7 +263,13 @@ export default async function ProductDetailPage({ params }: Props) {
     // pagina es dinamica (lee la sesion con getUser), asi que cada visita trae
     // una clave nueva, que es lo que el contrato define como intencion nueva.
     purchaseIntentKey: crypto.randomUUID(),
-    product: { ...publicProduct(product), location_map_available: locationMapAvailable },
+    product: {
+      ...publicProduct(product),
+      location_map_available: location.available,
+      location_precision: location.precision,
+      location_revision: location.revision,
+      location_decimales: location.decimales,
+    },
     seller: seller as unknown as ProductDetailData["seller"],
     reviews: [],
     coupons: [],

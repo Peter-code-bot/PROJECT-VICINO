@@ -6,6 +6,7 @@ import { usuarioOInvitado } from "@/lib/session-auth";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
 import { frenoEnMemoria } from "@/lib/freno-en-memoria";
 import { isPublicationMapEnabled } from "@/lib/publication-map-feature";
+import { decimalesRejillaAproximada } from "@/lib/geo/ubicacion-publica";
 
 export const dynamic = "force-dynamic";
 const localQuota = frenoEnMemoria({ tope: 60, ventanaMs: 60_000 });
@@ -15,46 +16,42 @@ function reply(body: unknown, status: number, extra = {}) {
 }
 
 /**
- * Proyección pública v2 (celdas de ~110 m, migración 20261020150000, aplicada
- * en producción el 21-oct-2026) o la v1 (~1 km), según `VICINO_MAPA_RPC`. Las
- * dos funciones comparten firma y contrato; `projection_version` en la
- * respuesta le dice al cliente en qué unidades vienen las celdas.
+ * search_map_publications_v4 (migración 20261108210000): el contrato de v3 sobre
+ * el punto público autorizado de cada publicación. Las que el vendedor marcó
+ * como exactas salen en su punto; las aproximadas, en la rejilla que decide el
+ * servidor con `VICINO_MAPA_RPC` (ver decimalesRejillaAproximada): ~1 km sin la
+ * variable, ~110 m con `v3`. La rejilla entra en la petición que arma ESTA
+ * ruta; el cliente nunca la elige.
+ *
+ * Si v4 todavía no existe (migración sin aplicar o sin `notify pgrst`), cae a
+ * la RPC de siempre para esa rejilla: v3 (~110 m) o v2 (~1 km). Ninguna de las
+ * dos sabe de puntos exactos, así que en la caída el mapa se ve como antes.
  */
+const RPC_V4 = "search_map_publications_v4";
 const RPC_PRECISA = "search_map_publications_v3";
 const RPC_BASE = "search_map_publications_v2";
-type RpcMapa = typeof RPC_PRECISA | typeof RPC_BASE;
+type RpcCaida = typeof RPC_PRECISA | typeof RPC_BASE;
 // PostgREST: la función no está en la caché de esquema (migración sin aplicar o
 // sin `notify pgrst`). Cualquier otro error se devuelve tal cual.
 const CODIGO_FUNCION_AUSENTE = "PGRST202";
 let avisadaCaida = false;
 
-/**
- * Falla CERRADO: la proyección de ~110 m solo se usa con `VICINO_MAPA_RPC=v3`
- * explícito en el entorno (Vercel). Sin la variable, con otro valor o con una
- * errata, el mapa sigue en la proyección de ~1 km aunque la migración ya esté
- * aplicada. Así la precisión es una decisión de producto (S10 la fijó en 1 km)
- * tomada a propósito, no un efecto colateral del orden de despliegue. Se lee
- * por petición, no al cargar el módulo (en Vercel un cambio de variable exige
- * redeploy de todos modos; en local basta reiniciar).
- */
-function rpcPreferida(): RpcMapa {
-  const valor = (process.env.VICINO_MAPA_RPC ?? "").trim().toLowerCase();
-  return valor === "v3" ? RPC_PRECISA : RPC_BASE;
-}
-
 async function consultarMapa(supabase: Awaited<ReturnType<typeof createClient>>, request: MapCoverageRequest) {
-  const llamar = (nombre: RpcMapa) =>
-    supabase.rpc(nombre, { p_request: request }).abortSignal(AbortSignal.timeout(10_000));
-  const preferida = rpcPreferida();
-  const actual = await llamar(preferida);
-  if (preferida === RPC_BASE || !actual.error || actual.error.code !== CODIGO_FUNCION_AUSENTE) return actual;
+  // Se lee por petición, no al cargar el módulo (en Vercel un cambio de
+  // variable exige redeploy de todos modos; en local basta reiniciar).
+  const rejilla = decimalesRejillaAproximada(process.env.VICINO_MAPA_RPC);
+  const actual = await supabase
+    .rpc(RPC_V4, { p_request: { ...request, rejilla } })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (!actual.error || actual.error.code !== CODIGO_FUNCION_AUSENTE) return actual;
+  const caida: RpcCaida = rejilla === 3 ? RPC_PRECISA : RPC_BASE;
   if (!avisadaCaida) {
     avisadaCaida = true;
-    Sentry.captureMessage("mapa: search_map_publications_v3 no existe en la base; se usa v2 (~1 km)", {
-      level: "warning", tags: { surface: "map", rpc: RPC_PRECISA },
+    Sentry.captureMessage(`mapa: ${RPC_V4} no existe en la base; se usa ${caida}`, {
+      level: "warning", tags: { surface: "map", rpc: RPC_V4 },
     });
   }
-  return llamar(RPC_BASE);
+  return supabase.rpc(caida, { p_request: request }).abortSignal(AbortSignal.timeout(10_000));
 }
 
 /** Read-only POST: the viewer's search center stays out of URLs and caches. */

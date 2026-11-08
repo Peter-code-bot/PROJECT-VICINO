@@ -170,7 +170,7 @@ export function MapExplorer({ initialQuery, initialCenter, initialSavedCenter = 
       </div>
     </>}
     {!pending && data?.total === 0 && <p role="status" className="text-sm">Aún no hay publicaciones aquí. Mueve el mapa o prueba otros filtros.</p>}
-    <p className="text-xs text-[color:var(--fg)]">Ubicaciones aproximadas. {ui.query.mode === "nearby" ? "Resultados dentro de " + ui.query.radius_meters / 1000 + " km de la ubicación elegida." : ui.center ? "Puedes moverte por la zona y tocar un punto para ver sus publicaciones." : "Vista de México; acércate a una zona para explorar sus puntos."}</p>
+    <p className="text-xs text-[color:var(--fg)]">Las zonas son aproximadas; un punto exacto lo eligió su vendedor. {ui.query.mode === "nearby" ? "Resultados dentro de " + ui.query.radius_meters / 1000 + " km de la ubicación elegida." : ui.center ? "Puedes moverte por la zona y tocar un punto para ver sus publicaciones." : "Vista de México; acércate a una zona para explorar sus puntos."}</p>
     <PublicationResultsDrawer feature={ui.selected?.feature ?? null} data={detail.data ?? null} pending={detail.pending} error={detail.error ?? null} onClose={closeDrawer} onRetry={detail.retry} onLoadMore={detail.loadMore} returnFocus={returnFocus} fallbackFocus={fallbackFocus} />
   </div>;
 }

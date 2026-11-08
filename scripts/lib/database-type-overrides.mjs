@@ -3,10 +3,16 @@
  * generated PostGIS columns. All other generated schema text is preserved;
  * unexpected shapes fail closed. `ubicacion_publica` is optional until its
  * migration is applied: regenerating before that must not fail.
+ *
+ * `ubicacion_exacta` (20261108210000) no es generada, pero es igual de no
+ * escribible: la deriva el trigger zz_ubicacion_publica_derivada de
+ * ubicacion_geo y pisa cualquier valor del cliente. Opcional por la misma
+ * razon que ubicacion_publica.
  */
 const COLUMNAS = [
   { name: 'ubicacion_mapa', required: true },
   { name: 'ubicacion_publica', required: false },
+  { name: 'ubicacion_exacta', required: false },
 ];
 
 export function protectGeneratedMapColumn(source) {

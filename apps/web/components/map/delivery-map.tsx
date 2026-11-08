@@ -1,5 +1,6 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
+import type { DecimalesRejilla, PrecisionUbicacion } from "@/lib/geo/ubicacion-publica";
 import LocationPicker, { type LocationSelection } from "./location-picker";
 interface DeliveryMapProps {
   onLocationChange: (lat: number, lng: number, address: string) => void;
@@ -10,6 +11,11 @@ interface DeliveryMapProps {
   showRadiusControl?: boolean;
   showRadiusPreview?: boolean;
   showMapInitially?: boolean;
+  /** GEO-PUB-EXACT: ver LocationPicker. */
+  precision?: PrecisionUbicacion;
+  decimalesAproximada?: DecimalesRejilla;
+  initialAddress?: string;
+  controlEntreBuscadorYMapa?: ReactNode;
 }
 /** Adapts the legacy product form contract; the shared picker uses null for absence. */
 export default function DeliveryMap({ onLocationChange, ...props }: DeliveryMapProps) {

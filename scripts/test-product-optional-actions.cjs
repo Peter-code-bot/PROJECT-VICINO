@@ -171,6 +171,60 @@ async function test() {
     assert.equal((await invoke("updateProductFull", PRODUCT_ID, form({ descripcion: "", estado: "" }))).redirect, "/login");
     assert.equal(state.writes.length, 0);
   });
+  // GEO-PUB-EXACT: precision de la ubicacion publica. La base deriva el punto
+  // exacto y la revision; aqui se comprueba QUE escribe cada accion.
+  const UBICACION = ["ubicacion_geo", "ubicacion", "delivery_radius_km", "ubicacion_precision"];
+  const tocaUbicacion = (patch) => UBICACION.filter((columna) => columna in patch);
+  await run("crear en exacta confirmada guarda el modo en el mismo insert que el punto", async () => {
+    await invoke("createProduct", form({ ...base, ubicacion_precision: "exacta", confirmar_ubicacion_exacta: "1" }));
+    assert.equal(state.writes.length, 1);
+    assert.equal(state.writes[0].ubicacion_geo, "SRID=4326;POINT(-98 19)");
+    assert.equal(state.writes[0].ubicacion_precision, "exacta");
+  });
+  await run("crear sin el campo de precision (formulario anterior) queda aproximada", async () => {
+    await invoke("createProduct", form(base));
+    assert.equal(state.writes[0].ubicacion_precision, "aproximada");
+  });
+  await run("crear en exacta sin confirmar no escribe", async () => {
+    assert.ok((await invoke("createProduct", form({ ...base, ubicacion_precision: "exacta" }))).error);
+    assert.equal(state.writes.length, 0);
+  });
+  await run("editar con 'conservar' no escribe nada de la ubicacion aunque lleguen punto, etiqueta y radio", async () => {
+    await invoke("updateProductFull", PRODUCT_ID, form({ titulo: "Otro titulo", ubicacion_accion: "conservar", ubicacion_precision: "exacta",
+      ubicacion_lat: 19.1, ubicacion_lng: -98.1, ubicacion: "Otra colonia, Puebla", delivery_radius_km: 9, remove_location: "false" }));
+    assert.equal(state.writes.length, 1);
+    assert.deepEqual(tocaUbicacion(state.writes[0]), []);
+  });
+  await run("editar con 'fijar' en exacta exige confirmar y, confirmada, escribe punto y modo juntos", async () => {
+    const campos = { ubicacion_accion: "fijar", ubicacion_precision: "exacta", ubicacion_lat: 19.1, ubicacion_lng: -98.1, ubicacion: "Centro, Puebla", delivery_radius_km: 5 };
+    assert.ok((await invoke("updateProductFull", PRODUCT_ID, form(campos))).error);
+    assert.equal(state.writes.length, 0);
+    await invoke("updateProductFull", PRODUCT_ID, form({ ...campos, confirmar_ubicacion_exacta: "1" }));
+    assert.equal(state.writes.length, 1);
+    assert.deepEqual(tocaUbicacion(state.writes[0]).sort(), [...UBICACION].sort());
+    assert.equal(state.writes[0].ubicacion_geo, "SRID=4326;POINT(-98.1 19.1)");
+    assert.equal(state.writes[0].ubicacion_precision, "exacta");
+  });
+  await run("editar con 'fijar' en aproximada no pide confirmacion", async () => {
+    await invoke("updateProductFull", PRODUCT_ID, form({ ubicacion_accion: "fijar", ubicacion_precision: "aproximada", ubicacion_lat: 19.1, ubicacion_lng: -98.1 }));
+    assert.equal(state.writes[0].ubicacion_precision, "aproximada");
+  });
+  await run("editar con 'quitar' vacia la ubicacion y deja aproximada", async () => {
+    await invoke("updateProductFull", PRODUCT_ID, form({ ubicacion_accion: "quitar", ubicacion_precision: "exacta" }));
+    assert.equal(state.writes[0].ubicacion_geo, null);
+    assert.equal(state.writes[0].ubicacion, null);
+    assert.equal(state.writes[0].ubicacion_precision, "aproximada");
+  });
+  await run("editar con un formulario anterior que movio el pin lo guarda aproximado", async () => {
+    // El mock de rpc no devuelve el punto guardado: se asume que lo movio.
+    await invoke("updateProductFull", PRODUCT_ID, form({ ubicacion_lat: 19.1, ubicacion_lng: -98.1, remove_location: "false" }));
+    assert.equal(state.writes[0].ubicacion_geo, "SRID=4326;POINT(-98.1 19.1)");
+    assert.equal(state.writes[0].ubicacion_precision, "aproximada");
+  });
+  await run("editar con una accion de ubicacion invalida no escribe", async () => {
+    assert.ok((await invoke("updateProductFull", PRODUCT_ID, form({ ubicacion_accion: "mover" }))).error);
+    assert.equal(state.writes.length, 0);
+  });
   console.log(`${cases}/${cases} pruebas de acciones PASAN`);
 }
 if (require.main === module) test().catch((error) => { console.error(error); process.exitCode = 1; });

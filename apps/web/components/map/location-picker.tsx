@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Search, MapPin, Loader2, X } from "lucide-react";
 import {
@@ -12,7 +12,14 @@ import {
 import { useReglaCobertura } from "@/lib/geo/cobertura";
 import { useMapKit } from "@/hooks/use-mapkit";
 import { reverseGeocodeWithApple } from "@/lib/geo/apple-geocoder";
-import { publicLocationLabel } from "@vicino/shared";
+import { publicLocationLabel, PUBLIC_LOCATION_FALLBACK } from "@vicino/shared";
+import {
+  centroAproximado,
+  radioVistaPreviaKm,
+  textoTamanoAproximado,
+  type DecimalesRejilla,
+  type PrecisionUbicacion,
+} from "@/lib/geo/ubicacion-publica";
 
 const AppleMapContainer = dynamic(() => import("./apple-map-container"), {
   ssr: false,
@@ -40,6 +47,26 @@ interface LocationPickerProps {
   /** The selected point remains visible when the delivery-circle preview is hidden. */
   showRadiusPreview?: boolean;
   showMapInitially?: boolean;
+  /**
+   * GEO-PUB-EXACT (formulario de vender). Con precision, la etiqueta que se
+   * emite depende del modo (exacta: la direccion; aproximada: colonia y
+   * ciudad, nunca calle ni numero) y el mapa dibuja la vista previa de lo que
+   * veran los compradores. Sin ella, todo como antes (comunidades, solicitudes).
+   */
+  precision?: PrecisionUbicacion;
+  decimalesAproximada?: DecimalesRejilla;
+  /** Etiqueta guardada al editar: es la detallada del punto inicial. */
+  initialAddress?: string;
+  /** Se pinta entre el buscador y el mapa (el interruptor de precision). */
+  controlEntreBuscadorYMapa?: ReactNode;
+}
+
+/** Las dos etiquetas de la seleccion actual; se publica una u otra segun el modo. */
+interface Etiquetas { detallada: string; zona: string | null }
+function etiquetaPara(etiquetas: Etiquetas | null, precision: PrecisionUbicacion | undefined): string {
+  if (!etiquetas) return PUBLIC_LOCATION_FALLBACK;
+  if (precision !== "aproximada") return etiquetas.detallada;
+  return etiquetas.zona || PUBLIC_LOCATION_FALLBACK;
 }
 
 export default function LocationPicker({
@@ -53,6 +80,10 @@ export default function LocationPicker({
   showRadiusControl = true,
   showRadiusPreview = true,
   showMapInitially = false,
+  precision,
+  decimalesAproximada = 2,
+  initialAddress,
+  controlEntreBuscadorYMapa,
 }: LocationPickerProps) {
   const mapkit = useMapKit();
   const cobertura = useReglaCobertura();
@@ -77,6 +108,12 @@ export default function LocationPicker({
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchSeqRef = useRef<number>(0);
 
+  // La seleccion inicial (al editar) trae su etiqueta guardada; su zona se
+  // pide solo si el vendedor pasa a aproximada.
+  const etiquetasRef = useRef<Etiquetas | null>(hasInitial ? { detallada: initialAddress?.trim() || PUBLIC_LOCATION_FALLBACK, zona: null } : null);
+  const precisionRef = useRef(precision);
+  const zonaAbortRef = useRef<AbortController | null>(null);
+
   const [gpsPending, setGpsPending] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const cancelPending = useCallback(() => {
@@ -100,12 +137,16 @@ export default function LocationPicker({
         return false;
       }
       setPosition([lat, lng]);
+      // La zona pedida para el punto anterior ya no vale. Teclear en el
+      // buscador NO la cancela (cancelPending no la toca): solo moverse.
+      zonaAbortRef.current?.abort();
 
       setShowMap(true);
       setLocationError(null);
       // La etiqueta se publica; las coordenadas siguen su campo privado.
       // Permitir guardar el punto aunque la dirección tarde o no esté disponible.
       const fallback = publicLocationLabel();
+      etiquetasRef.current = { detallada: fallback, zona: null };
       setSearchQuery(fallback);
       onChange({ lat, lng, address: fallback });
 
@@ -119,9 +160,10 @@ export default function LocationPicker({
           .then((data) => {
             if (control.signal.aborted) return;
             if (data?.fullName) {
-              const address = publicLocationLabel(data.fullName);
-              setSearchQuery(address);
-              onChange({ lat, lng, address });
+              const detallada = publicLocationLabel(data.fullName);
+              etiquetasRef.current = { detallada, zona: data.zona ? publicLocationLabel(data.zona) : null };
+              setSearchQuery(detallada);
+              onChange({ lat, lng, address: etiquetaPara(etiquetasRef.current, precisionRef.current) });
             }
           })
           .catch(() => {});
@@ -138,8 +180,36 @@ export default function LocationPicker({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       inversaAbortRef.current?.abort();
       searchAbortRef.current?.abort();
+      zonaAbortRef.current?.abort();
     };
   }, []);
+
+  /** Colonia y ciudad del punto, para la etiqueta aproximada. */
+  function pedirZona(lat: number, lng: number) {
+    zonaAbortRef.current?.abort();
+    const control = new AbortController();
+    zonaAbortRef.current = control;
+    reverseGeocodeWithApple(lat, lng, control.signal)
+      .then((data) => {
+        if (control.signal.aborted || !etiquetasRef.current) return;
+        etiquetasRef.current = { ...etiquetasRef.current, zona: data?.zona ? publicLocationLabel(data.zona) : null };
+        if (precisionRef.current === "aproximada") onChange({ lat, lng, address: etiquetaPara(etiquetasRef.current, "aproximada") });
+      })
+      .catch(() => {});
+  }
+
+  // Cambiar de modo NO mueve ni quita la seleccion: solo cambia la etiqueta
+  // que se publica (y la vista previa). Al pasar a aproximada sin zona aun,
+  // se pide a la inversa; mientras llega, la etiqueta generica.
+  useEffect(() => {
+    if (precisionRef.current === precision) return;
+    precisionRef.current = precision;
+    if (!position || !precision) return;
+    const [lat, lng] = position;
+    onChange({ lat, lng, address: etiquetaPara(etiquetasRef.current, precision) });
+    if (precision === "aproximada" && !etiquetasRef.current?.zona) pedirZona(lat, lng);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando cambia el modo
+  }, [precision]);
 
   function handleSearch(q: string) {
     cancelPending();
@@ -221,8 +291,12 @@ export default function LocationPicker({
     setShowMap(true);
     setLocationError(null);
     const address = publicLocationLabel(resolved.fullName);
+    etiquetasRef.current = { detallada: address, zona: null };
+    zonaAbortRef.current?.abort();
     setSearchQuery(address);
-    onChange({ lat: resolved.lat, lng: resolved.lng, address });
+    onChange({ lat: resolved.lat, lng: resolved.lng, address: etiquetaPara(etiquetasRef.current, precisionRef.current) });
+    // La busqueda trae la direccion completa; la zona sale de la inversa.
+    if (precision) pedirZona(resolved.lat, resolved.lng);
     } catch {
       if (sequence === searchSeqRef.current) setLocationError("No se pudo elegir esa ubicación. Intenta de nuevo.");
     } finally {
@@ -248,6 +322,8 @@ export default function LocationPicker({
 
   function clearLocation() {
     clearSearch();
+    zonaAbortRef.current?.abort();
+    etiquetasRef.current = null;
     setShowMap(false);
     setPosition(null);
     setView(PUEBLA_OVERVIEW);
@@ -361,6 +437,8 @@ export default function LocationPicker({
         )}
       </div>
 
+      {controlEntreBuscadorYMapa}
+
       {/* La vista inicial no selecciona ni emite coordenadas al formulario. */}
       {(showMapInitially || showMap) && (
         <>
@@ -375,10 +453,16 @@ export default function LocationPicker({
               draggableMarker
               onMarkerDragEnd={handleDrag}
               onMapClick={handleDrag}
-              radiusKm={position && onRadiusChange && showRadiusPreview ? radius : undefined}
+              radiusKm={position && onRadiusChange && showRadiusPreview ? radius : position && precision === "aproximada" ? radioVistaPreviaKm(decimalesAproximada) : undefined}
+              circleCenter={position && precision === "aproximada" && !(onRadiusChange && showRadiusPreview) ? centroAproximado(position[0], position[1], decimalesAproximada) : undefined}
               height={250}
             />
           </div>
+          {position && precision && <p className="text-xs text-muted-foreground" aria-live="polite">
+            {precision === "exacta"
+              ? "Vista previa: así verán los compradores tu punto en la ficha y en el mapa."
+              : `Vista previa: los compradores verán el círculo, un área de ${textoTamanoAproximado(decimalesAproximada)}. Tu punto no se publica.`}
+          </p>}
 
           {position && onRadiusChange && showRadiusControl && <div className="flex items-center gap-3">
             <label className="text-xs text-muted-foreground shrink-0">Radio:</label>
