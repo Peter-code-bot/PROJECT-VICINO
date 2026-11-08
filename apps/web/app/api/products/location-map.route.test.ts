@@ -7,7 +7,7 @@ import { cargarReal, sentryEspia } from "../../../lib/pruebas/cargar-real";
 // ese dato (punto exacto o celda); ETag + no-cache para que mover el pin o
 // revocar la exacta deje de servir la imagen anterior sin pagar otro snapshot.
 
-type Ruta = typeof import("./route");
+type Ruta = typeof import("./[id]/location-map/route");
 const ID = "11111111-1111-4111-8111-111111111111";
 const BYTES = new Uint8Array([137, 80, 78, 71]).buffer;
 

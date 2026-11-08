@@ -39,13 +39,14 @@ test("un formulario anterior no trae accion ni precision: quedan en null", () =>
 });
 
 test("rechaza accion, precision, remove_location y coordenadas invalidas", () => {
-  for (const campos of [
+  const casos: Array<Record<string, string>> = [
     { ubicacion_accion: "mover" },
     { ubicacion_precision: "casi" },
     { remove_location: "si" },
     { ubicacion_lat: "91", ubicacion_lng: "-98" },
     { ubicacion_lat: "abc", ubicacion_lng: "-98" },
-  ]) {
+  ];
+  for (const campos of casos) {
     assert.equal(leerEntradaUbicacion(formulario(campos)).ok, false, JSON.stringify(campos));
   }
 });
