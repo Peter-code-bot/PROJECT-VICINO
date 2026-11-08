@@ -264,6 +264,21 @@ const main = async () => {
       return `revision ${f.revision}`;
     });
 
+    await caso('mover el pin de una aproximada dentro de su celda de 110 m no cambia la revision; cruzar de celda si', async () => {
+      // Si la revision siguiera al punto privado, delataria cuando el vendedor
+      // lo mueve aunque el dato publico no cambie.
+      const antes = await fila(idHistorica);
+      const dentro = await http(cfg, 'PATCH', `/rest/v1/products_services?id=eq.${idHistorica}`, { token: bruno.token, body: { ubicacion_geo: ewkt({ lng: -98.20435, lat: 19.04021 }) } });
+      esperar(dentro.status < 300, `PATCH dentro: HTTP ${dentro.status}`);
+      const tras = await fila(idHistorica);
+      esperar(tras.revision === antes.revision, `dentro de la celda: revision ${antes.revision} -> ${tras.revision}`);
+      await http(cfg, 'PATCH', `/rest/v1/products_services?id=eq.${idHistorica}`, { token: bruno.token, body: { ubicacion_geo: ewkt({ lng: -98.2052, lat: 19.04009 }) } });
+      const fuera = await fila(idHistorica);
+      esperar(fuera.revision === antes.revision + 1, `otra celda: revision ${antes.revision} -> ${fuera.revision}`);
+      await http(cfg, 'PATCH', `/rest/v1/products_services?id=eq.${idHistorica}`, { token: bruno.token, body: { ubicacion_geo: ewkt(HISTORICA) } });
+      return `dentro ${antes.revision} -> ${tras.revision}; otra celda -> ${fuera.revision}`;
+    });
+
     await caso('mover el punto exacto sube la revision y el punto publico lo sigue', async () => {
       const r = await http(cfg, 'PATCH', `/rest/v1/products_services?id=eq.${idExacta}`, { token: ana.token, body: { ubicacion_geo: ewkt(MOVIDA), ubicacion_precision: 'exacta' } });
       esperar(r.status < 300, `HTTP ${r.status}`);
@@ -307,6 +322,18 @@ const main = async () => {
       sinCoordenadas(JSON.stringify(r.body), EXACTA, 'v4 para el bloqueado');
       const otro = await rpc(cfg, visitante.token, 'search_map_publications_v4', peticion('cells', { rejilla: 3 }));
       esperar(JSON.stringify(otro.body).includes(String(EXACTA.lat)), 'el visitante sin bloqueo deberia verla');
+    });
+
+    await caso('en una vista ancha v4 no pierde las publicaciones pegadas al borde sur (igual que v3)', async () => {
+      // 23 grados de ancho con el borde sur a ~1 km de los fixtures: como
+      // geography, ese lado es un arco que se curva ~0.3 grados al norte. Sin
+      // ST_Segmentize el prefiltro de v4 los dejaba fuera.
+      const ancha = { bounds: { west: -110, south: 19.03, east: -86.6, north: 25 } };
+      const v3 = await rpc(cfg, visitante.token, 'search_map_publications_v3', peticion('overview', { query: ancha }));
+      const v4 = await rpc(cfg, visitante.token, 'search_map_publications_v4', peticion('overview', { query: ancha, rejilla: 3 }));
+      esperar(v3.status === 200 && v4.status === 200, `HTTP ${v3.status} y ${v4.status}`);
+      esperar(v4.body.total >= 2 && v4.body.total === v3.body.total, `v3 ${v3.body.total} | v4 ${v4.body.total}`);
+      return `${v4.body.total} publicaciones en v3 y en v4`;
     });
 
     await caso('con rejilla 2 y sin exactas, v4 ve lo mismo que v2 (las historicas no cambian)', async () => {

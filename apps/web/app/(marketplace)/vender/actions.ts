@@ -342,9 +342,11 @@ export async function createProduct(formData: FormData) {
           "Esa ubicación está fuera de la zona donde VICINO opera. Mueve el punto del mapa a una dirección dentro de la zona.",
       };
     }
+    // Sin `details`: en un 23502/23514 Postgres pone ahi la fila entera
+    // ("Failing row contains (...)"), con ubicacion_geo y el punto exacto.
     Sentry.captureException(error, {
       tags: { action: "createProduct" },
-      contexts: { supabase: { code: error.code, details: error.details } },
+      contexts: { supabase: { code: error.code } },
     });
     return { error: "No se pudo publicar. Inténtalo de nuevo." };
   }

@@ -592,11 +592,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
 
   const hayPunto = !(locationData.lat === 0 && locationData.lng === 0);
   const puntoActual = { lat: locationData.lat, lng: locationData.lng };
-  const accionUbicacion: AccionUbicacion =
-    mode !== "edit" ? "fijar" : locationCleared ? "quitar" : ubicacionTocada ? "fijar" : "conservar";
   const puntoGuardado = initialValues?.ubicacion_lat != null && initialValues?.ubicacion_lng != null
     ? { lat: initialValues.ubicacion_lat, lng: initialValues.ubicacion_lng }
     : null;
+  // Tocar y volver a dejarlo como estaba (dos veces el interruptor, "Usar
+  // aproximada" sobre una aproximada) no es un cambio: no se reescribe nada.
+  const huboCambioDeUbicacion = !mismoPunto(puntoActual, puntoGuardado) || precision !== precisionGuardada
+    || locationData.address !== (initialValues?.ubicacion ?? "");
+  const accionUbicacion: AccionUbicacion =
+    mode !== "edit" ? "fijar" : locationCleared ? "quitar" : ubicacionTocada && huboCambioDeUbicacion ? "fijar" : "conservar";
   // Al editar se vuelve a confirmar si se pide exacta para un punto que no
   // estaba confirmado como exacto: un punto nuevo, o el mismo que era aproximado.
   const pideReconfirmar = mode === "edit" && accionUbicacion === "fijar" && precision === "exacta" && hayPunto
@@ -613,12 +617,17 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   }
 
   function confirmarExacta() {
+    const form = formRef.current;
+    if (!form) return;
     flushSync(() => {
       setConfirmacionExacta({ pendiente: false, punto: puntoActual });
       setError("");
     });
+    // Como el boton de arriba: si un campo obligatorio quedo invalido, el envio
+    // no ocurre y "Guardando..." no debe quedarse puesto.
+    if (!form.reportValidity()) return;
     setLoading(true);
-    formRef.current?.requestSubmit();
+    form.requestSubmit();
   }
 
   function usarAproximada() {

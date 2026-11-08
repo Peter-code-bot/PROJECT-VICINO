@@ -122,7 +122,6 @@ export default function LocationPicker({
     if (inversaRef.current) clearTimeout(inversaRef.current);
     searchAbortRef.current?.abort();
     inversaAbortRef.current?.abort();
-    zonaAbortRef.current?.abort();
     setGpsPending(false);
     setSearching(false);
     setSuggestions([]);
@@ -138,6 +137,9 @@ export default function LocationPicker({
         return false;
       }
       setPosition([lat, lng]);
+      // La zona pedida para el punto anterior ya no vale. Teclear en el
+      // buscador NO la cancela (cancelPending no la toca): solo moverse.
+      zonaAbortRef.current?.abort();
 
       setShowMap(true);
       setLocationError(null);
@@ -178,8 +180,23 @@ export default function LocationPicker({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       inversaAbortRef.current?.abort();
       searchAbortRef.current?.abort();
+      zonaAbortRef.current?.abort();
     };
   }, []);
+
+  /** Colonia y ciudad del punto, para la etiqueta aproximada. */
+  function pedirZona(lat: number, lng: number) {
+    zonaAbortRef.current?.abort();
+    const control = new AbortController();
+    zonaAbortRef.current = control;
+    reverseGeocodeWithApple(lat, lng, control.signal)
+      .then((data) => {
+        if (control.signal.aborted || !etiquetasRef.current) return;
+        etiquetasRef.current = { ...etiquetasRef.current, zona: data?.zona ? publicLocationLabel(data.zona) : null };
+        if (precisionRef.current === "aproximada") onChange({ lat, lng, address: etiquetaPara(etiquetasRef.current, "aproximada") });
+      })
+      .catch(() => {});
+  }
 
   // Cambiar de modo NO mueve ni quita la seleccion: solo cambia la etiqueta
   // que se publica (y la vista previa). Al pasar a aproximada sin zona aun,
@@ -275,6 +292,7 @@ export default function LocationPicker({
     setLocationError(null);
     const address = publicLocationLabel(resolved.fullName);
     etiquetasRef.current = { detallada: address, zona: null };
+    zonaAbortRef.current?.abort();
     setSearchQuery(address);
     onChange({ lat: resolved.lat, lng: resolved.lng, address: etiquetaPara(etiquetasRef.current, precisionRef.current) });
     // La busqueda trae la direccion completa; la zona sale de la inversa.
@@ -304,26 +322,13 @@ export default function LocationPicker({
 
   function clearLocation() {
     clearSearch();
+    zonaAbortRef.current?.abort();
     etiquetasRef.current = null;
     setShowMap(false);
     setPosition(null);
     setView(PUEBLA_OVERVIEW);
     setViewZoom(showMapInitially ? 11 : 14);
     onChange(null);
-  }
-
-  /** Colonia y ciudad del punto, para la etiqueta aproximada. */
-  function pedirZona(lat: number, lng: number) {
-    zonaAbortRef.current?.abort();
-    const control = new AbortController();
-    zonaAbortRef.current = control;
-    reverseGeocodeWithApple(lat, lng, control.signal)
-      .then((data) => {
-        if (control.signal.aborted || !etiquetasRef.current) return;
-        etiquetasRef.current = { ...etiquetasRef.current, zona: data?.zona ? publicLocationLabel(data.zona) : null };
-        if (precisionRef.current === "aproximada") onChange({ lat, lng, address: etiquetaPara(etiquetasRef.current, "aproximada") });
-      })
-      .catch(() => {});
   }
 
   function useMyLocation() {

@@ -10,10 +10,11 @@
 --     un trigger de ubicacion_geo SOLO cuando la precision es 'exacta', y la
 --     vacia en cuanto deja de serlo o se quita la ubicacion. Asi el modo, el
 --     punto y su revision quedan en la MISMA fila y en la MISMA escritura.
---   * ubicacion_revision sube cuando cambian la precision o el punto (comparando
---     los bytes del punto, no "la columna venia en el UPDATE"): editar precio o
---     fotos no la mueve. Es la clave de cache del minimapa y entra en la
---     revision del mapa.
+--   * ubicacion_revision sube solo cuando cambia algo PUBLICO: la precision, el
+--     punto exacto (comparando sus bytes) o, en aproximada, la celda de 110 m.
+--     Editar precio o fotos no la mueve, y mover el pin privado dentro de su
+--     celda tampoco (si no, la revision delataria esa actividad). Es la clave
+--     de cache del minimapa.
 --   * Un solo dato autorizado P = ubicacion_publica_punto(precision, exacta,
 --     geo, decimales): el punto exacto si es 'exacta'; si no, la rejilla
 --     aproximada de 2 decimales (~1 km, lo que se ve hoy) o 3 (~110 m, PR #75).
@@ -45,8 +46,13 @@
 -- Despues: node scripts/gen-types.mjs
 -- Reversion: docs/rollback/20261108210000_ubicacion_exacta_por_publicacion_rollback.sql
 
--- Las ALTER toman un candado sobre products_services hasta el commit: si no lo
--- consiguen en 5 s, la migracion entera aborta en vez de hacer fila.
+-- Las ALTER toman ACCESS EXCLUSIVE sobre products_services hasta el commit (y
+-- los dos CHECK recorren la tabla con el candado puesto: milisegundos con los
+-- cientos de filas de hoy). Mientras espera el candado, las consultas nuevas a
+-- la tabla hacen cola detras: aplicar en horario bajo y revisar antes que no
+-- haya transacciones largas abiertas
+--   SELECT pid, state, xact_start FROM pg_stat_activity WHERE xact_start < now() - interval '10 s';
+-- Si no consigue el candado en 5 s, la migracion entera aborta en vez de hacer fila.
 SET LOCAL lock_timeout = '5s';
 
 ALTER TABLE public.products_services
@@ -71,7 +77,9 @@ COMMENT ON COLUMN public.products_services.ubicacion_revision IS
 -- Una columna nueva de products_services nace sin privilegios de columna; el
 -- REVOKE deja constancia y el DO del final lo comprueba de verdad.
 REVOKE ALL (ubicacion_precision, ubicacion_exacta, ubicacion_revision) ON public.products_services FROM PUBLIC, anon, authenticated;
-GRANT UPDATE (ubicacion_precision) ON public.products_services TO authenticated;
+-- El INSERT de authenticated hoy es de tabla (comprobado en produccion el 8-nov);
+-- el de columna deja la Server Action a salvo si algun dia deja de serlo.
+GRANT INSERT (ubicacion_precision), UPDATE (ubicacion_precision) ON public.products_services TO authenticated;
 
 -- El dato autorizado. IMMUTABLE: depende solo de sus argumentos. La rama
 -- aproximada repite la expresion de ubicacion_mapa (2 decimales,
@@ -109,10 +117,19 @@ BEGIN
   -- Derivado SIEMPRE: lo que mande el cliente en ubicacion_exacta se ignora.
   NEW.ubicacion_exacta := CASE WHEN NEW.ubicacion_precision = 'exacta'
     THEN public.ST_SetSRID(NEW.ubicacion_geo::public.geometry, 4326) END;
+  -- La revision sigue a lo PUBLICO, nunca al punto privado: en aproximada solo
+  -- cuenta la celda mas fina que puede publicarse (3 decimales; un cambio de
+  -- celda de 2 decimales siempre lo es tambien de 3). Redondeo en linea, igual
+  -- que ubicacion_publica_punto: esa funcion no es ejecutable por authenticated
+  -- y el trigger corre con el rol de quien escribe.
   IF TG_OP = 'INSERT' THEN
     NEW.ubicacion_revision := 0;
   ELSIF NEW.ubicacion_precision IS DISTINCT FROM OLD.ubicacion_precision
-     OR public.ST_AsEWKB(NEW.ubicacion_geo::public.geometry) IS DISTINCT FROM public.ST_AsEWKB(OLD.ubicacion_geo::public.geometry) THEN
+     OR (NEW.ubicacion_precision = 'exacta'
+         AND public.ST_AsEWKB(NEW.ubicacion_geo::public.geometry) IS DISTINCT FROM public.ST_AsEWKB(OLD.ubicacion_geo::public.geometry))
+     OR (NEW.ubicacion_precision = 'aproximada'
+         AND (round(public.ST_X(NEW.ubicacion_geo::public.geometry)::numeric, 3) IS DISTINCT FROM round(public.ST_X(OLD.ubicacion_geo::public.geometry)::numeric, 3)
+           OR round(public.ST_Y(NEW.ubicacion_geo::public.geometry)::numeric, 3) IS DISTINCT FROM round(public.ST_Y(OLD.ubicacion_geo::public.geometry)::numeric, 3))) THEN
     NEW.ubicacion_revision := OLD.ubicacion_revision + 1;
   ELSE
     NEW.ubicacion_revision := OLD.ubicacion_revision;
@@ -351,7 +368,7 @@ BEGIN
   v_term:=translate(lower(v_term),'áàâäéèêëíìîïóòôöúùûüñç','aaaaeeeeiiiioooouuuunc');
   WITH eligible AS MATERIALIZED (
     SELECT ps.id,ps.creador_id,ps.titulo,ps.slug,ps.precio,ps.modo_precio::text,ps.tipo::text,
-      ps.imagen_principal,ps.created_at,ps.ubicacion_precision AS precision,ps.ubicacion_revision AS revision_ubicacion,
+      ps.imagen_principal,ps.created_at,ps.ubicacion_precision AS precision,
       public.profile_public_name(pr.nombre, pr.es_vendedor, pr.seller_type, pr.nombre_negocio) AS vendedor_nombre,
       coalesce((SELECT c.slug FROM product_categories pc JOIN categories c ON c.id=pc.categoria_id
         WHERE pc.product_id=ps.id ORDER BY pc.is_primary DESC,c.slug LIMIT 1),ps.categoria) AS categoria,
@@ -363,13 +380,19 @@ BEGIN
     FROM products_services ps JOIN profiles pr ON pr.id=ps.creador_id
     -- P: el punto exacto si el vendedor lo eligio y confirmo, si no la rejilla
     -- aproximada. TODO lo publico (celda, promedio, bounds, filtros) sale de P.
-    CROSS JOIN LATERAL (SELECT public.ubicacion_publica_punto(ps.ubicacion_precision,ps.ubicacion_exacta,ps.ubicacion_geo,v_decimales) AS punto) pp
+    -- OFFSET 0: una sola evaluacion por fila (la funcion no se inlinea y, sin
+    -- la barrera, el planificador la repetiria en cada uso de pp.punto).
+    CROSS JOIN LATERAL (SELECT public.ubicacion_publica_punto(ps.ubicacion_precision,ps.ubicacion_exacta,ps.ubicacion_geo,v_decimales) AS punto OFFSET 0) pp
     WHERE ps.estatus='disponible' AND ps.is_hidden=false AND pr.is_hidden=false
       AND ps.ubicacion_geo IS NOT NULL AND pp.punto IS NOT NULL
       -- Prefiltro con el indice GIST de ubicacion_geo, holgado 0.006 grados (P
       -- nunca se aleja mas de 0.005 del punto guardado); el filtro que manda es
       -- el de P de la linea siguiente, asi que el resultado solo depende de P.
-      AND ps.ubicacion_geo && ST_MakeEnvelope(v_w-0.006,v_s-0.006,v_e+0.006,v_n+0.006,4326)::geography
+      -- ST_Segmentize: como geography, el lado sur de un rectangulo ancho es un
+      -- arco que se curva hacia el norte (con 20 grados de ancho, ~0.3 grados) y
+      -- dejaba fuera puntos pegados al borde sur; con lados de 0.25 grados la
+      -- curvatura es despreciable frente a la holgura.
+      AND ps.ubicacion_geo && ST_Segmentize(ST_MakeEnvelope(v_w-0.006,v_s-0.006,v_e+0.006,v_n+0.006,4326),0.25)::geography
       AND pp.punto && ST_MakeEnvelope(v_w,v_s,v_e,v_n,4326)
       AND dentro_de_cobertura(ST_Y(pp.punto),ST_X(pp.punto))
       AND (v_viewer IS NULL OR NOT EXISTS (SELECT 1 FROM user_blocks ub
@@ -387,7 +410,7 @@ BEGIN
         OR strpos(translate(lower(public.profile_public_name(pr.nombre, pr.es_vendedor, pr.seller_type, pr.nombre_negocio)),'áàâäéèêëíìîïóòôöúùûüñç','aaaaeeeeiiiioooouuuunc'),v_term)>0)
 
   ), stamp AS (
-    SELECT md5(v_key||coalesce(string_agg(md5(jsonb_build_array(id,creador_id,titulo,slug,precio,modo_precio,tipo,imagen_principal,created_at,vendedor_nombre,categoria,public_lat,public_lng,precision,revision_ubicacion)::text),'' ORDER BY id),'')) AS revision FROM eligible
+    SELECT md5(v_key||coalesce(string_agg(md5(jsonb_build_array(id,creador_id,titulo,slug,precio,modo_precio,tipo,imagen_principal,created_at,vendedor_nombre,categoria,public_lat,public_lng,precision)::text),'' ORDER BY id),'')) AS revision FROM eligible
   ), cells AS MATERIALIZED (
     -- punto: solo cuando TODAS las publicaciones de la celda son exactas y
     -- comparten el mismo punto; si no, la celda se pinta en su nodo como hoy.
@@ -446,9 +469,18 @@ BEGIN
      OR has_column_privilege('authenticated', 'public.products_services', 'ubicacion_revision', 'UPDATE') THEN
     RAISE EXCEPTION 'authenticated puede actualizar ubicacion_exacta o ubicacion_revision';
   END IF;
-  IF NOT has_column_privilege('authenticated', 'public.products_services', 'ubicacion_precision', 'UPDATE') THEN
-    RAISE EXCEPTION 'authenticated no puede actualizar ubicacion_precision: el formulario fallaria con 42501';
+  IF NOT has_column_privilege('authenticated', 'public.products_services', 'ubicacion_precision', 'UPDATE')
+     OR NOT has_column_privilege('authenticated', 'public.products_services', 'ubicacion_precision', 'INSERT') THEN
+    RAISE EXCEPTION 'authenticated no puede escribir ubicacion_precision: publicar o editar fallaria con 42501';
   END IF;
+  FOREACH v_columna IN ARRAY ARRAY['ubicacion_precision', 'ubicacion_exacta', 'ubicacion_revision'] LOOP
+    IF NOT has_column_privilege('service_role', 'public.products_services', v_columna, 'SELECT') THEN
+      RAISE EXCEPTION 'service_role no puede leer %: la ficha y el minimapa fallarian', v_columna;
+    END IF;
+    IF has_column_privilege('anon', 'public.products_services', v_columna, 'UPDATE') THEN
+      RAISE EXCEPTION 'anon puede actualizar %', v_columna;
+    END IF;
+  END LOOP;
   IF has_function_privilege('anon', 'public.search_map_publications_v4(jsonb)', 'EXECUTE') THEN
     RAISE EXCEPTION 'anon puede ejecutar search_map_publications_v4';
   END IF;
