@@ -10,7 +10,7 @@ PR52 integrado a master el04-oct-2026 14:20:26CDMX, commit6c3750dcafa022f174794c
 
 Producción Vercel4EJTjwR7dqdpykhmUGM4rge9WMYq SUCCESS:
 https://vercel.com/peters-projects-b65496a9/vicinomarket/4EJTjwR7dqdpykhmUGM4rge9WMYq
-Sitio https://vicinomarket.com muestra «Únete a VICINO», solicitudes reales (conteo en Notion) y tarjetas→login/next. Logo devuelve al feed de Solicitudes. Comunidades pública conserva su estado real (conteo en Notion); se detectó un fallo de sincronización de Descubrir durante el cierre y se documenta su corrección debajo. Acciones privadas siguen login. No se fabricaron comunidades ni se editó Alex.
+Sitio https://vicinomarket.com muestra «Únete a VICINO», solicitudes reales (conteo en Notion) y tarjetas→login/next. Logo devuelve al feed de Solicitudes. Comunidades pública conserva su estado real (conteo en Notion); se detectó un fallo de sincronización de Descubrir durante el cierre y se documenta su corrección debajo. Acciones privadas siguen login. No se fabricaron comunidades ni se editaron cuentas reales.
 
 ## Evidencia literal de integración
 

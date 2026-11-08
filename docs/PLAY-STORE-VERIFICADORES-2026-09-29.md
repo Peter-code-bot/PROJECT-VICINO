@@ -26,7 +26,7 @@ Las listas de correo siguen guardadas en la consola. Si algún día quieres volv
 
 Lo que hay hoy en Play Console:
 
-- **Prueba interna:** activa, con **listas de correo de una persona cada una** (Alejandro Estrada, Diego Soriano, Javier Alejandro, Javier Rodriguez, Jorge Flores, Juan Escutia, Juan Soriano, Mario Soriano, Pedro Soriano, Pepe Revive, Raul Ochoa, Ruben Gonzales). Versión publicada: **4 (1.3), del 4 de junio.**
+- **Prueba interna:** activa, con **listas de correo de una persona cada una** (nombres en Notion). Versión publicada: **4 (1.3), del 4 de junio.**
 - **Prueba cerrada:** activa, con el Grupo de Google (conteo de miembros en Notion). Versión publicada: **8 (1.7), del 26 de septiembre.**
 
 Y la regla, textual de Google:

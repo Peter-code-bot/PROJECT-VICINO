@@ -316,7 +316,7 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
 - [x] **BUG-DEL-CUENTA** (`5874496` + migración `20260927100000` en prod): borrar una
       cuenta que dejó filas en `audit_log` fallaba a medias (FK con SET NULL contra una
       tabla inmutable). `delete-account` v14 desplegada.
-      - [ ] Cuenta rota `0186140a`: terminar de borrarla desde el Dashboard o reintentando
+      - [ ] Cuenta rota que quedó a medias: terminar de borrarla desde el Dashboard o reintentando
             en la app, más sus archivos (Pedro).
 - [x] **Onboarding «Activa las notificaciones»** (`6b5fa5e`) con el diseño aprobado.
 - [x] **BUG-VERIF-IA** (inicio 27-sep ~01:35, cierre 27-sep 12:47; `0aeb2a5` + `962e358`):

@@ -30,7 +30,7 @@ Estado: **implementada y verificada**, pendiente de push.
 
 - [x] 1.1 Cuota de 24 h fuera (`comunidad_fundacion_estado` redefinida; `fundar_comunidad` ya delegaba en el helper, sólo se corrigieron sus comentarios).
 - [x] 1.2 «Archivar» fuera del panel de administración. `archivarComunidad` se queda sin llamador: el archivado al salir la última persona lo hace la propia RPC.
-- [x] 1.3 «Nenis Anáhuac» restaurada: viva, owner Javier, membresía `owner` activa (verificado en producción).
+- [x] 1.3 Comunidad con nombre de universidad restaurada: viva, owner Javier, membresía `owner` activa (verificado en producción).
 - [x] 1.4 Badges: chip «admin», globo negro sin borde y sin texto, sin etiqueta «Archivada». Verificado en pantalla a 375 px.
 - [x] 1.5 y 1.7 Mapas táctiles: arrastrar, pinza y tocar para mover el pin; fuera el círculo de radio. Corregido además un efecto que recreaba el marcador en cada render.
 - [x] 1.6 Barra lateral con scroll contenido (`overscroll-contain`) y el bloqueo de scroll de los modales arreglado: con `overflow-x: clip` en la raíz, `body.overflow=hidden` no paraba la página.
