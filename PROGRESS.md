@@ -1,3 +1,8 @@
+## 08-nov-2026 — INT-CRM-20261104: WhatsApp y compartir perfil
+
+- Seguimiento local a la prueba de Alejandro en Android/iPhone, sobre `ebc09e2` (PR #85), en la rama `fix/perfil-enlaces-ux-20261108`. México (+52) inicial, selector de país independiente, presentación local del número y conservación del valor internacional guardado. `libphonenumber-js` 1.13.15 queda fijado en el lockfile y formatea en el cliente.
+- WhatsApp y «Compartir perfil» usan la misma URL de la ficha del vendedor. La ficha de producto ya enlaza a la tienda. En Editar perfil solo permanecen visibles Regresar y Listo al bajar. Seguimiento y validación física en [Bugs y Tareas Pendientes](https://app.notion.com/p/39998e8a0cfa8158a548cc7a66cbc79c) y [Bitácora](https://app.notion.com/p/14a98e8a0cfa83eb9ef00133a04ec7fd).
+
 ## 23-oct-2026 — VENTA-CHAT-01: textos breves y tarjeta única
 
 - Ajuste solicitado por Javier a partir de Fotos1–2: resumir formulario/tarjeta y ocultar el texto automático de inicio, conservando sólo la tarjeta en mensajes estructurados. Los mensajes normales mantienen su texto.
