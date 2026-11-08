@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { cookies } from "next/headers";
 import { Trophy } from "lucide-react";
 import { ActivateLocationCard } from "@/components/rankings/activate-location-card";
 import { PodioRanking } from "@/components/rankings/podio-ranking";
@@ -13,7 +12,7 @@ import {
   getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { RankedSeller } from "@/lib/rankings/types";
-import { parseRadiusCookie } from "@/lib/geo/radius";
+import { leerZonaGuardada } from "@/lib/geo/ubicacion-servidor";
 
 export const dynamic = "force-dynamic";
 
@@ -76,37 +75,33 @@ async function RankingsContent({
   const activeCategoryIds = await getActiveCategoryIdsForPeriod(currentPeriod);
   const potentiallyActiveCategories = allCategories.filter((c) => activeCategoryIds.includes(c.id));
 
+  // lat/lng en la URL siguen valiendo: los enlaces viejos de la tira del inicio
+  // y de la tarjeta de activar ubicacion los llevaban. Los nuevos ya no.
   const geo = parseLatLng(searchParams.lat, searchParams.lng);
-  
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("vicino_location")?.value;
-  const radiusCookie = cookieStore.get("vicino_radius")?.value;
-  
-  let cookieLat: number | undefined;
-  let cookieLng: number | undefined;
-  if (locationCookie) {
-    const [latStr, lngStr] = locationCookie.split(",");
-    const parsedLat = parseFloat(latStr || "");
-    const parsedLng = parseFloat(lngStr || "");
-    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
-      cookieLat = parsedLat;
-      cookieLng = parsedLng;
-    }
-  }
+
+  // Lector unico de la zona (lib/geo/ubicacion-servidor.ts).
+  const zona = await leerZonaGuardada();
+  const puntoDeLaCookie = zona.estado === "valida" ? zona.punto : null;
 
   // Antes tomaba el valor de la cookie tal cual, sin acotarlo a [1000, 50000].
-  const searchRadius = parseRadiusCookie(radiusCookie);
-  
-  const isLocationActive = !!geo || !!locationCookie;
+  const searchRadius = zona.radio;
+
+  // Una zona fuera del area del mapa cuenta como ubicacion ACTIVA, pero no se
+  // consulta: no hay ranking ahi (antes se consultaba y salia vacio, que es el
+  // mismo «Aún no hay ranking en tu zona»). Si contara como inactiva, la
+  // tarjeta de activar volveria a guardar el mismo punto y reapareceria sin
+  // salida. Una cookie ilegible, en cambio, es como no tenerla.
+  const zonaFueraDeArea = !geo && zona.estado === "fuera-de-area";
+  const isLocationActive = !!geo || puntoDeLaCookie !== null || zonaFueraDeArea;
 
   // Fallback to default coords if geo and cookie are not provided (this matches what we do in the Home widget)
   const defaultLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
   const defaultLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
-  const searchLat = geo?.lat ?? cookieLat ?? defaultLat;
-  const searchLng = geo?.lng ?? cookieLng ?? defaultLng;
+  const searchLat = geo?.lat ?? puntoDeLaCookie?.lat ?? defaultLat;
+  const searchLng = geo?.lng ?? puntoDeLaCookie?.lng ?? defaultLng;
 
   // Pre-fetch rankings for all potentially active categories to see which ones actually have local data
-  const localRankingsResults = await Promise.all(
+  const localRankingsResults: Array<{ category: (typeof potentiallyActiveCategories)[number]; rankings: RankedSeller[] }> = zonaFueraDeArea ? [] : await Promise.all(
     potentiallyActiveCategories.map(async (cat) => {
       try {
         const rankings = await getRankingHiperlocal({

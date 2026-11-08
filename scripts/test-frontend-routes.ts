@@ -40,6 +40,11 @@ export async function load(file: string, client: object, overrides: Record<strin
       if (name === 'catalogFailure') value = '()=>({kind:"network",message:"unavailable"})';
       if (name === 'CATEGORIES') value = '[]';
       if (name === 'parseRadiusCookie') value = '()=>25000';
+      // Lector unico de la zona (lib/geo/ubicacion-servidor.ts), que sustituyo a
+      // cookies()+parseRadiusCookie en el inicio y en /buscar: el mismo contrato
+      // que daban esos dos stubs, sin cookie de ubicacion y radio 25000. Con el
+      // stub por defecto (null) la prueba moria antes de llegar a la consulta.
+      if (name === 'leerZonaGuardada') value = 'async()=>({estado:"ausente",punto:null,radio:25000})';
       // El resolutor de sesion de los cargadores de /api/session (lib/session-auth.ts):
       // aqui se reproduce su contrato real —usuario del cliente sintetico, o
       // error lanzado si Auth no contesta— para que las pruebas de timeout

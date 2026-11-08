@@ -1,23 +1,40 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 export function ActivateLocationCard() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { state, request } = useGeolocation();
+  // Solo el toque de esta tarjeta refresca. useGeolocation tambien pasa a
+  // `success` al montar (si ya habia zona) y con cada etiqueta nueva; un efecto
+  // que reaccionara a cualquier `success` refrescaria sin que nadie pidiera nada.
+  const pidioUbicacion = useRef(false);
 
   useEffect(() => {
+    if (!pidioUbicacion.current) return;
+    if (state.status === "error") {
+      pidioUbicacion.current = false;
+      return;
+    }
     if (state.status !== "success") return;
-    const next = new URLSearchParams(searchParams?.toString() ?? "");
-    next.set("lat", state.position.lat.toFixed(4));
-    next.set("lng", state.position.lng.toFixed(4));
-    router.replace(`/rankings?${next.toString()}`, { scroll: false });
-  }, [state, router, searchParams]);
+    pidioUbicacion.current = false;
+    // La cookie ya esta escrita (writeLocation la confirma antes de dar
+    // `success`): /rankings la lee en el servidor, asi que basta con volver a
+    // pintar la ruta. Antes se hacia router.replace con lat/lng en la URL, que
+    // dejaba la zona en el historial, en los registros y en Sentry (PDF 05).
+    // Si la zona cambio, el proveedor de sesion tambien refresca; esto cubre el
+    // caso en que writeLocation no avisa porque la cookie no cambio.
+    router.refresh();
+  }, [state, router]);
+
+  const activar = () => {
+    pidioUbicacion.current = true;
+    request();
+  };
 
   const isLoading = state.status === "loading";
   const errorMessage = state.status === "error" ? state.message : null;
@@ -37,7 +54,7 @@ export function ActivateLocationCard() {
       <div className="mt-5">
         <Button
           type="button"
-          onClick={request}
+          onClick={activar}
           loading={isLoading}
           variant="primary"
           size="md"

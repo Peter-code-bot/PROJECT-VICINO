@@ -56,13 +56,17 @@ interface MasProductosProduct {
 
 interface MasProductosProps {
   initialCursor: string | null;
-  lat?: number;
-  lng?: number;
+  /**
+   * Si las paginas siguientes van por la zona guardada. El punto ya no viaja
+   * desde aqui: la accion lo lee de la cookie en el servidor, con el mismo
+   * lector que armo la primera pagina.
+   */
+  usarZona?: boolean;
 }
 
 const productKey = (product: MasProductosProduct) => product.id;
 
-export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
+export function MasProductos({ initialCursor, usarZona = false }: MasProductosProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const retryingRef = useRef(false);
@@ -77,7 +81,7 @@ export function MasProductos({ initialCursor, lat, lng }: MasProductosProps) {
   >({
     action: async ({ cursor, limit }) => {
       // The hook gates loadMore on cursor !== null (hasMore guard).
-      const result = await getMoreFeedProducts(cursor as string, limit, lat, lng);
+      const result = await getMoreFeedProducts(cursor as string, limit, usarZona);
       const failure = result.error ? catalogFailure(result) : null;
       return {
         items: result.items as MasProductosProduct[],

@@ -2,7 +2,6 @@ import { publicProfileName } from "@vicino/shared";
 import "server-only";
 import { getViewerUniversity, getUniversitySellerIds } from "@/lib/university-data";
 import { filasCampus, UNIVERSITY_POOL_SIZE, UNIVERSITY_ROW_SIZE } from "@/lib/university-rows";
-import { cookies } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import type { User } from "@supabase/supabase-js";
@@ -14,7 +13,7 @@ import type { FollowedStore } from "@/components/home/following-rail";
 import { makeFeedCursor } from "@/lib/feed-cursor";
 import { consultarProductosCercanos, type ConsultaCercanosResult } from "@/lib/geo/consulta-cercanos";
 import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
-import { parseRadiusCookie } from "@/lib/geo/radius";
+import { leerZonaGuardada } from "@/lib/geo/ubicacion-servidor";
 import { cursorDeUltimo, leerEstadoCuota } from "@/lib/comunidades/tipos";
 import { traducirErrorComunidad } from "@/lib/comunidades/errores";
 import { withCommunityPhotos } from "@/lib/comunidades/group-photo";
@@ -73,32 +72,22 @@ export async function getHomeSession(
   const guestPreviewPromise = isGuestPreview && !catsParam && subTabComunidades !== "mias"
     ? getGuestHomePreview(feed) : Promise.resolve(null);
 
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("vicino_location")?.value;
-  const radiusCookie = cookieStore.get("vicino_radius")?.value;
-  // Esta era la unica de las cuatro lecturas del radio que estaba bien. Ahora
-  // las cuatro comparten la misma funcion, para que no vuelvan a divergir: el P0
-  // del feed de agosto fue exactamente eso, un `validRadius = 2000` en una
-  // pagina contra los 50 km que el usuario tenia configurados.
-  const validRadius = parseRadiusCookie(radiusCookie);
+  // La zona se lee con el lector UNICO del servidor (lib/geo/ubicacion-servidor.ts):
+  // mismo parseo, redondeo a 3 decimales y radio que el resto de las paginas.
+  // Una cookie fuera del area del mapa cuenta como sin ubicacion.
+  //
+  // El radio sale de la misma funcion que antes (parseRadiusCookie), ahora
+  // dentro del lector: el P0 del feed de agosto fue justo que las lecturas
+  // divergieran, un `validRadius = 2000` en una pagina contra los 50 km que el
+  // usuario tenia configurados.
+  const zona = await leerZonaGuardada();
+  const validRadius = zona.radio;
 
   let userLat: number | null = null;
   let userLng: number | null = null;
-  if (locationCookie && !isGuestPreview) {
-    const [latStr, lngStr] = locationCookie.split(",");
-    const lat = parseFloat(latStr ?? "");
-    const lng = parseFloat(lngStr ?? "");
-    if (
-      Number.isFinite(lat) &&
-      Number.isFinite(lng) &&
-      lat >= -90 &&
-      lat <= 90 &&
-      lng >= -180 &&
-      lng <= 180
-    ) {
-      userLat = lat;
-      userLng = lng;
-    }
+  if (zona.estado === "valida" && !isGuestPreview) {
+    userLat = zona.punto.lat;
+    userLng = zona.punto.lng;
   }
   const hasLocation = userLat !== null && userLng !== null;
 
@@ -471,7 +460,16 @@ export async function getHomeSession(
   // app/api/session/[resource]/route.ts): asi la revalidacion en segundo
   // plano conserva lo que habia, y la primera visita explica que paso.
   const guestPreview = await guestPreviewPromise;
-  return { userId: user?.id ?? "", value: { feed, subTabComunidades, userLat, userLng, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, guestPreview, user: user ? { id: user.id } : null } };
+  // Las coordenadas del propio usuario solo viajan al cliente en los feeds que
+  // las usan ALLI: Solicitudes (la RPC del navegador) y Comunidades (descubrir y
+  // el pin de fundar). «Para ti» y «Siguiendo» ya no las devuelven (PDF 05: sin
+  // coordenadas en las respuestas del feed): la vista previa del mapa lee el
+  // centro de la cookie en el cliente y el cargar-mas la lee en el servidor.
+  const coordenadasParaCliente: { userLat: number | null; userLng: number | null } =
+    feed === "solicitudes" || feed === "comunidades"
+      ? { userLat, userLng }
+      : { userLat: null, userLng: null };
+  return { userId: user?.id ?? "", value: { feed, subTabComunidades, ...coordenadasParaCliente, validRadius, hasLocation, viewerIsVendedor, viewerUniversity, universityProducts, universityFailure, universityCarousels, universityPoolTruncated, all, categoryCarousels, firstSelectedCategory, masProductosInitialCursor, feedRpcFailed, feedResultado, cercaDeTiResultado, showGeoEmptyState, followingPosts, followedStoresData, noFollows, nearbyStores, comunidades, guestPreview, user: user ? { id: user.id } : null } };
 }
 
 /**

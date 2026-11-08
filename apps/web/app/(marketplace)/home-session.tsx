@@ -74,7 +74,9 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
   const tabs = <HomeTabs key="home-tabs" active={activeFeed} />;
   const locationPreview = activeFeed === "parati" ? (
     <section key="home-location" className="px-4 pt-4 pb-4"><div className="mx-auto max-w-7xl">
-      <LocationMapPreview initialPosition={initial?.userLat != null && initial?.userLng != null ? { lat: initial.userLat, lng: initial.userLng } : null} viewerScope={initial?.user?.id ?? "guest"} />
+      {/* Sin coordenadas en la semilla: el servidor solo dice SI hay zona y la
+          vista previa lee el centro de la cookie al hidratar. */}
+      <LocationMapPreview hayUbicacionEnServidor={initial?.hasLocation ?? false} viewerScope={initial?.user?.id ?? "guest"} />
     </div></section>
   ) : null;
   if (!data) {
@@ -251,8 +253,9 @@ export function HomeSession({ ranking, seed }: HomeSessionProps) {
               <MasProductos
                 key={masProductosInitialCursor ?? "empty"}
                 initialCursor={masProductosInitialCursor}
-                lat={!feedRpcFailed ? (userLat ?? undefined) : undefined}
-                lng={!feedRpcFailed ? (userLng ?? undefined) : undefined}
+                // Solo la decision; el punto lo lee la accion de la cookie en
+                // el servidor. Con el feed caido sigue el camino sin zona.
+                usarZona={hasLocation && !feedRpcFailed}
               />
             }
             empty={feedResultado.failure ? (

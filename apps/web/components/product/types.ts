@@ -39,8 +39,6 @@ export interface ProductDetailSeller extends PublicProfileIdentity {
   average_rating: number | string | null;
   reviews_count: number | string | null;
   total_sales: number | string | null;
-  ubicacion_lat?: number | null;
-  ubicacion_lng?: number | null;
   is_verified?: boolean | null;
 }
 

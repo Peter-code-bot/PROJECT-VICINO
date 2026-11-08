@@ -6,20 +6,46 @@ import Link from "@/components/auth/auth-link";
 import { ZoneCard } from "@/components/home/zone-card";
 import { mapPreviewCache, emptyMapPreview, clearMapPreviews, type MapPreviewInput } from "@/lib/geo/map-preview-cache";
 import { resolverRecarga, previewNoDisponible, presupuestoRecargas, type EventoRecarga } from "@/lib/geo/map-preview-recarga";
+import { centroGuardadoSinLeer, leerCentroGuardado, suscribirCentroGuardado, type CentroGuardado } from "@/lib/geo/centro-guardado";
 import type { GeoPosition } from "@/lib/geo/location-storage";
 
 interface Props {
-  initialPosition?: { lat: number; lng: number } | null;
+  /**
+   * Centro explicito. Si se pasa (aunque sea null) manda el, como siempre.
+   * Si se omite, el centro se lee de la cookie en el cliente y del servidor
+   * solo llega `hayUbicacionEnServidor`: asi la semilla del inicio ya no lleva
+   * las coordenadas de la persona (PDF 05).
+   */
+  initialPosition?: CentroGuardado | null;
+  /**
+   * El servidor vio una zona valida en la cookie. Con esto el HTML y el primer
+   * pintado siguen diciendo «Vista previa de tu zona» y «Cargando tu zona…»,
+   * como cuando el centro venia en la semilla (el parpadeo en tres tiempos que
+   * documenta ZoneCard), y la imagen no se pide hasta conocer el centro.
+   */
+  hayUbicacionEnServidor?: boolean;
   compact?: boolean;
   href?: string;
   viewerScope?: string;
 }
 
 /** A static preview of the selected zone; only /mapa creates an interactive map. */
-export function LocationMapPreview({ initialPosition = null, href = "/mapa", viewerScope = "guest" }: Props) {
-  const initialKey = JSON.stringify(initialPosition);
-  const [override, setOverride] = useState<{ source: string; center: Props["initialPosition"] } | null>(null);
-  const center = override?.source === initialKey ? override.center : initialPosition;
+export function LocationMapPreview({ initialPosition, hayUbicacionEnServidor = false, href = "/mapa", viewerScope = "guest" }: Props) {
+  const centroExplicito = initialPosition !== undefined;
+  // En el servidor y al hidratar vale undefined (todavia sin leer); despues, el
+  // centro de la cookie o null. Al navegar dentro de la app ya se conoce en el
+  // primer render, asi que la imagen en cache sale sin esperar.
+  const centroCookie = useSyncExternalStore<CentroGuardado | null | undefined>(suscribirCentroGuardado, leerCentroGuardado, centroGuardadoSinLeer);
+  const pendiente = !centroExplicito && hayUbicacionEnServidor && centroCookie === undefined;
+  const centroBase: CentroGuardado | null = centroExplicito
+    ? initialPosition ?? null
+    : hayUbicacionEnServidor ? centroCookie ?? null : null;
+  const initialKey = pendiente ? "pendiente" : JSON.stringify(centroBase);
+  const [override, setOverride] = useState<{ source: string; center: CentroGuardado | null } | null>(null);
+  const center = override?.source === initialKey ? override.center : centroBase;
+  // Con zona en el servidor y el centro aun sin leer se pinta «con zona», que
+  // es lo que decia el HTML cuando el centro venia en la semilla.
+  const conZona = pendiente || !!center;
   const [attempt, setAttempt] = useState(0);
   const lastAttempt = useRef(0);
   const { resolvedTheme } = useTheme();
@@ -41,12 +67,14 @@ export function LocationMapPreview({ initialPosition = null, href = "/mapa", vie
   }, [initialKey]);
   useEffect(() => {
     // Wait for theme hydration to avoid a light request followed by a dark one.
-    if (!resolvedTheme) return;
+    // Y para el centro de la cookie: sin el, la clave seria la de México y se
+    // pediria una imagen que nadie va a ver.
+    if (!resolvedTheme || pendiente) return;
     mapPreviewCache.activateContext(viewerScope, theme);
     const force = attempt !== lastAttempt.current;
     lastAttempt.current = attempt;
     void mapPreviewCache.load(key, body, force).catch(() => {});
-  }, [key, body, attempt, resolvedTheme, viewerScope, theme]);
+  }, [key, body, attempt, resolvedTheme, viewerScope, theme, pendiente]);
 
   // La caducidad de 5 min de la cache NO es un fallo: se vuelve a pedir sola con
   // la pagina a la vista, y un fallo real se reintenta una vez al volver. Reglas
@@ -54,8 +82,9 @@ export function LocationMapPreview({ initialPosition = null, href = "/mapa", vie
   const status = image.status;
   const reintentoUsadoEn = useRef<string | null>(null);
   useEffect(() => {
-    // Mismo guard que la carga: sin tema resuelto la clave aun no es la definitiva.
-    if (!resolvedTheme) return;
+    // Mismo guard que la carga: sin tema resuelto (o sin el centro de la
+    // cookie) la clave aun no es la definitiva.
+    if (!resolvedTheme || pendiente) return;
     if (status === "ready") reintentoUsadoEn.current = null;
     const evaluar = (evento: EventoRecarga) => {
       const motivo = resolverRecarga({
@@ -86,24 +115,24 @@ export function LocationMapPreview({ initialPosition = null, href = "/mapa", vie
       window.removeEventListener("focus", volver);
       window.removeEventListener("online", red);
     };
-  }, [status, key, body, resolvedTheme]);
+  }, [status, key, body, resolvedTheme, pendiente]);
 
   const unavailable = previewNoDisponible(status, presupuestoRecargas.restantes());
   return (
-    <section aria-label={center ? "Vista previa de tu zona" : "Vista previa de México"} className="relative">
+    <section aria-label={conZona ? "Vista previa de tu zona" : "Vista previa de México"} className="relative">
       <Link href={href} prefetch={false} aria-label="Ver publicaciones en el mapa"
         className="relative block aspect-video w-full rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--fg)]">
         {/* Keep the provider's complete 16:9 image, including its attribution. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {image.url ? <img src={image.url} alt={center ? "Mapa de la ubicación elegida" : "Mapa de México"} width={640} height={360} className="block h-auto w-full rounded-3xl" /> : (
+        {image.url ? <img src={image.url} alt={conZona ? "Mapa de la ubicación elegida" : "Mapa de México"} width={640} height={360} className="block h-auto w-full rounded-3xl" /> : (
           <div className="absolute inset-0 rounded-3xl bg-[color:var(--card-2)] text-[color:var(--fg)]">
             <p role="status" className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-sm">
-            {unavailable ? "Vista previa no disponible" : center ? "Cargando tu zona…" : "México"}
+            {unavailable ? "Vista previa no disponible" : conZona ? "Cargando tu zona…" : "México"}
             </p>
           </div>
         )}
       </Link>
-      <div className="absolute left-3 top-3"><ZoneCard hayUbicacionEnServidor={!!center} positionOverride={center ?? null} resolveName={false} /></div>
+      <div className="absolute left-3 top-3"><ZoneCard hayUbicacionEnServidor={conZona} positionOverride={center ?? null} resolveName={false} /></div>
       {unavailable && <button type="button" onClick={() => { presupuestoRecargas.reponer(); setAttempt(value => value + 1); }} className="discovery-control absolute right-3 bottom-3 px-4 text-sm">Reintentar</button>}
     </section>
   );

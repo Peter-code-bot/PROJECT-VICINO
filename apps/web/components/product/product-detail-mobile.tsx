@@ -86,8 +86,6 @@ export function ProductDetailMobile({
             categoria={product.categoria}
             categoryName={categoryName}
             ubicacion={product.ubicacion}
-            sellerLat={seller.ubicacion_lat ?? null}
-            sellerLng={seller.ubicacion_lng ?? null}
           />
         </div>
 
