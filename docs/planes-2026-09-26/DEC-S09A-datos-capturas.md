@@ -4,7 +4,7 @@
 
 **Fuentes en Notion:** A l.55 (S09A-datos-capturas); C l.596-597 (A3-ficha-revision-A04, capturas campus); D l.1130,1140-1143 (S09-integracion, datos); F l.1559-1563 (S09A-categoria-universidad, datos); G l.1733-1736 (G-estudiantes-funcional, capturas)
 
-**Estado conciliado (26-sep ~23:30):** decision. En prod solo hay 1 credencial universitaria aprobada (Anáhuac). Capacitor carga prod, así que las capturas del iPhone salen de datos de prod.
+**Estado conciliado (26-sep ~23:30):** decision. En prod hay credenciales universitarias aprobadas (conteo y desglose por universidad en Notion). Capacitor carga prod, así que las capturas del iPhone salen de datos de prod.
 
 **Qué falta:** Elegir: (a) cuentas demo dedicadas en prod (dominio de prueba propio, credencial sintética aprobada, 6-10 publicaciones con fotos propias y retiro documentado), que requieren autorización de Pedro; o (b) capturas web desde staging con fixtures (e2e-campus-home ya los crea). También depende de LEGAL-nombres-universidades. Fecha propuesta: 27-sep.
 
@@ -49,7 +49,7 @@ Que Pedro y Javier elijan de dónde salen los datos de las capturas de App Store
 - Regresión: node scripts/staging/e2e-campus-home.mjs debe dar 11/11 y 'Fixtures restantes: 0' con la demo cargada. Después, demo-capturas.mjs estado debe dar los mismos conteos: el limpiar de staging.vicino.test no toca demo.vicino.test.
 - Build contra staging: dev-contra-staging.mjs --build, exit 0 y 200 en /, /?cats=universidad y /buscar?category=universidad en localhost:3100. Sin subida de Sentry en el log.
 - Mac: inicio de sesión y cromo nativo visibles en el Simulador (cápsula y barra de pestañas) sobre localhost. Antes de Archive, grep -c localhost apps/web/ios/App/App/capacitor.config.json = 0.
-- Smoke de solo lectura en prod con prodRead de lib.mjs: select count(*) from auth.users where email like '%@demo.vicino.test' = 0, y el conteo de seller_verification aprobadas con 'Credencial Universitaria' sigue siendo 1, igual que antes. Prueba que nada llegó a prod.
+- Smoke de solo lectura en prod con prodRead de lib.mjs: select count(*) from auth.users where email like '%@demo.vicino.test' = 0, y el conteo de seller_verification aprobadas con 'Credencial Universitaria' sigue igual que antes. Prueba que nada llegó a prod.
 - Limpieza: demo-capturas.mjs limpiar deja 0 usuarios @demo.vicino.test, 0 filas de seller_verification y 0 objetos de product-media bajo sus ids.
 
 ## Riesgos

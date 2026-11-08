@@ -23,10 +23,10 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 
 ## Hecho antes de la lista (26-sep)
 
-- [x] Play Store: la prueba cerrada tenía 0 verificadores porque las 12 listas
+- [x] Play Store: la prueba cerrada no llegaba a los verificadores porque las listas
       estaban en el segmento «Alpha» (sin versión) y el AAB 7 en «VICINO» (sin
       verificadores). AAB 8 / 1.7 enviado a revisión en «VICINO» con el Grupo de
-      Google `vicino-verificadores@googlegroups.com` (12 miembros).
+      Google `vicino-verificadores@googlegroups.com` (miembros: conteo en Notion).
 - [x] `4352bba` versionCode 8 / 1.7 (solo `build.gradle`).
 - [~] `9d03f7a` `assetlinks.json` con la huella de la clave de firma de Play.
       En código; llega a producción cuando se levante la retención.
@@ -96,7 +96,7 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
         (`increment_unread_count`, `unhide_chat_on_new_message`) solo tocan
         `no_leidos_*`, `oculto_para_*` y `updated_at`: S04 las vuelve a
         conceder, así que el envío de mensajes no se rompe.
-      - Volumen: 7 chats, 2 ventas, 0 pendientes.
+      - Volumen de chats, ventas y pendientes: corte de datos de producción en Notion.
 - [x] Compatibilidad: el cliente nuevo solo escribe directo `status/cancelled_*`
       (cancelar) y `oculto_para_*/deleted_at_*` (ocultar chat), que S04 conserva.
       El cliente viejo de producción inserta en `sale_confirmations` y
@@ -175,7 +175,7 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       nativa (CromoNativo) se desalineaba. `209caf7`.
 - [x] Producción: `e2e-header-fijo.mjs` **3/3** (Home scroll 1200, ficha 700,
       listado de Solicitudes: header en top 0 con sus acciones). El detalle de
-      una solicitud no se probó: el visitante no ve solicitudes abiertas.
+      una solicitud no se probó: hacía falta una solicitud abierta visible para el visitante.
 - [x] Detalle de una solicitud probado en staging (27-sep 13:25,
       `scripts/staging/e2e-solicitudes.mjs` **9/9**): con visitante y con sesión, tras
       bajar 600 px el header queda en top 0 (56 px) y la barra de la solicitud en 56 px,
@@ -196,8 +196,8 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
       vendedor general, estudiante sin compañeros, visitante). Fixtures 0.
 - [x] Producción (visitante): `/`, `/?cats=universidad`,
       `/buscar?category=universidad` 200; aviso "universidad verificada".
-- [ ] 🟡 Capturas: en prod hay **1** credencial universitaria aprobada
-      (Anáhuac). Faltan datos dedicados aptos para difusión — decisión de
+- [ ] 🟡 Capturas: en prod hay credenciales universitarias aprobadas
+      (conteo y desglose por universidad en Notion). Faltan datos dedicados aptos para difusión — decisión de
       Pedro/Javier (sin cuentas reales ni el seed excluido).
 - [ ] Más de 20 en Home: el carrusel enlaza "Ver todo" a
       `/buscar?category=universidad`, que pagina con el mismo ámbito.
@@ -262,14 +262,14 @@ PT09 es conciliación de antecedentes; PT10 no bloquea.
 - [x] `delete-account` desplegada **v14** el 27-sep (`5874496`, verify_jwt=true; humo 401
       sin sesión). Además la migración `20260927100000` (sin FK de `audit_log.actor_id`)
       aplicada en prod: borrar una cuenta que dejó filas en `audit_log` fallaba a medias.
-- [x] Dos 401 de pg_net el 26-sep 04:19 UTC: **no se reproducen** (27-sep 13:33, solo lectura).
+- [x] Los 401 de pg_net del 26-sep 04:19 UTC: **no se reproducen** (27-sep 13:33, solo lectura).
       Los 6 jobs de pg_cron `succeeded` en las últimas 24 h (expire-confirmations 4,
       purge-verification 24, appointment-reminders 48, restore-spatial-ref-sys 24,
       expire-purchase-requests 96, purga_community_post_quota 1) y `net._http_response`
-      19/19 en 200. La causa ya estaba en `docs/AUDITORIA-push-2026-09-26.md` §3.1:
+      todas en 200. La causa ya estaba en `docs/AUDITORIA-push-2026-09-26.md` §3.1:
       `notify_push()` (redefinida en Studio) llama a `send-push` SIN autorización, así
-      que cada venta o cita nueva deja un 401 de ruido. En esas 6 h no hubo ninguna,
-      por eso no aparece. Arreglo pendiente de firma (abajo, PT07): DROP de sus 2
+      que cada venta o cita nueva deja un 401 de ruido. Solo aparece si en esas 6 h
+      hubo alguna. Arreglo pendiente de firma (abajo, PT07): DROP de sus 2
       triggers y de la función.
 - [ ] PT09-deriva-permisos-rest: el plan exige RECREAR el staging (costo por hora y se
       pierde su estado sintético). Necesita el OK de Pedro antes de empezar.
@@ -317,7 +317,7 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
       cuenta que dejó filas en `audit_log` fallaba a medias (FK con SET NULL contra una
       tabla inmutable). `delete-account` v14 desplegada.
       - [ ] Cuenta rota `0186140a`: terminar de borrarla desde el Dashboard o reintentando
-            en la app, más sus 11 archivos (Pedro).
+            en la app, más sus archivos (Pedro).
 - [x] **Onboarding «Activa las notificaciones»** (`6b5fa5e`) con el diseño aprobado.
 - [x] **BUG-VERIF-IA** (inicio 27-sep ~01:35, cierre 27-sep 12:47; `0aeb2a5` + `962e358`):
       la nota de la IA ya no se presenta como si fuera de las fotos nuevas y nadie
@@ -342,8 +342,8 @@ Registro vivo en Notion (jornada 3de98e8a…) y DevLog `2026-09-26-noche-header-
       vacío y `/historial/review` redirigía a `/historial`. Ahora usa `product_id` de la
       venta (`apps/web/app/seller/ventas/page.tsx`).
 - [ ] **S08 H2 (bug, arreglo listo SIN APLICAR)**: los Rankings filtran por
-      `products_services.categoria_id`, que la app nunca escribe. En prod, 8 publicaciones
-      de la app (13-20 ago) están en NULL y no tienen ventas; cada venta futura de algo
+      `products_services.categoria_id`, que la app nunca escribe. En prod, publicaciones
+      de la app (13-20 ago) están en NULL (conteo y ventas en Notion); cada venta futura de algo
       publicado en la app quedaría fuera del ranking. Migración `20260927140000`
       (trigger que deriva `categoria_id` del slug, más backfill) en la rama
       `fix/ranking-categoria-id`; staging 4/4 con ROLLBACK. **Aplicarla en prod necesita
@@ -387,7 +387,7 @@ móvil 390x844. Build 56/56.
 - Staging: verificación IA 15/15 · S04 35/35 · chips 6/6 · campus 14/14 · chat-venta 9/9 ·
   cromo de modales 5/5 · palomita 7/7 · retorno de /vender 8/8 · favoritos 7/7 ·
   solicitudes 9/9 · S02-A 10/10 · S05 13/13 · filtros de Búsqueda 6/6.
-- Prod (solo lectura): header 2/3 (el 3.º es «SIN DATOS»: no hay solicitudes abiertas) ·
+- Prod (solo lectura): header 2/3 (el 3.º es «SIN DATOS»: el caso necesita una solicitud abierta) ·
   Villahermosa 3/3.
 - Unitarias: vigencia de la nota de IA 13/13 · filas de campus 6/6.
 - Ojo: `next dev` en Windows se reinició 3 veces por el umbral de memoria. Campus,
@@ -443,7 +443,7 @@ móvil 390x844. Build 56/56.
       `theme=light` y `theme=dark`, `Cache-Control: private, max-age=86400`, `nosniff`, y el
       cuerpo no contiene `apple-mapkit`, `signature` ni `teamId`. Id basura y pausada → 404
       `not_available`.
-- [x] Datos: 42/42 publicaciones `disponible` y visibles tienen `ubicacion_geo`; ninguna
+- [x] Datos: todas las publicaciones `disponible` y visibles tienen `ubicacion_geo` (conteo en Notion); ninguna
       tiene texto de zona sin punto. Hoy no hay ficha que caiga en `location_missing`.
 - Conclusión: el reporte original es compatible con el cliente viejo (antes de S05 pintaba
   «Mapa no disponible» ante cualquier fallo) o con un fallo pasajero. No hay bug activo.

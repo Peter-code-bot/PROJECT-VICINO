@@ -53,7 +53,7 @@ Que el modo campus de Home no se corte en silencio en 20 publicaciones (con Univ
 
 ## Riesgos
 
-- Pool de 150: con más de 150 publicaciones de una universidad el vacío falso vuelve a ser posible. Queda mitigado con la marca universityPoolTruncated y el enlace a /buscar, no eliminado. Hoy prod tiene 1 credencial universitaria aprobada.
+- Pool de 150: con más de 150 publicaciones de una universidad el vacío falso vuelve a ser posible. Queda mitigado con la marca universityPoolTruncated y el enlace a /buscar, no eliminado. El conteo de credenciales universitarias aprobadas hoy en prod está en Notion.
 - Carga de la semilla de Home: universityCarousels puede pasar de 20 a 150 tarjetas repartidas en filas de 20 como máximo. Se mide el JSON antes y después; si crece demasiado, se baja el pool o las filas.
 - Home agrupa por la categoría primaria (o el TEXT de respaldo) y /buscar filtra por el pivote, primarias y secundarias. 'Ver todo' puede mostrar más que la fila, igual que las filas generales. Una publicación antigua sin fila en product_categories sale en Home pero no en /buscar.
 - Seguridad: subcategory tiene que ESTRECHAR siempre. Se valida contra CATEGORIES y solo aplica con universityOnly. La prueba del visitante y la de otra universidad lo cubren.

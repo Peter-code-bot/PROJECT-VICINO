@@ -84,7 +84,7 @@ Hecho con la sesión real del seed contra la base de producción:
   con URL firmada desde el bucket privado. La ruta guardada es
   `<community_id>/<autor>/<uuid>.webp`, la convención nueva.
 - Borrar la publicación y **salir con el icono de la cabecera**: la comunidad
-  queda con 0 publicaciones, 1 miembro vivo, el contador cuadrado y viva.
+  queda con sus contadores de publicaciones y miembros cuadrados (conteo en Notion) y viva.
 - La cabecera de comunidad se ve como la pidió Pedro: globo negro sin texto ni
   borde, sin etiqueta «Archivada», y los iconos que corresponden al rol.
 - El nombre «Javier Rodríguez» se lee correcto en la barra lateral: la

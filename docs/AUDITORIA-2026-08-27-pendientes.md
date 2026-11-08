@@ -140,7 +140,7 @@ página.
   guarda hash, así que un archivo editado tras aplicarse es invisible para
   cualquier comprobación basada en versiones. El efecto acabó siendo inocuo.
 - **El tipo `Returns` del RPC del feed declara `precio: number`** y un anuncio
-  de cotización despausado devuelve `NULL`. Hay 3 así, todos pausados hoy. El
+  de cotización despausado devuelve `NULL`. Los anuncios así están hoy todos pausados (conteo en Notion). El
   código ya es defensivo en los dos consumidores (`a.precio == null ? …` y
   `precio: number | null`), así que no rompe — pero el tipo miente, y el codegen
   de Supabase no sabe expresar nulabilidad en el retorno de una función.
@@ -149,8 +149,8 @@ página.
   `.select('*')` sobre profiles en la app. Es la misma trampa que causó la saga
   de onboarding.
 - **`tiene_consentimiento_biometrico(p_user_id)`** deja a cualquier sesión
-  confirmar o negar un hecho sensible de un tercero. Hoy no hay filas que
-  filtrar.
+  confirmar o negar un hecho sensible de un tercero. Lo que filtraría depende
+  de las filas que haya (conteo en Notion).
 - **`get_booked_slots`** permite a un anónimo reconstruir la agenda de
   cualquier vendedor barriendo producto y fecha.
 - **`increment_product_view`** no tiene freno ni idempotencia: un bucle sube

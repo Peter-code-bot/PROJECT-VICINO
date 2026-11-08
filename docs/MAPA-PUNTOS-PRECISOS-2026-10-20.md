@@ -2,8 +2,8 @@
 
 Para Alejandro y Pedro. Pedro reportó, con captura desde su iPhone en `/mapa`
 (zona San Bernardino Tlaxcalancingo), que el mapa no refleja dónde está cada
-publicación: todo lo de la zona de la Anáhuac aparece en **un solo número «12»**,
-el grupo «2» no está donde esa gente publicó, y el usuario no obtiene la guía
+publicación: todo lo de la zona de la Anáhuac aparece en **un solo número**,
+otro grupo no está donde esa gente publicó, y el usuario no obtiene la guía
 visual que el mapa promete.
 
 Rama: `fix/mapa-puntos-publicaciones-20261020`. Estado al escribir: **plan +
@@ -21,8 +21,8 @@ celdas → API → cliente que reagrupa → marcador en MapKit.
    `round(lng, 2)`. Una celda de 0.01° mide **~1.1 km de norte a sur y ~1.05 km
    de este a oeste** en Puebla. Toda publicación dentro de ese kilómetro cae en
    el **mismo nodo** de la rejilla (no en su centro ni en la publicación: en la
-   esquina redondeada). Por eso «12»: son todas las publicaciones del kilómetro
-   de la Anáhuac, de 10 vendedores distintos.
+   esquina redondeada). Por eso un solo número: son todas las publicaciones del
+   kilómetro de la Anáhuac, de vendedores distintos (conteo en Notion).
 2. **El RPC `search_map_publications_v2` cuenta por celdas de 0.01° y el cliente
    no puede bajar de ahí.** `x = round(lng·100)`, `y = round(lat·100)`; el
    cliente (`lib/geo/map-coverage.ts`) agrupa celdas en potencias de 2 del paso,
@@ -30,7 +30,7 @@ celdas → API → cliente que reagrupa → marcador en MapKit.
    más fino: la captura ya está en el nivel más detallado que existe.
 3. **El marcador se pinta en el promedio de los miembros.** Con una sola celda,
    el promedio es el propio nodo de la rejilla, que puede estar a **hasta
-   ~760 m** de cualquiera de sus publicaciones. Por eso el «2» «ni siquiera está
+   ~760 m** de cualquiera de sus publicaciones. Por eso el otro grupo «ni siquiera está
    ahí».
 4. No hay error de orden lat/lng ni de captura: `/vender` guarda el punto exacto
    que el vendedor elige (`ubicacion_geo`, privado). El problema es solo de
@@ -102,7 +102,7 @@ público), y uno aleatorio por consulta se promedia con varias consultas hasta
 recuperar la casa (es la razón escrita en `product-map-zone.ts`). El redondeo a
 una celda es la única promesa que no se puede revertir con más datos.
 
-**Lo que cambia para el usuario.** En la zona de la captura, las 12
+**Lo que cambia para el usuario.** En la zona de la captura, las
 publicaciones del kilómetro se reparten en sus manzanas (cada ~110 m un punto o
 un número pequeño). Dos vendedores a menos de ~100 m siguen compartiendo un
 número: es verdad y se muestra como tal. Al tocar un número se abre la lista
@@ -193,10 +193,11 @@ sus manzanas; los dos vendedores a menos de 60 m siguen compartiendo un «3».
 Migración aplicada con `scripts/apply-migration.mjs` (ledger `20261020150000`).
 Comprobado con consultas de solo lectura: v1, v2 y v3 existen una vez;
 `ubicacion_publica` sin SELECT para `anon` ni `authenticated`; v3 ejecutable
-solo con sesión; los dos índices presentes; las 56 publicaciones con punto
-tienen proyección. En el catálogo real (51 publicaciones visibles de 38
-vendedores): **12 celdas de 1 km → 38 celdas de 110 m**, y el grupo más grande
-baja de **12 a 7** publicaciones. Tipos regenerados en el mismo PR. El mapa
+solo con sesión; los dos índices presentes; todas las publicaciones con punto
+tienen proyección. En el catálogo real de publicaciones visibles,
+**las celdas de 1 km se reparten en más celdas de 110 m** y el grupo más grande
+**se reduce** (cifras de publicaciones, vendedores, celdas y grupo en Notion).
+Tipos regenerados en el mismo PR. El mapa
 sigue en ~1 km hasta que `VICINO_MAPA_RPC=v3` esté en Vercel (lo pone Pedro
 cuando el PR esté desplegado).
 

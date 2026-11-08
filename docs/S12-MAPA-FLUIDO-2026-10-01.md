@@ -120,12 +120,12 @@ Exit0, salida completa:
 PASS real national overview is complete, bounded and excludes eager publication cards
 PASS national publication keyset covers every eligible row without duplicates
 PASS one actual stable group has coherent counts and distinct sellers
-INFO local coverage: 8 public cells, 1 pages, 35 publications
+INFO local coverage: public cells, pages, publications [conteos en Notion]
 PASS local 50 km public cells page to completion in one consistent revision
 PASS real type/price/category filters retain their membership
 PASS an empty search returns zero counts without false points or cards
 PASS invalid, oversized, malformed and stale requests fail privately
-S11 HTTP: 7 PASS, 0 SKIP; 43 eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
+S11 HTTP: 7 PASS, 0 SKIP; [conteo en Notion] eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
 ```
 
 Chrome real393px, `node test-results/s12/local-browser.cjs` desde apps/web, exit0, salida completa:
@@ -138,7 +138,7 @@ PASS real map group loads actual cards and Escape restores focus
 S12 real browser: 3/3 PASS; anonymous Chrome 393px, no physical pinch/paint claim
 ```
 
-Capturas ignoradas `apps/web/test-results/s12/real-home-393.png` y `real-drawer-393.png` inspeccionadas visualmente: preview completo sin franjas y créditos conservados; grupo real35/28, crema y tarjetas grises separadas. La primera ejecución usó timeout5s, inferior al tiempo de red; falló esperando imagen, la siguiente esperando conteo. Se ajustó espera por condición30s y pasó sin mocks. No se cambió aplicación por estos tiempos.
+Capturas ignoradas `apps/web/test-results/s12/real-home-393.png` y `real-drawer-393.png` inspeccionadas visualmente: preview completo sin franjas y créditos conservados; grupo real (conteo en Notion), crema y tarjetas grises separadas. La primera ejecución usó timeout5s, inferior al tiempo de red; falló esperando imagen, la siguiente esperando conteo. Se ajustó espera por condición30s y pasó sin mocks. No se cambió aplicación por estos tiempos.
 
 `node scripts/smoke-produccion.mjs --url http://127.0.0.1:3000`, exit1, salida completa:
 
@@ -186,7 +186,7 @@ No se acredita regeneración completa. Se mantiene el pendiente de PAT/tipos ant
 {"state":"success","statuses":[{"context":"Vercel","description":"Deployment has completed","state":"success","target_url":"https://vercel.com/peters-projects-b65496a9/vicinomarket/6ieNoBPGmTqHFqRuMd2qNJMTMEhT"}]}
 ```
 
-Después del despliegue, API real con `$env:S11_BASE_URL = 'https://vicinomarket.com'` y el script HTTP indicado arriba: **exit0,7PASS,0SKIP,43elegibles,20lecturas**; misma salida completa de casos que el candidato local. `node scripts/smoke-produccion.mjs`, **exit0**, salida completa:
+Después del despliegue, API real con `$env:S11_BASE_URL = 'https://vicinomarket.com'` y el script HTTP indicado arriba: **exit0,7PASS,0SKIP,elegibles (conteo en Notion),20lecturas**; misma salida completa de casos que el candidato local. `node scripts/smoke-produccion.mjs`, **exit0**, salida completa:
 
 ```text
 OK     home con ubicacion: el feed trae productos
@@ -201,6 +201,6 @@ OK     los enlaces de vendedor no apuntan a la ruta muerta /tienda/
 8 comprobaciones, todas en verde.
 ```
 
-Browser de la app abierto en `/mapa`, datos reales43publicaciones31vendedores, sin panel permanente. El mecanismo de control rechaza click dentro del shadowroot cerrado de MapKit (`Cannot click content inside a closed shadow root`); esto es límite de automatización, no evidencia de fallo del marcador. Acceso por teclado a grupo disponible. Aceptación pinch/tap físico y pintado estable siguen pendientes.
+Browser de la app abierto en `/mapa`, datos reales de publicaciones y vendedores (conteo en Notion), sin panel permanente. El mecanismo de control rechaza click dentro del shadowroot cerrado de MapKit (`Cannot click content inside a closed shadow root`); esto es límite de automatización, no evidencia de fallo del marcador. Acceso por teclado a grupo disponible. Aceptación pinch/tap físico y pintado estable siguen pendientes.
 
 El recibo final de cualquier commit de cierre documental se registra en Notion; no cambia aplicación/DB. Reversión web: revert del commit S12 o rollback a `fec6ae4`, conservando DB aditiva instalada y contratos anteriores.
