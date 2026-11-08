@@ -127,6 +127,13 @@ export const adminSecurityRateLimit = makeLimiter("15 m", 10, "rl:admin-segurida
 // guarda un dia), y corta un rastreador que recorra el catalogo por ids.
 export const productMapRateLimit = makeLimiter("1 m", 20, "rl:product-map");
 
+// Clics a los enlaces externos de un negocio (Instagram, WhatsApp, Maps,
+// resenas). Lo llama cualquiera que vea una ficha, con o sin sesion, asi que
+// el identificador es el usuario si lo hay y la IP si no. 20 por minuto es
+// mas de lo que una persona toca en una ficha. El RPC pone ademas un freno
+// por negocio, porque es ejecutable con la llave anon sin pasar por aqui.
+export const clicEnlaceRateLimit = makeLimiter("1 m", 20, "rl:clic-enlace");
+
 // Reportes de contenido. Dos limitadores para dos abusos distintos.
 //
 // Por cuenta: un reporte de child_safety oculta el anuncio reportado al

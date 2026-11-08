@@ -1,8 +1,9 @@
-import { publicProfileName } from "@vicino/shared";
+import { publicProfileName, tieneEnlacesNegocio } from "@vicino/shared";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileHeader } from "../../perfil/profile-header";
 import { ProfileTabs } from "../../perfil/profile-tabs";
+import { EnlacesNegocio } from "@/components/profile/enlaces-negocio";
 import { OfertaLealtad } from "@/components/lealtad/oferta-lealtad";
 import { membresiaPropiaEn, programaActivoDe } from "@/lib/lealtad/datos";
 import * as Sentry from "@sentry/nextjs";
@@ -34,7 +35,7 @@ export default async function VendedorPage({ params }: Props) {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at"
+      "id, nombre, foto, bio, user_id, username, ubicacion, es_vendedor, seller_type, nombre_negocio, categoria_negocio, metodos_pago_aceptados, trust_level, trust_points, total_sales, average_rating, reviews_count, is_verified, created_at, instagram_usuario, whatsapp_numero, google_maps_url, google_resenas_url"
     )
     .eq("id", id)
     .single();
@@ -117,6 +118,22 @@ export default async function VendedorPage({ params }: Props) {
     .select("id", { count: "exact", head: true })
     .eq("follower_id", id);
 
+  // Resena de Google: se ofrece SOLO a quien ya le compro a este negocio (una
+  // venta completada entre los dos), nunca a cualquiera que pase. Es la regla
+  // de Google de no pedir resenas de forma selectiva ni a cambio de algo, y la
+  // de VICINO de que la resena de la compra se escribe dentro de VICINO. El
+  // dueno la ve igual, para comprobar que su enlace abre.
+  let puedeResenarEnGoogle = false;
+  if (publicProfile.google_resenas_url && currentUserId && currentUserId !== id) {
+    const { count: comprasAlNegocio } = await supabase
+      .from("sale_confirmations")
+      .select("id", { count: "exact", head: true })
+      .eq("buyer_id", currentUserId)
+      .eq("seller_id", id)
+      .eq("status", "completed");
+    puedeResenarEnGoogle = (comprasAlNegocio ?? 0) > 0;
+  }
+
   // Tarjeta de lealtad del negocio (solo si esta publicada; RLS filtra). Un
   // fallo aqui no tumba el perfil: se reporta y la seccion no se pinta.
   let programaLealtad = null;
@@ -143,6 +160,16 @@ export default async function VendedorPage({ params }: Props) {
         isFollowing={isFollowing}
         followersCount={followersCount ?? 0}
         followingCount={followingCount ?? 0}
+        enlacesNegocio={
+          publicProfile.es_vendedor && tieneEnlacesNegocio(publicProfile) ? (
+            <EnlacesNegocio
+              vendedorId={id}
+              enlaces={publicProfile}
+              esDueno={currentUserId === id}
+              mostrarResenasGoogle={puedeResenarEnGoogle}
+            />
+          ) : null
+        }
       />
       {programaLealtad ? (
         <OfertaLealtad

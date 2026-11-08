@@ -7,7 +7,19 @@ import { cookies } from "next/headers";
 import { COOKIE_DESTINO_ONBOARDING } from "@/lib/auth/acceso-invitado";
 import { destinoAutenticadoSeguro } from "@/lib/auth/destino-seguro";
 import { enforce, writeRateLimit } from "@/lib/rate-limit";
-import { updateProfileSchema, usernameSchema, cleanDisplayName } from "@vicino/shared";
+import {
+  updateProfileSchema,
+  usernameSchema,
+  cleanDisplayName,
+  enlacesNegocioSchema,
+} from "@vicino/shared";
+
+const CAMPOS_ENLACES_NEGOCIO = ["instagram_usuario", "whatsapp_numero", "google_maps_url", "google_resenas_url"] as const;
+
+function campoTexto(formData: FormData, nombre: string): string | null {
+  const valor = formData.get(nombre);
+  return typeof valor === "string" ? valor : null;
+}
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -50,6 +62,29 @@ export async function updateProfile(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
+  // Enlaces del negocio (Instagram, WhatsApp, Maps, resenas de Google). Se
+  // validan ANTES de escribir el perfil para no dejar un guardado a medias
+  // por un enlace mal escrito.
+  //
+  // Solo se tocan si (a) es vendedor y (b) el formulario que envio TRAE los
+  // campos. Lo segundo protege de un cliente viejo, abierto antes del deploy
+  // que agrego estos campos: sin ellos en el FormData, `get` daria null para
+  // los cuatro y el RPC los borraria. Si no es vendedor se conservan tal cual
+  // (misma regla que nombre_negocio al desactivar el modo vendedor) y la ficha
+  // no los muestra porque ya no es vendedor.
+  const traeEnlaces = CAMPOS_ENLACES_NEGOCIO.some((campo) => formData.has(campo));
+  const enlaces = es_vendedor && traeEnlaces
+    ? enlacesNegocioSchema.safeParse({
+        instagram_usuario: campoTexto(formData, "instagram_usuario"),
+        whatsapp_numero: campoTexto(formData, "whatsapp_numero"),
+        google_maps_url: campoTexto(formData, "google_maps_url"),
+        google_resenas_url: campoTexto(formData, "google_resenas_url"),
+      })
+    : null;
+  if (enlaces && !enlaces.success) {
+    return { error: enlaces.error.issues[0]?.message ?? "Revisa los enlaces de tu negocio" };
+  }
+
   // MP#07 Fase 2: profile update + product pause are atomic via RPC
   // `update_profile_and_pause_products`. The Postgres function runs in a
   // single transaction, so the divergent state (profile flipped but products
@@ -75,6 +110,41 @@ export async function updateProfile(formData: FormData) {
   });
 
   if (error) return { error: error.message };
+
+  // Segundo RPC y no un parametro mas del primero: ampliar la firma de
+  // update_profile_and_pause_products crearia una SOBRECARGA (PostgREST 300,
+  // ver feedback de migraciones que cambian la aridad), y los enlaces tienen
+  // sus propias reglas y sus propios mensajes. Si este falla, el perfil ya
+  // quedo guardado y se dice asi, igual que hace el formulario con el @.
+  if (enlaces?.success) {
+    const { error: errorEnlaces } = await supabase.rpc("actualizar_enlaces_negocio", {
+      // `?? undefined` por la misma razon que arriba: la clave se omite y
+      // Postgres aplica DEFAULT NULL, que aqui significa "quitar el enlace".
+      p_instagram_usuario: enlaces.data.instagram_usuario ?? undefined,
+      p_whatsapp_numero: enlaces.data.whatsapp_numero ?? undefined,
+      p_google_maps_url: enlaces.data.google_maps_url ?? undefined,
+      p_google_resenas_url: enlaces.data.google_resenas_url ?? undefined,
+    });
+    if (errorEnlaces) {
+      // El perfil SI quedo guardado: se revalida igual, o la interfaz seguiria
+      // ensenando el perfil viejo mientras el mensaje dice que se guardo.
+      await revalidatePath("/", "layout");
+      // 22023 (formato) y el 42501 de "activa el modo vendedor" traen su
+      // mensaje redactado desde la base y son del usuario, no fallos: no
+      // ensucian Sentry. Un 42501 de otra cosa (permiso de verdad) si es fallo.
+      const delUsuario =
+        errorEnlaces.code === "22023" ||
+        (errorEnlaces.code === "42501" && errorEnlaces.message.startsWith("Activa el modo vendedor"));
+      if (!delUsuario) {
+        Sentry.captureException(errorEnlaces, {
+          tags: { action: "updateProfile", step: "enlaces_negocio" },
+          contexts: { supabase: { code: errorEnlaces.code } },
+        });
+      }
+      const detalle = delUsuario ? errorEnlaces.message : "No se pudieron guardar. Intenta de nuevo.";
+      return { error: `Tu perfil se guardó, pero los enlaces de tu negocio no. ${detalle}` };
+    }
+  }
 
   await revalidatePath("/", "layout");
   return { success: true };

@@ -353,6 +353,38 @@ export type Database = {
           },
         ]
       }
+      clics_enlaces_negocio: {
+        Row: {
+          canal: string
+          con_sesion: boolean
+          created_at: string
+          id: string
+          vendedor_id: string
+        }
+        Insert: {
+          canal: string
+          con_sesion?: boolean
+          created_at?: string
+          id?: string
+          vendedor_id: string
+        }
+        Update: {
+          canal?: string
+          con_sesion?: boolean
+          created_at?: string
+          id?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clics_enlaces_negocio_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           archived_at: string | null
@@ -1814,8 +1846,11 @@ export type Database = {
           es_vendedor: boolean | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
@@ -1845,6 +1880,7 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
         }
         Insert: {
           alta_vendedor_paso?: string | null
@@ -1860,8 +1896,11 @@ export type Database = {
           es_vendedor?: boolean | null
           fcm_token?: string | null
           foto?: string | null
+          google_maps_url?: string | null
+          google_resenas_url?: string | null
           has_seen_onboarding?: boolean
           id: string
+          instagram_usuario?: string | null
           intereses?: string[] | null
           is_hidden?: boolean
           is_verified?: boolean | null
@@ -1891,6 +1930,7 @@ export type Database = {
           user_id?: string | null
           username: string
           verified_at?: string | null
+          whatsapp_numero?: string | null
         }
         Update: {
           alta_vendedor_paso?: string | null
@@ -1906,8 +1946,11 @@ export type Database = {
           es_vendedor?: boolean | null
           fcm_token?: string | null
           foto?: string | null
+          google_maps_url?: string | null
+          google_resenas_url?: string | null
           has_seen_onboarding?: boolean
           id?: string
+          instagram_usuario?: string | null
           intereses?: string[] | null
           is_hidden?: boolean
           is_verified?: boolean | null
@@ -1937,6 +1980,7 @@ export type Database = {
           user_id?: string | null
           username?: string
           verified_at?: string | null
+          whatsapp_numero?: string | null
         }
         Relationships: []
       }
@@ -3109,6 +3153,15 @@ export type Database = {
           p_metodos_pago_aceptados?: string
           p_nombre_negocio?: string
           p_seller_type?: string
+        }
+        Returns: Json
+      }
+      actualizar_enlaces_negocio: {
+        Args: {
+          p_google_maps_url?: string
+          p_google_resenas_url?: string
+          p_instagram_usuario?: string
+          p_whatsapp_numero?: string
         }
         Returns: Json
       }
@@ -4301,6 +4354,10 @@ export type Database = {
           documento: string
           version: string
         }[]
+      }
+      registrar_clic_enlace_negocio: {
+        Args: { p_canal: string; p_vendedor_id: string }
+        Returns: boolean
       }
       registrar_consentimiento_biometrico: {
         Args: { p_aviso_version: string; p_ip?: string; p_user_agent?: string }

@@ -1,7 +1,9 @@
 "use client";
 import type { ComponentProps } from "react";
+import { tieneEnlacesNegocio } from "@vicino/shared";
 import { InvitacionVendedor } from "./invitacion-vendedor";
 import { ProfileHeader } from "./profile-header";
+import { EnlacesNegocio } from "@/components/profile/enlaces-negocio";
 import { ProfileTabs, ProfileProducts, ProfileReviews, type ProfileTabsProps } from "./profile-tabs";
 import { SkeletonPerfil } from "@/components/shared/loading-skeletons";
 
@@ -73,6 +75,13 @@ export function ProfileSession({ seeds }: ProfileSessionProps) {
         purchaseCount={0}
         followersCount={counts.data?.followers ?? <EnEspera dato={counts} label="seguidores" />}
         followingCount={counts.data?.following ?? <EnEspera dato={counts} label="siguiendo" />}
+        // El dueno ve sus enlaces tal como los vera un comprador (y la resena
+        // de Google, para comprobar que abre); sus clics no se cuentan.
+        enlacesNegocio={
+          profile.es_vendedor && tieneEnlacesNegocio(profile) ? (
+            <EnlacesNegocio vendedorId={profile.id} enlaces={profile} esDueno mostrarResenasGoogle />
+          ) : null
+        }
       />
       {/* La cuarta puerta al alta de vendedor, y la unica que no depende de
           que la persona se tropiece con ella. Las otras tres se cruzan por
