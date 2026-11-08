@@ -1,4 +1,4 @@
-> **Cifras de producción: van en Notion, nunca en este repo (es público).** Aquí se anota qué se comprobó y dónde está la evidencia, sin conteos reales de usuarios, perfiles, publicaciones, mensajes, ventas, reseñas ni similares.
+> **Cifras de producción: van en Notion, nunca en este repo (es público).** Aquí se anota qué se comprobó y dónde está la evidencia, sin conteos reales de usuarios, perfiles, publicaciones, mensajes, ventas, reseñas ni similares. Tampoco van nombres, tiendas ni IDs de usuarios reales.
 
 ## 23-oct-2026 — VENTA-CHAT-01: textos breves y tarjeta única
 
@@ -242,7 +242,7 @@
 - `9934cf8` Volumen (la mayoría de los eventos no eran de nivel error; cifras en el reporte de Sentry): el aviso de rate-limit iba a Sentry una vez por isolate y el nivel warning no lo saca del total ni de la cuota. Queda solo en logs; el guard de build ya rompe producción sin Upstash. Hipótesis a cerrar en Discover (`!level:error`, agrupado por título).
 - Arnés nuevo `apps/web/lib/pruebas/` para probar el archivo real dentro de la suite de apps/web. Suite 96/96, tsc, eslint de lo tocado y `pnpm build` (58/58) con exit 0.
 - Revisión de lo anterior, dos arreglos con prueba en rojo antes: `f38b4a9` el layout ya no se salta el registro legal cuando la consulta del perfil FALLA (solo cuando sale bien con 0 filas, vía `maybeSingle`), y ese fallo va a Sentry con tags `layout=marketplace, query=profiles`; con `efff5e3` un 42501 de una columna sin GRANT dejaba sin registro a todos en silencio. `18dd13e` el registro del service worker solo calla el `Error("Rejected")` exacto de GoogleOther y el AbortError; el resto (404, redirección, MIME) se relanza y vuelve a llegar a Sentry, también en la app de Android, donde `captureException` de `@sentry/nextjs` se perdería. Suite 103/103, tsc, eslint y `pnpm build` (58/58) con exit 0.
-- Pendiente de Pedro: terminar de borrar la cuenta 0186140a (Auth y sus archivos); opcional, Inbound Filter de web crawlers en Sentry.
+- Pendiente de Pedro: terminar de borrar la cuenta que quedó a medias (Auth y sus archivos); opcional, Inbound Filter de web crawlers en Sentry.
 
 ## 04-oct-2026 — S02 publicado a master; Redis y permisos de mapa verificados
 
@@ -273,7 +273,7 @@
 
 ## 2026-10-04 — MP03-D: continuación 10:41:31 CDMX
 
-- PR #51 / nombre de tienda integrado y publicado el 03-oct-2026 22:36:10 CDMX, master a2a2d708c8aaada26a56f5533d71c737661b9324. Vercel Production CP7axQxXAXvtu1VnmpgzNKRA76AU SUCCESS y UI real Creed en Home/detalle/perfil. NT01–NT04 con cuentas dedicadas y teléfonos todavía PENDIENTE.
+- PR #51 / nombre de tienda integrado y publicado el 03-oct-2026 22:36:10 CDMX, master a2a2d708c8aaada26a56f5533d71c737661b9324. Vercel Production CP7axQxXAXvtu1VnmpgzNKRA76AU SUCCESS y UI real de una tienda activa en Home/detalle/perfil. NT01–NT04 con cuentas dedicadas y teléfonos todavía PENDIENTE.
 - Trabajo de Antigravity 9cd3048/e5ac753 revisado y preservado. Auditoría alta corregida sin cambiar umbral; publicado con NT. CI avisó que los tipos completos del esquema están desfasados: MP11 permanece abierto (corrección de etiqueta; MP07 es Apple/APNs/FCM).
 - MP03-D implementado en commit local 3a753d1: Home Solicitudes/Comunidades públicas con DTO limitado; detalles, filtros, Mis comunidades y acciones van a login con contexto seguro. Retorno de logo Home preserva feed y scroll. Sin efectos automáticos ni datos de perfil/contacto/geografía/media en RPC; redacción acotada de formatos comunes de contacto/ubicación en texto libre.
 - Migración 20261004041500 aplicada junto con ledger en transacción única, solo service_role; MD5LF6dc531f917577da4701e7fec7f9767b3. Ensayo ROLLBACK y permisos/PostGIS reales comprobados. Corte de datos de producción en Notion; no fabricar ejemplos ni editar cuentas reales.
@@ -287,11 +287,11 @@
 ## 2026-10-03 — continuación NT y revisión de Antigravity
 
 - **Codex, familia GPT-6.** Reanudación real: 22:00:27 CDMX tras interrupción del corte de 17:48; no se cuenta el intervalo como trabajo continuo. Implementación original `515632b` conservada. Los cortes siguientes son historia.
-- Supabase VICINO/main `oxxdkwywprkfghhbnoto` confirmado por SQL Editor autenticado: Alex Cabrera, tienda activa/business, nombre Creed. CLI administrativa sigue HTTP401. Producción tiene 15 funciones vigentes; `notify_new_message` se retiró intencionalmente en mayo. El emisor desplegado despacha mensajes a Edge con título genérico; se conserva intacto.
+- Supabase VICINO/main `oxxdkwywprkfghhbnoto` confirmado por SQL Editor autenticado: una cuenta real con tienda activa/business y nombre comercial. CLI administrativa sigue HTTP401. Producción tiene 15 funciones vigentes; `notify_new_message` se retiró intencionalmente en mayo. El emisor desplegado despacha mensajes a Edge con título genérico; se conserva intacto.
 - Migración `20261003213000` aplicada y registrada en la misma transacción tras dos ensayos con ROLLBACK. Guardas de hashes/firmas, atributos de funciones, ACL/RLS/policies/triggers y emisor actual pasaron. Sin DML de cuentas. Evidencia contrastada 22:22:22 CDMX: source registrado coincide exactamente al normalizar CRLF del portapapeles a LF; SHA256 `8cd11e0ebc8ee2a1a61f9f0ab984b8f0b473a3d4459cbaa86c1648f565f6435b`. MD5 raw ledger `e7cde7901b745abf81eccb6ed63b9ff6`, normalizado LF `af5c536b69e2960c523415e1e4f5979c`.
 - Corregida búsqueda sin ubicación que omitía campos de tienda: tres regresiones ejecutan SearchPage y ProductCard reales con proyección de datos. SQL maneja trim exacto JS, formato multiline, aliases y retiro CREATE/DROP. Suite identidad 11/11 más ranking final 1/1, búsqueda 3/3, catálogo 6/6, historial 12/12; PostGIS/dispositivos no acreditados por PGlite.
 - Revisión de Antigravity: commits `9cd3048`/`e5ac753` importados exclusivamente como `7b85a5a`/`afc904e`, sin traer S02 al PR51. Prototipo anterior conservado en stash dirigido. Instalación congelada, audit high (0 altas/críticas, una moderada), glob 62/62, tipos web/shared y build 57/57 aprobados. Lint secuencial exit0/149 warnings; intento concurrente con build falló ENOENT de `public/sw.js`, evidencia conservada.
-- Nueva base remota `a7262ab` incorpora cuatro commits de Android/Sentry/mapa; conciliación y controles del candidato final pendientes. PR #51 aún en borrador; push, CI, integración y producción de aplicación no acreditados en este corte. Aceptación NT01–NT04 y Android/iPhone siguen pendientes; no se fabrica evidencia modificando Alex/Creed.
+- Nueva base remota `a7262ab` incorpora cuatro commits de Android/Sentry/mapa; conciliación y controles del candidato final pendientes. PR #51 aún en borrador; push, CI, integración y producción de aplicación no acreditados en este corte. Aceptación NT01–NT04 y Android/iPhone siguen pendientes; no se fabrica evidencia modificando esa cuenta real.
 - MP03-D solicitado por Javier: previews nacionales de solicitudes/comunidades para invitados, clic → login con next seguro. Implementación y pruebas en checkout REGISTRO separado; no cambia el alcance de este PR. [Plan](https://app.notion.com/p/3de98e8a0cfa81cc812ef86a0ca65263), [DevLog](https://app.notion.com/p/3e898e8a0cfa8102bb65d911a5a284d9), [Tests](https://app.notion.com/p/3ea98e8a0cfa8124a5cee689a2345b26).
 
 ## 2026-10-03 — PLAN-20261003-NOMBRE-TIENDA: implementación local
