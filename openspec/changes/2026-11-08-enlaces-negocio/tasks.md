@@ -61,7 +61,8 @@
 - [x] T-37 `pnpm type-check` en `packages/shared` y `apps/web`: limpio. ESLint de los
       archivos tocados: sin errores (2 avisos previos en `profile-header.tsx`, ajenos).
       `pnpm build` del web en verde sobre la primera iteracion (T-38 lo repite al final).
-- [ ] T-38 `pnpm build` local antes del push (regla del repo; pide 8 GB de heap).
+- [x] T-38 `pnpm build` local en verde sobre la version final (2cf9862). Repetir antes
+      del push si la rama vuelve a cambiar (regla del repo; pide 8 GB de heap).
 - [x] T-39 Revision adversarial, dos rondas. Ronda 1 (revisores de codigo y seguridad):
       0 criticos; corregidos lista cerrada de hosts y `..` en Maps, revalidacion aunque
       falle el segundo RPC, conteo con `count`, purga y topes, `<nav>`, clic central, host
