@@ -40,10 +40,24 @@ interface ProfileHeaderProps {
     reviews_count: number | null;
     is_verified: boolean | null;
     created_at: string | null;
+    // Enlaces externos del negocio (migracion 20261108120000). Opcionales en
+    // el tipo porque la cabecera no los pinta: los recibe ya armados en
+    // `enlacesNegocio`, y las paginas que no los piden en su SELECT siguen
+    // compilando.
+    instagram_usuario?: string | null;
+    whatsapp_numero?: string | null;
+    google_maps_url?: string | null;
+    google_resenas_url?: string | null;
   } | null;
   productCount: ReactNode;
   purchaseCount: number;
   isPublic?: boolean;
+  /**
+   * Fila de botones a Instagram, WhatsApp, Google Maps y resenas de Google.
+   * La arma la pagina y no la cabecera, porque solo la pagina sabe si quien
+   * mira es el dueno y si ya le compro (de eso depende ofrecer la resena).
+   */
+  enlacesNegocio?: ReactNode;
   /** Id del usuario autenticado. Se usa para esconder el botón de reportar
    *  cuando el perfil mostrado es el del propio usuario. */
   currentUserId?: string | null;
@@ -61,6 +75,7 @@ export function ProfileHeader({
   isFollowing = false,
   followersCount = 0,
   followingCount = 0,
+  enlacesNegocio = null,
 }: ProfileHeaderProps) {
 
   const displayName = publicProfileName(profile);
@@ -182,6 +197,9 @@ export function ProfileHeader({
           {profile.ubicacion}
         </div>
       )}
+
+      {/* Contacto y redes del negocio (null cuando no hay ninguno configurado) */}
+      {enlacesNegocio}
 
 
 

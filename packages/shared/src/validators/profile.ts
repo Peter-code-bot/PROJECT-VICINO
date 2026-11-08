@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  normalizarNumeroWhatsApp,
+  normalizarUrlGoogleMaps,
+  normalizarUrlResenasGoogle,
+  normalizarUsuarioInstagram,
+} from "../utils/enlaces-negocio";
 
 export const updateProfileSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio").max(100),
@@ -57,6 +63,54 @@ export const sellerOnboardingSchema = z.object({
   metodos_pago_aceptados: z.string().min(1, "Indica cómo aceptas pagos").max(500),
 });
 
+/**
+ * Un campo de enlace del negocio: lo que la persona escribio (con @, con URL
+ * completa, con espacios) se LIMPIA aqui y sale ya en la forma que guarda la
+ * base, o falla con el mensaje de su campo. Vacio es null: el formulario manda
+ * los cuatro campos siempre, y vacio significa "ya no lo muestres".
+ *
+ * El limite de 600 solo corta pegados absurdos antes de normalizar; los
+ * limites reales (30 del usuario, 500 y 300 de las URL) los aplica cada
+ * normalizador, igual que los CHECK de la migracion 20261108120000.
+ */
+function campoEnlaceNegocio(normalizar: (valor: string) => string | null, mensaje: string) {
+  return z
+    .string()
+    .max(600, mensaje)
+    .nullable()
+    .optional()
+    .transform((valor, ctx) => {
+      if (valor === null || valor === undefined || valor.trim() === "") return null;
+      const normalizado = normalizar(valor);
+      if (normalizado === null) {
+        ctx.addIssue({ code: "custom", message: mensaje });
+        return z.NEVER;
+      }
+      return normalizado;
+    });
+}
+
+export const enlacesNegocioSchema = z.object({
+  instagram_usuario: campoEnlaceNegocio(
+    normalizarUsuarioInstagram,
+    "El usuario de Instagram solo admite letras, números, puntos y guion bajo (máximo 30).",
+  ),
+  whatsapp_numero: campoEnlaceNegocio(
+    normalizarNumeroWhatsApp,
+    "Escribe el WhatsApp con lada de país y solo dígitos, por ejemplo 52 222 123 4567.",
+  ),
+  google_maps_url: campoEnlaceNegocio(
+    normalizarUrlGoogleMaps,
+    "El enlace de Google Maps debe ser un enlace de Google Maps (por ejemplo maps.app.goo.gl/…).",
+  ),
+  google_resenas_url: campoEnlaceNegocio(
+    normalizarUrlResenasGoogle,
+    "El enlace de reseñas debe ser el que genera Google en tu Perfil de Negocio (g.page/r/…/review).",
+  ),
+});
+
 export type Username = z.infer<typeof usernameSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type SellerOnboardingInput = z.infer<typeof sellerOnboardingSchema>;
+export type EnlacesNegocioInput = z.input<typeof enlacesNegocioSchema>;
+export type EnlacesNegocioNormalizados = z.output<typeof enlacesNegocioSchema>;

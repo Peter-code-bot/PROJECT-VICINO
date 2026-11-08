@@ -51,6 +51,10 @@ interface ProfileFormProps {
     trust_level: string;
     user_id: string | null;
     username?: string | null;
+    instagram_usuario?: string | null;
+    whatsapp_numero?: string | null;
+    google_maps_url?: string | null;
+    google_resenas_url?: string | null;
   } | null;
   /**
    * Phase 9: number of products with `estatus='disponible'` for this user. Used
@@ -369,6 +373,88 @@ export function ProfileForm({
               />
             </div>
 
+            <hr className="border-border/10" />
+
+            {/* Enlaces externos del negocio. Son campos de texto libre y no
+                type="url" a proposito: la gente pega "maps.app.goo.gl/x" sin
+                https o "@mitienda", y el navegador los rechazaria antes de que
+                el servidor pudiera limpiarlos (enlacesNegocioSchema). Vacio
+                significa "quitar": el servidor recibe los cuatro siempre. */}
+            <div>
+              <span className="block text-[13px] text-muted-foreground">
+                Contacto y redes del negocio
+              </span>
+              <p className="mt-0.5 mb-1 text-[11px] text-muted-foreground">
+                Opcional. Aparecen como botones en tu perfil público. Pon solo lo que ya sea público.
+              </p>
+
+              <FieldRow label="Instagram" htmlFor="instagram_usuario" hint="Tu usuario, con o sin @">
+                <input
+                  id="instagram_usuario"
+                  name="instagram_usuario"
+                  type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={100}
+                  defaultValue={profile?.instagram_usuario ?? ""}
+                  placeholder="mitienda.puebla"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+
+              <FieldRow label="WhatsApp" htmlFor="whatsapp_numero" hint="Con lada de país: 52 y luego tus 10 dígitos (12 en total). Sin lada no se guarda.">
+                <input
+                  id="whatsapp_numero"
+                  name="whatsapp_numero"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  maxLength={30}
+                  defaultValue={profile?.whatsapp_numero ?? ""}
+                  placeholder="52 222 123 4567"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+
+              <FieldRow label="Google Maps" htmlFor="google_maps_url" hint="Enlace de tu ficha o del punto que quieras compartir (Compartir → Copiar enlace)">
+                <input
+                  id="google_maps_url"
+                  name="google_maps_url"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={500}
+                  defaultValue={profile?.google_maps_url ?? ""}
+                  placeholder="https://maps.app.goo.gl/…"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+
+              <FieldRow
+                label="Reseñas Google"
+                htmlFor="google_resenas_url"
+                hint="El enlace que te da Google en tu Perfil de Negocio (Pedir reseñas). Solo se ofrece a quien ya te compró; nunca a cambio de un premio."
+                last
+              >
+                <input
+                  id="google_resenas_url"
+                  name="google_resenas_url"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={300}
+                  defaultValue={profile?.google_resenas_url ?? ""}
+                  placeholder="https://g.page/r/…/review"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+            </div>
+
             <div className="pt-2">
               <Link
                 href="/seller/verificacion"
@@ -499,14 +585,20 @@ export function ProfileForm({
               )}
               <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
+              <li className="list-disc">
+                Se quitan tus enlaces de contacto (Instagram, WhatsApp, Google Maps y reseñas):
+                son públicos, y así nadie los ve mientras no vendas. Tendrás que volver a ponerlos.
+              </li>
               <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
             </ul>
             {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
                 desactivar ponia a NULL el nombre del negocio, su descripcion y
                 los metodos de pago, y este mismo recuadro decia "podras
-                reactivarlos", dando a entender que se recuperaba todo. */}
+                reactivarlos", dando a entender que se recuperaba todo. Los
+                enlaces de contacto son la excepcion deliberada (20261108120000):
+                se quitan porque son columnas publicas. */}
             <p className="pt-1">
-              No se borra nada: el nombre de tu negocio, su descripción y tus métodos
+              Lo demás no se borra: el nombre de tu negocio, su descripción y tus métodos
               de pago se guardan, y vuelven tal cual si lo reactivas.
             </p>
           </div>
