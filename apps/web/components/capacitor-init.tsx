@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { OAUTH_DEEP_LINK_CALLBACK, FCM_TOKEN_DEEP_LINK_PREFIX } from "@/lib/auth/deep-link-constants";
+import { destinoDeEnlace } from "@/lib/navigation/destino-enlace";
 
 /** Enlace de arranque ya atendido en esta sesion del WebView (ver getLaunchUrl). */
 const LAUNCH_URL_CONSUMIDA = "vicino:launch-url-consumida";
@@ -159,12 +160,11 @@ export function CapacitorInit() {
         ) return;
         
         try {
-          const u = new URL(url);
-          // Include search and hash. Even if path is "/", if there are search params (like ?code=), we must navigate.
-          const fullPath = `${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
-          if (fullPath && fullPath !== "/") {
-            window.location.href = fullPath || "/";
-          }
+          // Ruta + query + hash completos: con la app en /perfil, un enlace a
+          // /?feed=solicitudes lleva ahi y no a /perfil?feed=solicitudes. null
+          // = no navegar (raiz sin query, URL ilegible o //otro-host).
+          const fullPath = destinoDeEnlace(url);
+          if (fullPath) window.location.href = fullPath;
         } catch {}
       });
       if (state.cancelled) {
@@ -183,8 +183,8 @@ export function CapacitorInit() {
         !launchUrl.url.startsWith("https://vicinomarket.com/auth/callback")
       ) {
         try {
-          const u = new URL(launchUrl.url);
-          const fullPath = `${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
+          // Misma regla que con la app abierta (lib/navigation/destino-enlace.ts).
+          const fullPath = destinoDeEnlace(launchUrl.url);
           const actual = `${window.location.pathname}${window.location.search}${window.location.hash}`;
           // getLaunchUrl() devuelve el MISMO enlace despues de cada recarga, y
           // location.href recarga: sin estas dos guardas, abrir la app en frio
@@ -197,10 +197,9 @@ export function CapacitorInit() {
             yaConsumido = sessionStorage.getItem(LAUNCH_URL_CONSUMIDA) === launchUrl.url;
             sessionStorage.setItem(LAUNCH_URL_CONSUMIDA, launchUrl.url);
           } catch {}
-          if (!yaConsumido && fullPath && fullPath !== "/" && fullPath !== actual) {
+          if (!yaConsumido && fullPath && fullPath !== actual) {
             // Navegacion completa a proposito (como antes de cc385bc): corre en
             // el arranque, fuera de cualquier handler con router disponible.
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = fullPath;
           }
         } catch {}

@@ -138,6 +138,7 @@ Conteo: 21 hecho, 50 pendiente, 19 decision, 4 bloqueado, 14 parcial, 4 informat
 - **HECHO-AASA-assetlinks.** Dice "Verificado ahora por lectura pública", pero el Registro l.66 y PENDIENTES:238-239 dicen que el clasificador bloqueó esa lectura. No hay salida guardada: status, content-type, hash y hora.
   - Hasta que se guarde en PENDIENTES o en el D01, debe quedar como "verificado por subagente, sin acta".
   - El 308 de www no es opcional: App.entitlements declara `applinks:www.vicinomarket.com` y Apple no sigue redirecciones.
+    - *Nota del 7-nov-2026.* El CDN de Apple sí entregaba el AASA de www siguiendo el 308 (`Apple-From` listaba la URL de www y la del apex); Google sí lo rechaza (`ERROR_CODE_REDIRECT`). Lo vio el diagnóstico de ese día; no se repitió al escribir esta nota. Apple documenta que no debe haber redirección, así que no conviene depender de eso. Arreglo y orden: `docs/APP-LINKS-WWW-2026-11-07.md`.
 - **HECHO-iOS-piloto-testflight.** f61dbb3 (autor "Alumnos") solo toca 12 líneas del `project.pbxproj` (sube la versión). Que la 1.1 (6) se subió a TestFlight solo lo dice el mensaje del commit, y el traspaso l.15 lo llama "reportado".
   - No hay ID del build en ASC ni estado de procesamiento. Debe quedar "reportado; falta confirmarlo en ASC", dentro de ASC-estado-frontera.
 - **HECHO-old-publicar-video.** Mete como hecho H52 (187f976), que la página padre marca "🔴 SIN VALIDAR EN PRODUCCIÓN" (bugs3 l.52), con riesgo conocido de autoPlay en WKWebView.
