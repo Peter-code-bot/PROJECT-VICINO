@@ -8,15 +8,15 @@
 -- mayúscula caía como carácter no permitido y se borraba. El LOWER de afuera
 -- llegaba tarde, cuando ya no quedaba nada que pasar a minúsculas.
 --
---   "Aros de Sandía"  ->  ros-de-andia      (se comió la A y la S)
+--   "Pan de Elote"    ->  an-de-lote        (se comió la P y la E)
 --
 -- EL FIX: LOWER va adentro, antes del regexp, para que cuando la clase corra ya
 -- no existan mayúsculas que borrar. Se agrega además el guard de base_slug
 -- vacío: un título sin ningún carácter latino (emoji, cirílico) dejaba la base
 -- en blanco y el slug salía empezando por guion.
 --
--- Los 13 listings que ya existían con el slug roto se corrigieron por backfill
--- manual en la misma sesión, no hay nada que reparar aquí.
+-- Los listings que ya existían con el slug roto se corrigieron por backfill
+-- manual en la misma sesión (conteo en Notion), no hay nada que reparar aquí.
 --
 -- ALCANCE DEL TRIGGER: set_product_slug es BEFORE INSERT únicamente. Editar el
 -- título de una publicación NO regenera su slug — el slug queda invariante de

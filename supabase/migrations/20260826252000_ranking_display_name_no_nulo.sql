@@ -1,13 +1,13 @@
 -- El ranking mostraria "Vendedor" para TODOS en cuanto tuviera datos.
 --
 -- get_ranking_hiperlocal devuelve profiles.display_name, y esa columna esta
--- NULL en las 11 filas de produccion: nunca existio camino que la escribiera.
+-- NULL en todas las filas de produccion: nunca existio camino que la escribiera.
 -- Los tres componentes que la pintan hacen `display_name ?? "Vendedor"`
 -- (components/rankings/podio-ranking.tsx, ranking-list.tsx y
 -- rankings-home-strip.tsx), asi que un podio de tres puestos ensenaria
 -- "Vendedor", "Vendedor" y "Vendedor".
 --
--- Hoy no se ve porque seller_rankings esta vacia (0 filas). Es la peor clase
+-- No se ve hasta que seller_rankings tenga datos (su estado, en Notion). Es la peor clase
 -- de fallo: espera a que la funcionalidad empiece a funcionar para aparecer,
 -- o sea el dia del estreno.
 --

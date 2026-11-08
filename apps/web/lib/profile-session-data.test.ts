@@ -18,7 +18,7 @@ import { crearSupabaseFalso, type OpcionesSupabaseFalso } from "./pruebas/supaba
 type Ruta = typeof import("../app/api/session/[resource]/route");
 type Pagina = { default: () => Promise<{ props: { seeds: Record<string, { value: Record<string, unknown> } | undefined> } }> };
 
-const USUARIO = { id: "0186140a-0000-4000-8000-000000000001", email: "ana@prueba.invalid" };
+const USUARIO = { id: "00000000-0000-4000-8000-000000000001", email: "ana@prueba.invalid" };
 const PERFIL = {
   id: USUARIO.id, nombre: "Ana", foto: null, bio: null, user_id: null, username: "ana", ubicacion: null,
   es_vendedor: null, seller_type: null, nombre_negocio: null, categoria_negocio: null, metodos_pago_aceptados: null,

@@ -3,9 +3,9 @@
 -- EL PROBLEMA. handle_child_safety_report() oculta el objetivo con UN solo
 -- reporte, de cualquier cuenta, sin umbral, sin mirar la reputacion de quien
 -- reporta y sin comprobar nada mas. Como el registro es abierto, eso es un
--- boton de apagado por anuncio disponible para cualquiera. La cuenta del
--- catalogo hoy son 14 anuncios visibles: catorce peticiones y el marketplace
--- se queda vacio. El indice unico reports_reporter_target_unique no protege,
+-- boton de apagado por anuncio disponible para cualquiera. Con el catalogo de
+-- hoy (conteo en Notion), basta una peticion por anuncio visible para que el
+-- marketplace se quede vacio. El indice unico reports_reporter_target_unique no protege,
 -- porque solo impide repetir el MISMO objetivo, no recorrerlos todos.
 --
 -- LO QUE NO SE TOCA, Y POR QUE. La respuesta inmediata a un reporte de

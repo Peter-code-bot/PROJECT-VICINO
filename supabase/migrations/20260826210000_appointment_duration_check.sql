@@ -42,8 +42,8 @@ COMMENT ON COLUMN public.products_services.appointment_duration_minutes IS
 --   que cruza medianoche, el caso natural de un antro, y el cliente ya la
 --   soporta desde este mismo cambio.
 --   Lo que si es ambiguo es start == end: puede significar "24 horas" o "sin
---   configurar". Hoy existe un servicio en produccion con 00:00 -> 00:00
---   ("Reservaciones para Dorothy"), que casi seguro es un formulario enviado
+--   configurar". En produccion ya aparecio un servicio con 00:00 -> 00:00
+--   (detalle en Notion), que casi seguro es un formulario enviado
 --   vacio. Prohibirlo con un CHECK invalidaria esa fila y romperia la edicion de
 --   esa publicacion; el cliente la trata como "sin horarios" y lo dice en la
 --   interfaz. Corregir ese dato es decision del vendedor, no de una migracion.
@@ -52,4 +52,4 @@ COMMENT ON COLUMN public.products_services.appointment_duration_minutes IS
 --   INSERT ... appointment_duration_minutes = 0   -> debe violar el CHECK
 --   SELECT titulo, appointment_start_time, appointment_end_time
 --   FROM products_services WHERE appointment_end_time <= appointment_start_time;
---   -- hoy: 1 fila, "Reservaciones para Dorothy" con 00:00 -> 00:00
+--   -- al aplicarla: el servicio de la nota de arriba, con 00:00 -> 00:00

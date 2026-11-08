@@ -11,17 +11,17 @@
 --    las anoto entre medias, para que el ledger deje de mentir sobre esas dos.
 --    (apply-migration.mjs anota esta misma migracion en la misma transaccion.)
 --
--- 2. ONBOARDING. Seis cuentas tenian has_seen_onboarding = false cuando entro
---    el onboarding por pasos (20260905100000): la de revision de tiendas
---    (reviewconsolevicino@gmail.com, creada el 11-jun), dos vendedores y tres
---    cuentas sin un solo inicio de sesion. La intencion escrita en ese codigo
+-- 2. ONBOARDING. Algunas cuentas tenian has_seen_onboarding = false cuando
+--    entro el onboarding por pasos (20260905100000), entre ellas la de
+--    revision de tiendas (reviewconsolevicino@gmail.com, creada el 11-jun);
+--    el desglose esta en Notion. La intencion escrita en ese codigo
 --    es que la bandera "se escribe al final del ultimo paso" para cuentas que
 --    ENTRAN por el flujo nuevo; las anteriores no eligieron camino ni paso
---    (onboarding_camino y onboarding_paso son NULL en las seis) y el layout
+--    (onboarding_camino y onboarding_paso son NULL en todas) y el layout
 --    del marketplace las manda a /bienvenida en cada visita. Para la cuenta
 --    de revision eso es, ademas, la primera pantalla que veria el revisor de
 --    la tienda. Se marcan como vistas todas las cuentas creadas ANTES del
---    6-sep-2026 que sigan en false: son exactamente esas seis hoy, y la fecha
+--    6-sep-2026 que sigan en false: son exactamente esas cuentas hoy, y la fecha
 --    deja fuera a cualquier cuenta que este a mitad del onboarding nuevo.
 -- ---------------------------------------------------------------------------
 

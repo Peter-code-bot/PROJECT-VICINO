@@ -6,16 +6,15 @@
 -- referencia. Con once claves asi, borrar un perfil son once recorridos
 -- secuenciales.
 --
--- Hoy no duele: messages tiene 6 filas, audit_log 6, chats 3, y
--- disputes/reports/sale_confirmations estan a cero. El borrado real tarda
--- milisegundos. El problema es la forma de la curva, no el numero de hoy: el
+-- Hoy no duele: las tablas hijas son chicas (conteos en Notion) y el borrado
+-- real tarda milisegundos. El problema es la forma de la curva, no el numero de hoy: el
 -- coste crece LINEALMENTE con el tamano de cada tabla hija, y quien lo paga es
 -- delete_user_data, que cascadea por casi todas ellas. Un usuario que se da de
 -- baja cuando el marketplace tenga cien mil mensajes se encontraria con un
 -- timeout, y el borrado de cuenta es precisamente lo que no puede fallar: es
 -- una obligacion de la LFPDPPP, no una comodidad.
 --
--- Se crea el indice ahora, con las tablas vacias, porque es cuando es gratis.
+-- Se crea el indice ahora, con las tablas chicas, porque es cuando es gratis.
 --
 -- SOBRE CONCURRENTLY, que aqui NO se usa a proposito:
 -- CREATE INDEX toma un lock que bloquea escrituras mientras construye. En una
@@ -23,7 +22,7 @@
 -- CREATE INDEX CONCURRENTLY. Pero CONCURRENTLY no puede correr dentro de una
 -- transaccion, y este archivo se aplica dentro de BEGIN...COMMIT junto con su
 -- entrada en el ledger -- que es la propiedad que impide que quede produccion
--- cambiada y el ledger diciendo que no. Con la tabla mas grande a 6 filas, el
+-- cambiada y el ledger diciendo que no. Con tablas de este tamano, el
 -- lock dura menos de lo que tarda en leerse esta frase. Si alguna de estas
 -- tablas crece antes de que esto se aplique, hay que sacar ese indice a su
 -- propia migracion sin transaccion.

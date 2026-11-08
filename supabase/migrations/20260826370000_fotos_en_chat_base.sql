@@ -63,7 +63,7 @@ CREATE POLICY "chat media: leer si soy del chat o modero"
 
 -- Borrar: solo lo propio. Sirve para el caso real de un envio que sube el
 -- archivo y falla al insertar el mensaje: sin esto, ese huerfano se queda para
--- siempre, que es como se juntaron los 31 archivos sueltos de esta manana.
+-- siempre, que es como se juntaron los archivos sueltos de esta manana.
 CREATE POLICY "chat media: borrar lo mio"
   ON storage.objects FOR DELETE TO authenticated
   USING (
@@ -123,7 +123,7 @@ ALTER TABLE public.messages
 -- Un mensaje tiene que traer ALGO. texto es NOT NULL y no admite default, asi
 -- que una foto sola viaja con texto = ''. Sin esta regla, ese '' tambien
 -- dejaria pasar un mensaje completamente vacio.
--- Comprobado antes: de los 6 mensajes que hay, ninguno tiene texto vacio.
+-- Comprobado antes: ningun mensaje existente tiene texto vacio.
 ALTER TABLE public.messages
   ADD CONSTRAINT messages_con_contenido
   CHECK (

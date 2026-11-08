@@ -16,14 +16,14 @@ const webRequire = createRequire(path.join(web, "package.json"));
 const esbuild = webRequire(webRequire.resolve("esbuild", { paths: [webRequire.resolve("tsx")] }));
 const React = webRequire("react");
 const { renderToStaticMarkup } = webRequire("react-dom/server");
-const store = { id: "00000000-0000-4000-8000-000000000001", nombre: "Alex Cabrera", es_vendedor: true, seller_type: "business", nombre_negocio: " Creed ", foto: null, trust_level: "nuevo" };
+const store = { id: "00000000-0000-4000-8000-000000000001", nombre: "Marta Prueba", es_vendedor: true, seller_type: "business", nombre_negocio: " Zafiro ", foto: null, trust_level: "nuevo" };
 const cases = [
-  [store, "Creed"],
-  [{ ...store, nombre_negocio: "Creed Nueva" }, "Creed Nueva"],
-  [{ ...store, es_vendedor: false }, "Alex Cabrera"],
-  [{ ...store, seller_type: "casual" }, "Alex Cabrera"],
-  [{ ...store, es_vendedor: null }, "Alex Cabrera"],
-  [{ ...store, seller_type: null }, "Alex Cabrera"],
+  [store, "Zafiro"],
+  [{ ...store, nombre_negocio: "Zafiro Nueva" }, "Zafiro Nueva"],
+  [{ ...store, es_vendedor: false }, "Marta Prueba"],
+  [{ ...store, seller_type: "casual" }, "Marta Prueba"],
+  [{ ...store, es_vendedor: null }, "Marta Prueba"],
+  [{ ...store, seller_type: null }, "Marta Prueba"],
   [{ ...store, nombre_negocio: null }, "Tienda"],
   [{ ...store, nombre_negocio: " \t\n " }, "Tienda"],
 ] as const;
@@ -32,7 +32,7 @@ test("visible identity follows store mode, renaming and legacy empty data", () =
   for (const [profile, expected] of cases) {
     assert.equal(publicProfileName(profile), expected);
     assert.equal(publicProfileName([profile]), expected);
-    assert.equal(profile.nombre, "Alex Cabrera", "personal identity is not mutated");
+    assert.equal(profile.nombre, "Marta Prueba", "personal identity is not mutated");
   }
   assert.equal(publicProfileName(null, "Vendedor"), "Vendedor");
   assert.equal(publicProfileName({ nombre: "  Ana  " }), "Ana");
@@ -45,11 +45,11 @@ test("store activation rejects missing/blank names; individual profiles remain e
     if (!result.success) assert.deepEqual(result.error.issues[0]?.path, ["nombre_negocio"]);
     assert.equal(updateProfileSchema.safeParse({ ...store, es_vendedor: false, nombre_negocio: name }).success, true);
   }
-  assert.equal(updateProfileSchema.parse(store).nombre_negocio, "Creed");
+  assert.equal(updateProfileSchema.parse(store).nombre_negocio, "Zafiro");
 });
 
 test("search values keep punctuation and quotes inside one PostgREST value", async () => {
-  const pattern = '%Creed, ("local")\\%';
+  const pattern = '%Zafiro, ("local")\\%';
   const filter = publicProfileSearchFilter(pattern);
   const match = /nombre_negocio\.ilike\.("(?:\\.|[^"\\])*")/.exec(filter);
   assert.ok(match);
@@ -76,17 +76,17 @@ async function bundle(relative: string, mocks: Record<string, unknown>) {
 
 const anchor = ({ children, href, ...props }: any) => React.createElement("a", { ...props, href }, children);
 const image = ({ fill: _fill, priority: _priority, ...props }: any) => React.createElement("img", props);
-test("real product card and detail seller render Creed; deactivation restores personal name", async () => {
+test("real product card and detail seller render Zafiro; deactivation restores personal name", async () => {
   const mocks = { "next/link": { __esModule: true, default: anchor }, "next/image": { __esModule: true, default: image },
     "@/hooks/use-favorite": { useFavorite: () => ({ isFavorite: false, isPending: false, toggle() {} }) } };
   const { ProductCard } = await bundle("components/product/product-card.tsx", mocks);
   const { SellerCardMini } = await bundle("components/product/seller-card-mini.tsx", mocks);
   for (const [profile, expected] of cases) {
-    const card = renderToStaticMarkup(React.createElement(ProductCard, { id: "p", titulo: "Playera YoungLa", precio: 1099, imagen: null, categoria: "ropa", slug: "playera", vendedor: profile, rating: 0, reviewsCount: 0 }));
+    const card = renderToStaticMarkup(React.createElement(ProductCard, { id: "p", titulo: "Playera lisa", precio: 350, imagen: null, categoria: "ropa", slug: "playera", vendedor: profile, rating: 0, reviewsCount: 0 }));
     const detail = renderToStaticMarkup(React.createElement(SellerCardMini, { seller: profile }));
     for (const html of [card, detail]) {
       assert.ok(html.includes(expected));
-      if (expected !== "Alex Cabrera") assert.ok(!html.includes("Alex Cabrera"));
+      if (expected !== "Marta Prueba") assert.ok(!html.includes("Marta Prueba"));
     }
   }
 });
@@ -98,7 +98,7 @@ test("chat catalog projects canonical seller name before dropping profile fields
     return query;
   } };
   const result = await loadChatCatalog(client as any, [store.id]);
-  assert.equal(result.sellers[0]?.nombre, "Creed");
+  assert.equal(result.sellers[0]?.nombre, "Zafiro");
 });
 
 test("real profile action authenticates, validates, and awaits global cache invalidation", async () => {
@@ -111,7 +111,7 @@ test("real profile action authenticates, validates, and awaits global cache inva
   });
   const form = new FormData(); form.set("nombre", store.nombre); form.set("es_vendedor", "on"); form.set("seller_type", "business");
   assert.ok((await updateProfile(form)).error); assert.equal(writes, 0);
-  form.set("nombre_negocio", "Creed"); actor = null;
+  form.set("nombre_negocio", "Zafiro"); actor = null;
   assert.equal((await updateProfile(form)).error, "No autenticado"); assert.equal(writes, 0);
   actor = store.id; fail = true; assert.equal((await updateProfile(form)).error, "offline"); assert.equal(invalidated, false);
   fail = false; assert.equal((await updateProfile(form)).success, true); assert.equal(invalidated, true);
@@ -175,7 +175,7 @@ test("SQL migration patches all 15 current bodies, preserves RPC signatures/gran
       CREATE TABLE profiles(id uuid PRIMARY KEY,nombre text,es_vendedor boolean,seller_type text,nombre_negocio text);
       ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
       CREATE POLICY visible ON profiles FOR SELECT USING(true);
-      INSERT INTO profiles VALUES ('${store.id}','Alex Cabrera',true,'business','Creed');`);
+      INSERT INTO profiles VALUES ('${store.id}','Marta Prueba',true,'business','Zafiro');`);
     for (const sql of (await installedFunctions()).values()) await db.exec(sql);
     await db.exec(`REVOKE ALL ON FUNCTION public.iniciar_conversacion(uuid,uuid,text,uuid) FROM PUBLIC;
       GRANT EXECUTE ON FUNCTION public.iniciar_conversacion(uuid,uuid,text,uuid) TO authenticated;
@@ -207,17 +207,17 @@ test("SQL migration patches all 15 current bodies, preserves RPC signatures/gran
       assert.equal(result.rows[0].name, expected);
     }
     await assert.rejects(() => db.exec(`UPDATE profiles SET nombre_negocio=E' \t\n ' WHERE id='${store.id}'`), (e: any) => e.code === "22023");
-    await db.exec(`UPDATE profiles SET nombre_negocio='Creed Nueva' WHERE id='${store.id}'`);
-    assert.equal((await db.query<any>("SELECT profile_public_name(nombre,es_vendedor,seller_type,nombre_negocio) name FROM profiles")).rows[0].name, "Creed Nueva");
+    await db.exec(`UPDATE profiles SET nombre_negocio='Zafiro Nueva' WHERE id='${store.id}'`);
+    assert.equal((await db.query<any>("SELECT profile_public_name(nombre,es_vendedor,seller_type,nombre_negocio) name FROM profiles")).rows[0].name, "Zafiro Nueva");
     await db.exec("UPDATE profiles SET es_vendedor=false");
-    assert.equal((await db.query<any>("SELECT profile_public_name(nombre,es_vendedor,seller_type,nombre_negocio) name FROM profiles")).rows[0].name, "Alex Cabrera");
+    assert.equal((await db.query<any>("SELECT profile_public_name(nombre,es_vendedor,seller_type,nombre_negocio) name FROM profiles")).rows[0].name, "Marta Prueba");
     // Verify an actual installed notification trigger, including a rename between events.
     await db.exec(`CREATE TABLE notice_log(body text); CREATE FUNCTION create_notification(uuid,text,text,text,jsonb) RETURNS void LANGUAGE sql AS $$ INSERT INTO notice_log VALUES($4) $$;
       CREATE TABLE reviews(reviewer_id uuid,reviewed_id uuid,rating int,id uuid,sale_confirmation_id uuid);
       CREATE TRIGGER review_notice AFTER INSERT ON reviews FOR EACH ROW EXECUTE FUNCTION notify_new_review();
       UPDATE profiles SET es_vendedor=true;
       INSERT INTO reviews VALUES('${store.id}','${store.id}',5,'${store.id}','${store.id}');`);
-    assert.ok((await db.query<any>("SELECT body FROM notice_log")).rows[0].body.startsWith("Creed Nueva te dejó"));
+    assert.ok((await db.query<any>("SELECT body FROM notice_log")).rows[0].body.startsWith("Zafiro Nueva te dejó"));
     await db.exec("BEGIN");
     await assert.rejects(() => db.exec(migration), /already present/);
     await db.exec("ROLLBACK");

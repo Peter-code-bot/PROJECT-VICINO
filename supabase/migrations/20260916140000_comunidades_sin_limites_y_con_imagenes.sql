@@ -174,7 +174,10 @@
 -- imagen que no carga, no como pagina rota.
 --
 -- ---------------------------------------------------------------------------
--- D. LA COMUNIDAD "Nenis Anahuac" VUELVE, CON SU MANDO -- POR QUE
+-- D. UNA COMUNIDAD ARCHIVADA EN PRUEBAS VUELVE, CON SU MANDO -- POR QUE
+--
+-- (El bloque 7, que lo hacia, se quito del repo el 8-nov-2026; ver la nota en
+-- su lugar. Lo de abajo explica lo que se aplico en produccion.)
 --
 -- Quedo archivada durante las pruebas del 12-sep, y archivar es irreversible
 -- desde la app: archivar_comunidad() no tiene inversa y la migracion base lo
@@ -1362,112 +1365,14 @@ grant select on public.community_posts to authenticated;
 
 
 -- ===========================================================================
--- 7. LA COMUNIDAD "Nenis Anahuac" VUELVE, CON SU MANDO (D)
+-- 7. LA COMUNIDAD ARCHIVADA EN PRUEBAS VUELVE, CON SU MANDO (D)
 --
--- Al final del archivo para que reviva ya bajo las reglas nuevas. Idempotente y
--- sin excepciones: una reparacion de UNA fila no puede tumbar los tres bloques
--- de producto de arriba, asi que lo que no se puede hacer sale por RAISE
--- WARNING y el VERIFY pregunta por el estado final.
+-- Este bloque se quito del repo el 8-nov-2026: apuntaba por id a una comunidad
+-- y a una persona reales, y el repo es publico. Ya se aplico en produccion con
+-- esta migracion; el texto original sigue en el historial de git. En cualquier
+-- otra base no hacia nada, porque esas filas no existen, asi que quitarlo no
+-- cambia lo que hace aplicar este archivo.
 -- ===========================================================================
-DO $restaurar$
-DECLARE
-  k_comunidad CONSTANT uuid := '7c7ca723-215f-45fe-b7b7-c5be8993b4bb';
-  k_persona   CONSTANT uuid := '7db68a49-2aa9-443a-a99c-3b654a43ec95';
-  v_existe    BOOLEAN;
-  v_archivada TIMESTAMPTZ;
-  v_oculta    BOOLEAN;
-  v_fundador  UUID;
-  v_owner     UUID;
-  v_celda     TEXT;
-  v_norm      TEXT;
-  v_choque    UUID;
-  v_otros     TEXT;
-BEGIN
-  SELECT c.archived_at, c.is_hidden, c.fundador_id, c.owner_id, c.celda, c.nombre_norm
-    INTO v_archivada, v_oculta, v_fundador, v_owner, v_celda, v_norm
-    FROM public.communities c
-   WHERE c.id = k_comunidad;
-  -- FOUND se guarda ANTES de cualquier otra sentencia: la siguiente lo pisa.
-  v_existe := FOUND;
-
-  -- Otra comunidad VIVA con el mismo nombre normalizado en la misma celda hace
-  -- imposible des-archivar: uq_communities_celda_nombre es parcial por
-  -- archived_at IS NULL, o sea que el nombre se libero al archivar y alguien
-  -- pudo tomarlo.
-  IF v_existe AND v_archivada IS NOT NULL THEN
-    SELECT c.id INTO v_choque
-      FROM public.communities c
-     WHERE c.id <> k_comunidad
-       AND c.archived_at IS NULL
-       AND c.celda = v_celda
-       AND c.nombre_norm = v_norm
-     LIMIT 1;
-  END IF;
-
-  IF NOT v_existe THEN
-    RAISE NOTICE 'Nenis Anahuac: la comunidad % no existe. No se restaura nada.', k_comunidad;
-
-  ELSIF NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = k_persona) THEN
-    RAISE WARNING 'Nenis Anahuac (%): la persona % no tiene perfil, asi que no se le puede devolver el mando (owner_id y community_members tienen FK a profiles). No se toca nada.',
-      k_comunidad, k_persona;
-
-  ELSIF v_choque IS NOT NULL THEN
-    RAISE WARNING 'Nenis Anahuac (%): no se des-archiva porque la comunidad viva % ocupa (celda %, nombre_norm %) y uq_communities_celda_nombre lo rechazaria. Hay que decidir a mano cual se queda con el nombre.',
-      k_comunidad, v_choque, v_celda, v_norm;
-
-  ELSE
-    -- archived_at y owner_id NO estan congelados por comunidad_normaliza (solo
-    -- lo estan nombre, nombre_norm, centro, celda, centro_fundacion y el
-    -- RE-APUNTADO de fundador_id), asi que este UPDATE si pasa.
-    UPDATE public.communities
-       SET archived_at = NULL,
-           owner_id    = k_persona
-     WHERE id = k_comunidad
-       AND (archived_at IS NOT NULL OR owner_id IS DISTINCT FROM k_persona);
-
-    -- La membresia vuelve a estar viva y con el mando. El UPDATE del conflicto
-    -- nombra left_at a proposito: el trigger comunidad_cuenta_miembros esta
-    -- declarado AFTER ... UPDATE OF left_at, y solo suma si venia de NO NULL,
-    -- asi que re-aplicar esto no infla miembros_count.
-    INSERT INTO public.community_members (community_id, user_id, role)
-    VALUES (k_comunidad, k_persona, 'owner')
-    ON CONFLICT (user_id, community_id) DO UPDATE
-      SET left_at = NULL,
-          role    = 'owner';
-
-    IF v_archivada IS NOT NULL THEN
-      RAISE NOTICE 'Nenis Anahuac (%): des-archivada (estaba archivada desde %) y el mando devuelto a %.',
-        k_comunidad, v_archivada, k_persona;
-    ELSE
-      RAISE NOTICE 'Nenis Anahuac (%): ya estaba viva; solo se confirmo el mando de % (owner_id era %).',
-        k_comunidad, k_persona, v_owner;
-    END IF;
-
-    -- Lo que este bloque NO puede arreglar, dicho en voz alta en vez de
-    -- intentado y dado por bueno.
-    IF v_fundador IS DISTINCT FROM k_persona THEN
-      RAISE WARNING 'Nenis Anahuac (%): fundador_id sigue siendo % y NO se puede cambiar desde aqui: comunidad_normaliza congela el re-apuntado de esa columna en todo UPDATE. Las cuotas de fundacion cuelgan de ella, asi que esta comunidad no cuenta contra el tope de % si no es quien la fundo.',
-        k_comunidad, v_fundador, k_persona;
-    END IF;
-
-    IF v_oculta THEN
-      RAISE WARNING 'Nenis Anahuac (%): is_hidden sigue en TRUE y este bloque no lo toca: ocultar es moderacion y archivar no, son estados distintos. Mientras siga oculta no se lee ni se descubre.',
-        k_comunidad;
-    END IF;
-
-    SELECT string_agg(m.user_id::text, ', ' ORDER BY m.user_id) INTO v_otros
-      FROM public.community_members m
-     WHERE m.community_id = k_comunidad
-       AND m.user_id <> k_persona
-       AND m.left_at IS NULL
-       AND m.role = 'owner';
-    IF v_otros IS NOT NULL THEN
-      RAISE WARNING 'Nenis Anahuac (%): quedan otras filas con role=owner (%). No se degradan desde aqui: quitarle el mando a alguien no es una reparacion de datos. owner_id apunta a %, asi que hay dos versiones del mando hasta que se decida.',
-        k_comunidad, v_otros, k_persona;
-    END IF;
-  END IF;
-END
-$restaurar$;
 
 
 -- ===========================================================================
@@ -1682,31 +1587,8 @@ notify pgrst, 'reload schema';
 --   --   upload del mismo path otra vez  -> 409 (no hay policy de UPDATE)
 --
 -- ---- G. LA COMUNIDAD RESTAURADA -----------------------------------------
---   SELECT c.id, c.nombre, c.archived_at, c.is_hidden, c.owner_id, c.fundador_id,
---          c.miembros_count, c.celda
---     FROM public.communities c
---    WHERE c.id = '7c7ca723-215f-45fe-b7b7-c5be8993b4bb';
---   -- esperado: archived_at NULL, owner_id = 7db68a49-2aa9-443a-a99c-3b654a43ec95.
---
---   SELECT m.user_id, m.role, m.joined_at, m.left_at
---     FROM public.community_members m
---    WHERE m.community_id = '7c7ca723-215f-45fe-b7b7-c5be8993b4bb'
---    ORDER BY m.joined_at;
---   -- esperado: la fila de Javier con left_at NULL y role 'owner'.
---
---   -- miembros_count tiene que cuadrar con las filas vivas (el trigger lo
---   -- mantiene incremental, y esto es lo que detecta que se desincronizo):
---   SELECT c.miembros_count,
---          (SELECT count(*) FROM public.community_members m
---            WHERE m.community_id = c.id AND m.left_at IS NULL) AS vivas
---     FROM public.communities c
---    WHERE c.id = '7c7ca723-215f-45fe-b7b7-c5be8993b4bb';
---   -- los dos numeros iguales.
---
---   -- Y LEER LOS AVISOS del bloque 7 en la salida de la migracion: si salio un
---   -- WARNING de fundador_id, de is_hidden, de otro owner o de choque de
---   -- nombre, la comunidad NO quedo como se esperaba y hay una decision
---   -- pendiente. Un NOTICE 'no existe' significa que el uuid esta mal.
+--   El bloque 7 se quito del repo (ver su nota), asi que esta verificacion ya
+--   no aplica a este archivo.
 --
 -- ---- H. Y AL FINAL, SIEMPRE ---------------------------------------------
 --   NOTIFY pgrst, 'reload schema';

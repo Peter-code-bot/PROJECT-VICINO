@@ -100,8 +100,8 @@ export default async function UserSearchPage({ searchParams }: Props) {
               className="flex items-center gap-4 p-4 rounded-2xl bg-[color:var(--card-2)] hover:bg-[color:var(--card)] border border-[color:var(--border)] transition-all group"
             >
               {/* UserAvatar en vez de <img> crudo: cae a la inicial cuando la
-                  imagen falla. 3 de los 11 perfiles tienen avatar de Google, y
-                  esas URL caducan — hoy hay una muerta en produccion. Con <img>
+                  imagen falla. Hay perfiles con avatar de Google, y esas URL
+                  caducan — ya hubo una muerta en produccion. Con <img>
                   el usuario veia el icono de imagen rota. */}
               <UserAvatar src={user.avatar_url} name={publicProfileName(user, "Usuario")} size="lg" />
               <div className="flex-1 min-w-0">

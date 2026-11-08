@@ -59,7 +59,7 @@ serve(async (req) => {
     // apps/web/app/(account)/historial/review/review-form.tsx). El barrido de
     // abajo listaba por userId, asi que en review-media NUNCA encontraba nada
     // y las fotos de resena de quien borraba su cuenta se quedaban para
-    // siempre. En produccion hay una asi.
+    // siempre. Ya paso en produccion.
     //
     // Y va AQUI y no en el paso 4 por orden: delete_user_data borra las filas
     // de sale_confirmations, asi que despues de ese paso ya no hay forma de
@@ -102,8 +102,8 @@ serve(async (req) => {
       // cuenta de auth.users, que es irreversible, asi que a partir de ese
       // momento el archivo queda huerfano y sin ninguna forma de encontrarlo:
       // ni usuario del que colgarlo, ni fila que lo referencie, ni registro de
-      // que fallo. Los 31 archivos huerfanos que hay hoy en produccion
-      // llegaron exactamente por ahi.
+      // que fallo. Los archivos huerfanos que ya hay en produccion (conteo en
+      // Notion) llegaron exactamente por ahi.
       const anotarFallo = async (bucket: string, path: string, motivo: string) => {
         try {
           await adminClient.from("storage_cleanup_pending").insert({

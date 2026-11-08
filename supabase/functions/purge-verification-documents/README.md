@@ -52,10 +52,10 @@ Antes de desplegar:
 ## Estado verificado el 26 de agosto de 2026
 
 - Desplegada y **funcionando**: HTTP 200 en la corrida real de las 06:07 UTC,
-  `{"ok":true,"dry_run":false,"resolved_rows_purged":0}`.
+  `{"ok":true,"dry_run":false,...}` (los contadores de esa corrida están en Notion).
 - Estuvo caída hasta esa mañana: devolvía 500 porque leía `SB_SECRET_KEY`, una variable que
   nunca se creó. `createClient()` recibía `undefined` y lanzaba **fuera** del `try`, de ahí el
   `Internal Server Error` genérico en vez del JSON propio de la función.
 - El bucket está vacío y `verification_document_purge_log` tiene 0 filas en toda su historia.
-  Las tres verificaciones de junio ya tenían las URLs en `NULL` antes de que la función llegara
+  Las verificaciones de junio ya tenían las URLs en `NULL` antes de que la función llegara
   a correr: alguien las limpió a mano.

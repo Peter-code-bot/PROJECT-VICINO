@@ -1,11 +1,10 @@
 /**
  * `ejemplos` es la palabra del vendedor, no la del catalogo.
  *
- * Existe por un caso real: alguien que vende gomitas no encontro donde
- * publicar y acabo en "Comida y Bebidas", mientras "Postres y Reposteria"
- * estaba vacia al lado. El problema no era que faltara un cajon —hay 42
- * categorias para 14 publicaciones— sino que el cajon correcto no decia su
- * palabra. Por eso esa categoria pasa a llamarse "Dulces y Postres" y cada
+ * Existe por un caso real: alguien que vende dulces no encontro donde
+ * publicar y acabo en "Comida y Bebidas", con "Postres y Reposteria" al
+ * lado. El problema no era que faltara un cajon —hay 42 categorias— sino que
+ * el cajon correcto no decia su palabra. Por eso esa categoria pasa a llamarse "Dulces y Postres" y cada
  * opcion del selector muestra debajo de que se trata.
  *
  * El slug NO cambia al renombrar: es lo que casa con la tabla categories,

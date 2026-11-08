@@ -50,7 +50,7 @@ const COMPROBACIONES = [
   {
     nombre: 'buscar sin sesion: el muro manda al login y conserva la busqueda',
     ruta: '/buscar?q=sandia',
-    // Antes esta comprobacion esperaba "Aros de Sand" en el HTML. Con el muro
+    // Antes esta comprobacion esperaba el titulo de un anuncio real. Con el muro
     // de sesion un invitado nunca ve resultados: lo que tiene que pasar es un
     // 307 a /login con la busqueda entera en `next`.
     redirigeA: /^\/login\?next=%2Fbuscar%3Fq%3Dsandia$/,

@@ -10,9 +10,8 @@
 --   - No miraba bp.is_hidden: suspender a una persona desde el panel de admin no
 --     ocultaba ninguna de sus solicitudes.
 --
--- Los dos son latentes hoy (user_blocks tiene 0 filas, 0 perfiles suspendidos, y
--- la unica solicitud existente esta expirada), pero se activan el dia que alguien
--- use bloquear o suspender por primera vez. Que es exactamente como se comporto
+-- Los dos se activan en cuanto alguien use bloquear o suspender (el estado de
+-- produccion al corregirlo esta en Notion). Que es exactamente como se comporto
 -- todo lo demas que aparecio hoy.
 --
 -- OJO con los alias, que aqui invitan al error: en esta funcion `pr` es
@@ -81,9 +80,9 @@ REVOKE EXECUTE ON FUNCTION public.feed_nearby_requests(
   double precision, double precision, integer, timestamp with time zone, integer, text
 ) FROM PUBLIC;
 
--- VERIFY (linea base antes de aplicar: 1 solicitud total, 0 abiertas, 0 en el feed):
+-- VERIFY (linea base tomada antes de aplicar; los conteos estan en Notion):
 --   SELECT count(*) FROM feed_nearby_requests(19.041,-98.206,50000,null,50,null);
---   -- esperado: 0, igual que antes
+--   -- esperado: el mismo numero que la linea base
 --
 --   SELECT has_function_privilege('anon',
 --     'public.feed_nearby_requests(double precision,double precision,integer,timestamp with time zone,integer,text)',

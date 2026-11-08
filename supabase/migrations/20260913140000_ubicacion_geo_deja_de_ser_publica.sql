@@ -17,7 +17,8 @@
 -- mientras la columna cruda estuviera a un GET de distancia. Comprobado contra
 -- produccion:
 --   GET /rest/v1/products_services?select=ubicacion_geo
---   -> "0101000020E61000005B33E83AC32A57C01A547655FBFF3140"
+--   -> "0101000020E6100000..." (POINT con SRID 4326; el resto son las
+--      coordenadas exactas de un anuncio real, que no se copian aqui)
 --
 -- POR QUE UN REVOKE POR COLUMNA NO BASTO. 20260913130000 ya intento
 -- "REVOKE SELECT (ubicacion_geo) ... FROM anon" y NO surtio efecto: no fallo,

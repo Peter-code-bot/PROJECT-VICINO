@@ -194,7 +194,7 @@ grant select (es_privada) on public.communities to authenticated;
 -- D. Centro de fundacion. Lo fija el trigger en el INSERT (copia del centro ya
 -- redondeado) y queda congelado. NULL solo puede significar "fila anterior a
 -- esta columna" y el propio trigger la rellena en el primer UPDATE; el backfill
--- de abajo lo hace ya para las existentes (hoy en produccion no hay ninguna).
+-- de abajo lo hace ya para las existentes, si las hay.
 -- NO se concede a ningun rol: es control, y ademas es posicion absoluta.
 alter table public.communities
   add column if not exists centro_fundacion geography(POINT, 4326);

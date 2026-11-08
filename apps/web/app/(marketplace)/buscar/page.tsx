@@ -428,7 +428,7 @@ export default async function SearchPage({ searchParams }: Props) {
     // del .in(orderedIds), particionamos en 2 tiers via Set(primaryIds),
     // ordenamos cada tier con sortFn(params.sort), concatenamos y
     // paginamos en JS. Trade-off: para categorias muy grandes (>500
-    // productos post-filtros) el payload server crece; hoy max ~57.
+    // productos post-filtros) el payload server crece (tamanos actuales en Notion).
     const res = await query;
     const allProducts: ProductRow[] = res.data ?? [];
 

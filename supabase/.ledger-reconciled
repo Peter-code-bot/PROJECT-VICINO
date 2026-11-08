@@ -11,9 +11,9 @@ Estado al terminar:
 Que se hizo:
   - 4 backfills de datos marcados como aplicados tras verificar en produccion que
     su efecto ya estaba presente y que hoy son no-ops:
-      20260429120002  0 reviews en total, nada que migrar
+      20260429120002  reviews: nada que migrar
       20260501000002  0 perfiles con rating desviado
-      20260511000002  0 notificaciones 'message' sin leer
+      20260511000002  notificaciones 'message': nada pendiente
       20260529000004  0 productos con categoria huerfana
   - 2 archivos con timestamp duplicado renombrados a version libre y marcados
     como aplicados, tras verificar que sus objetos existen en produccion:

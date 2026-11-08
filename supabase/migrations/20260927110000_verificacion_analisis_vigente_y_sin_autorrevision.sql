@@ -2,8 +2,8 @@
 -- las fotos que esta viendo, y nadie aprueba ni rechaza su propia solicitud.
 --
 -- BUG-VERIF-IA (reporte de Pedro, 27-sep-2026). Una credencial se mando
--- primero con otra universidad (UMAD) y se reenvio con la correcta (Anahuac).
--- El panel mostraba "Universidad Anahuac" con la nota de la IA sobre la UMAD:
+-- primero con una universidad y se reenvio con otra, la correcta. El panel
+-- mostraba la universidad nueva con la nota de la IA sobre la anterior:
 -- ai_analysis_raw / ai_confidence_score solo los escribe la accion de la IA y
 -- NADA decia cuando dejaban de corresponder a los documentos. La fila se
 -- reutiliza entre intentos, asi que la nota vieja se quedaba puesta como si

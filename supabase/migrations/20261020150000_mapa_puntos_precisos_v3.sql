@@ -5,7 +5,8 @@
 -- existe, asi que al acercar el zoom todo lo que cae en el mismo kilometro
 -- sigue apilado en un solo numero, dibujado en el nodo de la rejilla (hasta
 -- ~760 m de cualquiera de sus publicaciones). Pedro lo reporto el 20-oct desde
--- Tlaxcalancingo: "12" publicaciones de 10 vendedores en un punto.
+-- Tlaxcalancingo: publicaciones de varios vendedores apiladas en un solo punto
+-- (cifras en Notion).
 --
 -- QUE CAMBIA. Proyeccion publica v2: 3 decimales (celda de 0.001 grados,
 -- ~110 m) en una columna generada nueva, y search_map_publications_v3 con la

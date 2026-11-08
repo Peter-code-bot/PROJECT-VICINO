@@ -33,9 +33,9 @@ export const SELLER_NAV_ITEMS: readonly SellerNavItem[] = [
   { href: "/seller/lealtad", label: "Lealtad", icon: Stamp },
   // Cupones se esconde del panel, NO se borra.
   //
-  // La tabla `coupons` tiene 0 filas (consultado el 5-sep-2026), asi que no hay
-  // nada que migrar ni nadie a quien avisar: esconder la entrada hoy no le
-  // quita a ningun vendedor un cupon que ya estuviera usando.
+  // Antes de esconderla se reviso la tabla `coupons` en produccion (5-sep-2026;
+  // el conteo esta en Notion): esconder la entrada no borra ni migra nada, asi
+  // que un cupon que ya existiera sigue intacto.
   //
   // Se esconde solo el punto de entrada y a proposito: la ruta /seller/cupones,
   // sus server actions y la tabla siguen exactamente donde estaban, y el
