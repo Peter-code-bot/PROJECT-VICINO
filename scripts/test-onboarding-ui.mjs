@@ -8,6 +8,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
+import { VIEWPORT_INICIAL, casosAjusteDeFoco, medirAjusteDeFoco, resumirAjusteDeFoco } from './lib/onboarding-ajuste-de-foco.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const web = resolve(root, 'apps/web');
@@ -86,7 +87,9 @@ const bundle = await build({
  import {OnboardingSessionProvider} from './app/(onboarding)/completar-perfil/onboarding-session';
  import {OnboardingOptions} from './app/(onboarding)/bienvenida/onboarding-options';
  import {OnboardingViewport} from './components/onboarding/onboarding-shell';
+ import {abreTeclado} from './lib/onboarding/abre-teclado';
  import {CATEGORIES} from '@vicino/shared';
+ window.__abreTeclado=abreTeclado;
  const params=new URLSearchParams(location.search);
  const savedConfig=sessionStorage.getItem('test-only-onboarding-config');
  if(savedConfig)for(const [key,value] of new URLSearchParams(savedConfig))if(!params.has(key))params.set(key,value);
@@ -194,7 +197,9 @@ async function metrics(page){
   }
   if(/Paso \d+ de \d+/.test(section?.querySelector('header')?.textContent||''))failures.push('visible numbered step counter remains');
   if(footer){const r=footer.getBoundingClientRect();if(r.bottom>innerHeight+1)failures.push('footer below viewport');for(const button of footer.querySelectorAll('button')){const b=button.getBoundingClientRect();if(b.height<48-1)failures.push('footer touch target <48px');if(!button.contains(document.elementFromPoint(b.left+b.width/2,b.top+b.height/2)))failures.push('footer action occluded');}}
-  return {width:innerWidth,height:innerHeight,headingTop:title?.getBoundingClientRect().top,headingFont:title&&getComputedStyle(title).fontFamily,bodyFont:getComputedStyle(document.body).fontFamily,column:section?.getBoundingClientRect().toJSON(),footer:footer?.getBoundingClientRect().toJSON(),progress:progressDetails,failures};
+  // Dato, todavía sin aserción: los inputs sr-only sin ancestro posicionado agrandan el documento.
+  const scrolling=document.scrollingElement||document.documentElement;const documentVerticalOverflow=Math.max(0,scrolling.scrollHeight-scrolling.clientHeight);
+  return {width:innerWidth,height:innerHeight,headingTop:title?.getBoundingClientRect().top,headingFont:title&&getComputedStyle(title).fontFamily,bodyFont:getComputedStyle(document.body).fontFamily,column:section?.getBoundingClientRect().toJSON(),footer:footer?.getBoundingClientRect().toJSON(),progress:progressDetails,documentVerticalOverflow,failures};
  });
 }
 async function runCase(name,viewport,path,fn,{theme='light',scale=1,clock=false}={}){
@@ -212,10 +217,12 @@ async function runCase(name,viewport,path,fn,{theme='light',scale=1,clock=false}
   await page.goto(url+path);await page.locator('h1').waitFor();
   await page.evaluate(theme=>document.documentElement.classList.toggle('dark',theme==='dark'),theme);
   await page.evaluate(()=>document.fonts.ready);
-  await fn(page);
+  // Lo que devuelva el caso (sus números) va al JSON aunque después falle una aserción.
+  const medicion=(await fn(page))??null;
   if(scale===2)await page.evaluate(()=>{const sizes=[...document.querySelectorAll('h1,p,span,button,label,input,textarea')].map(el=>({el,font:parseFloat(getComputedStyle(el).fontSize),line:parseFloat(getComputedStyle(el).lineHeight)}));for(const {el,font,line}of sizes){el.style.fontSize=font*2+'px';if(Number.isFinite(line))el.style.lineHeight=line*2+'px';}});
-  result={...result,...await metrics(page),trace:await page.evaluate(()=>window.__fixture.trace),pageErrors,external,blockedHostInjection};
+  result={...result,medicion,...await metrics(page),trace:await page.evaluate(()=>window.__fixture.trace),pageErrors,external,blockedHostInjection};
   assert.equal(result.failures.length,0,result.failures.join('; '));assert.equal(pageErrors.length,0,pageErrors.join('; '));assert.equal(external.length,0,'Unexpected remote request');
+  assert.deepEqual(medicion?.fallas??[],[],(medicion?.fallas??[]).join('; '));
   result.passed=true;
  }catch(error){result={...result,passed:false,error:error.message,pageErrors,external,blockedHostInjection};}
  await page.screenshot({path:resolve(out,name+'.png'),fullPage:true}).catch(()=>{});
@@ -268,6 +275,8 @@ try{
   const visible=await field.evaluate(element=>{const rect=element.getBoundingClientRect();const scroll=element.closest('section').querySelector(':scope > div').getBoundingClientRect();return rect.top>=scroll.top-1&&rect.bottom<=scroll.bottom+1;});
   assert.equal(visible,true,'Focused field is not fully visible in the reduced keyboard viewport');
  });
+ // 390×844 → 390×560 con radio, casilla, botón y campos, enfocados por script o tocando su tarjeta.
+ if(!onlyCanonicalCaptures&&!onlyJourneys)for(const definicion of casosAjusteDeFoco({esperarIdDisponible:availableUsername}))for(const modo of definicion.modos)await runCase(`keyboard-focus-390-${definicion.caso}-${modo}`,VIEWPORT_INICIAL,definicion.ruta,page=>medirAjusteDeFoco(page,{...definicion,modo}));
  if(onlyCanonicalCaptures)for(const theme of ['light','dark']){
   await runCase(`mobile-${theme}-usuario`,mobile,'/completar-perfil/usuario?camino=vender&tipo=business',availableUsername,{theme});
   for(const step of ['nombre','descripcion'])await runCase(`mobile-${theme}-explore-${step}`,mobile,`/completar-perfil/${step}?camino=explorar`,async()=>{},{theme});
@@ -790,5 +799,6 @@ try{
  await browser?.close();server.close();await writeFile(resolve(out,resultFile),JSON.stringify(results,null,2));
 }
 const failures=results.filter(result=>!result.passed);
-console.log(JSON.stringify({scope:'simulated local component UI; not auth/RLS/native-device validation',fontSource,cases:results.length,passed:results.length-failures.length,failed:failures.length,failures:failures.map(({name,error,failures,pageErrors,external})=>({name,error,failures,pageErrors,external})),out},null,2));
+const ajusteDeFoco=resumirAjusteDeFoco(results);
+console.log(JSON.stringify({scope:'simulated local component UI; not auth/RLS/native-device validation',fontSource,cases:results.length,passed:results.length-failures.length,failed:failures.length,failures:failures.map(({name,error,failures,pageErrors,external})=>({name,error,failures,pageErrors,external})),ajusteDeFoco:ajusteDeFoco.length?ajusteDeFoco:undefined,out},null,2));
 if(failures.length)process.exitCode=1;
