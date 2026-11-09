@@ -21,6 +21,14 @@
  * todo lo demas.
  *
  * HISTORIAL
+ *   Aviso 2.2 -> 2.3 (8-nov-2026): seccion 4.6 nueva (enlaces de contacto y
+ *   redes sociales que el Vendedor decide publicar: son publicos, VICINO no se
+ *   conecta a esas redes ni comprueba la cuenta, se quitan al apagar el Modo
+ *   Vendedor), registro sin identidad de sus aperturas (4.3 y 15, 90 dias),
+ *   dos finalidades primarias (5.1) y la salida a servicios de terceros (8).
+ *   La fila de legal_documents la inserta 20261108235000; si Pedro califica
+ *   el cambio como sustancial, ver la cabecera de esa migracion.
+ *
  *   Aviso 2.1 -> 2.2 y Terminos 1.0 -> 1.1 (26-ago-2026): la seccion 4.2 del
  *   Aviso y la 7 de los Terminos solo declaraban la Credencial para Votar del
  *   INE, mientras el producto YA acepta la credencial universitaria. Se
@@ -36,10 +44,10 @@
  */
 
 /** Versión vigente del Aviso de Privacidad de VICINO. */
-export const AVISO_PRIVACIDAD_VERSION = "2.2" as const;
+export const AVISO_PRIVACIDAD_VERSION = "2.3" as const;
 
 /** Fecha de la versión vigente, como se muestra al usuario. */
-export const AVISO_PRIVACIDAD_ACTUALIZADO = "26 de agosto de 2026" as const;
+export const AVISO_PRIVACIDAD_ACTUALIZADO = "8 de noviembre de 2026" as const;
 
 /** Versión vigente de los Términos y Condiciones. */
 export const TERMINOS_VERSION = "1.1" as const;
