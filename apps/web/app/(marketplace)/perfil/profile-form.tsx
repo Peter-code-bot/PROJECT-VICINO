@@ -12,30 +12,8 @@ import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 import { CampoWhatsApp } from "@/components/profile/campo-whatsapp";
-
-function FieldRow({ label, htmlFor, hint, children, last = false }: {
-  label: string;
-  htmlFor?: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-  last?: boolean;
-}) {
-  const Etiqueta = htmlFor ? "label" : "span";
-  return (
-    <div className={`group/field flex items-start gap-3 py-3 ${last ? "" : "border-b border-border/10"}`}>
-      <Etiqueta
-        htmlFor={htmlFor}
-        className="w-24 shrink-0 pt-0.5 text-[13px] text-muted-foreground transition-colors group-focus-within/field:text-primary"
-      >
-        {label}
-      </Etiqueta>
-      <div className="min-w-0 flex-1">
-        {children}
-        {hint && <span className="mt-1 block text-[11px] text-muted-foreground">{hint}</span>}
-      </div>
-    </div>
-  );
-}
+import { FieldRow } from "./field-row";
+import { CamposRedesNegocio } from "./campos-redes-negocio";
 
 interface ProfileFormProps {
   profile: {
@@ -56,6 +34,15 @@ interface ProfileFormProps {
     whatsapp_numero?: string | null;
     google_maps_url?: string | null;
     google_resenas_url?: string | null;
+    facebook_ruta?: string | null;
+    facebook_messenger?: boolean | null;
+    tiktok_usuario?: string | null;
+    youtube_ruta?: string | null;
+    x_usuario?: string | null;
+    linkedin_ruta?: string | null;
+    threads_usuario?: string | null;
+    pinterest_usuario?: string | null;
+    telegram_usuario?: string | null;
   } | null;
   /**
    * Phase 9: number of products with `estatus='disponible'` for this user. Used
@@ -391,8 +378,9 @@ export function ProfileForm({
             {/* Enlaces externos del negocio. Son campos de texto libre y no
                 type="url" a proposito: la gente pega "maps.app.goo.gl/x" sin
                 https o "@mitienda", y el navegador los rechazaria antes de que
-                el servidor pudiera limpiarlos (enlacesNegocioSchema). Vacio
-                significa "quitar": el servidor recibe los cuatro siempre. */}
+                el servidor pudiera limpiarlos (redesNegocioSchema). Vacio
+                significa "quitar". Las redes sociales (Instagram incluido)
+                viven en CamposRedesNegocio, plegadas. */}
             <div>
               <span className="block text-[13px] text-muted-foreground">
                 Contacto y redes del negocio
@@ -400,21 +388,6 @@ export function ProfileForm({
               <p className="mt-0.5 mb-1 text-[11px] text-muted-foreground">
                 Opcional. Aparecen como botones en tu perfil público. Pon solo lo que ya sea público.
               </p>
-
-              <FieldRow label="Instagram" htmlFor="instagram_usuario" hint="Tu usuario, con o sin @">
-                <input
-                  id="instagram_usuario"
-                  name="instagram_usuario"
-                  type="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  maxLength={100}
-                  defaultValue={profile?.instagram_usuario ?? ""}
-                  placeholder="mitienda.puebla"
-                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-                />
-              </FieldRow>
 
               <FieldRow label="WhatsApp" htmlFor="whatsapp_nacional" hint="Selecciona el país y escribe tu número local.">
                 <CampoWhatsApp inicial={profile?.whatsapp_numero ?? ""} activo={esVendedor} />
@@ -456,6 +429,8 @@ export function ProfileForm({
                   className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
                 />
               </FieldRow>
+
+              <CamposRedesNegocio perfil={profile} />
             </div>
 
             <div className="pt-2">
@@ -599,8 +574,8 @@ export function ProfileForm({
               </li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
               <li className="list-disc">
-                Los enlaces (Instagram, WhatsApp, Google Maps y reseñas) son públicos: se quitan para
-                que nadie los vea mientras no vendas, y tendrás que volver a ponerlos.
+                Tus enlaces de contacto y redes sociales son públicos: se quitan para que nadie los
+                vea mientras no vendas, y tendrás que volver a ponerlos.
               </li>
             </ul>
             {/* Cierto desde la migracion 20260826340000: desactivar ya no pone a

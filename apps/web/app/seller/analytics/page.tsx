@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
-import { CANALES_ENLACE_NEGOCIO, type CanalEnlaceNegocio } from "@vicino/shared";
+import {
+  CANALES_ENLACE_NEGOCIO,
+  ETIQUETAS_CANAL_ENLACE_NEGOCIO,
+  listarEnlacesNegocio,
+  type CanalEnlaceNegocio,
+} from "@vicino/shared";
 import { createClient } from "@/lib/supabase/server";
 import dynamic from "next/dynamic";
 import { SkeletonPanel } from "@/components/shared/loading-skeletons";
@@ -68,32 +73,37 @@ export default async function AnalyticsPage() {
     .slice(0, 5)
     .map(([name, count]) => ({ name, ventas: count }));
 
-  // Clics a los enlaces externos del negocio, por canal. RLS deja ver solo los
-  // propios. Un conteo por canal (head: true) y no una fila por clic: PostgREST
-  // corta en 1000 filas y el total saldria truncado en silencio. Un clic es una
-  // apertura del enlace y nada mas: no sabemos si hubo mensaje ni venta, y la
-  // pantalla lo dice en voz alta.
-  const conteos = await Promise.all(
-    CANALES_ENLACE_NEGOCIO.map((canal) =>
-      supabase
-        .from("clics_enlaces_negocio")
-        .select("id", { count: "exact", head: true })
-        .eq("vendedor_id", user.id)
-        .eq("canal", canal)
-        .gte("created_at", thirtyDaysAgo.toISOString()),
-    ),
-  );
-  const errorClics = conteos.find((c) => c.error)?.error;
+  // Clics a los enlaces externos del negocio, por canal, en UNA consulta
+  // (clics_enlaces_negocio_por_canal, 20261108230000: count agrupado, sin el
+  // tope de 1000 filas de PostgREST). RLS deja ver solo los propios. Un clic es
+  // una apertura del enlace y nada mas: no sabemos si hubo mensaje ni venta, y
+  // la pantalla lo dice en voz alta.
+  const [{ data: conteos, error: errorClics }, { data: enlacesPropios }] = await Promise.all([
+    supabase.rpc("clics_enlaces_negocio_por_canal", { p_dias: 30 }),
+    supabase
+      .from("profiles")
+      .select(
+        "instagram_usuario, whatsapp_numero, google_maps_url, google_resenas_url, facebook_ruta, facebook_messenger, tiktok_usuario, youtube_ruta, x_usuario, linkedin_ruta, threads_usuario, pinterest_usuario, telegram_usuario",
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
   if (errorClics) {
     // Un fallo no se pinta como cero: cero es un dato y esto no lo es.
     Sentry.captureException(errorClics, {
-      tags: { surface: "seller-analytics", query: "clics_enlaces_negocio" },
+      tags: { surface: "seller-analytics", query: "clics_enlaces_negocio_por_canal" },
       contexts: { supabase: { code: errorClics.code } },
     });
   }
-  const clicsPorCanal = Object.fromEntries(
-    CANALES_ENLACE_NEGOCIO.map((canal, i) => [canal, errorClics ? null : (conteos[i]?.count ?? 0)]),
-  ) as Record<CanalEnlaceNegocio, number | null>;
+  const clicsPorCanal = new Map<string, number>((conteos ?? []).map((fila) => [fila.canal, Number(fila.clics)]));
+  // Con trece canales, solo los que importan: los que el negocio tiene puestos
+  // hoy y los que recibieron clics en estos 30 dias (aunque ya los haya quitado).
+  const configurados = new Set<CanalEnlaceNegocio>(
+    listarEnlacesNegocio(enlacesPropios, { incluirResenas: true }).map((enlace) => enlace.canal),
+  );
+  const canalesAMostrar = CANALES_ENLACE_NEGOCIO.filter(
+    (canal) => configurados.has(canal) || (clicsPorCanal.get(canal) ?? 0) > 0,
+  );
 
   return (
     <div className="space-y-6 min-w-0">
@@ -103,13 +113,18 @@ export default async function AnalyticsPage() {
       </div>
       <section className="space-y-3">
         <h2 className="text-sm font-medium">Clics a tus enlaces (últimos 30 días)</h2>
+        {canalesAMostrar.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Todavía no tienes enlaces de contacto ni redes en tu perfil.</p>
+        ) : null}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {ETIQUETAS_CANAL.map(([canal, etiqueta]) => (
+          {canalesAMostrar.map((canal) => (
             <div key={canal} className="rounded-2xl bg-card p-4 shadow-sm">
               <p className="text-2xl font-heading font-bold leading-none">
-                {clicsPorCanal[canal] ?? <span aria-label="No disponible">—</span>}
+                {errorClics ? <span aria-label="No disponible">—</span> : (clicsPorCanal.get(canal) ?? 0)}
               </p>
-              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">{etiqueta}</p>
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+                {ETIQUETAS_CANAL_ENLACE_NEGOCIO[canal]}
+              </p>
             </div>
           ))}
         </div>
@@ -128,9 +143,3 @@ export default async function AnalyticsPage() {
   );
 }
 
-const ETIQUETAS_CANAL: ReadonlyArray<readonly [CanalEnlaceNegocio, string]> = [
-  ["instagram", "Instagram"],
-  ["whatsapp", "WhatsApp"],
-  ["google_maps", "Google Maps"],
-  ["google_resenas", "Reseña en Google"],
-];
