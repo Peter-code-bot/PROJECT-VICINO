@@ -91,13 +91,37 @@ el enlace al sistema, que abre la app de la red o el navegador. No hace falta AA
 
 | Dónde | Qué | Resultado |
 | --- | --- | --- |
-| Staging (PostgREST, RLS y privilegios reales) | `node scripts/staging/probar-redes-negocio.mjs`: lectura pública, escritura directa prohibida, claves ausentes intactas, null quita, 11 formatos malos, clave desconocida sin eco, Messenger atado a Facebook, CHECK como postgres, sin modo vendedor, sin sesión, RPC viejo intacto, clics de canales nuevos, conteo agrupado, apagar todo, reversión ensayada | 17/17 |
-| CI (`security.yml`, paso «Enlaces y redes del negocio») | `redes-negocio.test.ts` (11), `enlaces-negocio.test.ts` (15), `abrir-enlace-externo.test.ts` (3), `app/actions/enlaces-negocio.test.ts` (6), `perfil/actions.enlaces.test.ts` (11, módulo real) | 46/46 en local |
+| Staging (PostgREST, RLS y privilegios reales) | `node scripts/staging/probar-redes-negocio.mjs`: lectura pública, escritura directa prohibida, claves ausentes intactas, null quita, 19 formatos malos (también rutas que no son perfil y U+202E en YouTube), guardado vacío sin reescribir, clave desconocida sin eco, Messenger atado a Facebook, CHECK como postgres, sin modo vendedor, sin sesión, RPC viejo intacto, clics de canales nuevos, conteo agrupado, apagar todo, reversión ensayada | 18/18 |
+| CI (`security.yml`, paso «Enlaces y redes del negocio») | `redes-negocio.test.ts` (14, con ida y vuelta de lo guardado), `enlaces-negocio.test.ts` (15), `abrir-enlace-externo.test.ts` (3), `app/actions/enlaces-negocio.test.ts` (6), `perfil/actions.enlaces.test.ts` (11, módulo real) | 49/49 en local |
 
 Falta, en dispositivo (Pedro y Alejandro), después de aplicar la migración, por cada red:
 con la app instalada abre la app; sin la app, el navegador; al volver, la ficha sigue
 donde estaba. Además: el chip «Redes sociales» con 4 o más, Messenger abre el chat, los
 clics suben en Estadísticas y apagar el modo vendedor quita todas.
+
+## Revisión (8-nov-2026)
+
+Tres revisores independientes (seguridad, base de datos, TypeScript/React) sobre `2bba9804`, solo lectura. Ningún crítico. Corregido:
+
+| Hallazgo | Severidad | Qué se hizo |
+| --- | --- | --- |
+| Un Facebook guardado como `profile.php?id=…` o un YouTube `channel/UC…` volvía del formulario y el normalizador lo rechazaba: el vendedor no podía guardar su perfil sin tocar ese campo | Alto | Los normalizadores aceptan lo que ellos mismos guardan; prueba de ida y vuelta de las nueve redes |
+| `profile.php` y otras páginas `.php` pasaban como usuario de Facebook | Medio | Rechazadas en JS, RPC y CHECK; el prefijo de ID ahora es `profile.php?id=` |
+| El RPC aceptaba rutas de Facebook y Telegram que no son perfil (marketplace, login, proxy, joinchat…) si alguien saltaba el formulario | Medio | Las listas viven también en el RPC y el CHECK |
+| El @handle de YouTube aceptaba caracteres de formato y dirección de texto (U+202E…) y comillas en la base | Medio/Bajo | Clase extra en el RPC y el CHECK; en JS ya no pasaban |
+| El bloqueo ACCESS EXCLUSIVE de `profiles` duraba toda la migración y había nueve recorridos | Medio | Un solo `ALTER TABLE` al final, después de clics y funciones |
+| `FOR UPDATE` frenaba los clics (FK) | Bajo | `FOR NO KEY UPDATE` |
+| Un guardado vacío reescribía la fila | Bajo | Sale sin `UPDATE` |
+| La reversión podía chocar con un clic nuevo | Bajo | `LOCK TABLE` antes del `DELETE`; nota para respaldar los clics |
+| El VERIFY no comprobaba los CHECK, el RPC viejo ni `SECURITY DEFINER` | Bajo | Comprobados |
+| Formas reales que se rechazaban: Facebook `Mi-Tienda-6155…`, host con punto final, `pinterest.es`, LinkedIn `in/---` | Bajo | Aceptadas las tres primeras; la cuarta se rechaza |
+
+Quedan, con su motivo:
+
+- **Anterior a este PR:** el tope global de 5,000 clics por hora se puede agotar repartiendo clics entre muchos negocios, y la métrica deja de contar esa hora. La pantalla ya dice que el conteo es orientativo.
+- **Anterior a este PR:** `maps.app.goo.gl` y `goo.gl/maps` son acortadores, así que su destino no se ve.
+- **Por diseño:** no se comprueba que la cuenta enlazada sea del vendedor.
+- **Para verificar en dispositivo:** que Messenger respete `?text=` con el mensaje largo.
 
 ## Orden de despliegue
 

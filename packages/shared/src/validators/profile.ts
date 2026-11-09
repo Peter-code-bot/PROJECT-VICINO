@@ -6,6 +6,7 @@ import {
   normalizarUsuarioInstagram,
 } from "../utils/enlaces-negocio";
 import {
+  esIdFacebook,
   normalizarFacebook,
   normalizarLinkedIn,
   normalizarPinterest,
@@ -208,7 +209,7 @@ export const redesNegocioSchema = enlacesNegocioSchema
     facebook_messenger: z.boolean().nullable().optional(),
   })
   .superRefine((enlaces, ctx) => {
-    if (enlaces.facebook_messenger && (!enlaces.facebook_ruta || enlaces.facebook_ruta.startsWith("profile.php"))) {
+    if (enlaces.facebook_messenger && (!enlaces.facebook_ruta || esIdFacebook(enlaces.facebook_ruta))) {
       ctx.addIssue({
         code: "custom",
         path: ["facebook_messenger"],

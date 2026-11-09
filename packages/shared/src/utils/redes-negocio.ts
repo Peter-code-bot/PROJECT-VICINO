@@ -59,7 +59,8 @@ function leerUrlPegada(entrada: string): UrlPegada | null | "invalida" {
       return "invalida";
     }
   }
-  return { host: url.hostname.toLowerCase(), segmentos, params: url.searchParams };
+  // "facebook.com." es el mismo host que "facebook.com" (punto final del DNS).
+  return { host: url.hostname.toLowerCase().replace(/\.$/, ""), segmentos, params: url.searchParams };
 }
 
 function sinArroba(entrada: string): string {
@@ -83,6 +84,8 @@ const RUTAS_NO_PERFIL_FACEBOOK = new Set([
 
 function usuarioFacebook(valor: string): ResultadoRed {
   const usuario = valor.toLowerCase();
+  // profile.php, login.php...: paginas de Facebook, no usuarios.
+  if (usuario.endsWith(".php")) return rechazo("no_es_perfil");
   // Ni los puntos ni las mayusculas distinguen usuarios en Facebook; se guarda
   // en minusculas para que la ficha siempre se vea igual. Al menos una letra:
   // solo digitos es un ID, no un usuario.
@@ -103,6 +106,9 @@ function idFacebook(valor: string | null | undefined): ResultadoRed {
  * "facebook.com/share/…" se rechaza: no se sabe a donde lleva (decision 3 del plan).
  */
 export function normalizarFacebook(entrada: string): ResultadoRed {
+  // Lo que ya esta guardado vuelve tal cual desde el formulario: tiene que pasar.
+  const guardado = /^profile\.php\?id=([0-9]{5,20})$/.exec(entrada.trim());
+  if (guardado) return idFacebook(guardado[1]);
   const url = leerUrlPegada(entrada);
   if (url === "invalida") return rechazo("formato");
   if (url) {
@@ -113,6 +119,9 @@ export function normalizarFacebook(entrada: string): ResultadoRed {
     if (primero === "profile.php") return idFacebook(url.params.get("id"));
     if (primero === "people" && segundo && tercero) return idFacebook(tercero);
     if (/^[0-9]+$/.test(primero)) return idFacebook(primero);
+    // Paginas sin usuario con la forma vieja facebook.com/Mi-Tienda-61550000000000/.
+    const nombreConId = /^[A-Za-z0-9.-]+-([0-9]{5,20})$/.exec(primero);
+    if (nombreConId) return idFacebook(nombreConId[1]);
     if (RUTAS_NO_PERFIL_FACEBOOK.has(primero.toLowerCase())) return rechazo("no_es_perfil");
     return usuarioFacebook(primero);
   }
@@ -191,6 +200,9 @@ function handleYouTube(valor: string): ResultadoRed {
  * /watch, /shorts) y las URL antiguas (/c/, /user/) se rechazan pidiendo el @.
  */
 export function normalizarYouTube(entrada: string): ResultadoRed {
+  // Lo que ya esta guardado vuelve tal cual desde el formulario: tiene que pasar.
+  const guardado = /^channel\/(UC[A-Za-z0-9_-]{22})$/.exec(entrada.trim());
+  if (guardado) return ok(`channel/${guardado[1]}`);
   const url = leerUrlPegada(entrada);
   if (url === "invalida") return rechazo("formato");
   if (url) {
@@ -245,8 +257,8 @@ export function urlX(usuario: string): string {
 
 // ── LinkedIn ────────────────────────────────────────────────────────────────
 
-const LINKEDIN_PERFIL_REGEX = /^[a-z0-9-]{3,100}$/;
-const LINKEDIN_EMPRESA_REGEX = /^[a-z0-9-]{2,100}$/;
+const LINKEDIN_PERFIL_REGEX = /^[a-z0-9][a-z0-9-]{2,99}$/;
+const LINKEDIN_EMPRESA_REGEX = /^[a-z0-9][a-z0-9-]{1,99}$/;
 const HOSTS_LINKEDIN = /^(?:(?:www|[a-z]{2})\.)?linkedin\.com$/;
 const HOSTS_CORTOS_LINKEDIN = /^lnkd\.in$/;
 
@@ -314,7 +326,8 @@ export function urlThreads(usuario: string): string {
 // ── Pinterest ───────────────────────────────────────────────────────────────
 
 export const PINTEREST_USUARIO_REGEX = /^[A-Za-z0-9_]{3,30}$/;
-const HOSTS_PINTEREST = /^(?:(?:www|[a-z]{2})\.)?pinterest\.com(?:\.mx)?$/;
+const HOSTS_PINTEREST =
+  /^(?:(?:www|[a-z]{2})\.)?pinterest\.(?:com(?:\.mx|\.ar|\.co|\.pe|\.au)?|es|ca|cl|co\.uk|fr|de|it|pt|jp)$/;
 const HOSTS_CORTOS_PINTEREST = /^pin\.it$/;
 const RUTAS_NO_PERFIL_PINTEREST = new Set(["pin", "ideas", "search", "today", "_", "business", "settings", "login"]);
 

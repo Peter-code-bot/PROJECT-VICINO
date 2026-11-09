@@ -15,9 +15,18 @@
 --         OR threads_usuario IS NOT NULL OR pinterest_usuario IS NOT NULL OR telegram_usuario IS NOT NULL;
 --
 -- Los clics de los canales nuevos tambien se borran: el CHECK original no los admite.
+-- Para guardarlos antes:
+--   CREATE TABLE respaldo_clics_redes_negocio AS
+--     SELECT * FROM public.clics_enlaces_negocio
+--      WHERE canal NOT IN ('instagram', 'whatsapp', 'google_maps', 'google_resenas');
+--
+-- Se corre en el SQL Editor (trae su propio BEGIN/COMMIT), no con apply-migration.mjs.
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
+
+-- Antes del DELETE: que ningun clic nuevo entre entre el borrado y el CHECK viejo.
+LOCK TABLE public.clics_enlaces_negocio IN ACCESS EXCLUSIVE MODE;
 
 DROP FUNCTION IF EXISTS public.guardar_enlaces_negocio(JSONB);
 DROP FUNCTION IF EXISTS public.clics_enlaces_negocio_por_canal(INTEGER);

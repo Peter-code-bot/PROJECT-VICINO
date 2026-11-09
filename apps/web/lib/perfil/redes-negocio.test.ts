@@ -218,3 +218,44 @@ test("ninguna red nueva se queda dentro del WebView de Android", () => {
     assert.equal(cargaDentroDelWebView(href, "android"), false, href);
   }
 });
+
+test("lo guardado vuelve del formulario tal cual y pasa (ida y vuelta de las nueve redes)", () => {
+  const canal = "UC" + "a".repeat(22);
+  const casos: Array<[(v: string) => ResultadoRed, string]> = [
+    [normalizarFacebook, "mitienda.puebla"],
+    [normalizarFacebook, "profile.php?id=61550000000000"],
+    [normalizarTikTok, "Mi.Tienda"],
+    [normalizarYouTube, "@panaderíalaesquina"],
+    [normalizarYouTube, `channel/${canal}`],
+    [normalizarX, "MiTienda"],
+    [normalizarLinkedIn, "company/mi-tienda"],
+    [normalizarLinkedIn, "in/ana-perez-123"],
+    [normalizarThreads, "mi.tienda"],
+    [normalizarPinterest, "MiTienda"],
+    [normalizarTelegram, "mitienda_pue"],
+  ];
+  for (const [normalizar, guardado] of casos) {
+    assert.deepEqual(normalizar(guardado), vale(guardado), guardado);
+  }
+  const conId = redesNegocioSchema.safeParse({ facebook_ruta: "profile.php?id=61550000000000", youtube_ruta: `channel/${canal}` });
+  assert.equal(conId.success, true);
+});
+
+test("Facebook: forma vieja nombre-ID, punto final del host y paginas .php", () => {
+  assert.deepEqual(normalizarFacebook("https://www.facebook.com/Mi-Tienda-61550000000000/"), vale("profile.php?id=61550000000000"));
+  assert.deepEqual(normalizarFacebook("https://facebook.com./mitienda"), vale("mitienda"));
+  assert.deepEqual(normalizarFacebook("profile.php"), no("no_es_perfil"));
+  assert.deepEqual(normalizarFacebook("login.php"), no("no_es_perfil"));
+  assert.deepEqual(normalizarFacebook("marketplace"), no("no_es_perfil"));
+  assert.deepEqual(normalizarPinterest("https://www.pinterest.es/mitienda/"), vale("mitienda"));
+  assert.deepEqual(normalizarLinkedIn("linkedin.com/in/---"), no("formato"));
+});
+
+test("redesNegocioSchema: Messenger con ID numerico o sin Facebook no pasa; sin la casilla no se exige nada", () => {
+  for (const facebook_ruta of ["profile.php?id=61550000000000", "", null]) {
+    const r = redesNegocioSchema.safeParse({ facebook_ruta, facebook_messenger: true });
+    assert.equal(r.success, false, String(facebook_ruta));
+  }
+  assert.equal(redesNegocioSchema.safeParse({ facebook_ruta: "profile.php?id=61550000000000", facebook_messenger: false }).success, true);
+  assert.equal(redesNegocioSchema.safeParse({ facebook_ruta: "profile.php?id=61550000000000" }).success, true);
+});

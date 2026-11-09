@@ -134,6 +134,11 @@ const main = async () => {
         { youtube_ruta: '@mi/canal' }, { youtube_ruta: 'micanal' }, { x_usuario: 'a'.repeat(16) },
         { linkedin_ruta: 'mi-tienda' }, { linkedin_ruta: 'school/x' }, { threads_usuario: 'Mi.Tienda' },
         { pinterest_usuario: '12345' }, { telegram_usuario: 'MiTienda' },
+        // Rutas que no son perfil, para quien salta el formulario.
+        { facebook_ruta: 'profile.php' }, { facebook_ruta: 'marketplace' }, { facebook_ruta: 'login.php' },
+        { telegram_usuario: 'proxy' }, { telegram_usuario: 'joinchat' }, { linkedin_ruta: 'in/---' },
+        // Direccion de texto invertida (U+202E) y comillas en el @handle de YouTube.
+        { youtube_ruta: `@mi${String.fromCodePoint(0x202e)}canal` }, { youtube_ruta: '@mi"canal' },
       ];
       for (const malo of malos) {
         const r = await guardar(ana.token, { ...malo, instagram_usuario: 'otra.cuenta' });
@@ -142,6 +147,11 @@ const main = async () => {
       const f = await fila(ana.id);
       esperar(f.instagram_usuario === 'mi.tienda', 'una llamada rechazada guardo la mitad');
       return `${malos.length} rechazados`;
+    });
+
+    await caso('un guardado vacio no reescribe la fila y devuelve lo que hay', async () => {
+      const r = await guardar(ana.token, {});
+      esperar(r.status === 200 && r.body?.tiktok_usuario === 'Mi.Tienda', corto(r));
     });
 
     await caso('clave desconocida o de otro tipo: 400 sin repetir lo que mando el cliente', async () => {
