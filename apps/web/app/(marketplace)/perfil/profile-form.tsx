@@ -574,35 +574,42 @@ export function ProfileForm({
             Desactivar Modo Vendedor
           </p>
           <div className="space-y-2 text-amber-800/90 dark:text-amber-200/80">
-            <p>Al desactivarlo:</p>
+            {/* Texto de Alejandro (8-nov-2026). Antes la lista cerraba con
+                "Vuelves a ser vendedor «Casual»", que se leia como si la cuenta
+                siguiera vendiendo con otro tipo. Es un detalle de la base
+                (update_profile_and_pause_products guarda seller_type = 'casual'
+                al desactivar) que no le toca a quien lee: lo que pasa es que
+                Modo Vendedor queda apagado. */}
+            <p>
+              Al desactivar Modo Vendedor, tus publicaciones se pausarán y se quitarán los
+              enlaces de contacto de tu negocio.
+            </p>
             <ul className="space-y-1 pl-4">
               {activeProductCount > 0 && (
                 <li className="list-disc">
-                  Tus {activeProductCount}{" "}
                   {activeProductCount === 1
-                    ? "publicación activa se pausa"
-                    : "publicaciones activas se pausan"}{" "}
-                  y {activeProductCount === 1 ? "deja" : "dejan"} de aparecer en las
-                  búsquedas. No se {activeProductCount === 1 ? "borra" : "borran"}.
+                    ? "Tu publicación activa deja de aparecer en las búsquedas. No se borra."
+                    : `Tus ${activeProductCount} publicaciones activas dejan de aparecer en las búsquedas. No se borran.`}
                 </li>
               )}
-              <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
+              {/* "ni volver a mostrarlas": toggleProductStatus y la policy de
+                  UPDATE (20261108190000) lo exigen desde el 8-nov-2026. */}
+              <li className="list-disc">
+                No podrás publicar ni volver a mostrar tus publicaciones hasta que lo actives otra vez.
+              </li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
               <li className="list-disc">
-                Se quitan tus enlaces de contacto (Instagram, WhatsApp, Google Maps y reseñas):
-                son públicos, y así nadie los ve mientras no vendas. Tendrás que volver a ponerlos.
+                Los enlaces (Instagram, WhatsApp, Google Maps y reseñas) son públicos: se quitan para
+                que nadie los vea mientras no vendas, y tendrás que volver a ponerlos.
               </li>
-              <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
             </ul>
-            {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
-                desactivar ponia a NULL el nombre del negocio, su descripcion y
-                los metodos de pago, y este mismo recuadro decia "podras
-                reactivarlos", dando a entender que se recuperaba todo. Los
-                enlaces de contacto son la excepcion deliberada (20261108120000):
+            {/* Cierto desde la migracion 20260826340000: desactivar ya no pone a
+                NULL el nombre del negocio, su descripcion ni los metodos de
+                pago. Los enlaces son la excepcion deliberada (20261108120000):
                 se quitan porque son columnas publicas. */}
             <p className="pt-1">
-              Lo demás no se borra: el nombre de tu negocio, su descripción y tus métodos
-              de pago se guardan, y vuelven tal cual si lo reactivas.
+              El nombre de tu negocio, su descripción y tus métodos de pago se guardan para cuando
+              lo actives otra vez.
             </p>
           </div>
           <div className="flex gap-2">
