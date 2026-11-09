@@ -12,30 +12,8 @@ import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
 import { CampoWhatsApp } from "@/components/profile/campo-whatsapp";
-
-function FieldRow({ label, htmlFor, hint, children, last = false }: {
-  label: string;
-  htmlFor?: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-  last?: boolean;
-}) {
-  const Etiqueta = htmlFor ? "label" : "span";
-  return (
-    <div className={`group/field flex items-start gap-3 py-3 ${last ? "" : "border-b border-border/10"}`}>
-      <Etiqueta
-        htmlFor={htmlFor}
-        className="w-24 shrink-0 pt-0.5 text-[13px] text-muted-foreground transition-colors group-focus-within/field:text-primary"
-      >
-        {label}
-      </Etiqueta>
-      <div className="min-w-0 flex-1">
-        {children}
-        {hint && <span className="mt-1 block text-[11px] text-muted-foreground">{hint}</span>}
-      </div>
-    </div>
-  );
-}
+import { FieldRow } from "./field-row";
+import { CamposRedesNegocio } from "./campos-redes-negocio";
 
 interface ProfileFormProps {
   profile: {
@@ -56,6 +34,15 @@ interface ProfileFormProps {
     whatsapp_numero?: string | null;
     google_maps_url?: string | null;
     google_resenas_url?: string | null;
+    facebook_ruta?: string | null;
+    facebook_messenger?: boolean | null;
+    tiktok_usuario?: string | null;
+    youtube_ruta?: string | null;
+    x_usuario?: string | null;
+    linkedin_ruta?: string | null;
+    threads_usuario?: string | null;
+    pinterest_usuario?: string | null;
+    telegram_usuario?: string | null;
   } | null;
   /**
    * Phase 9: number of products with `estatus='disponible'` for this user. Used
@@ -391,8 +378,9 @@ export function ProfileForm({
             {/* Enlaces externos del negocio. Son campos de texto libre y no
                 type="url" a proposito: la gente pega "maps.app.goo.gl/x" sin
                 https o "@mitienda", y el navegador los rechazaria antes de que
-                el servidor pudiera limpiarlos (enlacesNegocioSchema). Vacio
-                significa "quitar": el servidor recibe los cuatro siempre. */}
+                el servidor pudiera limpiarlos (redesNegocioSchema). Vacio
+                significa "quitar". Las redes sociales (Instagram incluido)
+                viven en CamposRedesNegocio, plegadas. */}
             <div>
               <span className="block text-[13px] text-muted-foreground">
                 Contacto y redes del negocio
@@ -400,21 +388,6 @@ export function ProfileForm({
               <p className="mt-0.5 mb-1 text-[11px] text-muted-foreground">
                 Opcional. Aparecen como botones en tu perfil público. Pon solo lo que ya sea público.
               </p>
-
-              <FieldRow label="Instagram" htmlFor="instagram_usuario" hint="Tu usuario, con o sin @">
-                <input
-                  id="instagram_usuario"
-                  name="instagram_usuario"
-                  type="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  maxLength={100}
-                  defaultValue={profile?.instagram_usuario ?? ""}
-                  placeholder="mitienda.puebla"
-                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
-                />
-              </FieldRow>
 
               <FieldRow label="WhatsApp" htmlFor="whatsapp_nacional" hint="Selecciona el país y escribe tu número local.">
                 <CampoWhatsApp inicial={profile?.whatsapp_numero ?? ""} activo={esVendedor} />
@@ -456,6 +429,8 @@ export function ProfileForm({
                   className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
                 />
               </FieldRow>
+
+              <CamposRedesNegocio perfil={profile} />
             </div>
 
             <div className="pt-2">
@@ -574,35 +549,42 @@ export function ProfileForm({
             Desactivar Modo Vendedor
           </p>
           <div className="space-y-2 text-amber-800/90 dark:text-amber-200/80">
-            <p>Al desactivarlo:</p>
+            {/* Texto de Alejandro (8-nov-2026). Antes la lista cerraba con
+                "Vuelves a ser vendedor «Casual»", que se leia como si la cuenta
+                siguiera vendiendo con otro tipo. Es un detalle de la base
+                (update_profile_and_pause_products guarda seller_type = 'casual'
+                al desactivar) que no le toca a quien lee: lo que pasa es que
+                Modo Vendedor queda apagado. */}
+            <p>
+              Al desactivar Modo Vendedor, tus publicaciones se pausarán y se quitarán los
+              enlaces de contacto de tu negocio.
+            </p>
             <ul className="space-y-1 pl-4">
               {activeProductCount > 0 && (
                 <li className="list-disc">
-                  Tus {activeProductCount}{" "}
                   {activeProductCount === 1
-                    ? "publicación activa se pausa"
-                    : "publicaciones activas se pausan"}{" "}
-                  y {activeProductCount === 1 ? "deja" : "dejan"} de aparecer en las
-                  búsquedas. No se {activeProductCount === 1 ? "borra" : "borran"}.
+                    ? "Tu publicación activa deja de aparecer en las búsquedas. No se borra."
+                    : `Tus ${activeProductCount} publicaciones activas dejan de aparecer en las búsquedas. No se borran.`}
                 </li>
               )}
-              <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
+              {/* "ni volver a mostrarlas": toggleProductStatus y la policy de
+                  UPDATE (20261108190000) lo exigen desde el 8-nov-2026. */}
+              <li className="list-disc">
+                No podrás publicar ni volver a mostrar tus publicaciones hasta que lo actives otra vez.
+              </li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
               <li className="list-disc">
-                Se quitan tus enlaces de contacto (Instagram, WhatsApp, Google Maps y reseñas):
-                son públicos, y así nadie los ve mientras no vendas. Tendrás que volver a ponerlos.
+                Tus enlaces de contacto y redes sociales son públicos: se quitan para que nadie los
+                vea mientras no vendas, y tendrás que volver a ponerlos.
               </li>
-              <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
             </ul>
-            {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
-                desactivar ponia a NULL el nombre del negocio, su descripcion y
-                los metodos de pago, y este mismo recuadro decia "podras
-                reactivarlos", dando a entender que se recuperaba todo. Los
-                enlaces de contacto son la excepcion deliberada (20261108120000):
+            {/* Cierto desde la migracion 20260826340000: desactivar ya no pone a
+                NULL el nombre del negocio, su descripcion ni los metodos de
+                pago. Los enlaces son la excepcion deliberada (20261108120000):
                 se quitan porque son columnas publicas. */}
             <p className="pt-1">
-              Lo demás no se borra: el nombre de tu negocio, su descripción y tus métodos
-              de pago se guardan, y vuelven tal cual si lo reactivas.
+              El nombre de tu negocio, su descripción y tus métodos de pago se guardan para cuando
+              lo actives otra vez.
             </p>
           </div>
           <div className="flex gap-2">
