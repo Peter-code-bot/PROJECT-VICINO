@@ -22,7 +22,7 @@ async function cargar(opciones: { errorEnlaces?: { code: string; message: string
           auth: { getUser: async () => ({ data: { user: { id: UID } } }) },
           rpc: async (name: string, args: Record<string, unknown>) => {
             llamadas.push({ name, args });
-            if (name === "actualizar_enlaces_negocio" && opciones.errorEnlaces) {
+            if (name === "guardar_enlaces_negocio" && opciones.errorEnlaces) {
               return { data: null, error: opciones.errorEnlaces };
             }
             return { data: {}, error: null };
@@ -54,16 +54,19 @@ const CON_ENLACES = {
   google_resenas_url: "",
 };
 
-test("vendedor con los campos: primero el perfil, luego los enlaces ya normalizados; vacio se omite (= NULL)", async () => {
+test("formulario viejo (los cuatro de antes): primero el perfil, luego SOLO esos cuatro ya normalizados; vacio = null", async () => {
   const f = await cargar();
   const r = await f.acciones.updateProfile(formulario(CON_ENLACES));
   assert.deepEqual(r, { success: true });
-  assert.deepEqual(f.llamadas.map((l) => l.name), ["update_profile_and_pause_products", "actualizar_enlaces_negocio"]);
+  assert.deepEqual(f.llamadas.map((l) => l.name), ["update_profile_and_pause_products", "guardar_enlaces_negocio"]);
+  // Sin las claves de las redes nuevas ni de Messenger: el RPC no las toca.
   assert.deepEqual(f.llamadas[1]?.args, {
-    p_instagram_usuario: "mi.tienda",
-    p_whatsapp_numero: "522221234567",
-    p_google_maps_url: "https://maps.app.goo.gl/AbC123",
-    p_google_resenas_url: undefined,
+    p_enlaces: {
+      instagram_usuario: "mi.tienda",
+      whatsapp_numero: "522221234567",
+      google_maps_url: "https://maps.app.goo.gl/AbC123",
+      google_resenas_url: null,
+    },
   });
   assert.deepEqual(f.revalidadas, ["/"]);
 });
@@ -95,13 +98,84 @@ test("con el modo vendedor apagado y los campos presentes, los enlaces se QUITAN
     google_resenas_url: "https://g.page/r/CaBc/review",
   }));
   assert.deepEqual(r, { success: true });
-  assert.deepEqual(f.llamadas.map((l) => l.name), ["update_profile_and_pause_products", "actualizar_enlaces_negocio"]);
+  assert.deepEqual(f.llamadas.map((l) => l.name), ["update_profile_and_pause_products", "guardar_enlaces_negocio"]);
+  // Se quitan TODOS, tambien las redes que este formulario viejo no trae.
   assert.deepEqual(f.llamadas[1]?.args, {
-    p_instagram_usuario: undefined,
-    p_whatsapp_numero: undefined,
-    p_google_maps_url: undefined,
-    p_google_resenas_url: undefined,
+    p_enlaces: {
+      instagram_usuario: null,
+      whatsapp_numero: null,
+      google_maps_url: null,
+      google_resenas_url: null,
+      facebook_ruta: null,
+      tiktok_usuario: null,
+      youtube_ruta: null,
+      x_usuario: null,
+      linkedin_ruta: null,
+      threads_usuario: null,
+      pinterest_usuario: null,
+      telegram_usuario: null,
+      facebook_messenger: false,
+    },
   });
+});
+
+const CON_REDES = {
+  ...CON_ENLACES,
+  enlaces_formulario: "2",
+  facebook_ruta: "facebook.com/MiTienda.Puebla?mibextid=abc",
+  facebook_messenger: "on",
+  tiktok_usuario: "https://www.tiktok.com/@mi.tienda?_t=xyz&_r=1",
+  youtube_ruta: "youtube.com/@MiCanal?si=123",
+  x_usuario: "twitter.com/MiTienda",
+  linkedin_ruta: "mx.linkedin.com/company/Mi-Tienda/",
+  threads_usuario: "threads.net/@Mi.Tienda",
+  pinterest_usuario: "",
+  telegram_usuario: "@MiTienda_Pue",
+};
+
+test("formulario nuevo: manda las trece claves normalizadas y Messenger encendido", async () => {
+  const f = await cargar();
+  const r = await f.acciones.updateProfile(formulario(CON_REDES));
+  assert.deepEqual(r, { success: true });
+  assert.deepEqual(f.llamadas[1]?.args, {
+    p_enlaces: {
+      instagram_usuario: "mi.tienda",
+      whatsapp_numero: "522221234567",
+      google_maps_url: "https://maps.app.goo.gl/AbC123",
+      google_resenas_url: null,
+      facebook_ruta: "mitienda.puebla",
+      tiktok_usuario: "mi.tienda",
+      youtube_ruta: "@micanal",
+      x_usuario: "MiTienda",
+      linkedin_ruta: "company/mi-tienda",
+      threads_usuario: "mi.tienda",
+      pinterest_usuario: null,
+      telegram_usuario: "mitienda_pue",
+      facebook_messenger: true,
+    },
+  });
+});
+
+test("formulario nuevo con la casilla de Messenger sin marcar: manda facebook_messenger en false", async () => {
+  const f = await cargar();
+  const sinMessenger = Object.fromEntries(Object.entries(CON_REDES).filter(([campo]) => campo !== "facebook_messenger"));
+  const r = await f.acciones.updateProfile(formulario(sinMessenger));
+  assert.deepEqual(r, { success: true });
+  assert.equal((f.llamadas[1]?.args.p_enlaces as Record<string, unknown>).facebook_messenger, false);
+});
+
+test("Messenger sin usuario de Facebook frena antes de escribir", async () => {
+  const f = await cargar();
+  const r = await f.acciones.updateProfile(formulario({ ...CON_REDES, facebook_ruta: "facebook.com/profile.php?id=61550000000000" }));
+  assert.match(r.error ?? "", /Messenger necesita el usuario/);
+  assert.equal(f.llamadas.length, 0);
+});
+
+test("un enlace corto de TikTok frena antes de escribir y dice que escriba el usuario", async () => {
+  const f = await cargar();
+  const r = await f.acciones.updateProfile(formulario({ ...CON_REDES, tiktok_usuario: "https://vm.tiktok.com/ZMabc123/" }));
+  assert.match(r.error ?? "", /enlace corto/);
+  assert.equal(f.llamadas.length, 0);
 });
 
 test("si el segundo RPC falla con 22023, el mensaje dice que el perfil si se guardo, se revalida y no va a Sentry", async () => {
@@ -113,7 +187,7 @@ test("si el segundo RPC falla con 22023, el mensaje dice que el perfil si se gua
 });
 
 test("un 42501 que no es el de 'activa el modo vendedor' se trata como fallo: Sentry y mensaje generico", async () => {
-  const f = await cargar({ errorEnlaces: { code: "42501", message: "permission denied for function actualizar_enlaces_negocio" } });
+  const f = await cargar({ errorEnlaces: { code: "42501", message: "permission denied for function guardar_enlaces_negocio" } });
   const r = await f.acciones.updateProfile(formulario(CON_ENLACES));
   assert.match(r.error ?? "", /No se pudieron guardar\. Intenta de nuevo\.$/);
   assert.ok(!(r.error ?? "").includes("permission denied"));

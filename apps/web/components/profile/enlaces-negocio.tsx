@@ -1,16 +1,20 @@
 "use client";
 
-import { Instagram, MapPin, MessageCircle, Star } from "lucide-react";
+import { useId, useState } from "react";
+import { ChevronDown, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import {
+  agruparEnlacesNegocio,
   listarEnlacesNegocio,
   type CanalEnlaceNegocio,
+  type EnlaceNegocioListo,
   type EnlacesNegocio as DatosEnlaces,
 } from "@vicino/shared";
 import { registrarClicEnlaceNegocio } from "@/app/actions/enlaces-negocio";
 import { cargaDentroDelWebView } from "@/lib/perfil/abrir-enlace-externo";
 import { urlPerfilVendedor } from "@/lib/navigation/url-perfil-vendedor";
+import { IconoRed, tieneIconoDeMarca } from "./iconos-redes";
 
 interface EnlacesNegocioProps {
   vendedorId: string;
@@ -25,38 +29,56 @@ interface EnlacesNegocioProps {
   mostrarResenasGoogle: boolean;
 }
 
-const ICONOS: Record<CanalEnlaceNegocio, typeof Instagram> = {
-  instagram: Instagram,
+/** Iconos genericos de los canales de contacto (no son logos de marca). */
+const ICONOS_GENERICOS: Partial<Record<CanalEnlaceNegocio, typeof MapPin>> = {
   whatsapp: MessageCircle,
   google_maps: MapPin,
   google_resenas: Star,
 };
 
+const CLASE_CHIP =
+  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold product-card-tab shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-[transform,opacity] active:translate-y-[1px] hover:opacity-90";
+
+function IconoCanal({ canal }: { canal: CanalEnlaceNegocio }) {
+  if (tieneIconoDeMarca(canal)) return <IconoRed canal={canal} className="w-3.5 h-3.5 shrink-0" />;
+  const Generico = ICONOS_GENERICOS[canal];
+  // TikTok y LinkedIn van sin icono a proposito (ver iconos-redes.tsx).
+  return Generico ? <Generico className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /> : null;
+}
+
 /**
- * Fila de botones hacia los canales externos del negocio.
+ * Botones hacia los canales externos del negocio: contacto (WhatsApp,
+ * Messenger, Maps, resena) y redes sociales.
+ *
+ * Con 4 botones o mas, las redes se pliegan en UN chip «Redes sociales» que
+ * despliega la lista (regla de diseno de Alejandro, 8-nov-2026; ver
+ * agruparEnlacesNegocio). Es un disclosure (boton con aria-expanded y una
+ * region), no un menu: se abre debajo de la fila y no atrapa el foco.
  *
  * Son <a> normales con target="_blank": en la web abren pestana (y Android
  * los manda a la app instalada por App Links). En la app nativa, Capacitor
  * entrega al sistema la navegacion a cualquier host que no este en
- * `allowNavigation` (wa.me, instagram.com, maps.app.goo.gl, g.page...), y el
- * sistema abre WhatsApp, Instagram o Maps si estan instalados.
+ * `allowNavigation`, y el sistema abre la app de la red si esta instalada.
+ * Ninguna red nueva usa un host de esa lista.
  *
  * La excepcion es Android con los hosts que SI estan en allowNavigation por
  * el OAuth (`*.google.com`: www.google.com/maps, maps.google.com,
  * search.google.com/local/writereview): ahi el WebView cargaria la web de
  * Google encima de la ficha. Para esos, y solo esos, se abre con
- * @capacitor/browser, que ya va en el binario publicado. Ver
- * lib/perfil/abrir-enlace-externo.ts.
+ * @capacitor/browser. Ver lib/perfil/abrir-enlace-externo.ts.
  *
  * El clic se cuenta aparte y sin esperar: si la cuenta falla, el enlace abre
  * igual. rel lleva nofollow y ugc porque el destino lo escribe el vendedor.
  */
 export function EnlacesNegocio({ vendedorId, enlaces, esDueno, mostrarResenasGoogle }: EnlacesNegocioProps) {
+  const [redesAbiertas, setRedesAbiertas] = useState(false);
+  const idPanelRedes = useId();
   const lista = listarEnlacesNegocio(enlaces, {
     incluirResenas: esDueno || mostrarResenasGoogle,
     urlPerfil: urlPerfilVendedor(vendedorId),
   });
   if (lista.length === 0) return null;
+  const { visibles, redesPlegadas } = agruparEnlacesNegocio(lista);
 
   const contar = (canal: CanalEnlaceNegocio) => {
     if (esDueno) return;
@@ -74,30 +96,53 @@ export function EnlacesNegocio({ vendedorId, enlaces, esDueno, mostrarResenasGoo
     }
   };
 
+  const chip = ({ canal, href, etiqueta }: EnlaceNegocioListo) => (
+    <a
+      key={canal}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow ugc"
+      onClick={(e) => abrir(e, canal, href)}
+      // Boton central del raton: abre en pestana nueva sin pasar por onClick.
+      onAuxClick={(e) => {
+        if (e.button === 1) contar(canal);
+      }}
+      className={CLASE_CHIP}
+    >
+      <IconoCanal canal={canal} />
+      {etiqueta}
+      <span className="sr-only"> (se abre fuera de VICINO)</span>
+    </a>
+  );
+
   return (
     // <nav> con nombre, y no un <div> con aria-label: un div sin rol no se anuncia.
-    <nav className="flex flex-wrap items-center gap-2" aria-label="Contacto y redes del negocio">
-      {lista.map(({ canal, href, etiqueta }) => {
-        const Icono = ICONOS[canal];
-        return (
-          <a
-            key={canal}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer nofollow ugc"
-            onClick={(e) => abrir(e, canal, href)}
-            // Boton central del raton: abre en pestana nueva sin pasar por onClick.
-            onAuxClick={(e) => {
-              if (e.button === 1) contar(canal);
-            }}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold product-card-tab shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-[transform,opacity] active:translate-y-[1px] hover:opacity-90"
+    <nav className="space-y-2" aria-label="Contacto y redes del negocio">
+      <div className="flex flex-wrap items-center gap-2">
+        {visibles.map(chip)}
+        {redesPlegadas ? (
+          <button
+            type="button"
+            aria-expanded={redesAbiertas}
+            aria-controls={idPanelRedes}
+            onClick={() => setRedesAbiertas((abiertas) => !abiertas)}
+            className={CLASE_CHIP}
           >
-            <Icono className="w-3.5 h-3.5" aria-hidden="true" />
-            {etiqueta}
-            <span className="sr-only"> (se abre fuera de VICINO)</span>
-          </a>
-        );
-      })}
+            <Users className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            Redes sociales
+            <span className="sr-only"> ({redesPlegadas.length})</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 shrink-0 transition-transform ${redesAbiertas ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        ) : null}
+      </div>
+      {redesPlegadas ? (
+        <div id={idPanelRedes} hidden={!redesAbiertas} className="flex flex-wrap items-center gap-2">
+          {redesPlegadas.map(chip)}
+        </div>
+      ) : null}
     </nav>
   );
 }

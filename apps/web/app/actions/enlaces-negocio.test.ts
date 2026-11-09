@@ -84,7 +84,7 @@ test("sin sesion, la cubeta es un resumen con fecha de la primera IP de x-forwar
 
 test("entrada invalida (canal desconocido, id que no es uuid, clave extra, basura) no llega al RPC", async () => {
   const f = await cargar();
-  assert.deepEqual(await f.acciones.registrarClicEnlaceNegocio({ vendedorId: VENDEDOR, canal: "tiktok" }), { registrado: false });
+  assert.deepEqual(await f.acciones.registrarClicEnlaceNegocio({ vendedorId: VENDEDOR, canal: "snapchat" }), { registrado: false });
   assert.deepEqual(await f.acciones.registrarClicEnlaceNegocio({ vendedorId: "123", canal: "whatsapp" }), { registrado: false });
   assert.deepEqual(await f.acciones.registrarClicEnlaceNegocio({ vendedorId: VENDEDOR, canal: "whatsapp", extra: 1 }), { registrado: false });
   assert.deepEqual(await f.acciones.registrarClicEnlaceNegocio(null), { registrado: false });

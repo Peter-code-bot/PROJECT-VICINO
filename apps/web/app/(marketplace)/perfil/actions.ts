@@ -11,11 +11,19 @@ import {
   updateProfileSchema,
   usernameSchema,
   cleanDisplayName,
-  enlacesNegocioSchema,
-  type EnlacesNegocioNormalizados,
+  redesNegocioSchema,
+  CAMPOS_TEXTO_ENLACES_NEGOCIO,
 } from "@vicino/shared";
 
-const CAMPOS_ENLACES_NEGOCIO = ["instagram_usuario", "whatsapp_numero", "google_maps_url", "google_resenas_url"] as const;
+/**
+ * Marca del formulario que trae los trece enlaces (20261108230000) y el
+ * interruptor de Messenger. Hace falta porque una casilla sin marcar NO viaja en
+ * el FormData: sin la marca no se distingue "apago Messenger" de "este
+ * formulario no conoce Messenger".
+ */
+const FORMULARIO_ENLACES_CON_REDES = "2";
+
+type EnlacesParaGuardar = Record<string, string | boolean | null>;
 
 function campoTexto(formData: FormData, nombre: string): string | null {
   const valor = formData.get(nombre);
@@ -63,35 +71,40 @@ export async function updateProfile(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  // Enlaces del negocio (Instagram, WhatsApp, Maps, resenas de Google). Se
-  // validan ANTES de escribir el perfil para no dejar un guardado a medias
-  // por un enlace mal escrito.
+  // Enlaces del negocio (contacto y redes sociales). Se validan ANTES de
+  // escribir el perfil para no dejar un guardado a medias por un enlace mal
+  // escrito.
   //
-  // Solo se tocan si el formulario que envio TRAE los campos: protege de un
-  // cliente viejo, abierto antes del deploy que los agrego, cuyo FormData
-  // daria null para los cuatro y los borraria sin querer.
+  // Solo se mandan los campos que el formulario TRAE: un cliente viejo, abierto
+  // antes del deploy, no conoce las redes nuevas y no debe borrarlas. En
+  // guardar_enlaces_negocio una clave que no viene no se toca.
   //
-  // Con el modo vendedor APAGADO los cuatro se QUITAN, al reves que
-  // nombre_negocio (que se conserva). Son columnas publicas y legibles por
-  // cualquiera via PostgREST aunque la ficha ya no las pinte; un comercio que
-  // deja de vender tiene que poder retirar su numero sin volver a activar nada,
-  // y apagar el modo vendedor es la unica puerta que le queda (los campos solo
-  // se ven con el modo encendido). El aviso de desactivacion lo dice.
-  const traeEnlaces = CAMPOS_ENLACES_NEGOCIO.some((campo) => formData.has(campo));
-  let enlaces: EnlacesNegocioNormalizados | null = null;
+  // Con el modo vendedor APAGADO se QUITAN TODOS, tambien los que este
+  // formulario no trae, al reves que nombre_negocio (que se conserva). Son
+  // columnas publicas y legibles por cualquiera via PostgREST aunque la ficha ya
+  // no las pinte; un comercio que deja de vender tiene que poder retirarlas sin
+  // volver a activar nada, y apagar el modo vendedor es la unica puerta que le
+  // queda (los campos solo se ven con el modo encendido). El aviso lo dice.
+  const presentes = CAMPOS_TEXTO_ENLACES_NEGOCIO.filter((campo) => formData.has(campo));
+  const conRedes = formData.get("enlaces_formulario") === FORMULARIO_ENLACES_CON_REDES;
+  const traeEnlaces = presentes.length > 0 || conRedes;
+  let enlaces: EnlacesParaGuardar | null = null;
   if (traeEnlaces && es_vendedor) {
-    const parsedEnlaces = enlacesNegocioSchema.safeParse({
-      instagram_usuario: campoTexto(formData, "instagram_usuario"),
-      whatsapp_numero: campoTexto(formData, "whatsapp_numero"),
-      google_maps_url: campoTexto(formData, "google_maps_url"),
-      google_resenas_url: campoTexto(formData, "google_resenas_url"),
-    });
+    const entrada: EnlacesParaGuardar = Object.fromEntries(presentes.map((campo) => [campo, campoTexto(formData, campo)]));
+    if (conRedes) entrada.facebook_messenger = formData.get("facebook_messenger") === "on";
+    const parsedEnlaces = redesNegocioSchema.safeParse(entrada);
     if (!parsedEnlaces.success) {
       return { error: parsedEnlaces.error.issues[0]?.message ?? "Revisa los enlaces de tu negocio" };
     }
-    enlaces = parsedEnlaces.data;
+    const normalizados: Record<string, unknown> = parsedEnlaces.data;
+    enlaces = Object.fromEntries(
+      Object.keys(entrada).map((campo) => [campo, (normalizados[campo] as string | boolean | null | undefined) ?? null]),
+    );
   } else if (traeEnlaces) {
-    enlaces = { instagram_usuario: null, whatsapp_numero: null, google_maps_url: null, google_resenas_url: null };
+    enlaces = {
+      ...Object.fromEntries(CAMPOS_TEXTO_ENLACES_NEGOCIO.map((campo) => [campo, null])),
+      facebook_messenger: false,
+    };
   }
 
   // MP#07 Fase 2: profile update + product pause are atomic via RPC
@@ -126,14 +139,9 @@ export async function updateProfile(formData: FormData) {
   // sus propias reglas y sus propios mensajes. Si este falla, el perfil ya
   // quedo guardado y se dice asi, igual que hace el formulario con el @.
   if (enlaces) {
-    const { error: errorEnlaces } = await supabase.rpc("actualizar_enlaces_negocio", {
-      // `?? undefined` por la misma razon que arriba: la clave se omite y
-      // Postgres aplica DEFAULT NULL, que aqui significa "quitar el enlace".
-      p_instagram_usuario: enlaces.instagram_usuario ?? undefined,
-      p_whatsapp_numero: enlaces.whatsapp_numero ?? undefined,
-      p_google_maps_url: enlaces.google_maps_url ?? undefined,
-      p_google_resenas_url: enlaces.google_resenas_url ?? undefined,
-    });
+    // guardar_enlaces_negocio (20261108230000): null quita ese enlace y una
+    // clave que no viene no se toca.
+    const { error: errorEnlaces } = await supabase.rpc("guardar_enlaces_negocio", { p_enlaces: enlaces });
     if (errorEnlaces) {
       // El perfil SI quedo guardado: se revalida igual, o la interfaz seguiria
       // ensenando el perfil viejo mientras el mensaje dice que se guardo.
