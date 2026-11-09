@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Stamp } from "lucide-react";
 import type { ProgramaPublico } from "@/lib/lealtad/esquemas";
+import type { MembresiaPropia } from "@/types/loyalty.types";
 import { UnirmeBoton } from "./unirme-boton";
 
 interface OfertaLealtadProps {
@@ -8,7 +9,7 @@ interface OfertaLealtadProps {
   sellerId: string;
   sesion: boolean;
   esDueno: boolean;
-  membresia: { id: string; sellos_disponibles: number; status: "activa" | "revocada" } | null;
+  membresia: MembresiaPropia | null;
 }
 
 /**
