@@ -11,7 +11,7 @@ export function parseProductGallery(raw: FormDataEntryValue | null): string[] {
   if (raw === null || raw === "") return [];
   if (typeof raw !== "string" || raw.length > 12_000) throw new Error("La galería no es válida");
   try { return gallerySchema.parse(JSON.parse(raw)); }
-  catch { throw new Error("La galería debe contener hasta 5 archivos válidos, sin repetir"); }
+  catch { throw new Error(`La galería debe contener hasta ${MAX_PRODUCT_MEDIA} archivos válidos, sin repetir`); }
 }
 
 /** Compare canonical URLs, never a startsWith host or a decoded path prefix. */

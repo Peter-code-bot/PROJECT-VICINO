@@ -268,6 +268,8 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       isVideo: isVideoUrl(url),
     })),
   );
+  const [mediaLimitExceeded, setMediaLimitExceeded] = useState(false);
+  const availableMediaSlots = Math.max(0, MAX_PRODUCT_MEDIA - media.length);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preparing, setPreparing] = useState<string | null>(null);
@@ -328,20 +330,27 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
     }
   }
 
+  function openMediaPicker() {
+    if (availableMediaSlots === 0) {
+      setMediaLimitExceeded(true);
+      return;
+    }
+    fileInputRef.current?.click();
+  }
+
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (preparationRef.current || cropperOpen || submittingRef.current) return;
+    if (files.length === 0 || preparationRef.current || cropperOpen || submittingRef.current) return;
+    setMediaLimitExceeded(files.length > availableMediaSlots);
+    if (availableMediaSlots === 0) return;
+
     const controller = new AbortController();
     preparationRef.current = controller;
     const queueItems: CropQueueItem[] = [];
     let lastPrepError = "";
     try {
-      for (const original of files) {
-        if (media.length + queueItems.length >= MAX_PRODUCT_MEDIA) {
-          toast.error("Máximo 5 archivos", { duration: 2000 });
-          break;
-        }
+      for (const original of files.slice(0, availableMediaSlots)) {
         setPreparing(`Preparando ${original.name}`);
         try {
           const isVid = original.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(original.name);
@@ -433,6 +442,7 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
   }
 
   function removeMedia(index: number) {
+    setMediaLimitExceeded(false);
     setMedia((prev) => {
       const item = prev[index];
       if (item && item.kind === "pending") {
@@ -1282,8 +1292,11 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
       {/* Media Upload */}
       <div className="space-y-3 pt-2">
         <label className="text-sm font-medium text-foreground/80">
-          Fotos y videos <span className="text-muted-foreground font-normal">(máx. 5, arrastra para ordenar)</span>
+          Fotos y videos
         </label>
+        <p role="status" className={mediaLimitExceeded ? "text-sm text-muted-foreground" : "sr-only"}>
+          {mediaLimitExceeded && `Máximo ${MAX_PRODUCT_MEDIA} archivos entre fotos y videos`}
+        </p>
         <DndContext 
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -1304,17 +1317,15 @@ export function ProductForm({ userId, mode = "create", initialValues, sellerInac
               ))}
             </SortableContext>
             
-            {media.length < 5 && (
-              <button
-                type="button"
-                disabled={!!preparing || cropperOpen || loading || uploading}
-                onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-              >
-                <ImagePlus className="w-5 h-5" />
-                <span className="text-[10px] mt-0.5">Agregar</span>
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={!!preparing || cropperOpen || loading || uploading}
+              onClick={openMediaPicker}
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+            >
+              <ImagePlus className="w-5 h-5" />
+              <span className="text-[10px] mt-0.5">Agregar</span>
+            </button>
           </div>
         </DndContext>
         {preparing && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{preparing}</p>}
