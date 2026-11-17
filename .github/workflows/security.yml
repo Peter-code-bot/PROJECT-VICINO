@@ -149,6 +149,13 @@ jobs:
         run: |
           cd apps/web && node --import tsx --test lib/perfil/enlaces-negocio.test.ts lib/perfil/redes-negocio.test.ts lib/perfil/abrir-enlace-externo.test.ts app/actions/enlaces-negocio.test.ts "app/(marketplace)/perfil/actions.enlaces.test.ts"
 
+      # Galeria de la publicacion en el servidor: tope de archivos, URLs del
+      # dueno, decodificacion real de imagenes con sharp y lecturas acotadas.
+      # 0971ea0 subio el tope de 5 a 10 y esta prueba siguio esperando el viejo
+      # sin que nadie lo viera, porque solo se corria a mano.
+      - name: Galeria de fotos y videos del producto
+        run: cd apps/web && node --test scripts/test-product-media-server.cjs
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba

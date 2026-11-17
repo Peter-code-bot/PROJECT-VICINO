@@ -22,6 +22,7 @@ function load(file) {
 }
 const { parseProductGallery, ownedProductMediaPath, validateProductGallery } = load(path.join(web, 'lib/media/validate-product-gallery.ts'));
 const { readStoredMedia } = load(path.join(web, 'lib/media/read-stored-media.ts'));
+const { MAX_PRODUCT_MEDIA } = load(path.join(web, 'lib/media/product-media-policy.ts'));
 const ownerId = '11111111-1111-4111-8111-111111111111';
 const baseUrl = 'https://media.test.invalid';
 const url = `${baseUrl}/storage/v1/object/public/product-media/${ownerId}/fixture.jpg`;
@@ -30,7 +31,19 @@ const fixture = () => sharp({ create: { width: 1200, height: 1200, channels: 3, 
 test('strict gallery parsing rejects malformed input without clearing existing images', () => {
   assert.deepEqual(parseProductGallery(null), []);
   assert.deepEqual(parseProductGallery('[]'), []);
-  for (const raw of ['bad', '{}', '[null]', '[1]', JSON.stringify([url, url]), JSON.stringify(Array.from({ length: 6 }, (_, i) => `${url}${i}`))]) assert.throws(() => parseProductGallery(raw));
+  for (const raw of ['bad', '{}', '[null]', '[1]', JSON.stringify([url, url]), JSON.stringify(Array.from({ length: MAX_PRODUCT_MEDIA + 1 }, (_, i) => `${url}${i}`))]) assert.throws(() => parseProductGallery(raw));
+});
+test('gallery accepts exactly MAX_PRODUCT_MEDIA unique files and rejects the next one naming the limit', async () => {
+  // 0971ea0 raised the cap from 5 to 10. Pinned so the next change fails CI on purpose instead of drifting silently.
+  assert.equal(MAX_PRODUCT_MEDIA, 10);
+  const full = Array.from({ length: MAX_PRODUCT_MEDIA }, (_, i) => `${url}${i}`);
+  const over = [...full, `${url}${MAX_PRODUCT_MEDIA}`];
+  assert.deepEqual(parseProductGallery(JSON.stringify(full)), full);
+  assert.throws(() => parseProductGallery(JSON.stringify(over)), new RegExp(`hasta ${MAX_PRODUCT_MEDIA} archivos`));
+  // The server action validates again after parsing. Already-owned URLs skip the download, so only the cap can reject here.
+  const request = async () => { throw new Error('must not fetch'); };
+  await validateProductGallery({ urls: full, existing: full, ownerId, baseUrl, request });
+  await assert.rejects(() => validateProductGallery({ urls: over, existing: over, ownerId, baseUrl, request }), error => error.issues?.[0]?.code === 'too_big');
 });
 test('canonical owner URLs reject SSRF, foreign users, traversal, encoded and query paths', () => {
   assert.equal(ownedProductMediaPath(url, ownerId, baseUrl), `${ownerId}/fixture.jpg`);
