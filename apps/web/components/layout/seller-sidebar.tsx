@@ -12,9 +12,11 @@ import {
   Stamp,
   Settings,
   ChevronRight,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BANDEJA_WHATSAPP_ACTIVA } from "@/lib/whatsapp/bandera";
 
 export interface SellerNavItem {
   href: string;
@@ -31,6 +33,11 @@ export const SELLER_NAV_ITEMS: readonly SellerNavItem[] = [
   { href: "/seller/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/seller/verificacion", label: "Verificación", icon: ShieldCheck },
   { href: "/seller/lealtad", label: "Lealtad", icon: Stamp },
+  // Bandeja de WhatsApp (fase 2 de INT-CRM-20261104), detras de una bandera
+  // de build: la ruta /seller/bandeja responde 404 mientras este apagada.
+  ...(BANDEJA_WHATSAPP_ACTIVA
+    ? [{ href: "/seller/bandeja", label: "WhatsApp", icon: MessageCircle } satisfies SellerNavItem]
+    : []),
   // Cupones se esconde del panel, NO se borra.
   //
   // La tabla `coupons` tiene 0 filas (consultado el 5-sep-2026), asi que no hay

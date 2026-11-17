@@ -242,6 +242,57 @@ export type Database = {
           },
         ]
       }
+      canales_whatsapp: {
+        Row: {
+          conectado_por: string | null
+          created_at: string
+          estado: string
+          id: string
+          negocio_id: string
+          numero_mostrado: string | null
+          phone_number_id: string
+          updated_at: string
+          waba_id: string
+        }
+        Insert: {
+          conectado_por?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          negocio_id: string
+          numero_mostrado?: string | null
+          phone_number_id: string
+          updated_at?: string
+          waba_id: string
+        }
+        Update: {
+          conectado_por?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          negocio_id?: string
+          numero_mostrado?: string | null
+          phone_number_id?: string
+          updated_at?: string
+          waba_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canales_whatsapp_conectado_por_fkey"
+            columns: ["conectado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canales_whatsapp_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           activo: boolean | null
@@ -719,6 +770,70 @@ export type Database = {
           },
         ]
       }
+      conversaciones_whatsapp: {
+        Row: {
+          canal_id: string
+          created_at: string
+          id: string
+          negocio_id: string
+          no_leidos: number
+          nombre_perfil: string | null
+          ultimo_entrante_at: string | null
+          ultimo_mensaje_at: string | null
+          ultimo_mensaje_texto: string | null
+          updated_at: string
+          wa_id: string
+        }
+        Insert: {
+          canal_id: string
+          created_at?: string
+          id?: string
+          negocio_id: string
+          no_leidos?: number
+          nombre_perfil?: string | null
+          ultimo_entrante_at?: string | null
+          ultimo_mensaje_at?: string | null
+          ultimo_mensaje_texto?: string | null
+          updated_at?: string
+          wa_id: string
+        }
+        Update: {
+          canal_id?: string
+          created_at?: string
+          id?: string
+          negocio_id?: string
+          no_leidos?: number
+          nombre_perfil?: string | null
+          ultimo_entrante_at?: string | null
+          ultimo_mensaje_at?: string | null
+          ultimo_mensaje_texto?: string | null
+          updated_at?: string
+          wa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversaciones_whatsapp_canal_id_negocio_id_fkey"
+            columns: ["canal_id", "negocio_id"]
+            isOneToOne: false
+            referencedRelation: "canales_whatsapp"
+            referencedColumns: ["id", "negocio_id"]
+          },
+          {
+            foreignKeyName: "conversaciones_whatsapp_canal_id_fkey"
+            columns: ["canal_id"]
+            isOneToOne: false
+            referencedRelation: "canales_whatsapp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversaciones_whatsapp_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           activo: boolean | null
@@ -878,6 +993,65 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      estados_huerfanos_whatsapp: {
+        Row: {
+          error_codigo: number | null
+          error_detalle: string | null
+          estado: string
+          negocio_id: string
+          recibido_at: string
+          wamid: string
+        }
+        Insert: {
+          error_codigo?: number | null
+          error_detalle?: string | null
+          estado: string
+          negocio_id: string
+          recibido_at?: string
+          wamid: string
+        }
+        Update: {
+          error_codigo?: number | null
+          error_detalle?: string | null
+          estado?: string
+          negocio_id?: string
+          recibido_at?: string
+          wamid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estados_huerfanos_whatsapp_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_webhook_whatsapp: {
+        Row: {
+          cuerpo: Json
+          huella: string
+          id: string
+          recibido_at: string
+          resultado: Json | null
+        }
+        Insert: {
+          cuerpo: Json
+          huella: string
+          id?: string
+          recibido_at?: string
+          resultado?: Json | null
+        }
+        Update: {
+          cuerpo?: Json
+          huella?: string
+          id?: string
+          recibido_at?: string
+          resultado?: Json | null
+        }
+        Relationships: []
       }
       favorites: {
         Row: {
@@ -1441,6 +1615,86 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      mensajes_whatsapp: {
+        Row: {
+          contexto_wamid: string | null
+          conversacion_id: string
+          created_at: string
+          direccion: string
+          enviado_por: string | null
+          error_codigo: number | null
+          error_detalle: string | null
+          estado: string
+          id: string
+          marca_tiempo: string
+          negocio_id: string
+          texto: string | null
+          tipo: string
+          wamid: string | null
+        }
+        Insert: {
+          contexto_wamid?: string | null
+          conversacion_id: string
+          created_at?: string
+          direccion: string
+          enviado_por?: string | null
+          error_codigo?: number | null
+          error_detalle?: string | null
+          estado: string
+          id?: string
+          marca_tiempo: string
+          negocio_id: string
+          texto?: string | null
+          tipo: string
+          wamid?: string | null
+        }
+        Update: {
+          contexto_wamid?: string | null
+          conversacion_id?: string
+          created_at?: string
+          direccion?: string
+          enviado_por?: string | null
+          error_codigo?: number | null
+          error_detalle?: string | null
+          estado?: string
+          id?: string
+          marca_tiempo?: string
+          negocio_id?: string
+          texto?: string | null
+          tipo?: string
+          wamid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensajes_whatsapp_conversacion_id_negocio_id_fkey"
+            columns: ["conversacion_id", "negocio_id"]
+            isOneToOne: false
+            referencedRelation: "conversaciones_whatsapp"
+            referencedColumns: ["id", "negocio_id"]
+          },
+          {
+            foreignKeyName: "mensajes_whatsapp_conversacion_id_fkey"
+            columns: ["conversacion_id"]
+            isOneToOne: false
+            referencedRelation: "conversaciones_whatsapp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensajes_whatsapp_enviado_por_fkey"
+            columns: ["enviado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensajes_whatsapp_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -3404,6 +3658,10 @@ export type Database = {
           vigente_desde: string
         }[]
       }
+      cambiar_estado_canal_whatsapp: {
+        Args: { p_activo: boolean; p_canal_id: string }
+        Returns: boolean
+      }
       cancel_product_video_job: { Args: { p_job_id: string }; Returns: Json }
       cancel_sale: {
         Args: { p_reason?: string; p_sale_id: string }
@@ -3424,6 +3682,15 @@ export type Database = {
           movimientos_restantes_24h: number
           radio_metros: number
         }[]
+      }
+      cerrar_envio_whatsapp: {
+        Args: {
+          p_error_codigo?: number
+          p_error_detalle?: string
+          p_mensaje_id: string
+          p_wamid?: string
+        }
+        Returns: boolean
       }
       chat_attachments_validos: {
         Args: { p_attachments: Json; p_autor_id: string; p_chat_id: string }
@@ -3486,6 +3753,15 @@ export type Database = {
       }
       comunidades_limite: { Args: { p_clave: string }; Returns: number }
       comunidades_publicas_ids: { Args: never; Returns: string[] }
+      conectar_canal_whatsapp: {
+        Args: {
+          p_negocio_id: string
+          p_numero_mostrado?: string
+          p_phone_number_id: string
+          p_waba_id: string
+        }
+        Returns: string
+      }
       confirm_sale: { Args: { p_sale_id: string }; Returns: undefined }
       confirmar_documentos_cuenta: {
         Args: {
@@ -3627,6 +3903,7 @@ export type Database = {
         Args: { p_community_id: string; p_privada: boolean }
         Returns: Json
       }
+      eliminar_canal_whatsapp: { Args: { p_canal_id: string }; Returns: boolean }
       eliminar_publicacion_comunidad: {
         Args: { p_post_id: string }
         Returns: Json
@@ -4122,6 +4399,10 @@ export type Database = {
         }[]
       }
       increment_product_view: { Args: { p_id: string }; Returns: undefined }
+      ingerir_webhook_whatsapp: {
+        Args: { p_cuerpo: string; p_firma: string }
+        Returns: Json
+      }
       iniciar_confirmacion_venta: {
         Args: {
           p_cantidad: number
@@ -4237,6 +4518,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      marcar_leida_conversacion_whatsapp: {
+        Args: { p_conversacion_id: string }
+        Returns: string
       }
       mark_messages_as_read: {
         Args: { p_chat_id: string; p_user_id: string }
@@ -4385,6 +4670,10 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      preparar_envio_whatsapp: {
+        Args: { p_conversacion_id: string; p_texto: string }
+        Returns: Json
+      }
       profile_public_name: {
         Args: {
           p_es_vendedor: boolean
@@ -5233,6 +5522,8 @@ export type Database = {
         Args: { p_membership_id: string }
         Returns: Json
       }
+      whatsapp_rango_estado: { Args: { p_estado: string }; Returns: number }
+      whatsapp_texto_de_mensaje: { Args: { p_msg: Json }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

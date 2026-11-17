@@ -41,3 +41,14 @@
 #    del marcador de posicion en mayusculas, y cuya URL apunta a otro marcador
 #    equivalente en lugar de a un proyecto real.
 310b18bf053e7879a0899f2cc06e38298378a730:.claude/skills/capgo-skills/skills/capacitor-push-notifications/SKILL.md:curl-auth-header:229
+
+# --- 2073725: bandeja de WhatsApp (PR #98) ---
+#
+# Dos aserciones de una prueba unitaria (lib/whatsapp/config.test.ts) que
+# comprueban el largo minimo que exige secretoAppWhatsApp: 16 caracteres pasan
+# y 15 no. El valor era una cadena de juguete de digitos y letras consecutivos
+# escrita para medir el largo, no un App Secret de Meta. Desde el commit
+# siguiente la prueba arma el valor en ejecucion y ya no hay literal que
+# detectar; estas dos huellas solo perdonan ese primer commit.
+2073725003202fe3fb7fbaaaf0f1066569b23884:apps/web/lib/whatsapp/config.test.ts:generic-api-key:31
+2073725003202fe3fb7fbaaaf0f1066569b23884:apps/web/lib/whatsapp/config.test.ts:generic-api-key:32

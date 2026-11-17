@@ -148,6 +148,18 @@ export const productMapRateLimit = makeLimiter("1 m", 20, "rl:product-map");
 // pasar por aqui.
 export const clicEnlaceRateLimit = makeLimiter("1 m", 20, "rl:clic-enlace", false);
 
+// Bandeja de WhatsApp (fase 2 de INT-CRM-20261104).
+//
+// Webhook: lo llama Meta, sin sesion. La cubeta es un resumen con fecha de la
+// IP (lib/cubeta-ip.ts), nunca la IP, y sin analitica. Generoso a proposito:
+// Meta agrupa avisos y reintenta hasta 7 dias lo que no ve con 200, y frenar
+// a Meta solo retrasa mensajes reales. Lo que de verdad protege la base es la
+// firma, que se verifica en el RPC.
+export const webhookWhatsAppRateLimit = makeLimiter("1 m", 600, "rl:wa-webhook", false);
+// Respuestas desde la bandeja: por usuario. El RPC frena ademas por negocio
+// (30 por minuto), porque es ejecutable con la llave anon sin pasar por aqui.
+export const whatsappEnvioRateLimit = makeLimiter("1 m", 30, "rl:wa-envio", false);
+
 // Reportes de contenido. Dos limitadores para dos abusos distintos.
 //
 // Por cuenta: un reporte de child_safety oculta el anuncio reportado al

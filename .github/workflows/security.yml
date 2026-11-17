@@ -233,3 +233,26 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: node scripts/check-legal-versions.mjs
+
+  # Las pruebas unitarias de apps/web (node:test + tsx). Hasta el 8-nov-2026
+  # nadie las ejecutaba en CI: solo corrian si alguien se acordaba antes del
+  # push. La bandeja de WhatsApp (webhook publico) depende de ellas.
+  unitarias:
+    name: Pruebas unitarias (apps/web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: node --test de todos los *.test.ts
+        run: cd apps/web && pnpm test
