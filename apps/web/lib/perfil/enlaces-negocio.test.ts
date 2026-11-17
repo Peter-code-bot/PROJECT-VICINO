@@ -188,7 +188,7 @@ test("las URL que se abren siguen el formato de cada proveedor", () => {
   assert.ok(!urlWhatsApp("522221234567").includes("+"));
 });
 
-test("listarEnlacesNegocio: orden fijo y la resena solo cuando se pide", () => {
+test("listarEnlacesNegocio: contacto primero, luego redes; la resena solo cuando se pide", () => {
   const enlaces = {
     instagram_usuario: "mi.tienda",
     whatsapp_numero: "522221234567",
@@ -197,11 +197,11 @@ test("listarEnlacesNegocio: orden fijo y la resena solo cuando se pide", () => {
   };
   assert.deepEqual(
     listarEnlacesNegocio(enlaces, { incluirResenas: false }).map((e) => e.canal),
-    ["instagram", "whatsapp", "google_maps"],
+    ["whatsapp", "google_maps", "instagram"],
   );
   assert.deepEqual(
     listarEnlacesNegocio(enlaces, { incluirResenas: true }).map((e) => e.canal),
-    ["instagram", "whatsapp", "google_maps", "google_resenas"],
+    ["whatsapp", "google_maps", "google_resenas", "instagram"],
   );
   assert.deepEqual(listarEnlacesNegocio({ instagram_usuario: null, whatsapp_numero: null, google_maps_url: null, google_resenas_url: null }, { incluirResenas: true }), []);
   assert.deepEqual(listarEnlacesNegocio(null, { incluirResenas: true }), []);

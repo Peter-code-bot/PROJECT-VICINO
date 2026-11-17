@@ -764,6 +764,29 @@ export async function toggleProductStatus(id: string, newStatus: "disponible" | 
   const rate = await enforce(writeRateLimit, `write:${user.id}`);
   if (!rate.ok) return { error: rate.error };
 
+  // Volver a MOSTRAR exige Modo Vendedor. Desactivarlo pausa las publicaciones
+  // (update_profile_and_pause_products) y el aviso promete que no se vuelven a
+  // ver hasta reactivarlo, pero el menu de la ficha las mostraba igual con el
+  // modo apagado. La base tambien lo exige (policy de UPDATE, migracion
+  // 20261108190000); esto da el motivo en palabras. Pausar no lo necesita.
+  if (newStatus === "disponible") {
+    const { data: perfil, error: errorPerfil } = await supabase
+      .from("profiles")
+      .select("es_vendedor")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (errorPerfil) {
+      Sentry.captureException(errorPerfil, {
+        tags: { action: "toggleProductStatus", step: "seller_mode" },
+        contexts: { supabase: { code: errorPerfil.code } },
+      });
+      return { error: "No pudimos comprobar tu Modo Vendedor. Intenta de nuevo." };
+    }
+    if (perfil?.es_vendedor !== true) {
+      return { error: "Activa Modo Vendedor para volver a mostrar tus publicaciones." };
+    }
+  }
+
   // .neq("estatus","eliminado") impide reanimar una publicacion borrada en
   // suave: sin el, pausar y despublicar una eliminada la devolvia al feed.
   // Y el .select() es lo que distingue "no se pudo" de "no habia nada que

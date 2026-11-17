@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { AVISO_PRIVACIDAD_VERSION, TERMINOS_VERSION } from "@vicino/shared";
 import { cargarReal, sentryEspia } from "../../lib/pruebas/cargar-real";
 
 type Legal = typeof import("./legal");
 const UID = "00000000-0000-4000-8000-000000000001";
-const INPUT = { expectedUserId: UID, terminosVersion: "1.1", avisoVersion: "2.2", aceptaTerminos: true, acusaAviso: true };
-const STATE = { confirmed: true, documents: [{ documento: "terminos", version: "1.1", confirmada: true }, { documento: "aviso", version: "2.2", confirmada: true }] };
+const INPUT = { expectedUserId: UID, terminosVersion: TERMINOS_VERSION, avisoVersion: AVISO_PRIVACIDAD_VERSION, aceptaTerminos: true, acusaAviso: true };
+const STATE = { confirmed: true, documents: [{ documento: "terminos", version: TERMINOS_VERSION, confirmada: true }, { documento: "aviso", version: AVISO_PRIVACIDAD_VERSION, confirmada: true }] };
 
 async function load(options: { user?: { id: string } | null; error?: object; data?: unknown } = {}) {
   const calls: Array<{ name: string; args: unknown }> = [];
@@ -45,7 +46,7 @@ test("acción expresa manda versiones visibles y dos decisiones, nunca fecha/mod
   const f = await load();
   assert.deepEqual(await f.legal.confirmarDocumentosCuenta(INPUT), { success: true });
   assert.deepEqual(f.calls, [{ name: "confirmar_documentos_cuenta", args: {
-    p_terminos_version: "1.1", p_aviso_version: "2.2", p_acepta_terminos: true, p_acusa_aviso: true,
+    p_terminos_version: TERMINOS_VERSION, p_aviso_version: AVISO_PRIVACIDAD_VERSION, p_acepta_terminos: true, p_acusa_aviso: true,
   } }]);
 });
 test("cambio de versión durante la petición devuelve error y no anuncia confirmación", async () => {

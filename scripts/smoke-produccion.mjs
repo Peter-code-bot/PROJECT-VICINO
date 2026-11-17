@@ -32,7 +32,21 @@
  * Sale 0 si todo pasa, 1 si algo falla.
  */
 
+import fs from 'node:fs';
+
 const BASE_POR_DEFECTO = 'https://vicinomarket.com';
+
+/**
+ * Version vigente del Aviso, leida del mismo archivo que pinta la pagina
+ * (packages/shared/src/constants/privacy.ts). Fijarla aqui a mano hacia que el
+ * smoke diera rojo en cada subida de version (2.2 -> 2.3, 8-nov-2026).
+ */
+const AVISO_VERSION = (() => {
+  const texto = fs.readFileSync(new URL('../packages/shared/src/constants/privacy.ts', import.meta.url), 'utf8');
+  const m = /AVISO_PRIVACIDAD_VERSION = "([0-9]+\.[0-9]+)"/.exec(texto);
+  if (!m) throw new Error('No encontre AVISO_PRIVACIDAD_VERSION en packages/shared/src/constants/privacy.ts');
+  return m[1];
+})();
 
 /** Puebla centro. Sin cookie de ubicacion la home no llama al RPC del feed. */
 const COOKIE_UBICACION = 'vicino_location=19.0414,-98.2063; vicino_radius=25000';
@@ -69,7 +83,12 @@ const COMPROBACIONES = [
     // el valor interpolado. Sin contemplarlo, esta comprobacion daba rojo con la
     // pagina perfectamente bien — y un chequeo que grita en falso es un chequeo
     // que alguien acaba apagando.
-    debe: [/[Vv]ersi[oó]n\s*(?:<!--\s*-->)?\s*2\.2/, /credencial de estudiante/],
+    debe: [
+      new RegExp(String.raw`[Vv]ersi[oó]n\s*(?:<!--\s*-->)?\s*` + AVISO_VERSION.replace('.', String.raw`\.`)),
+      /credencial de estudiante/,
+      // Seccion 4.6 (Aviso 2.3): los enlaces y redes que publica el Vendedor.
+      /Datos de contacto y redes sociales que el Vendedor decide publicar/,
+    ],
   },
   {
     nombre: 'terminos publicados',

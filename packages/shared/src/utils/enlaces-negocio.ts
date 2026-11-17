@@ -20,15 +20,90 @@
  * divergen, la persona ve un error distinto segun donde se valide.
  */
 
-export const CANALES_ENLACE_NEGOCIO = ["instagram", "whatsapp", "google_maps", "google_resenas"] as const;
+import {
+  esIdFacebook,
+  urlFacebook,
+  urlLinkedIn,
+  urlMessenger,
+  urlPinterest,
+  urlTelegram,
+  urlThreads,
+  urlTikTok,
+  urlX,
+  urlYouTube,
+} from "./redes-negocio";
+
+/**
+ * Todos los canales, en el orden en que se pintan. Los cuatro primeros son de
+ * 20261108120000; el resto, de 20261108230000 (redes-negocio.ts). La misma
+ * lista vive en el CHECK de clics_enlaces_negocio y en
+ * registrar_clic_enlace_negocio.
+ */
+export const CANALES_ENLACE_NEGOCIO = [
+  "instagram",
+  "whatsapp",
+  "google_maps",
+  "google_resenas",
+  "facebook",
+  "messenger",
+  "tiktok",
+  "youtube",
+  "x",
+  "linkedin",
+  "threads",
+  "pinterest",
+  "telegram",
+] as const;
 export type CanalEnlaceNegocio = (typeof CANALES_ENLACE_NEGOCIO)[number];
+
+/** Canales para hablar con el negocio o llegar a el: se ven siempre, con texto. */
+export const CANALES_CONTACTO: ReadonlyArray<CanalEnlaceNegocio> = ["whatsapp", "messenger", "google_maps", "google_resenas"];
+/** Redes sociales: se pliegan en un solo chip cuando hay muchos botones. */
+export const CANALES_REDES: ReadonlyArray<CanalEnlaceNegocio> = [
+  "instagram",
+  "facebook",
+  "tiktok",
+  "youtube",
+  "x",
+  "linkedin",
+  "threads",
+  "pinterest",
+  "telegram",
+];
 
 export interface EnlacesNegocio {
   instagram_usuario: string | null;
   whatsapp_numero: string | null;
   google_maps_url: string | null;
   google_resenas_url: string | null;
+  facebook_ruta: string | null;
+  /** Ofrecer Messenger con el usuario de Facebook. */
+  facebook_messenger: boolean | null;
+  tiktok_usuario: string | null;
+  youtube_ruta: string | null;
+  x_usuario: string | null;
+  linkedin_ruta: string | null;
+  threads_usuario: string | null;
+  pinterest_usuario: string | null;
+  telegram_usuario: string | null;
 }
+
+/** Las columnas de texto de los enlaces, en el orden del formulario. */
+export const CAMPOS_TEXTO_ENLACES_NEGOCIO = [
+  "instagram_usuario",
+  "whatsapp_numero",
+  "google_maps_url",
+  "google_resenas_url",
+  "facebook_ruta",
+  "tiktok_usuario",
+  "youtube_ruta",
+  "x_usuario",
+  "linkedin_ruta",
+  "threads_usuario",
+  "pinterest_usuario",
+  "telegram_usuario",
+] as const;
+export type CampoTextoEnlaceNegocio = (typeof CAMPOS_TEXTO_ENLACES_NEGOCIO)[number];
 
 export const INSTAGRAM_USUARIO_MAX = 30;
 /** Letras, numeros, guion bajo y puntos; ningun punto al final ni dos seguidos. */
@@ -159,15 +234,51 @@ export function urlWhatsApp(numero: string, texto: string = TEXTO_WHATSAPP_DESDE
 
 export function tieneEnlacesNegocio(enlaces: Partial<EnlacesNegocio> | null | undefined): boolean {
   if (!enlaces) return false;
-  return Boolean(
-    enlaces.instagram_usuario || enlaces.whatsapp_numero || enlaces.google_maps_url || enlaces.google_resenas_url,
-  );
+  // facebook_messenger no cuenta solo: sin facebook_ruta no hay a donde mandar.
+  return CAMPOS_TEXTO_ENLACES_NEGOCIO.some((campo) => Boolean(enlaces[campo]));
 }
 
 export interface EnlaceNegocioListo {
   canal: CanalEnlaceNegocio;
   href: string;
   etiqueta: string;
+  grupo: "contacto" | "redes";
+}
+
+export const ETIQUETAS_CANAL_ENLACE_NEGOCIO: Readonly<Record<CanalEnlaceNegocio, string>> = {
+  instagram: "Instagram",
+  whatsapp: "WhatsApp",
+  google_maps: "Google Maps",
+  google_resenas: "Reseña en Google",
+  facebook: "Facebook",
+  messenger: "Messenger",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  x: "X",
+  linkedin: "LinkedIn",
+  threads: "Threads",
+  pinterest: "Pinterest",
+  telegram: "Telegram",
+};
+
+/**
+ * Regla de diseño de Alejandro (8-nov-2026): con 4 chips o más, las redes
+ * sociales se pliegan en UN solo chip desplegable, «Redes sociales». Los de
+ * contacto (WhatsApp, Messenger, Maps, reseña) siguen a la vista: son los que
+ * llevan a hablar con el negocio. Con una sola red no se pliega: un
+ * desplegable con un solo elemento solo agrega un toque.
+ */
+export const UMBRAL_REDES_DESPLEGABLES = 4;
+
+export function agruparEnlacesNegocio(lista: ReadonlyArray<EnlaceNegocioListo>): {
+  visibles: EnlaceNegocioListo[];
+  redesPlegadas: EnlaceNegocioListo[] | null;
+} {
+  const redes = lista.filter((e) => e.grupo === "redes");
+  if (lista.length >= UMBRAL_REDES_DESPLEGABLES && redes.length >= 2) {
+    return { visibles: lista.filter((e) => e.grupo === "contacto"), redesPlegadas: redes };
+  }
+  return { visibles: [...lista], redesPlegadas: null };
 }
 
 /**
@@ -182,21 +293,36 @@ export function listarEnlacesNegocio(
   opciones: { incluirResenas: boolean; urlPerfil?: string },
 ): EnlaceNegocioListo[] {
   if (!enlaces) return [];
+  const mensaje = opciones.urlPerfil
+    ? `${TEXTO_WHATSAPP_DESDE_VICINO}\n\n${opciones.urlPerfil}`
+    : TEXTO_WHATSAPP_DESDE_VICINO;
+  const hrefs: Partial<Record<CanalEnlaceNegocio, string>> = {};
+  if (enlaces.whatsapp_numero) hrefs.whatsapp = urlWhatsApp(enlaces.whatsapp_numero, mensaje);
+  // Messenger cuelga del usuario de Facebook; con un ID numerico no hay m.me.
+  if (enlaces.facebook_messenger && enlaces.facebook_ruta && !esIdFacebook(enlaces.facebook_ruta)) {
+    hrefs.messenger = urlMessenger(enlaces.facebook_ruta, mensaje);
+  }
+  if (enlaces.google_maps_url) hrefs.google_maps = enlaces.google_maps_url;
+  if (opciones.incluirResenas && enlaces.google_resenas_url) hrefs.google_resenas = enlaces.google_resenas_url;
+  if (enlaces.instagram_usuario) hrefs.instagram = urlInstagram(enlaces.instagram_usuario);
+  if (enlaces.facebook_ruta) hrefs.facebook = urlFacebook(enlaces.facebook_ruta);
+  if (enlaces.tiktok_usuario) hrefs.tiktok = urlTikTok(enlaces.tiktok_usuario);
+  if (enlaces.youtube_ruta) hrefs.youtube = urlYouTube(enlaces.youtube_ruta);
+  if (enlaces.x_usuario) hrefs.x = urlX(enlaces.x_usuario);
+  if (enlaces.linkedin_ruta) hrefs.linkedin = urlLinkedIn(enlaces.linkedin_ruta);
+  if (enlaces.threads_usuario) hrefs.threads = urlThreads(enlaces.threads_usuario);
+  if (enlaces.pinterest_usuario) hrefs.pinterest = urlPinterest(enlaces.pinterest_usuario);
+  if (enlaces.telegram_usuario) hrefs.telegram = urlTelegram(enlaces.telegram_usuario);
+
   const lista: EnlaceNegocioListo[] = [];
-  if (enlaces.instagram_usuario) {
-    lista.push({ canal: "instagram", href: urlInstagram(enlaces.instagram_usuario), etiqueta: "Instagram" });
-  }
-  if (enlaces.whatsapp_numero) {
-    const mensaje = opciones.urlPerfil
-      ? `${TEXTO_WHATSAPP_DESDE_VICINO}\n\n${opciones.urlPerfil}`
-      : TEXTO_WHATSAPP_DESDE_VICINO;
-    lista.push({ canal: "whatsapp", href: urlWhatsApp(enlaces.whatsapp_numero, mensaje), etiqueta: "WhatsApp" });
-  }
-  if (enlaces.google_maps_url) {
-    lista.push({ canal: "google_maps", href: enlaces.google_maps_url, etiqueta: "Google Maps" });
-  }
-  if (opciones.incluirResenas && enlaces.google_resenas_url) {
-    lista.push({ canal: "google_resenas", href: enlaces.google_resenas_url, etiqueta: "Reseña en Google" });
+  for (const [grupo, canales] of [
+    ["contacto", CANALES_CONTACTO],
+    ["redes", CANALES_REDES],
+  ] as const) {
+    for (const canal of canales) {
+      const href = hrefs[canal];
+      if (href) lista.push({ canal, href, etiqueta: ETIQUETAS_CANAL_ENLACE_NEGOCIO[canal], grupo });
+    }
   }
   return lista;
 }
