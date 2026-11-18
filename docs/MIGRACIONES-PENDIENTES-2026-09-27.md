@@ -17,7 +17,7 @@ node scripts/apply-migration.mjs <archivo>
 
 | # | Archivo | Qué arregla | Riesgo / nota |
 |---|---|---|---|
-| 1 | `20260927140000_categoria_id_desde_el_slug.sql` | Rankings: las publicaciones de la app tienen `categoria_id` NULL y no cuentan. El trigger lo deriva SIEMPRE del slug (un id que mande el cliente no cuenta) y revoca el UPDATE de la columna. Backfill de 11 filas. | Mueve `updated_at` de esas 11 filas. Pruebas: `npx tsx scripts/test-migraciones-27-sep.ts` (PGlite local, 15/15 las cinco) y `scripts/staging/probar-categoria-id.mjs` (staging, dentro de ROLLBACK). |
+| 1 | `20260927140000_categoria_id_desde_el_slug.sql` | Rankings: las publicaciones de la app tienen `categoria_id` NULL y no cuentan. El trigger lo deriva SIEMPRE del slug (un id que mande el cliente no cuenta) y revoca el UPDATE de la columna. Backfill de las filas afectadas (conteo en Notion). | Mueve `updated_at` de esas filas. Pruebas: `npx tsx scripts/test-migraciones-27-sep.ts` (PGlite local, 15/15 las cinco) y `scripts/staging/probar-categoria-id.mjs` (staging, dentro de ROLLBACK). |
 | 2 | `20260927150000_quitar_notify_push_sin_autorizacion.sql` | Quita `notify_push()`: manda a send-push sin autorización y deja un 401 por venta o reserva. El push real (`push_on_sale_pgnet`, `push-on-booking`) sigue. | Reversión en `docs/rollback/`. El verify exige que el push real exista. |
 | 3 | `20260927160000_resenas_sin_columnas_forjables.sql` | Quien reseña podía insertar `respuesta`, `created_at` y un `product_id` ajeno. INSERT solo de las 8 columnas de la app y la policy exige el producto de la venta. | Requiere el código de master (la reseña toma `product_id` de la venta): ya está. Reversión en `docs/rollback/`. |
 | 4 | `20260927170000_seller_rankings_sin_ingresos_publicos.sql` | Con la clave anon se leían los ingresos mensuales de cada vendedor. Público solo `category_id` y `period`. | El podio sale de RPC SECURITY DEFINER (el verify lo comprueba). Reversión en `docs/rollback/`. |
@@ -48,10 +48,10 @@ sustituidas por esta (la de ranking tenía el trigger que respetaba un
 | 1 | 0 publicaciones con `categoria_id` NULL; `authenticated` sin UPDATE de la columna; trigger SECURITY DEFINER activo. |
 | 2 | `notify_push` no existe; siguen `push_on_sale_pgnet`, `push-on-booking`, `push_on_message_pgnet`, `push_on_appointment_pgnet`. |
 | 3 | Sin INSERT de `respuesta`/`created_at`; con INSERT de `product_id`/`fotos`; UPDATE de `respuesta` intacto; la policy comprueba `product_id`. |
-| 4 | anon: `select=ingresos` → 42501; `select=category_id,period` → 200; `get_ranking_hiperlocal` → 200 con 10 filas cerca de Villahermosa; `/rankings` 200. |
+| 4 | anon: `select=ingresos` → 42501; `select=category_id,period` → 200; `get_ranking_hiperlocal` → 200 con filas cerca de Villahermosa; `/rankings` 200. |
 | 5 | La función corta el mes en `America/Mexico_City`, sin sobrecargas, EXECUTE solo `service_role`. |
 
-No hizo falta recalcular agosto: 0 ventas, reseñas y chats en la franja del 31-ago de 18:00 a
-24:00 CDMX. Septiembre lo recalcula el cron diario (09:00 UTC) con la ventana nueva.
-Nota: desde Puebla el ranking de septiembre sale vacío porque sus vendedores están a 567 km o
+No hizo falta recalcular agosto (ventas, reseñas y chats de la franja del 31-ago de 18:00 a
+24:00 CDMX: corte de datos de producción en Notion). Septiembre lo recalcula el cron diario (09:00 UTC) con la ventana nueva.
+Nota: desde Puebla el ranking de septiembre no muestra a vendedores a 567 km o
 más (Villahermosa); es el comportamiento hiperlocal esperado, no efecto de estas migraciones.

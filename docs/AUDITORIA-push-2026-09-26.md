@@ -18,9 +18,9 @@ DISPOSITIVO** y no se afirma.
 
 | Pregunta | Respuesta |
 |---|---|
-| ¿Hay push en iPhone? | **Sí, el cableado existe y está completo**: Firebase + APNs, puente del token FCM y `remote-notification`. La 1.1 (6) ya está en TestFlight. **No hay evidencia de una entrega real reciente**: no hubo ningún envío en la ventana de 6 h que guarda `pg_net`. |
+| ¿Hay push en iPhone? | **Sí, el cableado existe y está completo**: Firebase + APNs, puente del token FCM y `remote-notification`. La 1.1 (6) ya está en TestFlight. **No hay evidencia de una entrega real reciente** (corte de `pg_net` en Notion). |
 | ¿Hay push en Android / Play Store? | **Sí, el mismo cableado**: `google-services.json`, plugin empaquetado, permiso `POST_NOTIFICATIONS` y canal `default` que se crea en el cliente. El alcance real es limitado: la app sigue en **prueba cerrada** (AAB 8 en revisión) y no en producción pública. |
-| ¿Cuántas personas pueden recibir push hoy? | **6 de 49 perfiles** tienen `fcm_token`. Los 6 son tokens FCM válidos de forma (ninguno es un token APNs crudo). La base no guarda la plataforma, así que no se puede saber cuántos son de iPhone. |
+| ¿Cuántas personas pueden recibir push hoy? | **Conteo de perfiles con `fcm_token` en Notion.** Todos los tokens son FCM válidos de forma (ninguno es un token APNs crudo). La base no guarda la plataforma, así que no se puede saber cuántos son de iPhone. |
 | ¿Qué eventos mandan push? | Solo **3**: mensaje de chat, cita nueva (solo al vendedor) y confirmación de venta. Todo lo demás enciende la campana y el teléfono no se entera. |
 | ¿Funcionan? | La ruta del servidor está viva y autenticada. Falta la **PRUEBA EN DISPOSITIVO** con dos cuentas y la app en segundo plano o cerrada. Ver §5. |
 
@@ -64,7 +64,8 @@ en producción.
 Versión desplegada: **v20, del 28-ago-2026**. El repo tiene desde el 16-sep la
 consulta a `acepta_notificacion`. Por lo tanto, **los interruptores de
 `/configuracion/notificaciones` no gobiernan nada en producción**. Hoy afecta a
-1 perfil con preferencias guardadas. Coincide con la línea base del 26-sep.
+los perfiles con preferencias guardadas (conteo en Notion). Coincide con la línea
+base del 26-sep.
 
 **Arreglo**: `supabase functions deploy send-push --no-verify-jwt`.
 `PUSH_WEBHOOK_SECRET`, `SB_SECRET_KEY` y `FIREBASE_SERVICE_ACCOUNT` ya existen
@@ -107,19 +108,19 @@ Tipos que hay en producción en `notifications`, que **no mandan push**:
 
 | Tipo | Filas | Última | ¿Merece push? |
 |---|---|---|---|
-| `trust_upgrade` | 29 | 26-sep | No: es buena noticia, no es urgente |
-| `review_reminder` | 2 | 26-sep | No: no hay nada que responder |
-| `sale_confirmation` | 2 | 26-sep | Ya la cubre `push_on_sale_pgnet` |
-| `comunidad_solicitud` / `_resuelta` | 1 + 1 | 16-sep | **Sí** |
-| `comunidad_comentario` | 1 | 16-sep | No: el volumen es alto y no se puede agrupar |
+| `trust_upgrade` | en Notion | 26-sep | No: es buena noticia, no es urgente |
+| `review_reminder` | en Notion | 26-sep | No: no hay nada que responder |
+| `sale_confirmation` | en Notion | 26-sep | Ya la cubre `push_on_sale_pgnet` |
+| `comunidad_solicitud` / `_resuelta` | en Notion | 16-sep | **Sí** |
+| `comunidad_comentario` | en Notion | 16-sep | No: el volumen es alto y no se puede agrupar |
 
 Y dos flujos vivos que **no avisan de ninguna forma**:
-- **Ofertas a una Solicitud** (`request_responses`). Hay 6 solicitudes
-  publicadas, y quien publica no se entera de que le ofertaron. **Es el hueco
-  más grande.**
+- **Ofertas a una Solicitud** (`request_responses`). Hay solicitudes
+  publicadas (conteo en Notion), y quien publica no se entera de que le
+  ofertaron. **Es el hueco más grande.**
 - **Recordatorios de cita** (1 día / 1 hora). El cron corre cada 30 min y
-  responde 200 (`reminders_1d: 0, reminders_1h: 0`: hay 1 sola cita en la base,
-  del 20-ago), pero **solo escribe en la campana**.
+  responde 200 (conteos de recordatorios y de citas en Notion), pero **solo
+  escribe en la campana**.
 
 ---
 
@@ -184,8 +185,8 @@ el aviso → `/citas`. Deja de mostrarse cuando pasa la hora o cuando la cita se
 cancela.
 
 **Recomendación**: hacer primero el push del servidor 1 h y 1 día antes (§6,
-filas 3 y 4). Medir si alguien usa las citas: hoy hay **1 cita en toda la base**.
-Una Live Activity para una función con una sola cita es construir para nadie.
+filas 3 y 4). Medir si alguien usa las citas (conteo actual en Notion). Una Live
+Activity antes de que las citas tengan uso es construir para nadie.
 Retomarlo en PT10 si las citas despegan.
 
 ---

@@ -156,7 +156,8 @@ Es escaneo del diff staged, no del historial completo. `git ls-files --others
 incluidos en el índice. Commit todavía pendiente al registrar este corte.
 
 Navegador real del build final localhost:3000: Home/Buscar con Apple PNG real,
-42 resultados nacionales, filtros/cancelación/foco. Home→Buscar mantuvo la
+resultados nacionales reales (conteo en Notion), filtros/cancelación/foco.
+Home→Buscar mantuvo la
 misma Blob URL del preview. Capturas ignoradas home-real.png/search-real.png;
 no se afirma reutilización fuera de la vigencia/documento probado. Redis local
 no resuelve DNS (servicio compartido entra en fail-open; freno local operativo)
@@ -238,19 +239,20 @@ node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts
 PASS real national overview is complete, bounded and excludes eager publication cards
 PASS national publication keyset covers every eligible row without duplicates
 PASS one actual stable group has coherent counts and distinct sellers
-INFO local coverage: 8 public cells, 1 pages, 35 publications
+INFO local coverage: public cells, pages, publications [conteos en Notion]
 PASS local 50 km public cells page to completion in one consistent revision
 PASS real type/price/category filters retain their membership
 PASS an empty search returns zero counts without false points or cards
 PASS invalid, oversized, malformed and stale requests fail privately
-S11 HTTP: 7 PASS, 0 SKIP; 43 eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
+S11 HTTP: 7 PASS, 0 SKIP; [conteo en Notion] eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
 exit_code 0
 ```
 
 Primer intento ECONNREFUSED: servidor anterior detenido; reinicio Next local
 mediante wrapper ignorado y nueva ejecución completa. Redis DNS local falla
 abierto con cuotas locales; no acredita cuota compartida. Catálogo dinámico:
-43 actual frente a42 del corte anterior no constituye fixture ni conteo fijo.
+el conteo actual cambió respecto al corte anterior (cifras en Notion); no es
+fixture ni conteo fijo.
 
 ```text
 node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-sql.ts --scale-100k
@@ -266,8 +268,8 @@ y vendedores distintos; no sustituye matriz PostGIS100000 ni su rendimiento.
 La matriz remota bloqueada permanece pendiente, sin volver a confirmar Run
 without RLS ni ejecutarla mediante otro canal.
 
-Apple real local:8publicaciones/3vendedores; lista accesible→grupo7/2 abre
-7tarjetas y enlaces reales. Escape cierra y devuelve foco al botón del punto.
+Apple real local: publicaciones y vendedores reales (conteo en Notion); lista
+accesible→grupo abre sus tarjetas y enlaces reales. Escape cierra y devuelve foco al botón del punto.
 Gesto nativo de pin/swipe,20pan/zoom medidos, hardware/cuentas/Form autenticado,
 cancelación/offline/heap y revisión visual de Javier siguen en Tests pendientes.
 Entrega web autorizada: revisar staged/Gitleaks, commit y push sin fuerza a
@@ -287,7 +289,7 @@ success,Deployment has completed. Estado leído por APIpública,exit0.
 ```text
 S11_BASE_URL=https://vicinomarket.com
 node node_modules/tsx/dist/cli.mjs scripts/test-s11-map-http.ts
-S11 HTTP: 7 PASS, 0 SKIP; 43 eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
+S11 HTTP: 7 PASS, 0 SKIP; [conteo en Notion] eligible national rows; 20 read-only requests; anonymous integration excludes account/device acceptance
 exit_code 0
 node scripts/smoke-produccion.mjs
 8 comprobaciones, todas en verde.
@@ -295,9 +297,10 @@ exit_code 0
 ```
 
 Navegador393x852,Apple real: Inicio previewMéxico sin hero/buscador,
-Buscar43resultados/3páginas, misma BlobURL y PNG1280x720 al navegar dentro
-de vigencia. CancelarServicios conserva43 yURL. Mapa43/31; grupo35/28 abre
-30tarjetas reales paginadas desde lista accesible. Pin nativo bloqueado por
+Buscar con resultados reales paginados (conteo en Notion), misma BlobURL y
+PNG1280x720 al navegar dentro de vigencia. CancelarServicios conserva el conteo
+y URL. Mapa con publicaciones/vendedores reales (conteo en Notion); grupo real
+abre sus tarjetas reales, paginadas, desde lista accesible. Pin nativo bloqueado por
 limitación del control de navegador sobre shadowroot cerrado; no es evidencia
 de gesto ni aceptación física. Capturas ignoradas production-home-oct1.png,
 production-search-oct1.png y production-drawer-oct1.png.

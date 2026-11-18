@@ -30,7 +30,7 @@ Estado: **implementada y verificada**, pendiente de push.
 
 - [x] 1.1 Cuota de 24 h fuera (`comunidad_fundacion_estado` redefinida; `fundar_comunidad` ya delegaba en el helper, sólo se corrigieron sus comentarios).
 - [x] 1.2 «Archivar» fuera del panel de administración. `archivarComunidad` se queda sin llamador: el archivado al salir la última persona lo hace la propia RPC.
-- [x] 1.3 «Nenis Anáhuac» restaurada: viva, owner Javier, membresía `owner` activa (verificado en producción).
+- [x] 1.3 Comunidad con nombre de universidad restaurada: viva, owner Javier, membresía `owner` activa (verificado en producción).
 - [x] 1.4 Badges: chip «admin», globo negro sin borde y sin texto, sin etiqueta «Archivada». Verificado en pantalla a 375 px.
 - [x] 1.5 y 1.7 Mapas táctiles: arrastrar, pinza y tocar para mover el pin; fuera el círculo de radio. Corregido además un efecto que recreaba el marcador en cada render.
 - [x] 1.6 Barra lateral con scroll contenido (`overscroll-contain`) y el bloqueo de scroll de los modales arreglado: con `overflow-x: clip` en la raíz, `body.overflow=hidden` no paraba la página.
@@ -84,7 +84,7 @@ Hecho con la sesión real del seed contra la base de producción:
   con URL firmada desde el bucket privado. La ruta guardada es
   `<community_id>/<autor>/<uuid>.webp`, la convención nueva.
 - Borrar la publicación y **salir con el icono de la cabecera**: la comunidad
-  queda con 0 publicaciones, 1 miembro vivo, el contador cuadrado y viva.
+  queda con sus contadores de publicaciones y miembros cuadrados (conteo en Notion) y viva.
 - La cabecera de comunidad se ve como la pidió Pedro: globo negro sin texto ni
   borde, sin etiqueta «Archivada», y los iconos que corresponden al rol.
 - El nombre «Javier Rodríguez» se lee correcto en la barra lateral: la

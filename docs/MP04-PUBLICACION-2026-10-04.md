@@ -10,7 +10,7 @@ PR52 integrado a master el04-oct-2026 14:20:26CDMX, commit6c3750dcafa022f174794c
 
 Producción Vercel4EJTjwR7dqdpykhmUGM4rge9WMYq SUCCESS:
 https://vercel.com/peters-projects-b65496a9/vicinomarket/4EJTjwR7dqdpykhmUGM4rge9WMYq
-Sitio https://vicinomarket.com muestra «Únete a VICINO», 4 solicitudes reales y tarjetas→login/next. Logo devuelve al feed de Solicitudes. Comunidades pública conserva vacío real; se detectó un fallo de sincronización de Descubrir durante el cierre y se documenta su corrección debajo. Acciones privadas siguen login. No se fabricaron comunidades ni se editó Alex.
+Sitio https://vicinomarket.com muestra «Únete a VICINO», solicitudes reales (conteo en Notion) y tarjetas→login/next. Logo devuelve al feed de Solicitudes. Comunidades pública conserva su estado real (conteo en Notion); se detectó un fallo de sincronización de Descubrir durante el cierre y se documenta su corrección debajo. Acciones privadas siguen login. No se fabricaron comunidades ni se editaron cuentas reales.
 
 ## Evidencia literal de integración
 
@@ -62,9 +62,9 @@ Script temporal ignorado y sin secretos:16comprobaciones, APIs propias, sin cook
 
 ```text
 node apps/web/test-results/release-production/smoke-production-s02.mjs
-PASS production API feed=solicitudes: no session/location, bounded allowlist, no-store; counts=requests:4
-PASS production API feed=comunidades: no session/location, bounded allowlist, no-store; counts=communities:0,posts:0
-PASS production API feed=comunidades&tab=descubrir: no session/location, bounded allowlist, no-store; counts=communities:0,posts:0
+PASS production API feed=solicitudes: no session/location, bounded allowlist, no-store; counts=requests:[conteo en Notion]
+PASS production API feed=comunidades: no session/location, bounded allowlist, no-store; counts=communities:[conteo en Notion],posts:[conteo en Notion]
+PASS production API feed=comunidades&tab=descubrir: no session/location, bounded allowlist, no-store; counts=communities:[conteo en Notion],posts:[conteo en Notion]
 PASS production private /mapa: login with exact safe next
 PASS production private /buscar?q=mesa: login with exact safe next
 PASS production private /favoritos: login with exact safe next
@@ -117,13 +117,13 @@ URL observada: https://vicinomarket.com/login?next=%2F%3Ffeed%3Dcomunidades
 $env:TEST_BROWSER='chromium'; $env:HOME_GUEST_BASE_URL='http://127.0.0.1:3116'; node --import tsx scripts/test-home-guest-http.ts
 PASS help page remains public without login
 PASS SSR feed=solicitudes: public preview without redirect
-DATA requests=4; no contact/identity/media/geographic columns
+DATA requests=[conteo en Notion]; no contact/identity/media/geographic columns
 PASS API feed=solicitudes: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades&tab=descubrir: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades&tab=descubrir: limited allowlist, no-store, anonymous and no location
 PASS private /?feed=following: login exact next; Home API unauthorized
 PASS private /?feed=comunidades&tab=mias: login exact next; Home API unauthorized
@@ -223,13 +223,13 @@ before_fix_http_exit=1
 $env:TEST_BROWSER='chromium'; node --import tsx scripts/test-home-guest-http.ts
 PASS help page remains public without login
 PASS SSR feed=solicitudes: public preview without redirect
-DATA requests=4; no contact/identity/media/geographic columns
+DATA requests=[conteo en Notion]; no contact/identity/media/geographic columns
 PASS API feed=solicitudes: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades&tab=descubrir: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades&tab=descubrir: limited allowlist, no-store, anonymous and no location
 PASS private /?feed=following: login exact next; Home API unauthorized
 PASS private /?feed=comunidades&tab=mias: login exact next; Home API unauthorized
@@ -293,13 +293,13 @@ final_chromium_http_exit=1
 $env:TEST_BROWSER='webkit'; node --import tsx scripts/test-home-guest-http.ts
 PASS help page remains public without login
 PASS SSR feed=solicitudes: public preview without redirect
-DATA requests=4; no contact/identity/media/geographic columns
+DATA requests=[conteo en Notion]; no contact/identity/media/geographic columns
 PASS API feed=solicitudes: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades&tab=descubrir: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades&tab=descubrir: limited allowlist, no-store, anonymous and no location
 PASS private /?feed=following: login exact next; Home API unauthorized
 PASS private /?feed=comunidades&tab=mias: login exact next; Home API unauthorized
@@ -455,13 +455,13 @@ router_lint_exit=0
 $env:TEST_BROWSER='chromium'; node --import tsx scripts/test-home-guest-http.ts
 PASS help page remains public without login
 PASS SSR feed=solicitudes: public preview without redirect
-DATA requests=4; no contact/identity/media/geographic columns
+DATA requests=[conteo en Notion]; no contact/identity/media/geographic columns
 PASS API feed=solicitudes: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades&tab=descubrir: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades&tab=descubrir: limited allowlist, no-store, anonymous and no location
 PASS private /?feed=following: login exact next; Home API unauthorized
 PASS private /?feed=comunidades&tab=mias: login exact next; Home API unauthorized
@@ -480,13 +480,13 @@ router_chromium_http_exit=0
 $env:TEST_BROWSER='webkit'; node --import tsx scripts/test-home-guest-http.ts
 PASS help page remains public without login
 PASS SSR feed=solicitudes: public preview without redirect
-DATA requests=4; no contact/identity/media/geographic columns
+DATA requests=[conteo en Notion]; no contact/identity/media/geographic columns
 PASS API feed=solicitudes: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades: limited allowlist, no-store, anonymous and no location
 PASS SSR feed=comunidades&tab=descubrir: public preview without redirect
-DATA communities=0; posts=0; no fabricated rows
+DATA communities=[conteo en Notion]; posts=[conteo en Notion]; no fabricated rows
 PASS API feed=comunidades&tab=descubrir: limited allowlist, no-store, anonymous and no location
 PASS private /?feed=following: login exact next; Home API unauthorized
 PASS private /?feed=comunidades&tab=mias: login exact next; Home API unauthorized

@@ -43,9 +43,8 @@ El despliegue por sí solo habría funcionado perfectamente. Lo que rompió las
 push fue arreglar algo que no estaba roto.
 
 Se restauró desde un respaldo tomado antes del cambio y se verificó en las tres
-direcciones. **No se perdió ninguna notificación**: `net._http_response` no
-registra ni un 401 en esa ventana, solo seis `200` del cron de recordatorios, o
-sea que no se intentó ni un envío mientras estuvo rota.
+direcciones. **No se perdió ninguna notificación**: lo confirma
+`net._http_response` en esa ventana (corte de datos de producción en Notion).
 
 Para comparar un secreto con el digest que devuelve la API, hay que hashear el
 otro lado, no comparar en crudo:
@@ -132,7 +131,7 @@ publicables del proyecto:
 - **18 de 18 pruebas** con el mismo código de estado y el mismo número de filas:
   el RPC del feed, `count_nearby_vendors`, `SELECT` sobre `products_services`,
   `categories`, `/auth/v1/settings`, Storage y el WebSocket de Realtime.
-- El cuerpo del RPC del feed es **byte-idéntico**: 792 bytes con las dos.
+- El cuerpo del RPC del feed es **byte-idéntico** con las dos.
 - **Mapea al rol `anon`**, probado con discriminador: en las cuatro tablas donde
   `authenticated` tiene `SELECT` y `anon` no (`notifications`, `user_roles`,
   `seller_verification`, `legal_acceptances`), ambas devuelven `42501`. Si

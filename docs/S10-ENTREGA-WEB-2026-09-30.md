@@ -43,11 +43,12 @@ PASS real type/category/price filters and empty result
 PASS buyer nearby radius through the real API
 PASS invalid and oversized HTTP input refused
 PASS page enabled and linked from search
-S10 HTTP: 7/7 PASS; 42 eligible catalogue rows; anonymous real HTTP, no dedicated account/device acceptance
+S10 HTTP: 7/7 PASS; [conteo en Notion] eligible catalogue rows; anonymous real HTTP, no dedicated account/device acceptance
 ```
 
 HTTP real local exit 0. Catálogo total de México; vista inicial de Puebla
-mostró 7 publicaciones de 2 vendedores con calles y marcadores de Apple reales.
+mostró publicaciones y vendedores reales (conteo en Notion) con calles y
+marcadores de Apple reales.
 Captura ignorada `apps/web/test-results/s10/local-real-map.jpg`.
 
 ```text
@@ -171,7 +172,8 @@ AUDIT_EXIT=0
 
 Contratos 5/5, SQL aislado 12/12 y API 7/7 repetidos exit 0. Build parcheado
 cerrado en el corte 18:31:44 CDMX: exit 0, 57/57 páginas y TypeScript integrado.
-Navegador 25/25, HTTP real 7/7 (42 elegibles) y smoke 8/8 repetidos exit 0.
+Navegador 25/25, HTTP real 7/7 (elegibles: conteo en Notion) y smoke 8/8
+repetidos exit 0.
 Lint secuencial repetido exit 0, 0 errores/149 warnings. El intento concurrente
 anterior devolvió exit 2:
 
@@ -232,7 +234,7 @@ PASS real type/category/price filters and empty result
 PASS buyer nearby radius through the real API
 PASS invalid and oversized HTTP input refused
 PASS page enabled and linked from search
-S10 HTTP: 7/7 PASS; 42 eligible catalogue rows; anonymous real HTTP, no dedicated account/device acceptance
+S10 HTTP: 7/7 PASS; [conteo en Notion] eligible catalogue rows; anonymous real HTTP, no dedicated account/device acceptance
 ```
 
 Exit 0. Smoke de producción posterior: mismas ocho comprobaciones del informe
@@ -242,9 +244,10 @@ previo, 8/8 exit 0. Medición de 20 lecturas anónimas secuenciales, exit 0:
 {"requests":20,"p50_ms":202,"p95_ms":327,"max_ms":606,"scope":"anonymous real HTTP/API/network; excludes UI/MapKit and physical mobile"}
 ```
 
-Apple real autorizado y cargado en el dominio: calles y grupos visibles, 7
-publicaciones/2 vendedores en zona inicial. Selección desde tarjeta: 6
-resultados del punto, total de zona conservado; retorno a toda la zona funciona.
+Apple real autorizado y cargado en el dominio: calles y grupos visibles,
+publicaciones y vendedores reales en zona inicial (conteo en Notion). Selección
+desde tarjeta: resultados del punto (conteo en Notion), total de zona
+conservado; retorno a toda la zona funciona.
 Captura ignorada `apps/web/test-results/s10/production-map.jpg`. No se automatiza
 el gesto nativo sobre el pin dentro del shadow root cerrado.
 

@@ -1,16 +1,16 @@
 # Verificadores de la prueba cerrada: diagnóstico y arreglo
 
 **Fecha:** 29 de septiembre de 2026
-**Estado: ARREGLADO Y VERIFICADO.** Lo que faltaba era sacar a los 12 de la prueba interna. Ya está hecho, y el alta se probó de punta a punta con una cuenta real.
+**Estado: ARREGLADO Y VERIFICADO.** Lo que faltaba era sacar a los verificadores de la prueba interna. Ya está hecho, y el alta se probó de punta a punta con una cuenta real.
 
 ---
 
 ## Lo que cambié hoy en Play Console
 
-1. **Quité a los 12 de la prueba interna.** Las 12 listas seguían existiendo pero ninguna está ya seleccionada en esa pista. El segmento interno pasó solo a **«Inactivo»** al quedarse sin verificadores, así que no hizo falta pausarlo.
+1. **Quité a los verificadores de la prueba interna.** Las listas seguían existiendo pero ninguna está ya seleccionada en esa pista. El segmento interno pasó solo a **«Inactivo»** al quedarse sin verificadores, así que no hizo falta pausarlo.
 2. **No toqué nada más.** La prueba cerrada sigue **Activa** con la versión **8 (1.7)** y sus 178 países. El Grupo de Google sigue siendo la lista de verificadores.
 
-Las 12 listas de correo siguen guardadas en la consola. Si algún día quieres volver a usar la prueba interna para el equipo, se vuelven a marcar en un clic. **Pero quien esté en la interna no cuenta para los 14 días**, así que no metas ahí a nadie que quieras como verificador.
+Las listas de correo siguen guardadas en la consola. Si algún día quieres volver a usar la prueba interna para el equipo, se vuelven a marcar en un clic. **Pero quien esté en la interna no cuenta para los 14 días**, así que no metas ahí a nadie que quieras como verificador.
 
 ## Lo que verifiqué después del cambio
 
@@ -22,12 +22,12 @@ Las 12 listas de correo siguen guardadas en la consola. Si algún día quieres v
 
 ## Diagnóstico: por qué no aparecía
 
-**Los 12 verificadores estaban dados de alta en la PRUEBA INTERNA, no en la cerrada.** Y eso, por regla oficial de Google, los dejaba fuera de la cerrada.
+**Los verificadores de las listas de correo estaban dados de alta en la PRUEBA INTERNA, no en la cerrada.** Y eso, por regla oficial de Google, los dejaba fuera de la cerrada.
 
 Lo que hay hoy en Play Console:
 
-- **Prueba interna:** activa, con **12 listas de correo de una persona cada una** (Alejandro Estrada, Diego Soriano, Javier Alejandro, Javier Rodriguez, Jorge Flores, Juan Escutia, Juan Soriano, Mario Soriano, Pedro Soriano, Pepe Revive, Raul Ochoa, Ruben Gonzales). Versión publicada: **4 (1.3), del 4 de junio.**
-- **Prueba cerrada:** activa, con el Grupo de Google (14 miembros). Versión publicada: **8 (1.7), del 26 de septiembre.**
+- **Prueba interna:** activa, con **listas de correo de una persona cada una** (nombres en Notion). Versión publicada: **4 (1.3), del 4 de junio.**
+- **Prueba cerrada:** activa, con el Grupo de Google (conteo de miembros en Notion). Versión publicada: **8 (1.7), del 26 de septiembre.**
 
 Y la regla, textual de Google:
 
@@ -40,11 +40,11 @@ Traducido a lo que os está pasando: quien aceptó la prueba interna **no puede 
 - No ve la versión nueva.
 - **No cuenta para los 12 verificadores × 14 días**, porque sólo cuenta la prueba cerrada.
 
-Los nombres se solapan: Pedro, Alejandro y Javier están en las dos listas. Play Console no muestra quién aceptó de verdad la prueba interna, así que no puedo decirte cuáles de los 12 están bloqueados. Pero el riesgo es concreto y arreglarlo es barato.
+Los nombres se solapan: Pedro, Alejandro y Javier están en las dos listas. Play Console no muestra quién aceptó de verdad la prueba interna, así que no puedo decirte cuáles de los verificadores de la interna están bloqueados. Pero el riesgo es concreto y arreglarlo es barato.
 
 ### Cómo se arregló
 
-Ya está hecho: los 12 salieron de la prueba interna y el segmento quedó inactivo. Si alguno sigue atascado, es porque su cuenta guarda el alta de la interna; se suelta abriendo https://play.google.com/apps/internaltest/4701655295868435015 y tocando «Leave the program».
+Ya está hecho: los verificadores salieron de la prueba interna y el segmento quedó inactivo. Si alguno sigue atascado, es porque su cuenta guarda el alta de la interna; se suelta abriendo https://play.google.com/apps/internaltest/4701655295868435015 y tocando «Leave the program».
 
 ---
 
@@ -58,14 +58,14 @@ Lo revisé todo hoy. Nada de esto es el problema:
 | Versión 8 (1.7) | **Disponible para verificadores específicos**: publicada, ni borrador ni en revisión |
 | Fecha de lanzamiento | 26 sept, 3:13 p.m. |
 | Lista de verificadores de la cerrada | Grupo `vicino-verificadores@googlegroups.com`, bien conectado |
-| Miembros del grupo | 14 |
+| Miembros del grupo | Conteo en Notion |
 | Países | 178, **México incluido** |
 | Compatibilidad mínima | Android 7 en adelante |
 | Registro de verificación de desarrolladores | Al día |
 
 Y la prueba directa: con una cuenta que está en el grupo y que **no** aceptó la prueba interna, la ficha en la web muestra **«Instalar»** y **«Esta app está disponible para tu dispositivo»**. O sea que la tubería funciona cuando el conflicto de pistas no estorba.
 
-**El hueco a explicar era ése: 14 personas en el grupo y una sola instalación.**
+**El hueco a explicar era ése: mucha más gente en el grupo que instalaciones (cifras en Notion).**
 
 ---
 
@@ -219,6 +219,6 @@ El paso 1 cuesta diez segundos y no pide datos. Es un precio pequeño por poder 
 ## Lo que queda de tu lado
 
 1. **Manda el mensaje nuevo** (abajo). Ya puedes.
-2. **Si alguno de los 12 sigue sin poder instalar**, que abra este enlace y toque «Leave the program» / «Abandonar el programa»: https://play.google.com/apps/internaltest/4701655295868435015 — es el de la prueba interna, y sirve para soltar a quien se quedara enganchado ahí. Después que repita el paso 2.
+2. **Si alguno de los que estaban en la interna sigue sin poder instalar**, que abra este enlace y toque «Leave the program» / «Abandonar el programa»: https://play.google.com/apps/internaltest/4701655295868435015 — es el de la prueba interna, y sirve para soltar a quien se quedara enganchado ahí. Después que repita el paso 2.
 3. **Agrupa los cambios nativos** en un mismo AAB para no encadenar revisiones. Subir uno no saca a nadie de la prueba.
 4. **Añade la línea del autofoco al próximo AAB.** Ya está en el repo, entra sola en el siguiente build.
