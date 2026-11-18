@@ -5,8 +5,8 @@
  *
  *   node scripts/check-texto-corrupto.mjs
  *
- * POR QUE EXISTE. El 16-sep-2026 el nombre de Javier aparecia en /admin/users
- * como "Javier Rodr<?>guez": el rombo con el signo de interrogacion. El dato
+ * POR QUE EXISTE. El 16-sep-2026 un nombre de perfil aparecia en /admin/users
+ * como "Rodr<?>guez": el rombo con el signo de interrogacion. El dato
  * estaba asi GUARDADO desde una escritura que no viajo en UTF-8, y nadie se
  * entero hasta que salio en una captura de pantalla. La aplicacion de hoy no
  * puede producirlo —escribe siempre en UTF-8 y normaliza a NFC—, pero un

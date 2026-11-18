@@ -6,14 +6,12 @@
 -- huerfano y SIN NINGUNA FORMA DE ENCONTRARLO: ya no hay usuario del que
 -- colgarlo, ni fila que lo referencie, ni registro de que fallo.
 --
--- No es hipotetico. En produccion hay hoy 31 archivos huerfanos, 6,1 MB, el
--- 38 % de todo el almacenamiento:
---   avatars/a99fd93d-8590-...   4 archivos  (cuenta borrada)
---   avatars/6711f958-2c1b-...   1 archivo   (cuenta borrada)
---   review-media/36f3e023-...   1 archivo   (venta inexistente)
---   product-media/temp/        25 archivos  (flujo viejo, ningun codigo escribe ahi)
+-- No es hipotetico. En produccion ya hay archivos huerfanos (conteo, tamano y
+-- desglose por carpeta en Notion): avatares de cuentas borradas, fotos de
+-- resenas cuya venta ya no existe y la carpeta product-media/temp/ del flujo
+-- viejo, donde ya ningun codigo escribe.
 --
--- Cinco de esos archivos son fotos de personas que pidieron borrar su cuenta.
+-- Algunos de esos archivos son fotos de personas que pidieron borrar su cuenta.
 --
 -- Esta tabla es el registro que faltaba. No arregla el borrado: hace que su
 -- fallo se pueda ver y reintentar, que es la diferencia entre una deuda y una

@@ -64,7 +64,7 @@ async function runSuite() {
     assert.deepEqual(res, { disponible: true });
   })();
 
-  await test("Lentes deportivos (estatus='eliminado') -> inactivo con motivo 'eliminado' (Reporte 1)", () => {
+  await test("Producto eliminado (estatus='eliminado') -> inactivo con motivo 'eliminado' (Reporte 1)", () => {
     const res = clasificarFavorito({
       estatus: "eliminado",
       is_hidden: false,
@@ -72,7 +72,7 @@ async function runSuite() {
     assert.deepEqual(res, { disponible: false, motivo: "eliminado" });
   })();
 
-  await test("Hiking (estatus='pausado') -> inactivo con motivo 'pausado' (Reporte 2)", () => {
+  await test("Producto pausado (estatus='pausado') -> inactivo con motivo 'pausado' (Reporte 2)", () => {
     const res = clasificarFavorito({
       estatus: "pausado",
       is_hidden: false,
@@ -111,7 +111,7 @@ async function runSuite() {
   })();
 
   await test("Sin sesión de usuario -> retorna 'No autenticado'", async () => {
-    const res = await removeFavoriteCore("d97a54d4-bb46-4b24-a7c4-7a8055b077e8", {
+    const res = await removeFavoriteCore("00000000-0000-4000-8000-000000000001", {
       getSupabaseClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
       getUser: async () => null,
       enforceRateLimit: async () => ({ ok: true }),
@@ -121,7 +121,7 @@ async function runSuite() {
   })();
 
   const userId = "u1111111-1111-4111-8111-111111111111";
-  const prodId = "d97a54d4-bb46-4b24-a7c4-7a8055b077e8";
+  const prodId = "00000000-0000-4000-8000-000000000001";
 
   await test("DELETE limitado estrictamente al usuario autenticado y producto solicitado", async () => {
     let capturedTable = "";
@@ -257,8 +257,8 @@ async function runSuite() {
   await test("Renderizado estático: sin enlaces navegables (<a> ni href=) evitando 404", () => {
     const html = renderToStaticMarkup(
       React.createElement(FavoritoInactivoCard, {
-        productoId: "d97a54d4-bb46-4b24-a7c4-7a8055b077e8",
-        titulo: "Lentes deportivos",
+        productoId: "00000000-0000-4000-8000-000000000001",
+        titulo: "Articulo de prueba A",
         motivo: "eliminado",
       })
     );
@@ -273,8 +273,8 @@ async function runSuite() {
   await test("Renderizado estático con motivo 'pausado': badge Pausado sin enlaces", () => {
     const html = renderToStaticMarkup(
       React.createElement(FavoritoInactivoCard, {
-        productoId: "7fb8153d-9edc-44bb-80cd-1296529e2a24",
-        titulo: "HIKING",
+        productoId: "00000000-0000-4000-8000-000000000002",
+        titulo: "ARTICULO DE PRUEBA B",
         motivo: "pausado",
       })
     );

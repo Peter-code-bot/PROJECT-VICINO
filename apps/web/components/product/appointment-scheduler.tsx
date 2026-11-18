@@ -53,8 +53,8 @@ export function AppointmentScheduler({ product, open, onClose }: AppointmentSche
   //      caso natural de un antro, y estaba en la lista de pendientes.
   //
   // El tercer caso es ambiguo y se trata aparte: inicio == fin. Puede querer
-  // decir "24 horas" o "sin configurar", y hoy en produccion hay un servicio
-  // ("Reservaciones para Dorothy") con 00:00 -> 00:00, que casi seguro es un
+  // decir "24 horas" o "sin configurar", y en produccion ya aparecio un
+  // servicio con 00:00 -> 00:00 (detalle en Notion), que casi seguro es un
   // formulario enviado vacio. Generar 48 huecos ahi seria inventar
   // disponibilidad que el vendedor nunca ofrecio, asi que se devuelve vacio y la
   // interfaz lo dice.

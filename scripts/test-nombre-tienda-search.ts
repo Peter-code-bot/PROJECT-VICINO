@@ -11,14 +11,14 @@ const requireWeb = createRequire(path.join(web, "package.json"));
 const esbuild = requireWeb(requireWeb.resolve("esbuild", { paths: [requireWeb.resolve("tsx")] }));
 const React = requireWeb("react");
 const { renderToStaticMarkup } = requireWeb("react-dom/server");
-const store = { nombre: "Alex Cabrera", es_vendedor: true, seller_type: "business", nombre_negocio: "Creed", trust_level: "nuevo", average_rating: 0, reviews_count: 0 };
+const store = { nombre: "Marta Prueba", es_vendedor: true, seller_type: "business", nombre_negocio: "Zafiro", trust_level: "nuevo", average_rating: 0, reviews_count: 0 };
 type Profile = Omit<typeof store, "nombre_negocio"> & { nombre_negocio: string | null };
 type Params = { q?: string; category?: string; page?: string; tipo?: string; price_min?: string; price_max?: string; sort?: string; lat?: string; lng?: string; radio?: string };
 type Call = { table: string; rpc: boolean; input?: Record<string, unknown>; select: string; filters: [string, unknown][]; orders: [string, unknown][]; range?: [number, number]; executed: boolean };
 
-function fixture(profile: Profile, canonicalRpcName = "Creed") {
+function fixture(profile: Profile, canonicalRpcName = "Zafiro") {
   const calls: Call[] = [];
-  const products = Array.from({ length: 21 }, (_, index) => ({ id: `synthetic-${index}`, titulo: "Playera YoungLa", precio: 1099, imagen_principal: null, categoria: "ropa", slug: `playera-${index}`, precio_negociable: false, modo_precio: "fijo", created_at: "2026-10-03T12:00:00Z", ventas_count: 0, product_categories: [] }));
+  const products = Array.from({ length: 21 }, (_, index) => ({ id: `synthetic-${index}`, titulo: "Playera lisa", precio: 350, imagen_principal: null, categoria: "ropa", slug: `playera-${index}`, precio_negociable: false, modo_precio: "fijo", created_at: "2026-10-03T12:00:00Z", ventas_count: 0, product_categories: [] }));
   function query(table: string, rpc = false, input?: Record<string, unknown>) {
     const call: Call = { table, rpc, input, select: "", filters: [], orders: [], executed: false };
     calls.push(call);
@@ -56,7 +56,7 @@ function fixture(profile: Profile, canonicalRpcName = "Creed") {
 const external = ["@/lib/supabase/server", "next/headers", "@/lib/session-auth", "@/lib/university-data", "./search-filters", "@sentry/nextjs", "@/hooks/use-favorite", "next/link", "next/image"];
 const bundled = esbuild.build({ entryPoints: [path.join(web, "app/(marketplace)/buscar/page.tsx")], bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", tsconfig: path.join(web, "tsconfig.json"), packages: "external", external, logLevel: "silent" });
 
-async function renderSearch(profile: Profile, params: Params = {}, canonicalRpcName = "Creed") {
+async function renderSearch(profile: Profile, params: Params = {}, canonicalRpcName = "Zafiro") {
   const f = fixture(profile, canonicalRpcName);
   const anchor = ({ children, href, prefetch: _prefetch, ...props }: any) => React.createElement("a", { ...props, href }, children);
   const image = ({ fill: _fill, priority: _priority, ...props }: any) => React.createElement("img", props);
@@ -79,16 +79,16 @@ async function renderSearch(profile: Profile, params: Params = {}, canonicalRpcN
 
 test("SearchPage without location projects store identity into the real product cards", async () => {
   for (const [profile, expected] of [
-    [store, "Creed"],
-    [{ ...store, nombre_negocio: "Creed Nueva" }, "Creed Nueva"],
-    [{ ...store, es_vendedor: false }, "Alex Cabrera"],
-    [{ ...store, seller_type: "casual" }, "Alex Cabrera"],
+    [store, "Zafiro"],
+    [{ ...store, nombre_negocio: "Zafiro Nueva" }, "Zafiro Nueva"],
+    [{ ...store, es_vendedor: false }, "Marta Prueba"],
+    [{ ...store, seller_type: "casual" }, "Marta Prueba"],
     [{ ...store, nombre_negocio: null }, "Tienda"],
     [{ ...store, nombre_negocio: " \t\n " }, "Tienda"],
   ] as const) {
     const result = await renderSearch(profile);
     assert.ok(result.html.includes(expected), `Visible card must show ${expected}`);
-    if (expected !== "Alex Cabrera") assert.ok(!result.html.includes("Alex Cabrera"));
+    if (expected !== "Marta Prueba") assert.ok(!result.html.includes("Marta Prueba"));
     const query = result.calls.find(call => call.executed && call.table === "products_services")!;
     assert.ok(query && !query.rpc);
     for (const column of ["es_vendedor", "seller_type", "nombre_negocio"]) assert.ok(query.select.includes(column));
@@ -97,9 +97,9 @@ test("SearchPage without location projects store identity into the real product 
 });
 
 test("fallback category/page/price/type filters remain intact after a store rename", async () => {
-  const result = await renderSearch({ ...store, nombre_negocio: "Creed Nueva" }, { q: "Playera", category: "ropa", page: "2", tipo: "producto", price_min: "100", price_max: "2000", sort: "price_asc" });
-  assert.ok(result.html.includes("Creed Nueva"));
-  assert.ok(!result.html.includes("Alex Cabrera"));
+  const result = await renderSearch({ ...store, nombre_negocio: "Zafiro Nueva" }, { q: "Playera", category: "ropa", page: "2", tipo: "producto", price_min: "100", price_max: "2000", sort: "price_asc" });
+  assert.ok(result.html.includes("Zafiro Nueva"));
+  assert.ok(!result.html.includes("Marta Prueba"));
   const query = result.calls.find(call => call.executed && call.table === "products_services")!;
   assert.equal(query.rpc, false);
   assert.ok(query.filters.some(([column, value]) => column === "estatus" && value === "disponible"));
@@ -115,8 +115,8 @@ test("fallback category/page/price/type filters remain intact after a store rena
 
 test("nearby SearchPage preserves canonical RPC identity and its location/filter contract", async () => {
   const result = await renderSearch(store, { q: "Playera", lat: "19.4326", lng: "-99.1332", radio: "5000", page: "2", tipo: "producto", price_min: "100", sort: "price_desc" });
-  assert.ok(result.html.includes("Creed"));
-  assert.ok(!result.html.includes("Alex Cabrera"));
+  assert.ok(result.html.includes("Zafiro"));
+  assert.ok(!result.html.includes("Marta Prueba"));
   const query = result.calls.find(call => call.executed && call.rpc)!;
   assert.equal(query.table, "search_nearby_products_v4");
   assert.equal(query.input?.user_lat, 19.4326);

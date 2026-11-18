@@ -8,10 +8,9 @@
 --
 -- Por que importa que sigan expuestas: las dos son SECURITY DEFINER, o sea
 -- brincan la RLS, y NO filtran ps.is_hidden, ni pr.is_hidden, ni user_blocks.
--- Comprobado leyendo su prosrc, no supuesto. Hoy no se nota porque no hay
--- ningun producto oculto ni ningun bloqueo en la base — o sea, es exactamente
--- la clase de agujero que se descubre el dia que moderacion oculta su primer
--- producto y sigue saliendo por la API.
+-- Comprobado leyendo su prosrc, no supuesto. Es exactamente la clase de
+-- agujero que se descubre el dia que moderacion oculta un producto y sigue
+-- saliendo por la API (estado de moderacion al corregirlo: Notion).
 --
 -- OJO CON EL REVOKE, que es donde esto se hace mal:
 -- las dos tienen EXECUTE concedido a PUBLIC ademas de a anon y authenticated.

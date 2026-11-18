@@ -2,8 +2,8 @@
 -- Unicode, y dejar una consulta para que no vuelva a pasar sin que nadie lo
 -- vea.
 --
--- QUE SE VE EN PANTALLA. En /admin/users el nombre de Javier aparecia como
--- "Javier Rodr<?>guez": el rombo con el signo de interrogacion, que es
+-- QUE SE VE EN PANTALLA. En /admin/users un nombre de perfil aparecia como
+-- "Rodr<?>guez": el rombo con el signo de interrogacion, que es
 -- U+FFFD, el caracter que los decodificadores ponen cuando encuentran un byte
 -- que no es UTF-8 valido. No es un problema de la pantalla: el byte corrupto
 -- esta GUARDADO en profiles.nombre. Postgres lo acepto porque U+FFFD es un
@@ -100,13 +100,10 @@ BEGIN
 END
 $$;
 
--- El caso concreto de la captura, por si el patron no lo alcanzo (por ejemplo
--- si el nombre llego con otra forma corrupta). Idempotente y acotado a esa
--- fila; si ya esta bien, no cambia nada.
-UPDATE profiles
-   SET nombre = 'Javier ' || translate('Rodriguez', 'i', U&'\00ED')
- WHERE id = '7db68a49-2aa9-443a-a99c-3b654a43ec95'
-   AND nombre LIKE '%' || U&'\FFFD' || '%';
+-- El UPDATE puntual de la fila de la captura se quito del repo el 8-nov-2026:
+-- apuntaba por id a una persona real y escribia su nombre. Ya se aplico en
+-- produccion con esta migracion; el texto original sigue en el historial de
+-- git. En cualquier otra base no tocaba nada, porque esa fila no existe.
 
 
 -- ===========================================================================
@@ -120,12 +117,7 @@ UPDATE profiles
 --     WHERE nombre LIKE '%' || U&'\FFFD' || '%';
 --    -- Se espera 0 (o solo filas cuyo nombre era unicamente ese caracter).
 --
--- 2. La fila de la captura:
---
---    SELECT id, nombre FROM profiles
---     WHERE id = '7db68a49-2aa9-443a-a99c-3b654a43ec95';
---
--- 3. El barrido general, que es lo que scripts/check-texto-corrupto.mjs
+-- 2. El barrido general, que es lo que scripts/check-texto-corrupto.mjs
 --    ejecuta de forma periodica para que esto no vuelva a aparecer en una
 --    captura antes que en un panel:
 --

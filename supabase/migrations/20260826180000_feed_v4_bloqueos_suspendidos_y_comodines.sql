@@ -16,8 +16,8 @@
 -- block_aware_products_select esconde el producto cuando hay bloqueo mutuo),
 -- pero el RPC la brinca. Resultado: bloqueas a alguien y sus publicaciones te
 -- siguen apareciendo en el feed, que es justo lo que bloquear deberia evitar.
--- Hoy user_blocks tiene 0 filas, asi que es latente: se nota el dia que alguien
--- use la funcion de bloquear por primera vez.
+-- Se nota en cuanto alguien use la funcion de bloquear (el estado de
+-- user_blocks al corregirlo esta en Notion).
 -- El filtro es bidireccional a proposito: si A bloquea a B, ninguno de los dos
 -- debe ver al otro.
 --
@@ -31,7 +31,7 @@
 --
 -- 102 · COMODINES SIN ESCAPAR
 -- search_term se concatenaba crudo dentro de ILIKE. Comprobado contra
--- produccion antes de este cambio: buscar "%" devolvia los 7 productos del
+-- produccion antes de este cambio: buscar "%" devolvia todos los productos del
 -- radio, porque el patron resultante era %%%. Y "_" coincide con cualquier
 -- caracter. No es inyeccion — el parametro va parametrizado y no puede cambiar
 -- la consulta — pero si es una busqueda que miente.
@@ -194,11 +194,12 @@ REVOKE EXECUTE ON FUNCTION public.search_nearby_products_v4(
   timestamp with time zone, uuid, integer, boolean, boolean
 ) FROM PUBLIC;
 
--- VERIFY (linea base tomada ANTES de aplicar, con 19.041/-98.206 y radio 50000):
---   feed inicial           7   -> debe seguir en 7
---   cerca de ti            7   -> debe seguir en 7
---   busqueda 'hiking'      0   -> debe seguir en 0 (los dos estan 'pausado')
---   busqueda '%'           7   -> AHORA debe dar 0: el comodin ya no cuela
+-- VERIFY (linea base tomada ANTES de aplicar, con 19.041/-98.206 y radio 50000;
+-- los conteos estan en Notion):
+--   feed inicial               -> debe seguir igual que la linea base
+--   cerca de ti                -> debe seguir igual que la linea base
+--   busqueda de un anuncio en estado 'pausado' -> debe seguir sin resultados
+--   busqueda '%'               -> AHORA debe dar 0: el comodin ya no cuela
 --
 --   Y que anon sigue pudiendo llamarla:
 --     SELECT has_function_privilege('anon',

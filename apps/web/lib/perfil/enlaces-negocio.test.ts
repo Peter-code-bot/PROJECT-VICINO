@@ -33,7 +33,7 @@ test("Un número internacional guardado recupera su país y admite el prefijo lo
 });
 
 test("El mensaje de WhatsApp lleva la ficha del vendedor, y el inicio de sesión conserva ese destino", () => {
-  const id = "d16d9e0f-85b7-4ea5-b872-07c26f8dce07";
+  const id = "00000000-0000-4000-8000-000000000001";
   const perfil = urlPerfilVendedor(id);
   const [whatsapp] = listarEnlacesNegocio({ whatsapp_numero: "522221234567" }, {
     incluirResenas: false,

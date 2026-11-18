@@ -27,7 +27,7 @@
 -- (on_sale_confirmation_inserted -> notify_push y push_on_sale_pgnet ->
 -- call_send_push_on_sale) que mandan el mismo POST, asi que cada venta dispara
 -- dos notificaciones. Quitar el sobrante exige DROP, y eso necesita el visto
--- bueno de Pedro. Hoy es latente: cero ventas en la base.
+-- bueno de Pedro. Cuanto pega depende del volumen de ventas (corte en Notion).
 
 -- ---------------------------------------------------------------------------
 -- 1. Las tres funciones que ya leen de Vault, ahora con timeout.

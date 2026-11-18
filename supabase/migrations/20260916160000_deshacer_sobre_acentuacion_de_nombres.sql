@@ -3,12 +3,12 @@
 -- QUE PASO. La migracion anterior reparaba los nombres con el caracter de
 -- reemplazo Unicode y, para no escribir acentos en el archivo, construia la
 -- forma correcta con translate(forma_ascii, 'aeiou', 'aeiou acentuadas'). Eso
--- acentua TODAS las vocales, no solo la que llevaba tilde: "Javier
--- Rodr<?>guez" quedo como "Javier Rodrigu ez" con las cinco vocales
--- acentuadas. Un apellido mal escrito de otra forma no es un arreglo.
+-- acentua TODAS las vocales, no solo la que llevaba tilde: un "Rodr<?>guez"
+-- quedo con todas sus vocales acentuadas. Un apellido mal escrito de otra
+-- forma no es un arreglo.
 --
--- Comprobado en produccion tras aplicarla: UNA fila afectada
--- (0186140a-f8b9-4cd9-bde8-a426a024fec5). Esta migracion la devuelve a su
+-- Comprobado en produccion tras aplicarla: UNA fila afectada (su id no va en
+-- este repo publico). Esta migracion la devuelve a su
 -- forma correcta y barre las demas formas que ese translate pudo producir,
 -- por si otra fila aparece despues (un entorno de pruebas replicando el
 -- ledger, por ejemplo).
@@ -29,8 +29,8 @@
 -- 1. La fila que la migracion anterior dano:
 --
 --    SELECT id, nombre FROM profiles
---     WHERE id = '0186140a-f8b9-4cd9-bde8-a426a024fec5';
---    -- Se espera: Javier Rodriguez con la i acentuada y el resto sin acento.
+--     WHERE id = '<id de la fila afectada>';
+--    -- Se espera: el apellido con la i acentuada y el resto sin acento.
 --
 -- 2. Que no queda ninguna forma sobre-acentuada de las que ese translate
 --    podia producir. Dos vocales acentuadas en la misma palabra no

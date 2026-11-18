@@ -166,9 +166,9 @@ export default async function VerificationsPage() {
   // Y el fallo era MUDO por partida doble: no se desestructuraba `error`, asi
   // que no habia log ni Sentry, y la pagina caia en su estado vacio — un check
   // verde y «Sin verificaciones pendientes». O sea que la cola de documentos de
-  // identidad se veia limpia justo cuando no podia leerse ninguna. Hoy hay 0
-  // pendientes, asi que no se ha perdido ninguna revision todavia; el dano
-  // empezaba con la primera que entrara.
+  // identidad se veia limpia justo cuando no podia leerse ninguna. El estado de
+  // la cola al descubrirlo esta en Notion; el dano empezaba con la primera
+  // revision que entrara.
   //
   // service_role si puede leer email, y el acceso ya esta acotado por el guard
   // de admin del layout, que lee user_roles.

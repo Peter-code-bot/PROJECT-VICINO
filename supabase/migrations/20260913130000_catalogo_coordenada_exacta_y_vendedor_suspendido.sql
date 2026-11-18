@@ -26,7 +26,8 @@
 -- Y al mismo tiempo anon tenia GRANT SELECT sobre products_services.ubicacion_geo,
 -- que PostgREST devuelve como EWKB hexadecimal. Comprobado contra produccion:
 --   GET /rest/v1/products_services?select=ubicacion_geo
---   -> "0101000020E61000005B33E83AC32A57C01A547655FBFF3140"
+--   -> "0101000020E6100000..." (POINT con SRID 4326; el resto son las
+--      coordenadas exactas de un anuncio real, que no se copian aqui)
 -- Eso es un POINT: dos llamadas a ST_X/ST_Y, o cualquier parser de EWKB, y ahi
 -- esta el domicilio. Las tres defensas de arriba quedaban decorativas mientras
 -- la columna cruda estuviera a un GET de distancia.

@@ -19,8 +19,8 @@
 -- (20260826181000). Sin efecto visible por encima de 1 km: formatDistance ya
 -- hace toFixed(1). Por debajo dira "300 m" donde antes decia "347 m".
 --
--- Hoy hay 0 solicitudes abiertas: el agujero esta vivo pero no expone a nadie
--- todavia. Es la ventana barata para cerrarlo.
+-- A cuanta gente expone hoy depende de las solicitudes abiertas (conteo al
+-- corregirlo en Notion). Es la ventana barata para cerrarlo.
 --
 -- CREATE OR REPLACE conserva el ACL (anon, authenticated, service_role) y los
 -- comentarios. Se re-declaran igualmente SECURITY DEFINER y search_path porque

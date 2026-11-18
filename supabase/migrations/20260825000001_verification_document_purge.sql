@@ -132,8 +132,8 @@ SELECT cron.schedule(
 --     FROM public.verification_document_purge_log
 --    ORDER BY run_at DESC LIMIT 20;
 --
--- ESTADO ACTUAL ESPERADO: el bucket quedó en 0 archivos tras el borrado
--- manual del 24-ago-2026 y las 3 filas tienen las URLs en NULL, así que las
+-- ESTADO ACTUAL ESPERADO: el bucket quedó vacío tras el borrado manual del
+-- 24-ago-2026 y las filas tienen las URLs en NULL (conteo en Notion), así que las
 -- primeras corridas devolverán ok=true con todos los contadores en 0 y no
 -- escribirán ninguna fila de log. Eso es correcto, no un fallo: el log solo
 -- registra borrados reales. Para probarlo de verdad, ver el plan de prueba

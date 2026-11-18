@@ -6,12 +6,13 @@
 -- migracion 20260826180000 lo escapo para cerrar el agujero del porcentaje, y
 -- de paso volvio literal ese comodin.
 --
--- Comprobado contra produccion ANTES de escribir esto:
---   search_nearby_products_v4(..., 'w_n_s', ...) -> 0 filas
---   search_nearby_products_v4(..., 'winis', ...) -> 1 fila
+-- Comprobado contra produccion ANTES de escribir esto, con un termino real del
+-- catalogo (termino y conteos en Notion):
+--   search_nearby_products_v4(..., <termino con sus vocales cambiadas por _>, ...) -> 0 filas
+--   search_nearby_products_v4(..., <el mismo termino tal cual>, ...)              -> si encuentra
 --
 -- MATIZ, porque el enunciado facil es falso: no falla "siempre". Un termino sin
--- vocales llega intacto y sigue encontrando ('nd' devuelve 2). Falla todo
+-- vocales llega intacto y sigue encontrando (por ejemplo 'nd'). Falla todo
 -- termino con al menos una vocal, que en castellano es practicamente todo.
 --
 -- El arreglo NO es revertir el escape: eso reabriria el agujero del porcentaje.
@@ -179,8 +180,8 @@ BEGIN
 END;
 $function$;
 
--- VERIFY (contra produccion, tras aplicar):
---   'winis'  -> 1     (seguia funcionando, no debe cambiar)
---   'sandia' -> >=1   (el titulo real lleva tilde: antes daba 0)
---   'w_n_s'  -> 0     (el truco muere, y debe morir)
---   '%'      -> 0     (el agujero del item 102 sigue cerrado)
+-- VERIFY (contra produccion, tras aplicar; terminos y conteos en Notion):
+--   <termino real sin tilde>             -> igual que antes (seguia funcionando)
+--   <termino cuyo titulo real lleva tilde> -> ahora si encuentra (antes daba 0)
+--   <termino con vocales cambiadas por _>  -> 0 (el truco muere, y debe morir)
+--   '%'                                    -> 0 (el agujero del item 102 sigue cerrado)

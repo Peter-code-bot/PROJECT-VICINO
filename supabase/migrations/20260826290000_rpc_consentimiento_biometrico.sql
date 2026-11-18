@@ -7,8 +7,8 @@
 -- En Postgres, un INSERT sin policy que lo autorice se rechaza. Asi que el
 -- camino que el producto necesita —que la persona marque una casilla y quede
 -- constancia— muere con 42501 antes de escribir nada. La tabla lleva 0 filas
--- desde que se creo, y hay TRES verificaciones aprobadas sin consentimiento
--- registrado.
+-- desde que se creo, y ya hay verificaciones aprobadas sin consentimiento
+-- registrado (conteo en Notion).
 --
 -- Por que un RPC y no una policy de INSERT: esto es prueba legal. Con una
 -- policy, el cliente elige que escribe, incluida la fecha y la version del

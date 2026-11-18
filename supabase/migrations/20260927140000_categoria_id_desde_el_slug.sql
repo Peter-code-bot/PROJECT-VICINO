@@ -4,11 +4,10 @@
 -- recompute_seller_rankings_for_category cuenta ventas y resenas filtrando por
 -- `ps.categoria_id = p_category_id`, pero la app (vender/actions.ts) escribe
 -- solo el slug en `categoria` y el pivote product_categories; `categoria_id`
--- queda en NULL y ningun trigger lo rellena. Las 35 publicaciones que si lo
+-- queda en NULL y ningun trigger lo rellena. Las publicaciones que si lo
 -- tienen vienen de seeds que lo ponian a mano; las publicadas desde la app lo
--- tienen en NULL. Hoy no hay dano visible porque esas no tienen ventas
--- completadas, pero cada venta real futura de algo publicado en la app quedaria
--- fuera del ranking sin que nadie lo notara.
+-- tienen en NULL (conteos en Notion). Cada venta real de algo publicado en la
+-- app quedaria fuera del ranking sin que nadie lo notara.
 --
 -- Arreglo en la base, para que valga para cualquier cliente (web, app, seeds):
 -- un trigger BEFORE INSERT/UPDATE que deriva `categoria_id` SIEMPRE del slug de

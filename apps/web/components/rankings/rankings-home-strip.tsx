@@ -120,10 +120,9 @@ export async function RankingsHomeStripSection() {
     // si no hay ninguna categoria con ranking del periodo, la lista de las 42
     // categorias no se usa para nada y esta seccion devuelve null igual.
     //
-    // No es un caso raro: seller_rankings esta VACIA desde el lanzamiento. El
-    // cron que deberia poblarla esta declarado en vercel.json y no existe en
-    // pg_cron, asi que hoy esta consulta desperdiciada ocurre en el 100 % de
-    // las cargas. Primero se pregunta si hay algo que pintar; solo entonces se
+    // No es un caso raro: el cron que deberia poblar seller_rankings esta
+    // declarado en vercel.json y no existe en pg_cron, asi que la tabla no se
+    // llena y hoy esta consulta desperdiciada ocurre en cada carga. Primero se pregunta si hay algo que pintar; solo entonces se
     // pide el catalogo.
     const activeCategoryIds = await getActiveCategoryIdsForPeriod(period);
     if (activeCategoryIds.length === 0) return null;

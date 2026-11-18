@@ -393,7 +393,7 @@ async function main() {
       bullet("0:00 - 0:30 | Hook & Problema: La desconexión en el comercio informal de barrio en LATAM. Encontrar un producto localmente requiere grupos de Facebook o WhatsApp desordenados."),
       bullet("0:30 - 1:00 | Solución: VICINO, la app de geolocalización por proximidad que digitaliza la economía local en un radio de 5km sin comisiones por transacción."),
       bullet("1:00 - 2:00 | Producto & Demo: Cómo un usuario publica en 30 segundos, el chat realtime y el flujo de confirmación de venta seguro."),
-      bullet("2:00 - 2:40 | Tracción & Ventaja: 30 vendedores reales validados en Puebla, reviews bidireccionales y trust points. Privacidad geoespacial server-side (fuzzing a 100m)."),
+      bullet("2:00 - 2:40 | Tracción & Ventaja: vendedores reales validados en Puebla (cifra al día en Notion), reviews bidireccionales y trust points. Privacidad geoespacial server-side (fuzzing a 100m)."),
       bullet("2:40 - 3:00 | Call to Action: Expansión nacional y global. 'Changing how neighborhoods trade. We are VICINO.'"),
       divider(),
       heading("2. Lineamientos del Pitch Deck", 2),

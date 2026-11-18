@@ -6,8 +6,8 @@
 --
 -- 1. seller_rankings -- LA POLICY SE LLAMA "publicly readable" Y NO LO ES
 --    Su nombre es "Rankings are publicly readable" y su lista de roles dice
---    {authenticated}. Comprobado: anon lee 0 filas. Hoy no se nota porque la
---    tabla esta vacia; el dia que haya rankings, /rankings se vaciara EN
+--    {authenticated}. Comprobado: anon lee 0 filas. El dia que haya rankings
+--    (estado de la tabla en Notion), /rankings se vaciara EN
 --    SILENCIO para todo visitante sin sesion, que es justo el visitante al que
 --    esa pagina intenta convencer.
 --
@@ -53,7 +53,7 @@
 --      - el CHECK dice status = ANY(...); con NULL da NULL, y un CHECK solo
 --        rechaza cuando da FALSE, asi que NULL pasa
 --      - un participante puede volver inmortal una cita poniendole status=NULL
---    Hoy hay 1 cita y 0 nulas, asi que el NOT NULL entra sin backfill.
+--    Hoy no hay citas con status nulo, asi que el NOT NULL entra sin backfill.
 --
 -- 7. bookings -- EL MISMO SECUESTRO QUE chats, Y SIN TRIGGER GUARDIAN
 --    Policy de UPDATE sin WITH CHECK y UPDATE de tabla: el comprador reasigna

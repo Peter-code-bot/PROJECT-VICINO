@@ -1102,7 +1102,7 @@ $function$;
 comment on function public.notificar_comentario_de_comunidad() is
   'AFTER INSERT en community_posts. Avisa al autor de la publicacion madre, y SOLO por comentario: los likes no notifican. Ignora el auto-comentario, respeta el bloqueo bidireccional y se traga sus propios errores con RAISE WARNING, porque un aviso fallido no puede deshacer un comentario ya publicado. Desde 20260912240000 el mensaje lleva tildes (escapes U&).';
 
--- Las filas ya escritas con el texto sin tildes (en produccion hoy son cero).
+-- Las filas ya escritas con el texto sin tildes, si las hay.
 UPDATE public.notifications
    SET mensaje = replace(mensaje, ' comento tu publicacion en ', U&' coment\00F3 tu publicaci\00F3n en ')
  WHERE tipo = 'comunidad_comentario'

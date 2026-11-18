@@ -74,7 +74,7 @@ REVOKE ALL ON FUNCTION public.count_nearby_vendors(DOUBLE PRECISION, DOUBLE PREC
 GRANT EXECUTE ON FUNCTION public.count_nearby_vendors(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) TO anon, authenticated;
 
 -- VERIFY:
---   SELECT count_nearby_vendors(19.0186585, -98.2639874, 25000);
+--   SELECT count_nearby_vendors(19.0414, -98.2063, 25000);
 --   -- debe coincidir con: SELECT count(DISTINCT creador_id) FROM products_services
 --   --   WHERE estatus='disponible' AND is_hidden=false AND ubicacion_geo IS NOT NULL
 --   --   AND ST_DWithin(...) ... (mismo radio redondeado)

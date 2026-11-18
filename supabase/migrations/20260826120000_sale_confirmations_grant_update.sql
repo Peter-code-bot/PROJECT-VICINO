@@ -15,9 +15,9 @@
 -- cancelSale mueren con "42501 permission denied for table sale_confirmations".
 --
 -- Es la tercera vez con el mismo patron en este proyecto — modo_precio,
--- sort_order y ahora esto — y la primera que cae sobre el flujo de dinero. Sigue
--- latente porque sale_confirmations tiene 0 filas: reventaria en la primera venta
--- real, que es el peor momento posible para descubrirlo.
+-- sort_order y ahora esto — y la primera que cae sobre el flujo de dinero.
+-- Revienta en cuanto una venta real llega a ese UPDATE, que es el peor momento
+-- posible para descubrirlo (filas de sale_confirmations al corregirlo: Notion).
 
 -- ---------------------------------------------------------------------------
 -- 1. GRANT por columna

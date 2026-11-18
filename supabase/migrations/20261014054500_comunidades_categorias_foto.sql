@@ -27,7 +27,7 @@ REVOKE INSERT, UPDATE ON public.communities FROM anon, authenticated;
 ALTER TABLE public.communities ADD CONSTRAINT communities_foto_path_valid CHECK (
  foto_path IS NULL OR (length(foto_path)<=512 AND foto_path ~ ('^'||id::text||'/[0-9a-f-]{36}/[0-9a-f-]{36}\.webp$'))
 );
--- Existing six fixture groups only; wrong identities abort instead of editing strangers.
+-- Existing fixture groups only; wrong identities abort instead of editing strangers.
 DO $backfill$ BEGIN IF EXISTS(SELECT 1 FROM public.communities WHERE id='93f9bc9c-b899-4f47-b0f6-c80e2aa940da' AND nombre IS DISTINCT FROM 'Tecnología Villahermosa') THEN RAISE EXCEPTION 'Identidad inesperada en backfill 93f9bc9c-b899-4f47-b0f6-c80e2aa940da'; END IF; END $backfill$;
 UPDATE public.communities SET categoria_id='tecnologia' WHERE id='93f9bc9c-b899-4f47-b0f6-c80e2aa940da' AND nombre='Tecnología Villahermosa';
 DO $backfill$ BEGIN IF EXISTS(SELECT 1 FROM public.communities WHERE id='6b777773-f6c8-471e-bbc1-0488837b3cbd' AND nombre IS DISTINCT FROM 'Sabores de Villahermosa') THEN RAISE EXCEPTION 'Identidad inesperada en backfill 6b777773-f6c8-471e-bbc1-0488837b3cbd'; END IF; END $backfill$;

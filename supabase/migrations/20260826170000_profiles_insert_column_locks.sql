@@ -11,7 +11,7 @@
 --
 -- Es el item 133 de la pagina de Notion, y es REAL pero LATENTE. La policy
 -- "Allow trigger insert profiles" tiene WITH CHECK (auth.uid() = id), asi que un
--- usuario solo puede insertar SU fila; y hoy los 11 usuarios ya la tienen, asi
+-- usuario solo puede insertar SU fila; y todo usuario que ya existe la tiene, asi
 -- que la clave primaria rechaza el duplicado. La ventana real es estrecha: entre
 -- que alguien se registra y que el trigger handle_new_user termine de crear su
 -- perfil. Ahi cabria un INSERT propio con is_verified = true y trust_points a

@@ -1,10 +1,9 @@
 -- "Postres y Reposteria" pasa a llamarse "Dulces y Postres".
 --
 -- Decision de Pedro (26-ago-2026). Caso que la origino: alguien que vende
--- gomitas no encontro donde publicar y acabo en "Comida y Bebidas", mientras
--- esta categoria estaba vacia al lado. El problema no era que faltara un
--- cajon —hay 42 categorias para 14 publicaciones, y 33 de ellas nunca han
--- recibido nada— sino que el cajon correcto no decia su palabra.
+-- dulces no encontro donde publicar y acabo en "Comida y Bebidas", con esta
+-- categoria al lado. El problema no era que faltara un cajon —hay 42
+-- categorias— sino que el cajon correcto no decia su palabra.
 --
 -- El slug NO se toca. Es lo que casa con product_categories, con el resolutor
 -- de slug->id de vender/actions.ts y con las URLs /[categoria]/[slug] que ya
