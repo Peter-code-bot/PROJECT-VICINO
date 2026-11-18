@@ -38,11 +38,76 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Antes esto era `curl -sSL ... | tar`. Sin --fail, curl le pasaba a tar
+      # cualquier pagina de error de GitHub, y el job caia en segundos con
+      # "gzip: stdin: not in gzip format" sin haber escaneado un solo commit.
+      # Paso el 8-nov-2026 en los PR #86 y #91, en pleno incidente de GitHub
+      # con timeouts para las peticiones sin autenticar. Ese rojo no dice nada
+      # de secretos, y un rojo que no dice nada es el que se aprende a ignorar.
+      #
+      # Ahora baja con gh y el token del job, asi que no cuenta como anonimo, y
+      # gh falla ante una respuesta HTTP de error en vez de guardarla como si
+      # fuera el tarball. Son cinco intentos con espera creciente y un tope de
+      # dos minutos cada uno. Y ANTES de extraer, el sha256 del tarball se
+      # compara con su linea en el archivo de checksums del mismo release: si
+      # no cuadra, no se ejecuta nada de lo descargado.
+      #
+      # Eso ataja descargas rotas, truncadas o equivocadas, no un release
+      # alterado a proposito: quien pueda cambiar el tarball puede cambiar
+      # tambien el checksums. Para eso habria que fijar el hash aqui.
+      #
+      # Para subir de version, cambia VERSION y comprueba en el release que los
+      # dos archivos se sigan llamando asi: gitleaks ya cambio sus nombres
+      # entre versiones mayores.
       - name: Instalar gitleaks
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           VERSION=8.28.0
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
-            | tar -xz -C /usr/local/bin gitleaks
+          TARBALL="gitleaks_${VERSION}_linux_x64.tar.gz"
+          CHECKSUMS="gitleaks_${VERSION}_checksums.txt"
+          DIR="$RUNNER_TEMP/gitleaks"
+          INTENTOS=5
+          mkdir -p "$DIR"
+
+          for intento in $(seq "$INTENTOS"); do
+            if timeout 120 gh release download "v${VERSION}" --repo gitleaks/gitleaks \
+                 --pattern "$TARBALL" --pattern "$CHECKSUMS" --dir "$DIR" --clobber; then
+              break
+            fi
+            if [ "$intento" -eq "$INTENTOS" ]; then
+              echo "::error title=gitleaks sin descargar::Fallaron los ${INTENTOS} intentos de bajar gitleaks v${VERSION} (el error de gh esta arriba). Este job NO escaneo nada; si fue la red, relanzalo."
+              exit 1
+            fi
+            echo "Intento ${intento} fallido; se reintenta en $((intento * 15)) s."
+            sleep $((intento * 15))
+          done
+
+          # Si el release cambiara un nombre, gh podria bajar solo el otro
+          # archivo y salir con 0. Mejor decirlo aqui que con un error suelto.
+          for archivo in "$TARBALL" "$CHECKSUMS"; do
+            if [ ! -s "$DIR/$archivo" ]; then
+              echo "::error title=gitleaks incompleto::El release v${VERSION} no trajo $archivo. Revisa si cambiaron los nombres de los archivos."
+              exit 1
+            fi
+          done
+
+          # Una sola linea, exacta, para el tarball. Si falta o se repite, no
+          # hay contra que comparar y se falla.
+          ESPERADO="$(awk -v f="$TARBALL" '$2 == f { print $1 }' "$DIR/$CHECKSUMS")"
+          if ! [[ "$ESPERADO" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error title=Checksum de gitleaks ausente::$CHECKSUMS no trae una linea unica y valida para $TARBALL."
+            exit 1
+          fi
+          OBTENIDO="$(sha256sum "$DIR/$TARBALL" | awk '{ print $1 }')"
+          if [ "$OBTENIDO" != "$ESPERADO" ]; then
+            echo "::error title=gitleaks sin verificar::El sha256 de $TARBALL es $OBTENIDO, pero $CHECKSUMS dice $ESPERADO. No se extrae nada."
+            exit 1
+          fi
+          echo "sha256 verificado: $OBTENIDO  $TARBALL"
+
+          tar -xzf "$DIR/$TARBALL" -C /usr/local/bin gitleaks
           gitleaks version
 
       - name: Determinar el rango a escanear
