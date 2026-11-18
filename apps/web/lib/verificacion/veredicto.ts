@@ -72,6 +72,22 @@ export type AnalisisDocumento = {
 export type EstadoDelVeredicto = "approved" | "rejected" | "pending";
 
 /**
+ * Las dos decisiones automaticas, POR NOMBRE. Eran booleanos sueltos detras de
+ * `esUniversitaria`: tres seguidos se intercambian sin que el compilador lo
+ * note, y uno de ellos decide si se borran los documentos de alguien.
+ *
+ * Solo `true` enciende una opcion: una ausente, o un "false" en texto de un
+ * llamador sin tipos, vale como apagada. El lado seguro es que decida una
+ * persona.
+ */
+export type OpcionesDelVeredicto = {
+  /** 'approved' sin que lo vea nadie. Hoy apagada (VERIFICACION_APROBACION_AUTOMATICA). */
+  readonly aprobacionAutomatica: boolean;
+  /** 'rejected' sin que lo vea nadie. Hoy encendido (VERIFICACION_RECHAZO_AUTOMATICO). */
+  readonly rechazoAutomatico: boolean;
+};
+
+/**
  * El veredicto que decide el servidor, no el modelo.
  *
  * El modelo propone en `veredicto`, pero aqui se vuelve a exigir cada
@@ -79,13 +95,16 @@ export type EstadoDelVeredicto = "approved" | "rejected" | "pending";
  * cotejar, o con el reverso ausente, no puede aprobar nada. Y al contrario,
  * una foto mala no es un fraude: eso va a revision humana, no a rechazo.
  *
- * `aprobacionAutomatica` llega como parametro y no se lee del entorno aqui
- * para que la funcion siga siendo pura y se pueda probar en los dos modos.
+ * Las opciones llegan como parametro y no se leen del entorno aqui para que la
+ * funcion siga siendo pura y se pueda probar en todos los modos. Con
+ * `rechazoAutomatico` apagado, los cuatro caminos de rechazo devuelven
+ * 'pending': la fila sigue en la cola y el hallazgo no se pierde, porque la
+ * nota lo guarda aparte (esRechazable).
  */
 export function decidirEstado(
   a: AnalisisDocumento,
   esUniversitaria: boolean,
-  aprobacionAutomatica: boolean,
+  opciones: OpcionesDelVeredicto,
 ): EstadoDelVeredicto {
   // UN RECHAZO NECESITA UN HALLAZGO FUNDADO, Y ESO VALE PARA LOS CINCO
   // CAMINOS, no solo para el veredicto del modelo.
@@ -128,7 +147,9 @@ export function decidirEstado(
   const rechazoFundado = a.veredicto === "rechazar" && confianzaSuficiente;
 
   if (rechazoFundado || documentoFalla || caraDistinta || universidadFalla) {
-    return "rejected";
+    // Sale aqui aunque el rechazo este apagado, y no sigue hacia `todoCuadra`:
+    // un hallazgo fundado nunca puede acabar en una aprobacion.
+    return opciones.rechazoAutomatico === true ? "rejected" : "pending";
   }
 
   const todoCuadra =
@@ -155,7 +176,26 @@ export function decidirEstado(
   // approve_verification_atomic— y ademas hace que el cron borre los tres
   // documentos y que la fila salga de la cola del panel, asi que nadie podria
   // arreglarlo despues. Sale mas caro que esperar a una persona.
-  return aprobacionAutomatica ? "approved" : "pending";
+  return opciones.aprobacionAutomatica === true ? "approved" : "pending";
+}
+
+/**
+ * Si el analisis habria aprobado con la aprobacion automatica encendida. Con
+ * ella apagada TODO «aprobar» queda en 'pending', y esto es lo que distingue
+ * un «todo cuadra» de un «aprobar» con alarmas. No depende de las banderas.
+ */
+export function esAprobable(a: AnalisisDocumento, esUniversitaria: boolean): boolean {
+  return decidirEstado(a, esUniversitaria, { aprobacionAutomatica: true, rechazoAutomatico: true }) === "approved";
+}
+
+/**
+ * Si el analisis habria rechazado con el rechazo automatico encendido: lo que
+ * la nota guarda en `rechazable` para que el hallazgo se siga viendo cuando
+ * el rechazo esta apagado y `decision` dice 'pending'. No depende de las
+ * banderas.
+ */
+export function esRechazable(a: AnalisisDocumento, esUniversitaria: boolean): boolean {
+  return decidirEstado(a, esUniversitaria, { aprobacionAutomatica: false, rechazoAutomatico: true }) === "rejected";
 }
 
 /**
