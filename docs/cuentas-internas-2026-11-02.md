@@ -1,7 +1,7 @@
 # Cuentas internas: plan de aplicación en producción
 
 Migraciones `20261102120000` a `20261102120400`. **Aplicadas en producción el
-18-nov-2026** (16:08 a 16:15 UTC, con OK de Pedro): las cinco, en orden, con
+18-nov-2026** (16:11 a 16:18 UTC, con OK de Pedro): las cinco, en orden, con
 `scripts/apply-migration.mjs`, después del respaldo y registradas en el ledger.
 Antes se probaron completas en staging
 (`scripts/staging/probar-cuentas-internas.mjs`). El detalle con cifras y cuentas
@@ -41,6 +41,11 @@ producción. El merge solo despliega el proxy (`marcar_visto`) y los tipos.
 (`equipo`) sigue en público: puede ser venta real. Si una publicación del equipo
 es de prueba, se pausa desde la app o se oculta con la moderación; no hace falta
 otra migración.
+
+El 18-nov, a pedido de su dueño, `20261118203000` pausó la única que quedaba en
+público: la «Casa» de una cuenta del equipo. Fue con migración porque no la
+pausó su dueño desde la app, y una escritura en producción que no hace el propio
+usuario va por `supabase/migrations/`. Él la puede reactivar desde la app.
 
 ## Qué hace cada migración
 
