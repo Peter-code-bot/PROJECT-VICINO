@@ -102,6 +102,16 @@ const config: CapacitorConfig = {
       backgroundColor: '#FFF8F0',
       overlaysWebView: false,
     },
+    // SystemBars (nucleo de Capacitor 8), sin `style`, aplica DEFAULT = el modo
+    // del TELEFONO a las dos barras, y lo hace en un post al hilo principal, o
+    // sea despues del LIGHT que StatusBar pone al cargar. Con el
+    // telefono en oscuro dejaba iconos blancos sobre la barra crema de arriba
+    // hasta que la web corre, y para siempre si no corre (sin red, o si tarda
+    // mas que el techo de 15 s del splash). LIGHT = iconos oscuros, a juego con
+    // el crema de StatusBar; la web lo ajusta despues al tema de la app.
+    SystemBars: {
+      style: 'LIGHT',
+    },
     // Sin bloque Keyboard a proposito. Aqui habia `resizeOnFullScreen: true`,
     // que con Capacitor 8 es letra muerta: Keyboard.java salta su propio
     // redimensionado en cuanto existe la clase SystemBars del nucleo
