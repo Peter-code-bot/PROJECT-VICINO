@@ -1,7 +1,7 @@
 # Cuentas internas: plan de aplicación en producción
 
 Migraciones `20261102120000` a `20261102120400`. **Aplicadas en producción el
-18-nov-2026** (16:08 a 16:15 UTC, con OK de Pedro): las cinco, en orden, con
+18-nov-2026** (16:11 a 16:18 UTC, con OK de Pedro): las cinco, en orden, con
 `scripts/apply-migration.mjs`, después del respaldo y registradas en el ledger.
 Antes se probaron completas en staging
 (`scripts/staging/probar-cuentas-internas.mjs`). El detalle con cifras y cuentas
