@@ -63,6 +63,10 @@ async function renderSearch(profile: Profile, params: Params = {}, canonicalRpcN
   const mocks: Record<string, unknown> = {
     "@/lib/supabase/server": { createClient: async () => f.client },
     "next/headers": { cookies: async () => ({ get: () => undefined }) },
+    // La pagina empaqueta lib/geo/ubicacion-servidor.ts (lector unico de la
+    // zona), que importa "server-only"; con packages:"external" queda como
+    // require y desde apps/web no se resuelve en Node.
+    "server-only": {},
     "@/lib/session-auth": { usuarioOInvitado: async () => ({ id: "synthetic-viewer" }) },
     "@/lib/university-data": { getViewerUniversity: async () => null, getUniversitySellerIds: async () => [] },
     "./search-filters": { SearchFilters: () => null },

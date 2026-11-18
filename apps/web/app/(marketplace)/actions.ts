@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { FeedProduct } from "@/types/feed";
 import { parseFeedCursor, makeFeedCursor } from "@/lib/feed-cursor";
 import { enforce, getClientIp, readHeavyRateLimit } from "@/lib/rate-limit";
-import { headers, cookies } from "next/headers";
-import { parseRadiusCookie } from "@/lib/geo/radius";
+import { headers } from "next/headers";
+import { leerZonaGuardada } from "@/lib/geo/ubicacion-servidor";
 
 /**
  * A5.2: cursor-based load-more for the home "Mas productos" flat section.
@@ -35,8 +35,25 @@ import { parseRadiusCookie } from "@/lib/geo/radius";
 export async function getMoreFeedProducts(
   cursor: string,
   limit: number = 30,
-  lat?: number,
-  lng?: number,
+  /**
+   * Si la pagina sigue la zona guardada. El punto NO viaja desde el cliente: se
+   * lee de la cookie aqui, con el lector unico del servidor, igual que la
+   * primera pagina (PDF 05: sin coordenadas en las respuestas del feed).
+   *
+   * Firma vieja: (cursor, limit, lat, lng). Si un cliente con el JS anterior a
+   * este cambio llega a llamar con dos numeros, su PRESENCIA cuenta como la
+   * bandera y sus valores se ignoran.
+   *
+   * HIPOTESIS, sin verificar: que esa llamada vieja llegue aqui. La guia de
+   * Next 16 (node_modules/next/dist/docs/01-app/02-guides/server-actions.md,
+   * «Deployment considerations») dice que los despliegues nuevos suelen
+   * generar ids de accion nuevos (los rota como mucho cada 14 dias), asi que
+   * ese cliente puede recibir «Failed to find Server Action» en vez de llegar
+   * aqui. Si el id sobrevive al despliegue, esta rama lo atiende. El desfase
+   * de despliegue se trata aparte.
+   */
+  usarZona: boolean | number = false,
+  lngLegado?: number,
 ): Promise<{
   items: FeedProduct[];
   nextCursor: string | null;
@@ -120,31 +137,24 @@ export async function getMoreFeedProducts(
   let data = null;
   let error = null;
 
-  if (lat !== undefined && lng !== undefined) {
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng) ||
-      lat < -90 ||
-      lat > 90 ||
-      lng < -180 ||
-      lng > 180
-    ) {
-      return { items: [], nextCursor: null, error: "Coordenadas inválidas" };
-    }
-    // El radio sale de la MISMA cookie que usa el feed inicial. Estaba
-    // escrito a mano en 50.000 mientras la primera pagina usaba el radio del
-    // usuario, asi que al seguir bajando aparecian publicaciones de hasta 50 km
-    // que la primera pagina habia excluido a proposito. Nadie lo veia como un
-    // fallo: parecia que "cargaban mas cosas".
-    const cookieStore = await cookies();
-    const radioDelUsuario = parseRadiusCookie(
-      cookieStore.get("vicino_radius")?.value,
-    );
+  // Los argumentos de una accion llegan sin tipo: solo `true`, o el par de
+  // numeros de la firma vieja, piden la zona.
+  const pideZona = usarZona === true
+    || (typeof usarZona === "number" && typeof lngLegado === "number");
+  // La zona y el radio salen de las MISMAS cookies y del mismo lector que el
+  // feed inicial. El radio estaba escrito a mano en 50.000 mientras la primera
+  // pagina usaba el del usuario, asi que al seguir bajando aparecian
+  // publicaciones de hasta 50 km que la primera pagina habia excluido a
+  // proposito. Nadie lo veia como un fallo: parecia que "cargaban mas cosas".
+  // Si la cookie ya no es una zona valida (se borro o cambio en otra pestaña),
+  // se sigue sin zona, que es lo que pintara el inicio al refrescarse.
+  const zona = pideZona ? await leerZonaGuardada() : null;
 
+  if (zona?.estado === "valida") {
     const res = await supabase.rpc("search_nearby_products_v4", {
-      user_lat: lat,
-      user_lng: lng,
-      radius_meters: radioDelUsuario,
+      user_lat: zona.punto.lat,
+      user_lng: zona.punto.lng,
+      radius_meters: zona.radio,
       cursor_time: parsedCursor.cursor.createdAt,
       cursor_id: parsedCursor.cursor.id,
       result_limit: safeLimit,

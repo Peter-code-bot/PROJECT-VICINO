@@ -3,7 +3,6 @@ import * as Sentry from "@sentry/nextjs";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchFilters } from "./search-filters";
 import { CATEGORIES, normalizeCardCategories } from "@vicino/shared";
@@ -11,6 +10,7 @@ import type { TrustLevel } from "@vicino/shared";
 import { ChevronLeft, ChevronRight, Star, ShieldCheck } from "lucide-react";
 import { parseRadiusCookie } from "@/lib/geo/radius";
 import { parseCoordinates } from "@/lib/geo/location-storage";
+import { leerZonaGuardada } from "@/lib/geo/ubicacion-servidor";
 import { catalogFailure, type CatalogFailure } from "@/lib/catalogo/estado-consulta";
 import { CatalogQueryState } from "@/components/shared/catalog-query-state";
 import { UNIVERSITY_CATEGORY } from "@/lib/university";
@@ -93,16 +93,17 @@ export default async function SearchPage({ searchParams }: Props) {
     Sentry.captureException(error, { tags: { surface: "buscar", query: "university" } });
   }
   
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("vicino_location")?.value;
-  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+  // Lector unico de la zona guardada (lib/geo/ubicacion-servidor.ts): el mismo
+  // parseo y redondeo que el inicio. Una zona fuera del area del mapa cuenta
+  // como sin ubicacion.
+  const zona = await leerZonaGuardada();
 
   // Una sola variable para la ubicacion, no dos sueltas mas un booleano. El
   // par lat/lng solo vale completo, y asi el compilador lo sabe: dentro del
   // `if` de abajo las dos coordenadas ya son numeros. Antes el booleano lo
   // sabia el lector y no el compilador, y la llamada al RPC lo afirmaba a
   // mano con dos `!`.
-  let userLocation = locationCookie ? parseCoordinates(locationCookie) : null;
+  let userLocation: { lat: number; lng: number } | null = zona.estado === "valida" ? zona.punto : null;
 
   // El boton «Cerca» escribe lat/lng/radio en la URL, y la pagina los ignoraba
   // desde el merge ccb0e00 (abril): pedia el permiso de ubicacion y la lista no
@@ -114,7 +115,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // Antes: `radiusCookie ? Math.min(Math.max(parseInt(...)))` — comprobaba que
   // la cookie existiera, no que fuera un numero, asi que una corrupta daba NaN
   // y viajaba hasta el RPC.
-  const validRadius = parseRadiusCookie(ubicacionDeUrl ? params.radio : radiusCookie);
+  const validRadius = ubicacionDeUrl ? parseRadiusCookie(params.radio) : zona.radio;
 
   const currentPage = Math.max(1, Number(params.page) || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;

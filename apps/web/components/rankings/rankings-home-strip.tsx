@@ -9,8 +9,7 @@ import {
   getActiveCategoryIdsForPeriod,
 } from "@/lib/rankings/queries";
 import type { Category, RankedSeller } from "@/lib/rankings/types";
-import { cookies } from "next/headers";
-import { parseRadiusCookie } from "@/lib/geo/radius";
+import { leerZonaGuardada } from "@/lib/geo/ubicacion-servidor";
 const MEDAL_COLORS = {
   gold: {
     text: "text-gold",
@@ -136,25 +135,20 @@ export async function RankingsHomeStripSection() {
 
   if (categories.length === 0) return null;
 
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("vicino_location")?.value;
-  const radiusCookie = cookieStore.get("vicino_radius")?.value;
+  // Lector unico de la zona (lib/geo/ubicacion-servidor.ts). Con una zona fuera
+  // del area del mapa no hay ranking que ensenar: antes se consultaba con ese
+  // punto, no salia nadie y la seccion tambien quedaba en null. Mostrar el de
+  // las coordenadas por defecto seria ensenar el ranking de otra ciudad.
+  const zona = await leerZonaGuardada();
+  if (zona.estado === "fuera-de-area") return null;
+  const puntoDeLaCookie = zona.estado === "valida" ? zona.punto : null;
+  const deLaCookie = puntoDeLaCookie !== null;
 
-  let userLat = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
-  let userLng = Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
-
-  if (locationCookie) {
-    const [latStr, lngStr] = locationCookie.split(",");
-    const parsedLat = parseFloat(latStr || "");
-    const parsedLng = parseFloat(lngStr || "");
-    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
-      userLat = parsedLat;
-      userLng = parsedLng;
-    }
-  }
+  const userLat = puntoDeLaCookie?.lat ?? Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LAT ?? "19.0414");
+  const userLng = puntoDeLaCookie?.lng ?? Number.parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COORDS_LNG ?? "-98.2063");
 
   // Antes tomaba el valor de la cookie tal cual, sin acotarlo a [1000, 50000].
-  const radius = parseRadiusCookie(radiusCookie);
+  const radius = zona.radio;
 
   let bestCategory: Category | null = null;
   let bestTop3: RankedSeller[] = [];
@@ -197,8 +191,11 @@ export async function RankingsHomeStripSection() {
       top3={bestTop3}
       category={bestCategory}
       period={period}
-      userLat={userLat}
-      userLng={userLng}
+      // La zona de la persona NO viaja en la URL (PDF 05: ni historial, ni
+      // registros, ni el `next` del login de un visitante): /rankings la lee de
+      // la misma cookie. Las coordenadas por defecto si, porque no son de nadie
+      // y sin ellas /rankings pediria activar la ubicacion en vez del podio.
+      coordenadasEnEnlace={deLaCookie ? null : { lat: userLat, lng: userLng }}
     />
   );
 }
@@ -207,14 +204,12 @@ function RankingsHomeStrip({
   top3,
   category,
   period,
-  userLat,
-  userLng,
+  coordenadasEnEnlace,
 }: {
   top3: RankedSeller[];
   category: Category;
   period: string;
-  userLat: number;
-  userLng: number;
+  coordenadasEnEnlace: { lat: number; lng: number } | null;
 }) {
   const monthLabel = formatMonth(period);
   const categoryLabel = category.nombre ?? category.slug ?? "Categoria";
@@ -223,11 +218,9 @@ function RankingsHomeStrip({
     <Link
       href={{
         pathname: "/rankings",
-        query: {
-          category: category.id,
-          lat: userLat.toFixed(4),
-          lng: userLng.toFixed(4),
-        },
+        query: coordenadasEnEnlace
+          ? { category: category.id, lat: coordenadasEnEnlace.lat.toFixed(4), lng: coordenadasEnEnlace.lng.toFixed(4) }
+          : { category: category.id },
       }}
       aria-label={`Ver ranking completo de ${categoryLabel} en ${monthLabel}`}
       className="group block px-4 pb-6"
