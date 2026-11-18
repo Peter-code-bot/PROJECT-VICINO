@@ -6,6 +6,32 @@ producción**; se probaron completas en staging
 concretas quedó fuera del repo, que es público: está en el reporte que recibieron
 Pedro y Javier.
 
+## Puesta al día con master (18-nov-2026)
+
+- La rama integra master hasta el PR #107. Ninguna migración nueva de master toca
+  lo que estas cambian: las cinco funciones de 120100 y la policy de
+  `purchase_requests` siguen en producción idénticas a las copias de
+  `docs/rollback/` (comparado contra `pg_get_functiondef` en solo lectura), así
+  que el orden de los timestamps no importa.
+- Staging al día con producción (se le aplicaron las 7 migraciones de master) y
+  `probar-cuentas-internas.mjs` otra vez en verde de punta a punta.
+- `apps/web/types/database.types.ts` es exactamente el de producción más lo que
+  agregan estas cinco: aplicadas, `node scripts/gen-types.mjs --check` pasa.
+- Relación con #106 y #107: el contador del panel
+  (`lib/admin/cuentas-fuera-de-metricas.ts`) excluye un subconjunto de lo que
+  marca 120000 (todas sus cuentas están en `cuentas_internas`), y el bloqueo de
+  inicio de sesión de las `@demo.vicino.mx` es complementario a ocultarlas. Una
+  vez aplicadas, el panel puede leer la tabla en lugar de su lista.
+
+**Cuándo cambia lo público.** En cuanto se aplican 120000 a 120200, no al
+mergear: el sitio y las vistas previas de Vercel leen la misma base de
+producción. El merge solo despliega el proxy (`marcar_visto`) y los tipos.
+
+**Lo que sigue visible a propósito.** Lo que publican las cuentas del equipo
+(`equipo`) sigue en público: puede ser venta real. Si una publicación del equipo
+es de prueba, se pausa desde la app o se oculta con la moderación; no hace falta
+otra migración.
+
 ## Qué hace cada migración
 
 1. `20261102120000_cuentas_internas`: crea la tabla privada `cuentas_internas`
@@ -34,16 +60,20 @@ Pedro y Javier.
 
 ## Aplicación
 
-`db push` sigue bloqueado: se aplica a mano, con la Management API o el SQL Editor,
+`db push` sigue bloqueado: se aplica una por una con `scripts/apply-migration.mjs`,
 **fuera de las 09:00 UTC**, que es cuando corre el cron de rankings.
 
 1. **Respaldo** (solo lectura), justo antes:
    `node scripts/respaldo-cuentas-internas.mjs`. Deja `respaldo.json`,
    `restaurar.sql` y `conteos.json` en `.respaldos/<fecha>-produccion/`, fuera de git.
 2. **Aplicar en orden** 120000, 120100, 120200 (si Javier dice que sí), 120300 y
-   120400. Cada una trae su `DO $verify$` y un `lock_timeout` de 5 s: si algo no
+   120400, cada una con
+   `node scripts/apply-migration.mjs <archivo>.sql` (primero con `--dry-run`).
+   La herramienta mete el archivo y su fila del ledger en la misma transacción.
+   Cada migración trae su `DO $verify$` y un `lock_timeout` de 5 s: si algo no
    cuadra o no consigue un candado, aborta sin dejar nada a medias.
-3. **Registrar en el ledger** (`supabase_migrations.schema_migrations`).
+3. **Ledger**: comprobar que quedaron las cinco (o cuatro) versiones en
+   `supabase_migrations.schema_migrations`.
 4. **Conteos de después**: `node scripts/respaldo-cuentas-internas.mjs --solo-conteos`,
    para compararlos con `conteos.json`. `filas_de_ranking_internas`,
    `perfiles_sinteticos_visibles` y `publicaciones_visibles_sinteticas` deben quedar

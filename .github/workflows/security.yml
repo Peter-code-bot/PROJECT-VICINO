@@ -163,6 +163,12 @@ jobs:
       - name: Panel de admin, lista de usuarios y contador
         run: cd apps/web && node --import tsx --test lib/admin/busqueda-usuarios.test.ts lib/admin/cuentas-fuera-de-metricas.test.ts
 
+      # Actividad diaria (20261102120300): el proxy marca un dia por cuenta y
+      # dispositivo, con el corte en hora de Ciudad de Mexico y sin perder a la
+      # segunda cuenta de un mismo telefono. Hasta ahora solo se corria a mano.
+      - name: Actividad diaria del proxy
+        run: cd apps/web && node --import tsx --test lib/actividad/marcar-visto.test.ts
+
       # Y en la base: las dos funciones viejas que cambiaban roles con solo una
       # sesion de admin ya no se pueden llamar desde un cliente; el unico
       # camino es la Server Action que exige la clave del panel, y ese camino
