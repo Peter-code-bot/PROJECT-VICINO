@@ -156,6 +156,19 @@ jobs:
       - name: Galeria de fotos y videos del producto
         run: cd apps/web && node --test scripts/test-product-media-server.cjs
 
+      # Panel de admin (18-nov-2026): la lista de usuarios tenia un tope de 50
+      # sin paginas y un buscador que solo miraba dos campos. Aqui van la
+      # busqueda sin acentos en todos los campos, las paginas y el criterio del
+      # contador de la comunidad (cuentas de prueba fuera de las metricas).
+      - name: Panel de admin, lista de usuarios y contador
+        run: cd apps/web && node --import tsx --test lib/admin/busqueda-usuarios.test.ts lib/admin/cuentas-fuera-de-metricas.test.ts
+
+      # Y en la base: las dos funciones viejas que cambiaban roles con solo una
+      # sesion de admin ya no se pueden llamar desde un cliente; el unico
+      # camino es la Server Action que exige la clave del panel.
+      - name: Roles solo con la clave del panel
+        run: pnpm exec tsx scripts/test-roles-sin-atajos.ts
+
       # Lint no estaba en ningun job, asi que sus errores no los miraba nadie.
       # Llevaba 27, y el dia que se revisaron ninguno era un bug: doce `any` que
       # tapaban contratos (uno escondia un `.eq("id", undefined)` que llevaba

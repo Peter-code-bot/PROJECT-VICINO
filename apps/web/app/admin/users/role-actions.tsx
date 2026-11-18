@@ -10,6 +10,13 @@ import { Shield, ShieldCheck, Loader2 } from "lucide-react";
 interface RoleActionsProps {
   userId: string;
   currentRoles: string[];
+  /**
+   * Como se ve la cuenta en la lista (nombre y codigo). El dialogo la repite:
+   * una busqueda puede traer la fila por un dato que no se ve a primera vista
+   * (el correo, el nombre de registro), y un rol no se concede "a esta cuenta"
+   * sin decir cual.
+   */
+  cuenta: string;
 }
 
 /** El movimiento que espera la clave de seguridad. */
@@ -18,7 +25,7 @@ interface Pendiente {
   tieneRol: boolean;
 }
 
-export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
+export function RoleActions({ userId, currentRoles, cuenta }: RoleActionsProps) {
   const [loading, setLoading] = useState(false);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
   const [clave, setClave] = useState("");
@@ -123,7 +130,7 @@ export function RoleActions({ userId, currentRoles }: RoleActionsProps) {
                 Confirmar acción de seguridad
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {accion} para esta cuenta. Escribe la clave de seguridad del panel para continuar.
+                {accion} a <strong className="font-semibold text-foreground [overflow-wrap:anywhere]">{cuenta}</strong>. Escribe la clave de seguridad del panel para continuar.
               </p>
               <form
                 className="mt-4 space-y-3"
