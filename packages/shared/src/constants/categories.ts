@@ -11,6 +11,11 @@
  * El slug NO cambia al renombrar: es lo que casa con la tabla categories,
  * con el pivote product_categories y con las URLs /[categoria]/[slug] ya
  * compartidas. Cambiarlo romperia enlaces existentes.
+ *
+ * De esta lista depende tambien que /<slug>/<publicacion> abra la ficha
+ * (apps/web/lib/navigation/ruta-de-ficha.ts): una categoria que entre en la
+ * tabla categories tiene que entrar aqui en el mismo cambio, o sus fichas
+ * daran 404.
  */
 export const CATEGORIES = [
   // Productos
