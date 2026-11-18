@@ -69,6 +69,11 @@ debería reemplazar esa lista.
 
 Las demás tarjetas (publicaciones, transacciones) no cambian.
 
+Las cuentas `@demo.vicino.mx` además quedan bloqueadas para iniciar sesión
+(`20261118140000_bloquear_cuentas_demo.sql`): las crearon los seeds con una
+contraseña que está escrita en este repositorio, y el seed corrió en
+producción. Se conservan sus registros.
+
 ## 3. Roles: solo con la clave del panel
 
 Las Server Actions `assignRole` y `removeRole` comprueban la sesión de admin y,
