@@ -42,6 +42,11 @@ producción. El merge solo despliega el proxy (`marcar_visto`) y los tipos.
 es de prueba, se pausa desde la app o se oculta con la moderación; no hace falta
 otra migración.
 
+El 18-nov, a pedido de su dueño, `20261118203000` pausó la única que quedaba en
+público: la «Casa» de una cuenta del equipo. Fue con migración porque no la
+pausó su dueño desde la app, y una escritura en producción que no hace el propio
+usuario va por `supabase/migrations/`. Él la puede reactivar desde la app.
+
 ## Qué hace cada migración
 
 1. `20261102120000_cuentas_internas`: crea la tabla privada `cuentas_internas`
