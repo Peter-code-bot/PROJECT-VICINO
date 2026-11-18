@@ -153,3 +153,5 @@ Exit code: 0
 ```
 
 Cierre documental posterior sin cambios de runtime: su SHA final y comprobaciones se registran en Notion. Capturas locales del contrato aplicado y la solicitud de autorización en apps/web/test-results/release, sin valores secretos. ADM-PASS-02 cierra la entrega técnica; ADM-PASS-01 conserva la configuración/aceptación pendiente por acceso.
+
+18-nov-2026: en producción quedaban otras dos funciones con EXECUTE para authenticated (manage_user_role y make_admin) que cambiaban roles sin la clave. Se cierran con 20261118120000. Además, el canal admin_set_user_role_secure rechazaba al admin real porque el has_role de producción responde false sin sesión; lo arregla 20261118130000. Ver docs/ADMIN-USUARIOS-2026-11-18.md.

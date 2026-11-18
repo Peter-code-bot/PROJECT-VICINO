@@ -1,30 +1,50 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { contarComunidad } from "@/lib/admin/metricas-comunidad";
 import { formatPrice } from "@vicino/shared";
 import { Users, Package, Handshake, TrendingUp, AlertCircle, ShieldAlert } from "lucide-react";
 
 export const metadata = { title: "Panel Admin — VICINO" };
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  // El contador de la comunidad lee correos con el cliente de servicio, asi
+  // que esta pagina comprueba el rol ella misma antes de crearlo: el guard del
+  // layout no corre en una navegacion RSC parcial (lib/supabase/admin.ts).
+  // requireAdminPage() exige el rol de admin, asi que aqui ya no hace falta
+  // volver a preguntarlo para mostrar las transacciones.
+  const { supabase } = await requireAdminPage();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: roleCheck } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user?.id ?? "")
-    .eq("role", "admin")
-    .maybeSingle();
-  const isFullAdmin = !!roleCheck;
-
-  const { count: totalUsers } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true });
-
-  const { count: totalSellers } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("es_vendedor", true);
+  // Usuarios reales: sin las cuentas de prueba que existen y se conservan
+  // pero no son gente (lib/admin/cuentas-fuera-de-metricas.ts). Si el
+  // criterio no se puede aplicar, se muestra el total sin filtrar y se dice
+  // con un aviso que no se confunde con la nota normal.
+  const comunidad = await contarComunidad(createAdminClient());
+  let totalUsers: number | null;
+  let totalSellers: number | null;
+  let notaComunidad: string | null;
+  if (comunidad.ok) {
+    const { excluidas } = comunidad.conteo;
+    totalUsers = comunidad.conteo.usuarios;
+    totalSellers = comunidad.conteo.vendedores;
+    notaComunidad =
+      excluidas === 0
+        ? null
+        : excluidas === 1
+          ? "Sin contar 1 cuenta de prueba"
+          : `Sin contar ${excluidas} cuentas de prueba`;
+  } else {
+    const [todos, vendedores] = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("es_vendedor", true),
+    ]);
+    totalUsers = todos.error ? null : todos.count;
+    totalSellers = vendedores.error ? null : vendedores.count;
+    notaComunidad =
+      totalUsers === null
+        ? "No se pudo contar la comunidad"
+        : "Incluye cuentas de prueba: no se pudo aplicar el filtro";
+  }
 
   const { count: activeProducts } = await supabase
     .from("products_services")
@@ -81,8 +101,19 @@ export default async function AdminDashboardPage() {
             </div>
             <span className="text-sm font-medium text-muted-foreground">Comunidad</span>
           </div>
-          <p className="text-3xl font-heading font-bold mb-1">{totalUsers ?? 0}</p>
-          <p className="text-sm font-medium text-blue-600/80 dark:text-blue-400/80">{totalSellers ?? 0} vendedores activos</p>
+          <p className="text-3xl font-heading font-bold mb-1">{totalUsers ?? "—"}</p>
+          <p className="text-sm font-medium text-blue-600/80 dark:text-blue-400/80">{totalSellers ?? "—"} vendedores activos</p>
+          {notaComunidad && (
+            <p
+              className={
+                comunidad.ok
+                  ? "mt-1 text-xs text-muted-foreground"
+                  : "mt-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+              }
+            >
+              {notaComunidad}
+            </p>
+          )}
           <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4">
             <Users className="w-24 h-24" />
           </div>
@@ -102,21 +133,19 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {isFullAdmin && (
-          <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-xl bg-emerald-trust/10 text-emerald-trust">
-                <Handshake className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">Transacciones</span>
+        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-primary/30 transition-colors">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 rounded-xl bg-emerald-trust/10 text-emerald-trust">
+              <Handshake className="h-5 w-5" />
             </div>
-            <p className="text-3xl font-heading font-bold mb-1 tabular-nums">{totalSales}</p>
-            <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(totalValue)} vol. histórico</p>
-            <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4">
-              <Handshake className="w-24 h-24" />
-            </div>
+            <span className="text-sm font-medium text-muted-foreground">Transacciones</span>
           </div>
-        )}
+          <p className="text-3xl font-heading font-bold mb-1 tabular-nums">{totalSales}</p>
+          <p className="text-sm font-medium text-emerald-trust/80">{formatPrice(totalValue)} vol. histórico</p>
+          <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4">
+            <Handshake className="w-24 h-24" />
+          </div>
+        </div>
 
         <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5 shadow-sm group hover:border-primary/30 transition-colors">
           <div className="flex items-center gap-3 mb-3">

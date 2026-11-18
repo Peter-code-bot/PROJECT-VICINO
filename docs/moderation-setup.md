@@ -121,13 +121,21 @@ O desde el Dashboard: Database > Migrations > Apply.
 > única forma de no perderla al recrear el proyecto.
 
 ### 2.6 Asignar rol admin
-En el SQL Editor del Dashboard de Supabase:
+Desde el panel: `/admin/users` → «Hacer Admin» o «Hacer Mod», y la clave de
+seguridad del panel (`ADMIN_SECURITY_PASSWORD`, solo en el entorno de Vercel).
+Es el único camino para una sesión: desde `20261118120000` ni `make_admin`
+ni `manage_user_role` se pueden llamar desde un cliente (ver
+`docs/ADMIN-USUARIOS-2026-11-18.md`).
+
+Salida de emergencia, solo si no queda ningún admin, en el SQL Editor del
+Dashboard de Supabase (corre como `postgres`):
 ```sql
-SELECT make_admin('pedro@vicinomarket.com');
-SELECT make_admin('alejandro@vicinomarket.com');
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin'::public.app_role FROM auth.users WHERE email = '<correo>'
+ON CONFLICT DO NOTHING;
 ```
-La función `make_admin(email)` ya existe en
-`supabase/migrations/20260410000001_admin_setup.sql`.
+`make_admin(email)` ya no sirve ahí: exige que `auth.uid()` sea admin, y en
+el SQL Editor no hay sesión.
 
 ### 2.7 Instalar dependencia
 ```bash
