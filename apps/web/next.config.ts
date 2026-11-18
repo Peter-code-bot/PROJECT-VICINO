@@ -367,6 +367,44 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_VERSION: VERSION_MOVIL.version,
     NEXT_PUBLIC_ANDROID_BUILD: VERSION_MOVIL.build,
   },
+  // www -> apex con 308, conservando ruta y query, SALVO los dos archivos de
+  // asociacion: /.well-known/assetlinks.json y
+  // /.well-known/apple-app-site-association.
+  //
+  // Google (Digital Asset Links) y Apple (AASA) piden esos archivos con 200 y
+  // sin redireccion. El 7-nov-2026 el 308 de www lo ponia Vercel a nivel de
+  // dominio, para todo, y Google rechazaba www (ERROR_CODE_REDIRECT): sus App
+  // Links no se verificaban. Esta regla hace el mismo 308 con esa excepcion,
+  // para que www pueda servir Production sin duplicar el sitio.
+  //
+  // - Esta INERTE mientras Vercel siga redirigiendo www a nivel de dominio: esa
+  //   redireccion contesta antes de llegar aqui.
+  // - No se quita mientras www sirva Production: www quedaria sirviendo la app
+  //   completa. Para deshacer, primero Vercel y despues el codigo.
+  // - El `has` es lo que impide que el apex se redirija a si mismo (bucle 308 y
+  //   sitio caido). Un has: [] tambien compila.
+  // - Solo esos dos archivos, exactos (el $ va dentro del lookahead): el resto
+  //   de /.well-known/ no es estatico, lo atiende [categoria]/[slug], y en www
+  //   se redirige como cualquier otra ruta. Un archivo de asociacion nuevo que
+  //   haya que servir en www (por ejemplo el de Apple Pay) se agrega a la
+  //   excepcion, aqui, en el matcher de proxy.ts y en las dos pruebas.
+  // - Next antepone (?!/_next) a toda redireccion propia, asi que /_next/ en www
+  //   no se redirige. Es inocuo: son los estaticos y nadie los enlaza con www.
+  // - Una regla igual para startup-marketplace-web.vercel.app tendria que llevar
+  //   la misma excepcion: Android 11 o anterior verifica ese host.
+  //
+  // Prueba: pnpm exec tsx scripts/test-redirect-www.mjs. Orden de operaciones:
+  // docs/APP-LINKS-WWW-2026-11-07.md.
+  async redirects() {
+    return [
+      {
+        source: "/:path((?!\\.well-known/(?:assetlinks\\.json|apple-app-site-association)$).*)",
+        has: [{ type: "host", value: "www.vicinomarket.com" }],
+        destination: "https://vicinomarket.com/:path",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

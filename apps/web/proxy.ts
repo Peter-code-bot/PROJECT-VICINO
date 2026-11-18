@@ -159,7 +159,18 @@ export const config = {
      *     redirect. Guardaria la pagina de login como pagina sin red. Cualquier
      *     archivo nuevo que pida el SW (un importScripts, sobre todo, que NO
      *     sigue redirects y tumba el SW entero) tiene que ir en esta lista.
+     *   - .well-known/assetlinks.json y .well-known/apple-app-site-association,
+     *     exactos (con $, como offline.html). Son los dos archivos estaticos de
+     *     public/.well-known y los piden los verificadores de Google y Apple,
+     *     sin cookies. requiereSesion() ya los trata como tecnicos, pero con
+     *     cookie el proxy correria la RPC de confirmacion legal, o daria 503 si
+     *     Auth no contesta (lib/supabase/middleware.ts). El resto de
+     *     /.well-known/ NO es estatico: lo atiende [categoria]/[slug], asi que
+     *     sigue aqui, para que updateSession refresque la sesion y sanee las
+     *     cabeceras en las que confia (marketplace)/layout.tsx. Un archivo de
+     *     asociacion nuevo se agrega a esta lista y a la prueba:
+     *     scripts/test-matcher-proxy.mjs.
      */
-    "/((?!api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|theme-init\\.js|manifest\\.json|offline\\.html$|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!\\.well-known/(?:assetlinks\\.json|apple-app-site-association)$|api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|theme-init\\.js|manifest\\.json|offline\\.html$|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

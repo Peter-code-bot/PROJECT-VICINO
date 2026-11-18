@@ -41,32 +41,39 @@
                 <data android:scheme="vicino" />
             </intent-filter>
 
-            <!-- App Links: https://vicinomarket.com (canonical, autoVerify).
-                 SOLO el apex va aqui. Un intent-filter con autoVerify exige
-                 que TODOS sus hosts verifiquen, y www.vicinomarket.com
-                 responde 308 al apex: el verificador de Google no sigue
-                 redirecciones, asi que con www dentro fallaba la verificacion
-                 del filtro entero (comprobado el 12-sep-2026: "dominios no
-                 verificados" en Play Console). www baja al filtro manual de
-                 abajo; el navegador ya lo redirige al apex de todas formas. -->
+            <!-- App Links verificados (autoVerify): vicinomarket.com y
+                 www.vicinomarket.com.
+                 Android 12+ verifica por separado cada host de los filtros
+                 con autoVerify: si www no pasa (al 7-nov-2026 Vercel lo
+                 redirige con 308 a nivel de dominio y el verificador no sigue
+                 redirecciones), vicinomarket.com queda verificado igual y www
+                 abre el navegador, como antes. El AAB 9 tenia www en el filtro
+                 manual y por eso www nunca podia verificarse en Android 12+.
+                 Android 11 o anterior verifica juntos TODOS los hosts web del
+                 manifiesto (tambien los del filtro manual de abajo) y es todo
+                 o nada. Por eso www y startup-marketplace-web.vercel.app
+                 tienen que servir /.well-known/assetlinks.json con 200 y sin
+                 redireccion. Antes de Android 15 la verificacion solo corre al
+                 instalar o actualizar la app. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="vicinomarket.com" />
+                <data android:scheme="https" android:host="www.vicinomarket.com" />
             </intent-filter>
 
-            <!-- Legacy host (Play Data Safety URL). No autoVerify because
-                 vercel.app responds 200 with the full app (verified 2026-08-26;
-                 the repo docs claimed a 308 for months and it is not) and cannot
-                 publish a directly-fetched assetlinks.json. App still
-                 accepts the link manually via "Open with...". -->
+            <!-- Host legado (URL de Data Safety de Play). Sin autoVerify: no
+                 hace falta que abra la app sola; se acepta a mano con "Abrir
+                 con...". Ojo: en Android 11 o anterior este host SI entra en la
+                 verificacion de todo el manifiesto. Al 7-nov-2026 sirve
+                 assetlinks.json con 200 y la API de Google lo valida; si algun
+                 dia se le pone un 308, tiene que excluir /.well-known/. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="startup-marketplace-web.vercel.app" />
-                <data android:scheme="https" android:host="www.vicinomarket.com" />
             </intent-filter>
         </activity>
 

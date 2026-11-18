@@ -54,6 +54,13 @@ SQL exacto está en el runbook. La urgente es `spatial_ref_sys`, que responde
   `www` devuelve 308 en `/.well-known/`. Ni Apple ni Google siguen
   redirecciones para el archivo de asociación, así que los enlaces con `www`
   nunca abren la app.
+  - *Nota del 7-nov-2026.* Google sí lo rechaza (`ERROR_CODE_REDIRECT` en la
+    API de Digital Asset Links). El CDN de Apple, en cambio, entregaba el AASA
+    de `www` siguiendo el 308: su cabecera `Apple-From` listaba la URL de `www`
+    y la del apex. Lo vio el diagnóstico de ese día; no se repitió al escribir
+    esta nota. Apple documenta que no debe haber redirección, así que no
+    conviene depender de eso. Arreglo y orden de operaciones:
+    `docs/APP-LINKS-WWW-2026-11-07.md`.
 
 ---
 
