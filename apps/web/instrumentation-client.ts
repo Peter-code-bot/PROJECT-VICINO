@@ -2,6 +2,8 @@ import * as Sentry from "@sentry/nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseIntegration } from "@supabase/sentry-js-integration";
 import { iniciarSentryNativo, empezarRutaNativa } from "./lib/observability/sentry-nativo";
+import { sanitizeBodySupabase } from "./lib/observability/saneo-supabase";
+import { sanearBreadcrumb, sanearEvento } from "./lib/observability/saneo-ubicacion";
 
 // Anti-double-counting gate (D2): when the Next.js bundle runs inside the
 // Capacitor Android WebView, we let @sentry/capacitor handle init instead.
@@ -48,8 +50,17 @@ if (!isCapacitor) {
         tracing: true,
         breadcrumbs: false,
         errors: true,
+        // En el navegador el cuerpo de la escritura viaja en el span (db.body)
+        // y en el error: la subida de la verificacion lleva university_name.
+        sanitizeBody: sanitizeBodySupabase,
       }),
     ],
+    // Coordenadas fuera de Sentry: /rankings, /mapa y /buscar llevan lat/lng en
+    // la URL, y la cache de sesion pide /api/session/home con la cookie de zona
+    // en el fragmento. Llegarian en los breadcrumbs, en request.url y en los
+    // spans de cada transaccion. Solo cambia lo que llevan, no que se reporta.
+    beforeBreadcrumb: sanearBreadcrumb,
+    beforeSendTransaction: sanearEvento,
     beforeSend(event: Sentry.ErrorEvent, hint: Sentry.EventHint) {
       // Drop known noise that does not represent real bugs.
       const exception = hint?.originalException;
@@ -60,7 +71,7 @@ if (!isCapacitor) {
       if (/ResizeObserver loop|Non-Error promise rejection captured/.test(msg)) {
         return null;
       }
-      return event;
+      return sanearEvento(event);
     },
   });
   void cargarReplay();

@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseIntegration } from "@supabase/sentry-js-integration";
+import { sanitizeBodySupabase } from "./lib/observability/saneo-supabase";
+import { sanearBreadcrumb, sanearEvento } from "./lib/observability/saneo-ubicacion";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
@@ -22,11 +24,25 @@ Sentry.init({
   // Marketplace = PII heavy. Keep server PII off by default; opt in per
   // capture call when truly needed (e.g., user id but not email).
   sendDefaultPii: false,
+  // Coordenadas, cuerpos y cookies fuera de Sentry. Aun con sendDefaultPii en
+  // false, el SDK 10.75 adjunta la URL y la query de la peticion, su cuerpo
+  // (los argumentos de las Server Actions), la cabecera cookie y las cookies
+  // (la de sesion de Supabase incluida) y las cabeceras x-vercel-ip-*
+  // (geolocalizacion por IP); onRequestError deja la ruta con query en
+  // contexts.nextjs, y el fetch al snapshot de Apple deja en la miga y en el
+  // span la query con center y la firma. Solo cambia lo que llevan los
+  // eventos: beforeSend y beforeSendTransaction nunca devuelven null.
+  beforeBreadcrumb: sanearBreadcrumb,
+  beforeSend: sanearEvento,
+  beforeSendTransaction: sanearEvento,
   integrations: [
     supabaseIntegration(SupabaseClient, Sentry, {
       tracing: true,
       breadcrumbs: false,
       errors: true,
+      // Sin esto, un error de escritura manda en contexts.supabase.body los
+      // valores de primer nivel del cuerpo (university_name entre ellos).
+      sanitizeBody: sanitizeBodySupabase,
     }),
     // Prevent duplicate spans: supabaseIntegration creates named spans for
     // every query; if we also let the default fetch instrumentation trace

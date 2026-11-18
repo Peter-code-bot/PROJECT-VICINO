@@ -1,3 +1,5 @@
+import { sanearBreadcrumb } from "./saneo-ubicacion";
+
 type Modules = [typeof import("@sentry/capacitor"), typeof import("@sentry/react")];
 type Estado = "idle" | "initializing" | "ready" | "failed";
 type EstadoNativo = { state: Estado; jsClient: boolean; nativeBridge: "unverified" | "unavailable" };
@@ -87,6 +89,10 @@ export function crearInicializadorSentry(load: () => Promise<Modules>) {
               traceFetch: false, traceXHR: false, enableLongTask: false,
               enableLongAnimationFrame: false, enableInp: false,
             })],
+            // Coordenadas fuera de los breadcrumbs (navigation, fetch, xhr). El
+            // SDK nativo recibe la miga ya saneada: @sentry/capacitor la copia
+            // al puente desde el scope, despues de este gancho (scopeSync.js).
+            beforeBreadcrumb: sanearBreadcrumb,
             // Las metricas manuales no deben heredar URL, query ni breadcrumbs
             // con datos de chats. La captura de errores mantiene su SDK nativo.
             beforeSendTransaction(event) {
