@@ -1,11 +1,15 @@
 // PostgreSQL en WASM, sin red, cuentas ni claves reales.
 //
-// Comprueba 20261118120000_roles_solo_con_clave_del_panel.sql: las dos
-// funciones viejas que cambiaban roles con solo tener una sesion de admin
-// (manage_user_role y make_admin) ya no se pueden llamar desde un cliente, asi
-// que el unico camino para cambiar un rol es la Server Action que exige la
-// clave del panel. Las funciones se crean aqui tal como estan en produccion
-// (pg_get_functiondef y ACL leidos el 18-nov-2026, solo lectura).
+// Comprueba las dos migraciones del 18-nov-2026 sobre roles:
+//   20261118120000: las dos funciones viejas que cambiaban roles con solo
+//     tener una sesion de admin (manage_user_role y make_admin) ya no se pueden
+//     llamar desde un cliente, asi que el unico camino es la Server Action que
+//     exige la clave del panel.
+//   20261118130000: ese camino (admin_set_user_role_secure, canal de servicio)
+//     vuelve a funcionar. Con el has_role de produccion rechazaba al admin
+//     real, porque en el canal de servicio no hay sesion.
+// Las funciones se crean aqui tal como estan en produccion (pg_get_functiondef
+// y ACL leidos el 18-nov-2026, solo lectura).
 //
 //   pnpm exec tsx scripts/test-roles-sin-atajos.ts
 import assert from "node:assert/strict";
@@ -16,6 +20,10 @@ import { PGlite } from "@electric-sql/pglite";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const ARCHIVO = "supabase/migrations/20261118120000_roles_solo_con_clave_del_panel.sql";
+const ARCHIVO_CANAL = "supabase/migrations/20261118130000_canal_de_roles_sin_has_role.sql";
+// La version de octubre de admin_set_user_role_secure, la que hoy esta en produccion.
+const ARCHIVO_OCTUBRE = "supabase/migrations/20261011213000_admin_roles_solo_servidor.sql";
+const SEGURA = "public.admin_set_user_role_secure(uuid, uuid, public.app_role, boolean)";
 const admin = "00000000-0000-4000-8000-000000000001";
 const otro = "00000000-0000-4000-8000-000000000002";
 const FUNCIONES = [
@@ -37,6 +45,8 @@ const ESQUEMA = `
   CREATE TABLE auth.users (id uuid PRIMARY KEY);
   CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
     AS $$SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
+  CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE
+    AS $$SELECT nullif(current_setting('request.jwt.claim.role', true), '')$$;
   GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
   CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
   CREATE TABLE public.profiles (id uuid PRIMARY KEY REFERENCES auth.users(id), email text NOT NULL);
@@ -242,10 +252,101 @@ async function main() {
         await limpia.close();
       }
     });
+
+    // --- 20261118130000: el canal del servidor ---------------------------------
+
+    const octubre = (await readFile(path.join(root, ARCHIVO_OCTUBRE), "utf8")).match(
+      /CREATE OR REPLACE FUNCTION public\.admin_set_user_role_secure[\s\S]*?\$function\$;/,
+    );
+    assert.ok(octubre, "la migracion de octubre trae la funcion segura");
+    const canal = await readFile(path.join(root, ARCHIVO_CANAL), "utf8");
+
+    /** Como la llama la Server Action: cliente de servicio, sin sesion de usuario. */
+    async function porElCanal(actor: string | null, cuenta: string, rol: string, conceder: boolean) {
+      await db.query("SELECT set_config('request.jwt.claim.role', 'service_role', false)");
+      await db.query("SELECT set_config('request.jwt.claim.sub', '', false)");
+      await db.exec("SET ROLE service_role");
+      try {
+        await db.query(`SELECT ${SEGURA.replace(/\(.*$/, "")}($1, $2, $3::public.app_role, $4)`, [actor, cuenta, rol, conceder]);
+      } finally {
+        await db.exec("RESET ROLE");
+        await db.query("SELECT set_config('request.jwt.claim.role', '', false)");
+      }
+    }
+    const con = (codigo: string, texto?: RegExp) => (error: { code?: string; message?: string }) =>
+      error.code === codigo && (!texto || texto.test(error.message ?? ""));
+
+    await check("con la version de octubre (la de produccion) el canal rechaza al admin real", async () => {
+      await db.exec(octubre[0]);
+      await db.exec(`REVOKE ALL ON FUNCTION ${SEGURA} FROM PUBLIC; GRANT EXECUTE ON FUNCTION ${SEGURA} TO service_role;`);
+      await assert.rejects(() => porElCanal(admin, otro, "moderator", true), con("42501", /solo un admin/));
+      assert.deepEqual(await rolesDe(otro), []);
+    });
+
+    await db.exec(canal);
+
+    await check("con el arreglo, el canal concede y quita Moderador", async () => {
+      await porElCanal(admin, otro, "moderator", true);
+      await porElCanal(admin, otro, "moderator", true);
+      assert.deepEqual(await rolesDe(otro), ["moderator"], "conceder dos veces deja una sola fila");
+      await porElCanal(admin, otro, "moderator", false);
+      assert.deepEqual(await rolesDe(otro), []);
+    });
+
+    await check("con el arreglo, el canal concede y quita Admin a otra cuenta", async () => {
+      await porElCanal(admin, otro, "admin", true);
+      assert.deepEqual(await rolesDe(otro), ["admin"]);
+      await porElCanal(admin, otro, "admin", false);
+      assert.deepEqual(await rolesDe(otro), []);
+    });
+
+    await check("un actor que no es admin no reparte roles", async () => {
+      await assert.rejects(() => porElCanal(otro, admin, "moderator", true), con("42501", /solo un admin/));
+      assert.deepEqual(await rolesDe(admin), ["admin"]);
+    });
+
+    await check("nadie se quita a si mismo el admin", async () => {
+      await assert.rejects(() => porElCanal(admin, admin, "admin", false), con("22023"));
+      assert.deepEqual(await rolesDe(admin), ["admin"]);
+    });
+
+    await check("datos nulos o un rol que no se reparte se rechazan antes de tocar nada", async () => {
+      await assert.rejects(() => porElCanal(null, otro, "moderator", true), con("22023"));
+      await assert.rejects(() => porElCanal(admin, otro, "user", true), con("22023"));
+      assert.deepEqual(await rolesDe(otro), []);
+    });
+
+    await check("fuera del canal de servicio la funcion no se puede usar", async () => {
+      assert.equal(await puede("authenticated", SEGURA), false);
+      assert.equal(await puede("anon", SEGURA), false);
+      await assert.rejects(
+        () => conSesion(admin, () => db.query(`SELECT ${SEGURA.replace(/\(.*$/, "")}($1, $2, 'moderator', true)`, [admin, otro])),
+        con("42501"),
+      );
+      await db.query("SELECT set_config('request.jwt.claim.role', 'authenticated', false)");
+      await assert.rejects(
+        () => db.query(`SELECT ${SEGURA.replace(/\(.*$/, "")}($1, $2, 'moderator', true)`, [admin, otro]),
+        con("42501", /canal de servidor/),
+      );
+      await db.query("SELECT set_config('request.jwt.claim.role', '', false)");
+      assert.deepEqual(await rolesDe(otro), []);
+    });
+
+    await check("la migracion del canal es reaplicable y su verificacion detecta has_role", async () => {
+      await db.exec(canal);
+      const verificacion = canal.match(/DO \$verify\$[\s\S]*?\$verify\$;/);
+      assert.ok(verificacion, "la migracion del canal trae su verificacion");
+      await db.exec(octubre[0]);
+      await assert.rejects(() => db.exec(verificacion[0]), /todavia comprueba al actor con has_role/);
+      await db.exec(canal);
+      await porElCanal(admin, otro, "moderator", true);
+      await porElCanal(admin, otro, "moderator", false);
+      assert.deepEqual(await rolesDe(otro), []);
+    });
   } finally {
     await db.close();
   }
-  console.log(`PASS ${checks}/${checks} roles sin atajos: solo el canal del servidor con la clave cambia roles.`);
+  console.log(`PASS ${checks}/${checks} roles: sin atajos para las sesiones y con el canal del servidor funcionando.`);
 }
 
 main().catch((error) => {

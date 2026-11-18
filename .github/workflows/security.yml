@@ -165,7 +165,9 @@ jobs:
 
       # Y en la base: las dos funciones viejas que cambiaban roles con solo una
       # sesion de admin ya no se pueden llamar desde un cliente; el unico
-      # camino es la Server Action que exige la clave del panel.
+      # camino es la Server Action que exige la clave del panel, y ese camino
+      # (admin_set_user_role_secure) ya no depende del has_role de produccion,
+      # que sin sesion rechazaba al admin real.
       - name: Roles solo con la clave del panel
         run: pnpm exec tsx scripts/test-roles-sin-atajos.ts
 

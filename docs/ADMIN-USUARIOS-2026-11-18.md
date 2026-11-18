@@ -93,6 +93,23 @@ la salta en vez de abortar. Reversión:
 `docs/rollback/20261118120000_roles_solo_con_clave_del_panel_rollback.sql`.
 Salida de emergencia si no queda ningún admin: `docs/moderation-setup.md`, 2.6.
 
+**Y el canal bueno tampoco funcionaba.** `admin_set_user_role_secure`
+comprobaba al actor con `public.has_role(p_actor_id, 'admin')`. El `has_role`
+de producción lleva un guard contra la enumeración de roles: si el id no es el
+de `auth.uid()` y quien pregunta no es admin, devuelve `false`. En el canal de
+servicio no hay sesión, así que respondía «no es admin» del admin real y toda
+concesión o retiro desde el panel terminaba en «forbidden: solo un admin puede
+repartir roles», con la clave correcta o sin ella. Las pruebas de octubre no lo
+vieron porque usaban un `has_role` sin ese guard.
+
+**`20261118130000_canal_de_roles_sin_has_role.sql`** reemplaza la función con
+el mismo cuerpo, salvo la comprobación del actor, que ahora mira `user_roles`
+directamente. La firma no cambia (ni el código ni los tipos), solo
+`service_role` la ejecuta y la migración verifica que ya no use `has_role`. No
+toca `has_role`. Reversión:
+`docs/rollback/20261118130000_canal_de_roles_sin_has_role_rollback.sql`
+(devuelve la versión rota).
+
 **La clave.** Tiene que vivir solo en el entorno de Vercel (Production), nunca
 en el repositorio. Para saber si está configurada sin ver su valor:
 `vercel env ls production` (lista solo nombres). Cambiar su valor exige un
@@ -105,8 +122,10 @@ nuevo despliegue para que lo tome el servidor.
 (cd apps/web && node --import tsx --test lib/admin/busqueda-usuarios.test.ts lib/admin/cuentas-fuera-de-metricas.test.ts)
 
 # Desde la raíz del repo. PostgreSQL en WASM con las funciones idénticas a
-# producción: antes de la migración una sesión de admin cambiaba roles sin la
-# clave; después, 42501. También comprueba una base sin manage_user_role.
+# producción: antes de 20261118120000 una sesión de admin cambiaba roles sin la
+# clave y después da 42501 (también en una base sin manage_user_role); con la
+# versión de octubre el canal del servidor rechaza al admin real y con
+# 20261118130000 concede y quita Moderador y Admin.
 pnpm exec tsx scripts/test-roles-sin-atajos.ts
 ```
 

@@ -6,7 +6,10 @@
 -- vio dependia de ellas; lo correcto es llevar ese algo al canal del servidor
 -- (Server Action con clave -> admin_set_user_role_secure), no reabrir esto.
 --
--- Correr en el SQL Editor como postgres. No toca filas.
+-- Correr en el SQL Editor como postgres. No toca filas. Despues, si se quiere
+-- volver a aplicar la migracion con scripts/apply-migration.mjs, hay que borrar
+-- su fila del ledger (la herramienta se niega a reaplicar una version):
+--   DELETE FROM supabase_migrations.schema_migrations WHERE version = '20261118120000';
 
 GRANT EXECUTE ON FUNCTION public.manage_user_role(uuid, public.app_role, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.make_admin(text) TO authenticated;
