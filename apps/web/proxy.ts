@@ -152,14 +152,23 @@ export const config = {
      *   - api: cada route handler resuelve su propia autenticacion, y el cron
      *     usa CRON_SECRET. Ninguno depende de que el proxy refresque la cookie.
      *   - sentry-tunnel, sw.js, workbox-*.js, theme-init.js, manifest.json,
-     *     icons/ y los estaticos de _next.
+     *     las imagenes (public/icons/ incluida) y los estaticos de _next.
      *   - offline.html (regla "pages" en next.config.ts), y aqui no es solo
      *     ahorro: requiereSesion() la trata como ruta privada, a un invitado se
      *     le redirige a /login, y el service worker la precachea siguiendo el
      *     redirect. Guardaria la pagina de login como pagina sin red. Cualquier
      *     archivo nuevo que pida el SW (un importScripts, sobre todo, que NO
      *     sigue redirects y tumba el SW entero) tiene que ir en esta lista.
+     *
+     * CADA EXCLUSION VA ANCLADA: termina en "$" (un archivo) o en "/" (una
+     * carpeta). Un prefijo suelto saca del proxy todo lo que empiece igual,
+     * y con ello la exigencia de sesion de lo que no es un archivo. Los de
+     * public/icons/ ya los cubre la regla de extensiones; el tunel de Sentry
+     * es exactamente /sentry-tunnel (la reescritura del SDK es
+     * `/sentry-tunnel(/?)`); los .map de sw.js y de workbox se sirven tal
+     * cual, como antes. Lo vigila lib/navigation/ruta-de-ficha.test.ts, que
+     * compila este matcher con el codigo de Next.
      */
-    "/((?!api|sentry-tunnel|sw\\.js|workbox-[^/]*\\.js|theme-init\\.js|manifest\\.json|offline\\.html$|icons/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!api(?:/|$)|sentry-tunnel/?$|sw\\.js(?:\\.map)?$|workbox-[^/]*\\.js(?:\\.map)?$|theme-init\\.js$|manifest\\.json$|offline\\.html$|_next/static/|_next/image(?:/|$)|favicon\\.ico$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

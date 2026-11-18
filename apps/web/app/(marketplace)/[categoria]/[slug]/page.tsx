@@ -1,6 +1,9 @@
+import { cache } from "react";
 import { publicProduct } from "@/lib/public-product";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { esCategoriaDeFicha, rutaDeFicha } from "@/lib/navigation/ruta-de-ficha";
+import { loginPara, requiereSesion } from "@/lib/auth/acceso-invitado";
 import { ogImageUrl } from "@/lib/og-image";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -27,8 +30,19 @@ interface Props {
 // dedupeadas por Google (mismo patron de SITE_URL que report-webhook).
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vicinomarket.com";
 
+// Una sola consulta a Auth por peticion: la comparten generateMetadata y la
+// pagina, que corren en la misma peticion (React cache).
+const sesionDeLaFicha = cache(async () => (await createClient()).auth.getUser());
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { categoria, slug } = await params;
+  // Fuera de una categoria no hay ficha, tampoco en el <head>: ni titulo, ni
+  // descripcion, ni imagen. Ver lib/navigation/ruta-de-ficha.ts.
+  if (!esCategoriaDeFicha(categoria)) return { title: "Producto no encontrado" };
+  // Y sin sesion, lo mismo que la pagina: nada de la ficha. Queda el titulo
+  // por defecto del sitio.
+  const { data: { user } } = await sesionDeLaFicha();
+  if (!user && requiereSesion(rutaDeFicha(categoria, slug))) return {};
   const supabase = await createClient();
 
   // MP#08 #4 Fase 1B: SELECT expandido con product_categories embed (solo
@@ -69,13 +83,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailPage({ params }: Props) {
-  const { slug } = await params;
+  const { categoria, slug } = await params;
+  // Antes de tocar la base. El layout de [categoria] ya responde 404 a esto,
+  // pero Next lo renderiza en paralelo con la pagina: sin esta guarda, la ficha
+  // viajaria igual en el payload RSC de esa misma respuesta.
+  if (!esCategoriaDeFicha(categoria)) notFound();
   const supabase = await createClient();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await sesionDeLaFicha();
   if (authError && authError.name !== "AuthSessionMissingError") {
     throw new Error("No se pudo verificar la sesión. Intenta de nuevo.");
   }
+  // La ficha exige sesion (requiereSesion) y la pagina lo hace cumplir por su
+  // cuenta, sin depender de que el proxy haya visto la peticion. Va antes de
+  // leer la publicacion.
+  const ruta = rutaDeFicha(categoria, slug);
+  if (!user && requiereSesion(ruta)) redirect(loginPara(ruta));
 
   // MP#08 #4 Fase 1A: incluimos product_categories embed para que el
   // breadcrumb derive el nombre legible de la PRIMARY del pivote (no del

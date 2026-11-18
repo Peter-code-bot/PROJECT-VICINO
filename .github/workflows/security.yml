@@ -169,6 +169,13 @@ jobs:
       - name: Actividad diaria del proxy
         run: cd apps/web && node --import tsx --test lib/actividad/marcar-visto.test.ts
 
+      # Fichas solo con sesion (18-nov-2026): compila el matcher del proxy con
+      # el codigo de Next, exige que toda URL de ficha pase por el proxy y pida
+      # sesion, y carga el layout y la pagina reales de /[categoria]/[slug]
+      # para ver que fuera de una categoria, o sin sesion, no dan nada.
+      - name: Fichas solo con sesion
+        run: cd apps/web && node --import tsx --test lib/navigation/ruta-de-ficha.test.ts
+
       # Y en la base: las dos funciones viejas que cambiaban roles con solo una
       # sesion de admin ya no se pueden llamar desde un cliente; el unico
       # camino es la Server Action que exige la clave del panel, y ese camino
