@@ -28,6 +28,8 @@ export * from "./utils/slugify";
 export * from "./utils/category";
 export * from "./utils/profile-name";
 export * from "./utils/public-location-label";
+export * from "./utils/enlaces-negocio";
+export * from "./utils/redes-negocio";
 
 // Types
 export * from "./types/media";

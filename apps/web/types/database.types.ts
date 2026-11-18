@@ -371,6 +371,38 @@ export type Database = {
           },
         ]
       }
+      clics_enlaces_negocio: {
+        Row: {
+          canal: string
+          con_sesion: boolean
+          created_at: string
+          id: string
+          vendedor_id: string
+        }
+        Insert: {
+          canal: string
+          con_sesion?: boolean
+          created_at?: string
+          id?: string
+          vendedor_id: string
+        }
+        Update: {
+          canal?: string
+          con_sesion?: boolean
+          created_at?: string
+          id?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clics_enlaces_negocio_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           archived_at: string | null
@@ -1851,14 +1883,20 @@ export type Database = {
           display_name: string | null
           email: string
           es_vendedor: boolean | null
+          facebook_messenger: boolean
+          facebook_ruta: string | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
           last_seen_at: string | null
+          linkedin_ruta: string | null
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
@@ -1866,6 +1904,7 @@ export type Database = {
           onboarding_camino: string | null
           onboarding_paso: string | null
           onboarding_revision: number
+          pinterest_usuario: string | null
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
@@ -1874,6 +1913,9 @@ export type Database = {
           seller_visibility_confirmed_at: string | null
           seller_visibility_version: string | null
           telefono: string | null
+          telegram_usuario: string | null
+          threads_usuario: string | null
+          tiktok_usuario: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
           trust_points: number | null
@@ -1884,6 +1926,9 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
+          x_usuario: string | null
+          youtube_ruta: string | null
         }
         Insert: {
           alta_vendedor_paso?: string | null
@@ -1897,14 +1942,20 @@ export type Database = {
           display_name?: string | null
           email: string
           es_vendedor?: boolean | null
+          facebook_messenger?: boolean
+          facebook_ruta?: string | null
           fcm_token?: string | null
           foto?: string | null
+          google_maps_url?: string | null
+          google_resenas_url?: string | null
           has_seen_onboarding?: boolean
           id: string
+          instagram_usuario?: string | null
           intereses?: string[] | null
           is_hidden?: boolean
           is_verified?: boolean | null
           last_seen_at?: string | null
+          linkedin_ruta?: string | null
           metodos_pago_aceptados?: string | null
           nombre?: string
           nombre_negocio?: string | null
@@ -1912,6 +1963,7 @@ export type Database = {
           onboarding_camino?: string | null
           onboarding_paso?: string | null
           onboarding_revision?: number
+          pinterest_usuario?: string | null
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
@@ -1920,6 +1972,9 @@ export type Database = {
           seller_visibility_confirmed_at?: string | null
           seller_visibility_version?: string | null
           telefono?: string | null
+          telegram_usuario?: string | null
+          threads_usuario?: string | null
+          tiktok_usuario?: string | null
           total_sales?: number | null
           trust_level?: Database["public"]["Enums"]["trust_level"] | null
           trust_points?: number | null
@@ -1930,6 +1985,9 @@ export type Database = {
           user_id?: string | null
           username: string
           verified_at?: string | null
+          whatsapp_numero?: string | null
+          x_usuario?: string | null
+          youtube_ruta?: string | null
         }
         Update: {
           alta_vendedor_paso?: string | null
@@ -1943,14 +2001,20 @@ export type Database = {
           display_name?: string | null
           email?: string
           es_vendedor?: boolean | null
+          facebook_messenger?: boolean
+          facebook_ruta?: string | null
           fcm_token?: string | null
           foto?: string | null
+          google_maps_url?: string | null
+          google_resenas_url?: string | null
           has_seen_onboarding?: boolean
           id?: string
+          instagram_usuario?: string | null
           intereses?: string[] | null
           is_hidden?: boolean
           is_verified?: boolean | null
           last_seen_at?: string | null
+          linkedin_ruta?: string | null
           metodos_pago_aceptados?: string | null
           nombre?: string
           nombre_negocio?: string | null
@@ -1958,6 +2022,7 @@ export type Database = {
           onboarding_camino?: string | null
           onboarding_paso?: string | null
           onboarding_revision?: number
+          pinterest_usuario?: string | null
           reviews_count?: number | null
           reviews_count_as_buyer?: number | null
           reviews_count_as_seller?: number | null
@@ -1966,6 +2031,9 @@ export type Database = {
           seller_visibility_confirmed_at?: string | null
           seller_visibility_version?: string | null
           telefono?: string | null
+          telegram_usuario?: string | null
+          threads_usuario?: string | null
+          tiktok_usuario?: string | null
           total_sales?: number | null
           trust_level?: Database["public"]["Enums"]["trust_level"] | null
           trust_points?: number | null
@@ -1976,6 +2044,9 @@ export type Database = {
           user_id?: string | null
           username?: string
           verified_at?: string | null
+          whatsapp_numero?: string | null
+          x_usuario?: string | null
+          youtube_ruta?: string | null
         }
         Relationships: []
       }
@@ -3151,6 +3222,15 @@ export type Database = {
         }
         Returns: Json
       }
+      actualizar_enlaces_negocio: {
+        Args: {
+          p_google_maps_url?: string
+          p_google_resenas_url?: string
+          p_instagram_usuario?: string
+          p_whatsapp_numero?: string
+        }
+        Returns: Json
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -3203,14 +3283,20 @@ export type Database = {
           display_name: string | null
           email: string
           es_vendedor: boolean | null
+          facebook_messenger: boolean
+          facebook_ruta: string | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
           last_seen_at: string | null
+          linkedin_ruta: string | null
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
@@ -3218,6 +3304,7 @@ export type Database = {
           onboarding_camino: string | null
           onboarding_paso: string | null
           onboarding_revision: number
+          pinterest_usuario: string | null
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
@@ -3226,6 +3313,9 @@ export type Database = {
           seller_visibility_confirmed_at: string | null
           seller_visibility_version: string | null
           telefono: string | null
+          telegram_usuario: string | null
+          threads_usuario: string | null
+          tiktok_usuario: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
           trust_points: number | null
@@ -3236,6 +3326,9 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
+          x_usuario: string | null
+          youtube_ruta: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3258,14 +3351,20 @@ export type Database = {
           display_name: string | null
           email: string
           es_vendedor: boolean | null
+          facebook_messenger: boolean
+          facebook_ruta: string | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
           last_seen_at: string | null
+          linkedin_ruta: string | null
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
@@ -3273,6 +3372,7 @@ export type Database = {
           onboarding_camino: string | null
           onboarding_paso: string | null
           onboarding_revision: number
+          pinterest_usuario: string | null
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
@@ -3281,6 +3381,9 @@ export type Database = {
           seller_visibility_confirmed_at: string | null
           seller_visibility_version: string | null
           telefono: string | null
+          telegram_usuario: string | null
+          threads_usuario: string | null
+          tiktok_usuario: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
           trust_points: number | null
@@ -3291,6 +3394,9 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
+          x_usuario: string | null
+          youtube_ruta: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -3364,6 +3470,13 @@ export type Database = {
       }
       claim_product_video_job: { Args: never; Returns: Json }
       cleanup_old_deletion_logs: { Args: never; Returns: number }
+      clics_enlaces_negocio_por_canal: {
+        Args: { p_dias?: number }
+        Returns: {
+          canal: string
+          clics: number
+        }[]
+      }
       comentarios_de_publicacion: {
         Args: {
           cursor_id?: string
@@ -3852,14 +3965,20 @@ export type Database = {
           display_name: string | null
           email: string
           es_vendedor: boolean | null
+          facebook_messenger: boolean
+          facebook_ruta: string | null
           fcm_token: string | null
           foto: string | null
+          google_maps_url: string | null
+          google_resenas_url: string | null
           has_seen_onboarding: boolean
           id: string
+          instagram_usuario: string | null
           intereses: string[] | null
           is_hidden: boolean
           is_verified: boolean | null
           last_seen_at: string | null
+          linkedin_ruta: string | null
           metodos_pago_aceptados: string | null
           nombre: string
           nombre_negocio: string | null
@@ -3867,6 +3986,7 @@ export type Database = {
           onboarding_camino: string | null
           onboarding_paso: string | null
           onboarding_revision: number
+          pinterest_usuario: string | null
           reviews_count: number | null
           reviews_count_as_buyer: number | null
           reviews_count_as_seller: number | null
@@ -3875,6 +3995,9 @@ export type Database = {
           seller_visibility_confirmed_at: string | null
           seller_visibility_version: string | null
           telefono: string | null
+          telegram_usuario: string | null
+          threads_usuario: string | null
+          tiktok_usuario: string | null
           total_sales: number | null
           trust_level: Database["public"]["Enums"]["trust_level"] | null
           trust_points: number | null
@@ -3885,6 +4008,9 @@ export type Database = {
           user_id: string | null
           username: string
           verified_at: string | null
+          whatsapp_numero: string | null
+          x_usuario: string | null
+          youtube_ruta: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3940,6 +4066,7 @@ export type Database = {
         }
         Returns: Json
       }
+      guardar_enlaces_negocio: { Args: { p_enlaces: Json }; Returns: Json }
       guardar_paso_onboarding: {
         Args: {
           p_bio?: string
@@ -4376,6 +4503,10 @@ export type Database = {
           documento: string
           version: string
         }[]
+      }
+      registrar_clic_enlace_negocio: {
+        Args: { p_canal: string; p_vendedor_id: string }
+        Returns: boolean
       }
       registrar_consentimiento_biometrico: {
         Args: { p_aviso_version: string; p_ip?: string; p_user_agent?: string }

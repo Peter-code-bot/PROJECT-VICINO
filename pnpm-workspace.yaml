@@ -2,9 +2,33 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# El cliente de auditoria pnpm 11 no lee package.json.pnpm. Conserva unicamente
-# la excepcion existente: la app firma pases; no verifica firmas RSA ajenas.
-# GHSA-86w9-cpqp-85rv sigue sin version corregida publicada. Revisar al actualizar.
+# El cliente de auditoria pnpm 11 del CI lee las excepciones de aqui, no de
+# package.json.pnpm. Cada excepcion tapa UN aviso concreto, no baja el umbral
+# (--audit-level=high) y se quita en cuanto deja de hacer falta: una que ya no
+# coincide con nada solo puede tapar una regresion futura.
+#
+# GHSA-fc5q-39xc-vjpf (CVE-2026-112366), anadida el 17-nov-2026: ReDoS en
+# picomatch <= 4.0.7 cuando quien ataca ELIGE EL PATRON glob, con extglobs
+# repetidos de una sola rama como +(*) o +(*a). Ese dia no hay version
+# corregida: la ultima publicada es 4.0.7 y el aviso no trae parche, asi que no
+# hay suelo que subir en pnpm.overrides.
+#
+# Por que no aplica aqui: ningun patron viene de un usuario.
+#   - El picomatch que ve el audit entra solo por herramientas de lint y build
+#     (eslint-config-next, typescript-eslint, next-pwa/workbox y el plugin de
+#     rollup de @sentry/nextjs), con globs escritos en el repo.
+#   - Next trae otra copia empaquetada (next/dist/compiled/picomatch) que el
+#     audit no ve. En runtime solo compila los patrones de images de
+#     apps/web/next.config.ts: hosts fijos, **.supabase.co y
+#     **.googleusercontent.com, con el pathname ** por defecto y sin extglobs.
+#     La peticion pone la URL que se compara, nunca el patron.
+#   - Ningun archivo de apps/, packages/ ni scripts/ importa picomatch,
+#     micromatch, minimatch ni anymatch.
+#
+# RETIRAR cuando salga picomatch > 4.0.7: subir a ese suelo el override de
+# picomatch en package.json, correr pnpm install y borrar este bloque. Y si
+# algun dia un patron glob sale de datos o lleva extglobs, esta excepcion deja
+# de estar justificada.
 auditConfig:
   ignoreGhsas:
-    - GHSA-86w9-cpqp-85rv
+    - GHSA-fc5q-39xc-vjpf

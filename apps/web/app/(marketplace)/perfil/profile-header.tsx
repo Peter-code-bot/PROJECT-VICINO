@@ -12,6 +12,7 @@ import { PaymentMethodsBadge } from "@/components/profile/payment-methods-badge"
 import { ReportMenuButton } from "@/components/moderation/report-menu-button";
 import { FollowButton } from "@/components/shared/follow-button";
 import { cn } from "@/lib/utils";
+import { urlPerfilVendedor } from "@/lib/navigation/url-perfil-vendedor";
 interface ProfileHeaderProps {
   profile: {
     id: string;
@@ -40,10 +41,24 @@ interface ProfileHeaderProps {
     reviews_count: number | null;
     is_verified: boolean | null;
     created_at: string | null;
+    // Enlaces externos del negocio (migracion 20261108120000). Opcionales en
+    // el tipo porque la cabecera no los pinta: los recibe ya armados en
+    // `enlacesNegocio`, y las paginas que no los piden en su SELECT siguen
+    // compilando.
+    instagram_usuario?: string | null;
+    whatsapp_numero?: string | null;
+    google_maps_url?: string | null;
+    google_resenas_url?: string | null;
   } | null;
   productCount: ReactNode;
   purchaseCount: number;
   isPublic?: boolean;
+  /**
+   * Fila de botones a Instagram, WhatsApp, Google Maps y resenas de Google.
+   * La arma la pagina y no la cabecera, porque solo la pagina sabe si quien
+   * mira es el dueno y si ya le compro (de eso depende ofrecer la resena).
+   */
+  enlacesNegocio?: ReactNode;
   /** Id del usuario autenticado. Se usa para esconder el botón de reportar
    *  cuando el perfil mostrado es el del propio usuario. */
   currentUserId?: string | null;
@@ -61,6 +76,7 @@ export function ProfileHeader({
   isFollowing = false,
   followersCount = 0,
   followingCount = 0,
+  enlacesNegocio = null,
 }: ProfileHeaderProps) {
 
   const displayName = publicProfileName(profile);
@@ -72,6 +88,10 @@ export function ProfileHeader({
       </div>
     );
   }
+  const puedeModerar = Boolean(currentUserId && currentUserId !== profile.id);
+  const compartirPerfil = profile.es_vendedor
+    ? { titulo: displayName, url: urlPerfilVendedor(profile.id) }
+    : undefined;
 
   return (
     <div className="space-y-5 mb-6">
@@ -183,6 +203,9 @@ export function ProfileHeader({
         </div>
       )}
 
+      {/* Contacto y redes del negocio (null cuando no hay ninguno configurado) */}
+      {enlacesNegocio}
+
 
 
 
@@ -228,12 +251,14 @@ export function ProfileHeader({
               ? "Mensaje"
               : "Contactar"}
           </Link>
-          {currentUserId && currentUserId !== profile.id && (
+          {(puedeModerar || compartirPerfil) && (
             <ReportMenuButton
               targetType="user"
               targetId={profile.id}
               targetLabel={displayName}
               blockableUserId={profile.id}
+              compartirPerfil={compartirPerfil}
+              ocultarModeracion={!puedeModerar}
               ariaLabel="Más opciones"
               iconSize={18}
               className="!p-0 !h-[46px] !w-[46px] !rounded-full !bg-[#FBFAF6] border border-[rgba(17,22,45,0.05)] !text-[#11162D] hover:!bg-[#FBFAF6] hover:!text-[#11162D] shadow-[0_4px_14px_rgba(23,25,34,0.09),0_1px_4px_rgba(23,25,34,0.04)] active:translate-y-[1px] active:shadow-[0_2px_6px_rgba(23,25,34,0.08)] transition-[transform,box-shadow] duration-120 shrink-0 flex items-center justify-center"
@@ -241,7 +266,7 @@ export function ProfileHeader({
           )}
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
             href="/perfil/editar"
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[color:var(--fg)] px-4 py-2.5 text-sm font-semibold text-[color:var(--bg)] shadow-sm transition-all hover:opacity-90"
@@ -257,6 +282,15 @@ export function ProfileHeader({
               <Handshake className="w-4 h-4" />
               Mi tienda
             </Link>
+          )}
+          {compartirPerfil && (
+            <ReportMenuButton
+              targetType="user"
+              targetId={profile.id}
+              compartirPerfil={compartirPerfil}
+              ocultarModeracion
+              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[color:var(--sidebar-bg)]"
+            />
           )}
         </div>
       )}

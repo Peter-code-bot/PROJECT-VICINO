@@ -93,13 +93,21 @@ export function AvisoPrivacidadCuerpo() {
           </p>
 
           <h3 className="text-base font-semibold mt-4">4.3. Datos de actividad y uso</h3>
-          <p>Historial de publicaciones (productos ofertados, descripciones, fotografías cargadas), transacciones marcadas como confirmadas mutuamente entre Usuarios, calificaciones y reseñas emitidas y recibidas, contenido de mensajes intercambiados con otros Usuarios a través del chat de la Plataforma, productos guardados como favoritos, interacciones con otros perfiles (como tiendas seguidas o comunidades a las que se une), denuncias o reportes presentados, reportes de errores (crash logs) y métricas de uso (frecuencia de inicio de sesión, tiempo de permanencia, secciones visitadas).</p>
+          <p>Historial de publicaciones (productos ofertados, descripciones, fotografías cargadas), transacciones marcadas como confirmadas mutuamente entre Usuarios, calificaciones y reseñas emitidas y recibidas, contenido de mensajes intercambiados con otros Usuarios a través del chat de la Plataforma, productos guardados como favoritos, interacciones con otros perfiles (como tiendas seguidas o comunidades a las que se une), denuncias o reportes presentados, reportes de errores (crash logs) y métricas de uso (frecuencia de inicio de sesión, tiempo de permanencia, secciones visitadas). También registramos cuántas veces se abre cada enlace de contacto o red social de un Vendedor desde su perfil (sección 4.6), <strong>sin identificar a quien lo abre</strong>: solo el canal, la fecha y si había una sesión iniciada. Para evitar abusos limitamos las aperturas repetidas con un identificador temporal; si no hay sesión, ese identificador es un resumen no reversible de la dirección IP que cambia cada día y no se asocia a ninguna cuenta.</p>
 
           <h3 className="text-base font-semibold mt-4">4.4. Datos técnicos y de identificación digital</h3>
           <p>Dirección IP, identificador de dispositivo, tipo y versión de navegador, sistema operativo, tipo de dispositivo, fecha y hora de acceso, idioma del navegador, coordenadas de geolocalización (si el Usuario otorga permiso expreso en su navegador para personalizar el catálogo por cercanía), y cookies estrictamente necesarias para la operación de la sesión.</p>
 
           <h3 className="text-base font-semibold mt-4">4.5. Datos que NO recabamos</h3>
           <p>VICINO <strong>no recaba</strong>: datos patrimoniales o financieros (números de tarjetas, cuentas bancarias, CLABE), CURP, RFC, datos de salud, origen racial o étnico, creencias religiosas, opiniones políticas, preferencias sexuales, ni rastreo continuo de geolocalización en segundo plano.</p>
+
+          <h3 className="text-base font-semibold mt-4">4.6. Datos de contacto y redes sociales que el Vendedor decide publicar</h3>
+          <p>Con el Modo Vendedor activo, el Vendedor puede agregar <strong>de forma voluntaria</strong> a su perfil público enlaces a sus medios de contacto y redes sociales: su número de WhatsApp (con lada de país); su nombre de usuario o la dirección de su perfil o página en Instagram, Facebook, TikTok, YouTube, X, LinkedIn, Threads, Pinterest y Telegram; la opción de recibir mensajes por Messenger; un enlace de Google Maps y el enlace de reseñas de su Perfil de Negocio de Google.</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Estos datos son <strong>públicos</strong>: los puede ver cualquier persona que visite el perfil del Vendedor, con o sin cuenta en VICINO, y pueden ser consultados o copiados por terceros. Se recomienda publicar solo datos que el Vendedor ya haga públicos.</li>
+            <li>VICINO guarda únicamente el dato que el Vendedor escribe. <strong>No</strong> inicia sesión en esas redes, <strong>no</strong> lee ni guarda sus mensajes, publicaciones, seguidores o reseñas, y <strong>no</strong> comprueba que la cuenta enlazada pertenezca al Vendedor.</li>
+            <li>El Vendedor puede modificarlos o quitarlos en cualquier momento desde «Editar perfil». Al desactivar el Modo Vendedor <strong>se quitan todos</strong>.</li>
+          </ul>
         </section>
 
         {/* 5 */}
@@ -107,7 +115,7 @@ export function AvisoPrivacidadCuerpo() {
           <h2 className="text-lg font-heading font-bold">5. Finalidades del tratamiento</h2>
 
           <h3 className="text-base font-semibold mt-4">5.1. Finalidades primarias (necesarias para la relación jurídica)</h3>
-          <p>El tratamiento de los datos descritos en las secciones 4.1, 4.3 y 4.4 es <strong>indispensable</strong> para:</p>
+          <p>El tratamiento de los datos descritos en las secciones 4.1, 4.3, 4.4 y 4.6 es <strong>indispensable</strong> para:</p>
           <ol className="list-[lower-alpha] pl-5 space-y-1">
             <li>Crear, operar y mantener la cuenta del Usuario en la Plataforma.</li>
             <li>Permitir la publicación, búsqueda y visualización de productos y servicios entre Usuarios.</li>
@@ -120,6 +128,8 @@ export function AvisoPrivacidadCuerpo() {
             <li>Atender denuncias, disputas y solicitudes de soporte.</li>
             <li>Enviar notificaciones operativas (transaccionales) sobre la cuenta o las publicaciones del Usuario.</li>
             <li>Cumplir con obligaciones legales, fiscales y requerimientos de autoridad competente.</li>
+            <li>Mostrar en el perfil público del Vendedor los medios de contacto y redes sociales que él mismo decida publicar (sección 4.6).</li>
+            <li>Ofrecer al Vendedor estadísticas agregadas de cuántas veces se abrieron esos enlaces, sin identificar a las personas que los abrieron.</li>
           </ol>
           <p>La negativa al tratamiento de estos datos imposibilita la prestación del servicio.</p>
 
@@ -206,6 +216,9 @@ export function AvisoPrivacidadCuerpo() {
           </div>
           <p className="mt-3">
             Cuando la transferencia tenga como destino un país sin nivel de protección equiparable, VICINO se asegura de que el receptor asuma, mediante cláusulas contractuales o instrumentos equivalentes, las mismas obligaciones que VICINO tiene como Responsable. Al aceptar este Aviso, el Usuario <strong>consiente expresamente</strong> las transferencias internacionales descritas.
+          </p>
+          <p className="mt-3">
+            <strong>Enlaces a servicios de terceros.</strong> Cuando un Usuario abre un enlace de contacto o red social de un Vendedor (por ejemplo WhatsApp, Messenger, Facebook, Instagram, TikTok, YouTube, X, LinkedIn, Threads, Pinterest, Telegram o Google Maps), sale de VICINO hacia ese servicio, que trata sus datos conforme a su propio aviso de privacidad. VICINO <strong>no transfiere</strong> datos del Usuario a esos servicios ni les indica desde qué página llegó: solo abre el enlace. En WhatsApp y Messenger el mensaje que aparece escrito dice que la persona viene de VICINO e incluye la dirección del perfil del Vendedor; el Usuario decide si lo envía.
           </p>
         </section>
 
@@ -327,6 +340,14 @@ export function AvisoPrivacidadCuerpo() {
                 <tr className="border-b border-border/50">
                   <td className="py-2 pr-3">Reportes de fraude o conducta indebida</td>
                   <td className="py-2">Hasta 5 años para fines de prevención y eventual defensa legal</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-3">Datos de contacto y redes sociales publicados por el Vendedor (sección 4.6)</td>
+                  <td className="py-2">Mientras el Vendedor los mantenga publicados; se eliminan al quitarlos o al desactivar el Modo Vendedor</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-3">Registro de aperturas de esos enlaces (sin identificar a quien los abre)</td>
+                  <td className="py-2">90 días naturales</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-3">Logs técnicos y de seguridad</td>

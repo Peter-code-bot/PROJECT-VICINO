@@ -33,7 +33,7 @@ export default async function EditarPerfilPage({
   const { data: profileData, error } = await supabase
     .from("profiles")
     .select(
-      "nombre, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id, username"
+      "nombre, foto, bio, ubicacion, es_vendedor, seller_type, nombre_negocio, descripcion_negocio, metodos_pago_aceptados, trust_level, user_id, username, instagram_usuario, whatsapp_numero, google_maps_url, google_resenas_url, facebook_ruta, facebook_messenger, tiktok_usuario, youtube_ruta, x_usuario, linkedin_ruta, threads_usuario, pinterest_usuario, telegram_usuario"
     )
     .eq("id", user.id)
     .single();

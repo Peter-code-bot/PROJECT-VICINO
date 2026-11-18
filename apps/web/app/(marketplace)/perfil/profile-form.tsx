@@ -11,30 +11,9 @@ import { invalidateSessionData } from "@/lib/session-events";
 import { Loader2, ShieldAlert, User, Store } from "lucide-react";
 import { MetodosPagoSelector } from "@/components/profile/metodos-pago-selector";
 import { AvatarInlineUpload } from "@/components/profile/avatar-inline-upload";
-
-function FieldRow({ label, htmlFor, hint, children, last = false }: {
-  label: string;
-  htmlFor?: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-  last?: boolean;
-}) {
-  const Etiqueta = htmlFor ? "label" : "span";
-  return (
-    <div className={`group/field flex items-start gap-3 py-3 ${last ? "" : "border-b border-border/10"}`}>
-      <Etiqueta
-        htmlFor={htmlFor}
-        className="w-24 shrink-0 pt-0.5 text-[13px] text-muted-foreground transition-colors group-focus-within/field:text-primary"
-      >
-        {label}
-      </Etiqueta>
-      <div className="min-w-0 flex-1">
-        {children}
-        {hint && <span className="mt-1 block text-[11px] text-muted-foreground">{hint}</span>}
-      </div>
-    </div>
-  );
-}
+import { CampoWhatsApp } from "@/components/profile/campo-whatsapp";
+import { FieldRow } from "./field-row";
+import { CamposRedesNegocio } from "./campos-redes-negocio";
 
 interface ProfileFormProps {
   profile: {
@@ -51,6 +30,19 @@ interface ProfileFormProps {
     trust_level: string;
     user_id: string | null;
     username?: string | null;
+    instagram_usuario?: string | null;
+    whatsapp_numero?: string | null;
+    google_maps_url?: string | null;
+    google_resenas_url?: string | null;
+    facebook_ruta?: string | null;
+    facebook_messenger?: boolean | null;
+    tiktok_usuario?: string | null;
+    youtube_ruta?: string | null;
+    x_usuario?: string | null;
+    linkedin_ruta?: string | null;
+    threads_usuario?: string | null;
+    pinterest_usuario?: string | null;
+    telegram_usuario?: string | null;
   } | null;
   /**
    * Phase 9: number of products with `estatus='disponible'` for this user. Used
@@ -96,6 +88,16 @@ export function ProfileForm({
 
   const bioRef = useRef<HTMLTextAreaElement>(null);
   const negocioRef = useRef<HTMLTextAreaElement>(null);
+  const avisoRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (pendingDeactivation) avisoRef.current?.scrollIntoView({ block: "center" });
+  }, [pendingDeactivation]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "center" });
+  }, [error]);
 
   function autoGrow(el: HTMLTextAreaElement) {
     el.style.height = "auto";
@@ -200,14 +202,16 @@ export function ProfileForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <BotonRegresar href="/perfil" aria-label="Volver al perfil" />
-        <h1 className="flex-1 text-xl font-heading font-bold">Editar perfil</h1>
+    <form action={handleSubmit} className="relative space-y-6">
+      <h1 className="pointer-events-none absolute inset-x-14 top-0 flex h-11 items-center text-xl font-heading font-bold">
+        Editar perfil
+      </h1>
+      <div className="pointer-events-none sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 flex h-11 items-center justify-between md:top-0">
+        <BotonRegresar href="/perfil" aria-label="Volver al perfil" variante="solido" className="pointer-events-auto" />
         <button
           type="submit"
           disabled={loading || pendingDeactivation !== null}
-          className="shrink-0 text-[15px] font-semibold text-primary dark:text-accent px-2 py-1 rounded-lg transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="pointer-events-auto min-h-11 shrink-0 rounded-full bg-[color:var(--bg)] px-3 text-[15px] font-semibold text-primary shadow-sm transition-opacity disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-accent"
         >
           {loading ? (
             <span className="inline-flex items-center gap-1.5">
@@ -241,7 +245,7 @@ export function ProfileForm({
       )}
 
       {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
+        <div ref={errorRef} role="alert" className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 p-4 text-sm text-red-600 dark:text-red-400 animate-fade-in">
           <ShieldAlert className="w-5 h-5 shrink-0" />
           <p>{error}</p>
         </div>
@@ -369,6 +373,66 @@ export function ProfileForm({
               />
             </div>
 
+            <hr className="border-border/10" />
+
+            {/* Enlaces externos del negocio. Son campos de texto libre y no
+                type="url" a proposito: la gente pega "maps.app.goo.gl/x" sin
+                https o "@mitienda", y el navegador los rechazaria antes de que
+                el servidor pudiera limpiarlos (redesNegocioSchema). Vacio
+                significa "quitar". Las redes sociales (Instagram incluido)
+                viven en CamposRedesNegocio, plegadas. */}
+            <div>
+              <span className="block text-[13px] text-muted-foreground">
+                Contacto y redes del negocio
+              </span>
+              <p className="mt-0.5 mb-1 text-[11px] text-muted-foreground">
+                Opcional. Aparecen como botones en tu perfil público. Pon solo lo que ya sea público.
+              </p>
+
+              <FieldRow label="WhatsApp" htmlFor="whatsapp_nacional" hint="Selecciona el país y escribe tu número local.">
+                <CampoWhatsApp inicial={profile?.whatsapp_numero ?? ""} activo={esVendedor} />
+              </FieldRow>
+
+              <FieldRow label="Google Maps" htmlFor="google_maps_url" hint="Enlace de tu ficha o del punto que quieras compartir (Compartir → Copiar enlace)">
+                <input
+                  id="google_maps_url"
+                  name="google_maps_url"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={500}
+                  defaultValue={profile?.google_maps_url ?? ""}
+                  placeholder="https://maps.app.goo.gl/…"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+
+              <FieldRow
+                label="Reseñas Google"
+                htmlFor="google_resenas_url"
+                hint="El enlace que te da Google en tu Perfil de Negocio (Pedir reseñas). Solo se ofrece a quien ya te compró; nunca a cambio de un premio."
+                last
+              >
+                <input
+                  id="google_resenas_url"
+                  name="google_resenas_url"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={300}
+                  defaultValue={profile?.google_resenas_url ?? ""}
+                  placeholder="https://g.page/r/…/review"
+                  className="w-full bg-transparent border-0 p-0 text-base text-foreground outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                />
+              </FieldRow>
+
+              <CamposRedesNegocio perfil={profile} />
+            </div>
+
             <div className="pt-2">
               <Link
                 href="/seller/verificacion"
@@ -480,34 +544,47 @@ export function ProfileForm({
       </div>
 
       {pendingDeactivation && (
-        <div className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
+        <div ref={avisoRef} className="space-y-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           <p className="font-semibold text-amber-900 dark:text-amber-200">
             Desactivar Modo Vendedor
           </p>
           <div className="space-y-2 text-amber-800/90 dark:text-amber-200/80">
-            <p>Al desactivarlo:</p>
+            {/* Texto de Alejandro (8-nov-2026). Antes la lista cerraba con
+                "Vuelves a ser vendedor «Casual»", que se leia como si la cuenta
+                siguiera vendiendo con otro tipo. Es un detalle de la base
+                (update_profile_and_pause_products guarda seller_type = 'casual'
+                al desactivar) que no le toca a quien lee: lo que pasa es que
+                Modo Vendedor queda apagado. */}
+            <p>
+              Al desactivar Modo Vendedor, tus publicaciones se pausarán y se quitarán los
+              enlaces de contacto de tu negocio.
+            </p>
             <ul className="space-y-1 pl-4">
               {activeProductCount > 0 && (
                 <li className="list-disc">
-                  Tus {activeProductCount}{" "}
                   {activeProductCount === 1
-                    ? "publicación activa se pausa"
-                    : "publicaciones activas se pausan"}{" "}
-                  y {activeProductCount === 1 ? "deja" : "dejan"} de aparecer en las
-                  búsquedas. No se {activeProductCount === 1 ? "borra" : "borran"}.
+                    ? "Tu publicación activa deja de aparecer en las búsquedas. No se borra."
+                    : `Tus ${activeProductCount} publicaciones activas dejan de aparecer en las búsquedas. No se borran.`}
                 </li>
               )}
-              <li className="list-disc">Dejas de poder publicar hasta que lo vuelvas a activar.</li>
+              {/* "ni volver a mostrarlas": toggleProductStatus y la policy de
+                  UPDATE (20261108190000) lo exigen desde el 8-nov-2026. */}
+              <li className="list-disc">
+                No podrás publicar ni volver a mostrar tus publicaciones hasta que lo actives otra vez.
+              </li>
               <li className="list-disc">Tu perfil deja de mostrar tu categoría y el nombre de tu negocio.</li>
-              <li className="list-disc">Vuelves a ser vendedor «Casual».</li>
+              <li className="list-disc">
+                Tus enlaces de contacto y redes sociales son públicos: se quitan para que nadie los
+                vea mientras no vendas, y tendrás que volver a ponerlos.
+              </li>
             </ul>
-            {/* Esto es cierto desde la migracion 20260826340000. Antes NO lo era:
-                desactivar ponia a NULL el nombre del negocio, su descripcion y
-                los metodos de pago, y este mismo recuadro decia "podras
-                reactivarlos", dando a entender que se recuperaba todo. */}
+            {/* Cierto desde la migracion 20260826340000: desactivar ya no pone a
+                NULL el nombre del negocio, su descripcion ni los metodos de
+                pago. Los enlaces son la excepcion deliberada (20261108120000):
+                se quitan porque son columnas publicas. */}
             <p className="pt-1">
-              No se borra nada: el nombre de tu negocio, su descripción y tus métodos
-              de pago se guardan, y vuelven tal cual si lo reactivas.
+              El nombre de tu negocio, su descripción y tus métodos de pago se guardan para cuando
+              lo actives otra vez.
             </p>
           </div>
           <div className="flex gap-2">
