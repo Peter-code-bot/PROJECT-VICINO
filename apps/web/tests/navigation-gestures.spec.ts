@@ -1,6 +1,12 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type CDPSession, type Page } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { abreTeclado } from "../lib/onboarding/abre-teclado";
+import {
+  comoElementoEnfocado, detenerTraza, iniciarTraza, instalarAhora, leerTraza,
+  type DescriptorFoco, type VentanaConTraza, type VolcadoTraza,
+} from "./helpers/view-trace";
 
 const localRequire = createRequire(path.resolve(__dirname, "../package.json"));
 const esbuild = localRequire(localRequire.resolve("esbuild", { paths: [localRequire.resolve("tsx")] }));
@@ -206,4 +212,386 @@ test("an open modal owns gestures instead of the underlying page", async ({ page
   });
   await gesture(page, [310, 260], [80, 260]);
   expect(await page.evaluate(() => (window as FixtureWindow).fixture.calls)).toEqual([]);
+});
+
+// ─── Matriz de toques del detector de pestañas (BUG-AND-VIEW) ────────────────
+// Red de seguridad: describe lo que hacen HOY page-swipe-wrapper.tsx y
+// lib/navigation/gestures.ts ante toques quietos y derivas leves en "/", junto
+// con la tolerancia de toque de Chrome de escritorio (ver TOLERANCIA_TOQUE_CHROME_PX).
+// No es un contrato de producto: si un cambio la rompe, se decide con Javier.
+// Correr SOLO con la configuración aislada; playwright.config.ts también recoge
+// este archivo, carga .env.local y arranca pnpm dev:
+//   cd apps/web && pnpm exec playwright test -c playwright.gestures.config.ts tests/navigation-gestures.spec.ts
+// Cada caso deja su matriz-toque.json en su carpeta del outputDir (--output la
+// cambia), también si pasa: el reporter "list" no guarda adjuntos en memoria.
+
+type ObjetivoToque = "enlace" | "boton" | "etiqueta" | "superficie";
+type DireccionToque = "quieto" | "izquierda" | "derecha" | "diagonal";
+interface VarianteToque { direccion: DireccionToque; px: number }
+interface Punto { x: number; y: number }
+interface SenalesClic { generados: number; entregados: number; prevenido: boolean }
+type MatrizWindow = Window & { __matriz: { reiniciar(): void; leer(): Promise<SenalesClic> } };
+interface LecturaToque {
+  /** Algún clic llegó a window en captura (Chromium lo generó). */
+  generado: boolean;
+  /** El clic llegó al objetivo. */
+  entregado: boolean;
+  /** El primer clic generado terminó con defaultPrevented. */
+  prevenido: boolean;
+  /** Máximo |translateX| de los ancestros del objetivo, del touchstart a 500 ms tras soltar (traza). */
+  transformMaxPx: number;
+  pushes: number;
+  hashCambio: boolean;
+  scrollY: number;
+  movimientos: number;
+  movimientosPrevenidos: number;
+  movimientosNoCancelables: number;
+  maxDxRecibido: number;
+  /** abreTeclado sobre el focusin de #field, si la traza lo vio en esta repetición. */
+  focoAbreTeclado: boolean | null;
+}
+interface EsperadoToque {
+  /** Algún touchmove llega a la página: la deriva sale de la tolerancia de toque. */
+  llegaMovimiento: boolean;
+  /** transform distinto de none en el envoltorio de PageSwipeWrapper. */
+  transform: boolean;
+  /** El clic llega al objetivo: Chromium generó el tap y nadie lo canceló. */
+  entregado: boolean;
+  /** El detector se adueña del gesto: previene los touchmove y marca suppressClick. */
+  suprime: boolean;
+}
+
+const OBJETIVOS_TOQUE: readonly ObjetivoToque[] = ["enlace", "boton", "etiqueta", "superficie"];
+const VARIANTES_TOQUE: readonly VarianteToque[] = [
+  { direccion: "quieto", px: 0 },
+  ...[4, 8, 12, 30].map((px) => ({ direccion: "izquierda" as const, px })),
+  ...[4, 8, 12, 30].map((px) => ({ direccion: "diagonal" as const, px })),
+  ...[12, 30].map((px) => ({ direccion: "derecha" as const, px })),
+];
+const REPETICIONES_TOQUE = 5;
+// Pasos de ≤ 4 px: el primer touchmove que llega a la página queda cerca del borde
+// de la tolerancia, como en un dedo que se desliza poco a poco.
+const PASO_MAXIMO_PX = 4;
+// Medido con Chrome de escritorio e Input.dispatchTouchEvent: un touchmove a ≤ 15 px
+// (distancia euclídea) del touchstart no llega a la página y el toque termina en tap
+// con su clic; más allá, los touchmove llegan y Chromium ya no genera el clic, con o
+// sin detector. En Android la tolerancia es de unos 8 dp, así que ahí una deriva de
+// 10–15 px sí llegaría al detector: esta matriz no lo mide.
+const TOLERANCIA_TOQUE_CHROME_PX = 15;
+const TEXTOS_INYECTADOS = ["Enlace de prueba", "Botón de prueba", "Etiqueta de prueba"];
+
+function desplazamiento({ direccion, px }: VarianteToque): Punto {
+  if (direccion === "izquierda") return { x: -px, y: 0 };
+  if (direccion === "derecha") return { x: px, y: 0 };
+  // Diagonal hacia arriba: |dx| = |dy| nunca fija eje y no inicia el tirar para recargar.
+  if (direccion === "diagonal") return { x: -px, y: -px };
+  return { x: 0, y: 0 };
+}
+
+function esperadoToque(objetivo: ObjetivoToque, variante: VarianteToque): EsperadoToque {
+  const { x, y } = desplazamiento(variante);
+  // Dentro de la tolerancia el detector no ve ningún movimiento: es un toque normal.
+  if (Math.hypot(x, y) <= TOLERANCIA_TOQUE_CHROME_PX) {
+    return { llegaMovimiento: false, transform: false, entregado: true, suprime: false };
+  }
+  // El primer touchmove que llega ya pasa de 10 px, así que gestures.ts fija el eje con
+  // él: x si |dx| supera 1.3 veces a |dy| (la diagonal nunca fija eje). gestures.ts
+  // también excluye button en el touchstart: ni gesto ni supresión.
+  const ejeX = Math.abs(x) > Math.abs(y) * 1.3;
+  if (objetivo === "boton" || !ejeX) return { llegaMovimiento: true, transform: false, entregado: false, suprime: false };
+  // page-swipe-wrapper.tsx previene el movimiento y marca suppressClick. En "/" solo hay
+  // página vecina a la izquierda (dx < 0); hacia la derecha el transform queda en 0.
+  return { llegaMovimiento: true, transform: x < 0, entregado: false, suprime: true };
+}
+
+// Enlace, botón y label dentro de #surface (alto fijo de 500 px): no mueven las
+// coordenadas de las pruebas de arriba. Sin aria-hidden: motionState busca div[aria-hidden].
+async function inyectarObjetivos(page: Page) {
+  await page.evaluate((textos) => {
+    const superficie = document.querySelector<HTMLElement>("#surface");
+    if (!superficie) throw new Error("Falta #surface en el fixture");
+    superficie.dataset.matrizObjetivo = "superficie";
+    const caja = document.createElement("div");
+    caja.dataset.matrizCaja = "";
+    caja.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:24px;padding-top:24px";
+    const enlace = document.createElement("a");
+    enlace.href = "#destino";
+    enlace.textContent = textos[0]!;
+    enlace.dataset.matrizObjetivo = "enlace";
+    enlace.style.cssText = "display:block;width:220px;height:56px;line-height:56px;text-align:center";
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.textContent = textos[1]!;
+    boton.dataset.matrizObjetivo = "boton";
+    boton.style.cssText = "display:block;width:220px;height:56px";
+    const etiqueta = document.createElement("label");
+    etiqueta.dataset.matrizObjetivo = "etiqueta";
+    etiqueta.style.cssText = "display:flex;align-items:center;gap:8px;width:220px;height:56px";
+    const casilla = document.createElement("input");
+    casilla.type = "checkbox";
+    const texto = document.createElement("span");
+    texto.textContent = textos[2]!;
+    texto.dataset.matrizToque = "";
+    texto.style.cssText = "flex:1;height:56px;line-height:56px";
+    etiqueta.append(casilla, texto);
+    caja.append(enlace, boton, etiqueta);
+    superficie.append(caja);
+  }, TEXTOS_INYECTADOS);
+}
+
+async function puntoDeToque(page: Page, objetivo: ObjetivoToque): Promise<Punto> {
+  const caja = objetivo === "superficie"
+    ? await page.evaluate(() => {
+      // Zona vacía de #surface, debajo de lo inyectado.
+      const superficie = document.querySelector("#surface")!.getBoundingClientRect();
+      const ocupado = document.querySelector("[data-matriz-caja]")!.getBoundingClientRect();
+      const top = ocupado.bottom + 20;
+      return { x: superficie.left + 40, y: top, width: superficie.width - 80, height: superficie.bottom - 20 - top };
+    })
+    : await page.locator(objetivo === "etiqueta" ? "[data-matriz-toque]" : `[data-matriz-objetivo="${objetivo}"]`).boundingBox();
+  if (!caja || caja.height <= 0) throw new Error(`Sin zona para tocar ${objetivo}`);
+  const punto = { x: Math.round(caja.x + caja.width / 2), y: Math.round(caja.y + caja.height / 2) };
+  // EDGE_GUARD_PX (20) más la deriva máxima (30): el toque nunca empieza en el borde.
+  const ancho = page.viewportSize()?.width ?? 390;
+  expect(punto.x).toBeGreaterThanOrEqual(50);
+  expect(punto.x).toBeLessThanOrEqual(ancho - 50);
+  return punto;
+}
+
+async function instrumentarClics(page: Page, objetivo: ObjetivoToque) {
+  await page.evaluate((selector) => {
+    const destino = document.querySelector(selector);
+    if (!destino) throw new Error(`Falta el objetivo ${selector}`);
+    let generados = 0;
+    let entregados = 0;
+    let primero: Event | null = null;
+    // Clic generado: window lo ve en captura antes que el envoltorio.
+    window.addEventListener("click", (evento) => { generados += 1; if (!primero) primero = evento; }, true);
+    // Clic entregado: llegó al objetivo (el envoltorio lo detiene antes, en captura).
+    destino.addEventListener("click", () => { entregados += 1; });
+    (window as unknown as MatrizWindow).__matriz = {
+      reiniciar: () => { generados = 0; entregados = 0; primero = null; },
+      // defaultPrevented se lee cuando el despacho terminó.
+      leer: () => new Promise((resolve) => setTimeout(() => resolve({
+        generados, entregados, prevenido: (primero as Event | null)?.defaultPrevented === true,
+      }), 0)),
+    };
+  }, `[data-matriz-objetivo="${objetivo}"]`);
+}
+
+async function tocar(cdp: CDPSession, desde: Punto, delta: Punto) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: desde.x, y: desde.y }] });
+  const pasos = Math.ceil(Math.max(Math.abs(delta.x), Math.abs(delta.y)) / PASO_MAXIMO_PX);
+  for (let paso = 1; paso <= pasos; paso++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove", touchPoints: [{ x: desde.x + delta.x * paso / pasos, y: desde.y + delta.y * paso / pasos }],
+    });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+/** Espera a que window.scrollY no cambie en 3 frames (un fling puede seguir tras soltar). */
+async function quietud(page: Page) {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    let previo = Number.NaN;
+    let quietos = 0;
+    const limite = performance.now() + 2000;
+    const cuadro = () => {
+      quietos = window.scrollY === previo ? quietos + 1 : 0;
+      previo = window.scrollY;
+      if (quietos >= 3 || performance.now() > limite) resolve();
+      else requestAnimationFrame(cuadro);
+    };
+    requestAnimationFrame(cuadro);
+  }));
+}
+
+async function esperarTransformDeLaTraza(page: Page) {
+  // La traza emite "transform" 500 ms después del touchend: es la ventana de cada repetición.
+  await page.waitForFunction(() => (window as VentanaConTraza).__vicinoViewTrace!.dump().includes('"tipo":"transform"'), undefined, { timeout: 5000 });
+}
+
+function resumirTraza(volcado: VolcadoTraza) {
+  const inicio = volcado.eventos.find((evento) => evento.tipo === "touchstart");
+  const x0 = typeof inicio?.x === "number" ? inicio.x : 0;
+  const movimientos = volcado.eventos.filter((evento) => evento.tipo === "touchmove");
+  const desplazamientos = volcado.eventos
+    .filter((evento) => evento.tipo === "transform")
+    .flatMap((evento) => (evento.ancestros as Array<{ maxTx: number | null }>).map((ancestro) => ancestro.maxTx ?? 0));
+  const foco = volcado.eventos.find((evento) => evento.tipo === "focusin"
+    && (evento.objetivo as DescriptorFoco).tag === "input" && (evento.objetivo as DescriptorFoco).type === "text");
+  return {
+    transformMaxPx: Math.max(0, ...desplazamientos),
+    movimientos: movimientos.length,
+    movimientosPrevenidos: movimientos.filter((evento) => evento.defaultPrevented === true).length,
+    movimientosNoCancelables: movimientos.filter((evento) => evento.cancelable !== true).length,
+    maxDxRecibido: Math.max(0, ...movimientos.map((evento) => Math.abs((typeof evento.x === "number" ? evento.x : x0) - x0))),
+    focoAbreTeclado: foco ? abreTeclado(comoElementoEnfocado(foco.objetivo as DescriptorFoco)) : null,
+  };
+}
+
+async function repetirToque(page: Page, cdp: CDPSession, punto: Punto, delta: Punto, conFoco: boolean): Promise<LecturaToque> {
+  // Entre repeticiones: scroll a 0 y hash limpio. La vuelta de 160 ms ya terminó
+  // dentro de la ventana de 500 ms de la repetición anterior.
+  await quietud(page);
+  await page.evaluate(() => { if (location.hash) location.hash = ""; window.scrollTo(0, 0); });
+  await quietud(page);
+  const antes = await page.evaluate((enfocar) => {
+    (window as unknown as MatrizWindow).__matriz.reiniciar();
+    (window as VentanaConTraza).__vicinoViewTrace!.clear();
+    if (enfocar) document.querySelector<HTMLInputElement>("#field")!.focus({ preventScroll: true });
+    return { pushes: (window as unknown as FixtureWindow).fixture.calls.filter((call) => call.type === "push").length, hash: location.hash };
+  }, conFoco);
+  await tocar(cdp, punto, delta);
+  await esperarTransformDeLaTraza(page);
+  const senales = await page.evaluate(() => (window as unknown as MatrizWindow).__matriz.leer());
+  const despues = await page.evaluate(() => ({
+    pushes: (window as unknown as FixtureWindow).fixture.calls.filter((call) => call.type === "push").length,
+    hash: location.hash,
+    scrollY: Math.round(window.scrollY),
+  }));
+  return {
+    generado: senales.generados > 0,
+    entregado: senales.entregados > 0,
+    prevenido: senales.prevenido,
+    pushes: despues.pushes - antes.pushes,
+    hashCambio: despues.hash !== antes.hash,
+    scrollY: despues.scrollY,
+    ...resumirTraza(await leerTraza(page)),
+  };
+}
+
+const clasificar = (lectura: LecturaToque) => ({
+  generado: lectura.generado,
+  entregado: lectura.entregado,
+  prevenido: lectura.prevenido,
+  transform: lectura.transformMaxPx > 0.5,
+  pushes: lectura.pushes,
+  hashCambio: lectura.hashCambio,
+});
+
+async function contarEscuchas(cdp: CDPSession) {
+  const conteo: Record<string, number> = {};
+  for (const [nombre, expresion] of [["window", "window"], ["document", "document"], ["visualViewport", "window.visualViewport"]] as const) {
+    const { result } = await cdp.send("Runtime.evaluate", { expression: expresion });
+    if (!result.objectId) throw new Error(`Sin objeto remoto para ${expresion}`);
+    const { listeners } = await cdp.send("DOMDebugger.getEventListeners", { objectId: result.objectId });
+    conteo[nombre] = listeners.length;
+    await cdp.send("Runtime.releaseObject", { objectId: result.objectId });
+  }
+  return conteo;
+}
+
+test.describe("matriz de toques del detector de pestañas", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test.skip(process.env.VICINO_GESTURE_BASELINE === "1", "describe el detector actual, no la línea base");
+
+  for (const objetivo of OBJETIVOS_TOQUE) {
+    for (const variante of VARIANTES_TOQUE) {
+      for (const conFoco of [false, true]) {
+        const esperado = esperadoToque(objetivo, variante);
+        test(`${objetivo} · ${variante.direccion} ${variante.px} px${conFoco ? " · con #field enfocado" : ""}`, async ({ page }, info) => {
+          await inyectarObjetivos(page);
+          await instrumentarClics(page, objetivo);
+          await instalarAhora(page);
+          expect(await iniciarTraza(page)).toBe(true);
+          const punto = await puntoDeToque(page, objetivo);
+          const delta = desplazamiento(variante);
+          const cdp = await page.context().newCDPSession(page);
+          const lecturas: LecturaToque[] = [];
+          try {
+            for (let repeticion = 0; repeticion < REPETICIONES_TOQUE; repeticion++) {
+              lecturas.push(await repetirToque(page, cdp, punto, delta, conFoco));
+            }
+          } finally {
+            await cdp.detach();
+            // A disco antes de las aserciones, también con lecturas parciales si una
+            // repetición lanzó: el registro queda aunque la prueba pase o falle.
+            const registro = info.outputPath("matriz-toque.json");
+            await writeFile(registro, JSON.stringify({ objetivo, variante, conFoco, punto, esperado, lecturas }, null, 2));
+            await info.attach("matriz-toque.json", { path: registro, contentType: "application/json" });
+          }
+          const clases = lecturas.map(clasificar);
+          for (const clase of clases.slice(1)) expect(clase, "las 5 repeticiones se clasifican igual").toEqual(clases[0]);
+          for (const lectura of lecturas) {
+            const detalle = JSON.stringify(lectura);
+            expect(lectura.pushes, `sin navegación: ${detalle}`).toBe(0);
+            // Si esto falla, cambió la tolerancia de toque del navegador, no el detector.
+            expect(lectura.movimientos > 0, `touchmove que llegan a la página (tolerancia de ${TOLERANCIA_TOQUE_CHROME_PX} px): ${detalle}`)
+              .toBe(esperado.llegaMovimiento);
+            expect(lectura.movimientosPrevenidos > 0, `el detector previene el movimiento: ${detalle}`).toBe(esperado.suprime);
+            expect(lectura.transformMaxPx > 0.5, `transform del envoltorio: ${detalle}`).toBe(esperado.transform);
+            expect(lectura.entregado, `clic entregado: ${detalle}`).toBe(esperado.entregado);
+            if (esperado.suprime) {
+              if (lectura.generado) expect(lectura.prevenido, `el envoltorio cancela el clic: ${detalle}`).toBe(true);
+            } else {
+              expect(lectura.generado && !lectura.entregado, `el envoltorio no cancela el clic: ${detalle}`).toBe(false);
+            }
+            expect(lectura.hashCambio, `el hash solo cambia si el enlace recibió el clic: ${detalle}`)
+              .toBe(objetivo === "enlace" && lectura.entregado);
+          }
+          // El foco en un campo no cambia el detector; la traza lo ve y abreTeclado lo reconoce.
+          if (conFoco) expect(lecturas[0]!.focoAbreTeclado, "focusin de #field en la traza").toBe(true);
+        });
+      }
+    }
+  }
+
+  test("la traza no escucha nada antes de start(), start() es idempotente y stop() retira todo", async ({ page }) => {
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      const base = await contarEscuchas(cdp);
+      await instalarAhora(page);
+      expect(await contarEscuchas(cdp), "instalada pero apagada").toEqual(base);
+      expect(await iniciarTraza(page)).toBe(true);
+      const encendida = await contarEscuchas(cdp);
+      for (const nombre of ["window", "document", "visualViewport"]) expect(encendida[nombre]!, nombre).toBeGreaterThan(base[nombre]!);
+      expect(await iniciarTraza(page)).toBe(true);
+      expect(await contarEscuchas(cdp), "un segundo start no duplica").toEqual(encendida);
+      await detenerTraza(page);
+      expect(await contarEscuchas(cdp), "stop retira todo").toEqual(base);
+    } finally {
+      await cdp.detach();
+    }
+  });
+
+  test("la traza no guarda textos, ids, enlaces ni partes de la URL", async ({ page }) => {
+    await inyectarObjetivos(page);
+    await instalarAhora(page);
+    expect(await iniciarTraza(page)).toBe(true);
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      for (const objetivo of OBJETIVOS_TOQUE) {
+        await tocar(cdp, await puntoDeToque(page, objetivo), { x: 0, y: 0 });
+        await page.waitForTimeout(350); // toques separados: que Chromium no los junte como doble toque
+      }
+      await page.evaluate(() => document.querySelector<HTMLInputElement>("#field")!.focus());
+      await tocar(cdp, await puntoDeToque(page, "superficie"), { x: -30, y: 0 });
+    } finally {
+      await cdp.detach();
+    }
+    await esperarTransformDeLaTraza(page);
+    await page.waitForTimeout(1100); // sondas de blanco tras el último toque
+    expect(await page.evaluate(() => location.hash), "el enlace sí navegó al fragmento").toBe("#destino");
+    const json = await page.evaluate(() => (window as VentanaConTraza).__vicinoViewTrace!.dump());
+    const prohibidos = [...TEXTOS_INYECTADOS, "Gesture surface", "Native carousel", "Native vertical scroll",
+      "destino", "matriz", "surface", "carousel", "field", "#", "?"];
+    for (const prohibido of prohibidos) expect(json.includes(prohibido), `la traza contiene "${prohibido}"`).toBe(false);
+    const volcado = JSON.parse(json) as VolcadoTraza;
+    for (const tipo of ["inicio", "touchstart", "touchmove", "touchend", "clic", "focusin", "transform"]) {
+      expect(volcado.eventos.some((evento) => evento.tipo === tipo), tipo).toBe(true);
+    }
+    expect(volcado.errores).toBe(0);
+  });
+
+  test("con la traza encendida, el swipe intencional de 230 px sigue navegando", async ({ page }) => {
+    await instalarAhora(page);
+    expect(await iniciarTraza(page)).toBe(true);
+    await gesture(page, [310, 260], [80, 260]);
+    await expect.poll(() => page.evaluate(() => (window as unknown as FixtureWindow).fixture.calls.filter((call) => call.type === "push").length)).toBe(1);
+    await esperarTransformDeLaTraza(page);
+    const volcado = await leerTraza(page);
+    expect(resumirTraza(volcado).transformMaxPx).toBeGreaterThan(0);
+    expect(volcado.errores).toBe(0);
+  });
 });

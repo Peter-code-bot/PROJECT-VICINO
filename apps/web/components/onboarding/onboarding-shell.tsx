@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { abreTeclado } from "@/lib/onboarding/abre-teclado";
+import { debeAjustarPorAltura } from "@/lib/onboarding/ajuste-por-altura";
 
 /** All onboarding safe-area insets belong to this wrapper, once per route group. */
 export function OnboardingViewport({ children }: { children: ReactNode }) {
   const [viewportHeight, setViewportHeight] = useState<number>();
+  // Altura del último frame de ajuste que sí corrió. El cleanup cancela los
+  // frames intermedios, así que se compara contra esta y no contra la anterior.
+  const alturaMedida = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -22,9 +27,15 @@ export function OnboardingViewport({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (viewportHeight === undefined) return;
     const frame = window.requestAnimationFrame(() => {
+      const previa = alturaMedida.current;
+      alturaMedida.current = viewportHeight;
+      // Solo cuando la altura baja: al crecer, un campo visible sigue visible.
+      if (!debeAjustarPorAltura(previa, viewportHeight)) return;
       const field = document.activeElement;
-      if (!(field instanceof HTMLElement) || !field.matches("input, textarea, select, [contenteditable='true']")) return;
+      // Radios, casillas, botones y selects no abren teclado: no se mueve la pregunta por ellos.
+      if (!field || !abreTeclado(field)) return;
       const body = field.closest<HTMLElement>("[data-onboarding-scroll]");
       if (!body) return;
       const bounds = body.getBoundingClientRect();
