@@ -8,6 +8,7 @@ import { CABECERA_RUTA } from "../navigation/rutas-legales";
 import { requiereSesion, loginPara, COOKIE_DESTINO_ONBOARDING } from "../auth/acceso-invitado";
 import { exentaDeConfirmacionLegal, legalStateSchema, rutaConfirmacionCuenta } from "../auth/confirmacion-legal";
 import { COOKIE_AGREGANDO_CUENTA, expulsarDePantallaDeEntrada } from "../cuentas/agregando-cuenta";
+import { marcarVistoHoy } from "../actividad/marcar-visto";
 
 export async function updateSession(request: NextRequest, nonce?: string) {
   // Forward nonce to Server Components via request headers
@@ -65,6 +66,11 @@ export async function updateSession(request: NextRequest, nonce?: string) {
   }
 
   const pathname = request.nextUrl.pathname;
+
+  // Un dia con sesion queda en actividad_diaria (privada); una vez por cuenta,
+  // dispositivo y dia, despues de responder. Va antes de los redirects: todos
+  // copian las cookies de supabaseResponse.
+  if (user) marcarVistoHoy(supabase, request, supabaseResponse, user.id);
 
   if (user && !exentaDeConfirmacionLegal(pathname)) {
     const { data: legalData, error: legalError } = await supabase.rpc("estado_confirmacion_legal");
