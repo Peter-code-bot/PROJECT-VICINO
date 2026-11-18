@@ -1,10 +1,20 @@
 # Cuentas internas: plan de aplicación en producción
 
-Migraciones `20261102120000` a `20261102120400`. **No están aplicadas en
-producción**; se probaron completas en staging
+Migraciones `20261102120000` a `20261102120400`. **Aplicadas en producción el
+18-nov-2026** (16:08 a 16:15 UTC, con OK de Pedro): las cinco, en orden, con
+`scripts/apply-migration.mjs`, después del respaldo y registradas en el ledger.
+Antes se probaron completas en staging
 (`scripts/staging/probar-cuentas-internas.mjs`). El detalle con cifras y cuentas
 concretas quedó fuera del repo, que es público: está en el reporte que recibieron
 Pedro y Javier.
+
+Comprobado justo después: los conteos de `--solo-conteos` dan 0 en
+`perfiles_sinteticos_visibles`, `publicaciones_visibles_sinteticas`,
+`publicaciones_visibles_semilla_javier` y `filas_de_ranking_internas`;
+`node scripts/gen-types.mjs --check` pasa; `node scripts/smoke-produccion.mjs`
+en verde; y el inicio (con y sin ubicación), las vistas previas de invitado y
+los rankings ya no pintan nada de las cuentas sintéticas ni de la semilla, en
+producción ni en la vista previa del PR.
 
 ## Puesta al día con master (18-nov-2026)
 
